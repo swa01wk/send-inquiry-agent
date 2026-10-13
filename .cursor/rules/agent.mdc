@@ -1,0 +1,31 @@
+---
+description: LangGraph agent rules (state, tools, guard, streaming)
+globs: backend/app/agent/**
+alwaysApply: false
+---
+
+# Agent rules
+
+## Graph
+```
+START → agent ─(tool calls)→ tools → agent
+          └─(no tool calls)→ guard ─(retry, max 1)→ agent
+                                   └─(ok)→ END
+```
+- `agent` node: chat model from a factory `get_chat_model()` bound to `TOOLS`. Tests swap the factory for a scripted fake model that emits predetermined tool calls and text.
+- System prompt is rebuilt every turn: `docs/agent-system-prompt.md` + current phase + a compact draft summary (filled, missing required, unconfirmed). Build it in `prompts.py` from `domain/summary.py`.
+- `tools` node: `ToolNode(TOOLS)`. Tools read state via `InjectedState`, get their call id via `InjectedToolCallId`, and return `Command(update={...,"messages":[ToolMessage(...)]})`. Tools never mutate state in place.
+- `guard` node (pure Python, no LLM): recomputes `phase` from the draft, attaches the deterministic UI card for the phase (see spec "Guard"), and if the final AI message claims a submission without `reference` set, appends a system note and routes back to `agent` once.
+- Checkpointer: `MemorySaver`, `thread_id = session_id`.
+
+## Tools
+- Exactly the tools listed in `docs/spec.md`, with those names and arguments. Each enforces its own preconditions with `domain/validation.py` and returns a short, factual result string the LLM can turn into friendly copy.
+- `update_draft` never sets `confirmed=True` for derived or verified values. Only `confirm_fields` does, and only for fields currently unconfirmed.
+- Nothing can set `terms_accepted` except the `accept_and_submit` UI action handled in the chat endpoint.
+- `submit_inquiry` calls `can_submit`; on failure it returns the list of blockers, never submits.
+
+## Streaming
+- Run the graph with `astream(..., stream_mode=["messages", "custom"])`.
+- Forward assistant text chunks from `messages` as `token` events (skip tool-call chunks and tool messages).
+- Tools and the guard emit `ui_card` and `draft` events through `get_stream_writer()` from `langgraph.config`.
+- End every turn with `done` (with `phase`); on exceptions emit `error` with a friendly message and log the details.

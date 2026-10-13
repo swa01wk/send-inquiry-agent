@@ -1,0 +1,761 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Send Inquiry chat</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Albert+Sans:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F5F5F7}
+a{color:#A3214F}a:hover{color:#7E1A3D}
+@keyframes dcdot{0%,80%,100%{opacity:.25}40%{opacity:1}}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#6B6480;animation:dcdot 1.2s infinite}
+.dot2{animation-delay:.2s}.dot3{animation-delay:.4s}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid #C8336B;outline-offset:2px}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #F5F5F7; font-family: 'Albert Sans', system-ui, sans-serif; color: #1C1530;">
+  <header style="background: #FFFFFF; border-bottom: 1px solid #E6E4EC;">
+    <div style="max-width: 1280px; margin: 0 auto; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; gap: 16px; box-sizing: border-box;">
+      <div style="display: flex; align-items: baseline; gap: 12px;">
+        <span style="font-size: 28px; font-weight: 700; letter-spacing: 0.5px; color: #2E1A5B;">cenomi</span>
+        <span style="font-size: 15px; color: #5E5873;">Tenant Central</span>
+      </div>
+      <button type="button" style="min-height: 44px; padding: 0 20px; border: 1px solid #D9D6E2; border-radius: 999px; background: #FFFFFF; font-family: 'Noto Sans Arabic', sans-serif; font-size: 16px; color: #1C1530; cursor: pointer;">العربية</button>
+    </div>
+  </header>
+
+  <main style="max-width: 1280px; margin: 0 auto; padding: 24px 32px 48px; box-sizing: border-box;">
+    <nav aria-label="Breadcrumb" style="display: flex; align-items: center; gap: 8px; font-size: 14px; color: #5E5873; margin-bottom: 16px;">
+      <a href="#" style="color: #5E5873; text-decoration: none;">Sign In</a>
+      <span aria-hidden="true">›</span>
+      <span style="color: #2E1A5B; font-weight: 600;">Send Inquiry</span>
+    </nav>
+    <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px;">
+      <h1 style="margin: 0; font-size: 32px; font-weight: 700; color: #2E1A5B;">Send an inquiry</h1>
+      <p style="margin: 0; font-size: 16px; line-height: 1.5; color: #4A4460; max-width: 720px;">Chat with our leasing assistant. It collects what we need, confirms anything it fills in for you, and sends your inquiry to our leasing team.</p>
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+
+      <section aria-label="Leasing assistant chat" style="flex: 999 1 560px; min-width: 0; background: #FFFFFF; border: 1px solid #E6E4EC; border-radius: 20px; display: flex; flex-direction: column; height: 820px; overflow: hidden;">
+        <div style="padding: 16px 20px; border-bottom: 1px solid #EEECF2; display: flex; flex-direction: column; gap: 14px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div aria-hidden="true" style="width: 40px; height: 40px; border-radius: 12px; background: #2E1A5B; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px;">C</div>
+            <div style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0;">
+              <span style="font-size: 16px; font-weight: 600; color: #1C1530;">Cenomi leasing assistant</span>
+              <span style="font-size: 13px; color: #5E5873;">Leasing inquiries for new brands</span>
+            </div>
+            <button type="button" onClick="{{reset}}" style="min-height: 44px; padding: 0 14px; border: 1px solid #D9D6E2; border-radius: 10px; background: #FFFFFF; font-family: inherit; font-size: 14px; color: #3F3955; cursor: pointer;">Restart demo</button>
+          </div>
+          <ol aria-label="Progress" style="list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px;">
+            <sc-for list="{{stages}}" as="st" hint-placeholder-count="6">
+              <li style="{{st.style}}">{{st.label}}</li>
+            </sc-for>
+          </ol>
+        </div>
+
+        <div ref="{{setList}}" aria-live="polite" style="flex: 1; min-height: 0; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; background: #FBFAFC;">
+          <sc-for list="{{messages}}" as="m" hint-placeholder-count="2">
+            <sc-if value="{{m.isUser}}" hint-placeholder-val="{{false}}">
+              <div style="display: flex; justify-content: flex-end;">
+                <div style="max-width: 78%; background: #2E1A5B; color: #FFFFFF; padding: 10px 14px; border-radius: 16px 16px 4px 16px; font-size: 15px; line-height: 1.45;">{{m.text}}</div>
+              </div>
+            </sc-if>
+            <sc-if value="{{m.isBot}}" hint-placeholder-val="{{true}}">
+              <div style="display: flex; gap: 10px; align-items: flex-start;">
+                <sc-if value="{{m.showAvatar}}" hint-placeholder-val="{{true}}">
+                  <div aria-hidden="true" style="width: 32px; height: 32px; flex: none; border-radius: 10px; background: #2E1A5B; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;">C</div>
+                </sc-if>
+                <sc-if value="{{m.noAvatar}}" hint-placeholder-val="{{false}}">
+                  <div style="width: 32px; flex: none;"></div>
+                </sc-if>
+                <div style="display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 0; max-width: 88%;">
+                  <sc-if value="{{m.hasText}}" hint-placeholder-val="{{true}}">
+                    <div style="align-self: flex-start; background: #FFFFFF; border: 1px solid #ECEAF1; padding: 10px 14px; border-radius: 16px 16px 16px 4px; font-size: 15px; line-height: 1.5; color: #1C1530;">{{m.text}}</div>
+                  </sc-if>
+
+                  <sc-if value="{{m.cardCr}}" hint-placeholder-val="{{false}}">
+                    <div style="background: #FFFFFF; border: 1px solid #E3E0EA; border-radius: 14px; padding: 4px 16px;">
+                      <sc-for list="{{crRows}}" as="r" hint-placeholder-count="2">
+                        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px 0; border-bottom: 1px solid #F0EEF4;">
+                          <span style="font-size: 13px; color: #5E5873; width: 130px; flex: none;">{{r.label}}</span>
+                          <span style="font-size: 15px; font-weight: 600; color: #1C1530; flex: 1; min-width: 160px;">{{r.value}}</span>
+                          <span style="{{r.badgeStyle}}">{{r.badgeText}}</span>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+
+                  <sc-if value="{{m.cardBrand}}" hint-placeholder-val="{{false}}">
+                    <div style="background: #FFFFFF; border: 1px solid #E3E0EA; border-radius: 14px; padding: 4px 16px;">
+                      <sc-for list="{{brandRows}}" as="r" hint-placeholder-count="4">
+                        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px 0; border-bottom: 1px solid #F0EEF4;">
+                          <span style="font-size: 13px; color: #5E5873; width: 130px; flex: none;">{{r.label}}</span>
+                          <span style="font-size: 15px; font-weight: 600; color: #1C1530; flex: 1; min-width: 160px;">{{r.value}}</span>
+                          <span style="{{r.badgeStyle}}">{{r.badgeText}}</span>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+
+                  <sc-if value="{{m.cardMalls}}" hint-placeholder-val="{{false}}">
+                    <div style="background: #FFFFFF; border: 1px solid #E3E0EA; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+                      <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <span style="font-size: 14px; font-weight: 600; color: #1C1530;">Malls in Riyadh</span>
+                        <span style="font-size: 13px; color: #5E5873;">{{mallCountLabel}}</span>
+                      </div>
+                      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
+                        <sc-for list="{{malls}}" as="x" hint-placeholder-count="4">
+                          <button type="button" onClick="{{x.toggle}}" aria-pressed="{{x.pressed}}" style="{{x.style}}">
+                            <span style="display: flex; flex-direction: column; gap: 2px; text-align: left;">
+                              <span style="font-size: 15px; font-weight: 600;">{{x.name}}</span>
+                              <span style="font-size: 12px; color: #5E5873;">Sample mall data</span>
+                            </span>
+                            <span style="{{x.markStyle}}">{{x.mark}}</span>
+                          </button>
+                        </sc-for>
+                      </div>
+                    </div>
+                  </sc-if>
+
+                  <sc-if value="{{m.cardOtp}}" hint-placeholder-val="{{false}}">
+                    <div style="background: #FFFFFF; border: 1px solid #E3E0EA; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+                      <sc-if value="{{otpPending}}" hint-placeholder-val="{{true}}">
+                        <label for="otp" style="font-size: 14px; font-weight: 600; color: #1C1530;">Verification code</label>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                          <input id="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="4" placeholder="4-digit code" value="{{otpInput}}" onChange="{{onOtp}}" style="flex: 1; min-width: 140px; min-height: 48px; padding: 0 14px; border: 1px solid #CFCBDA; border-radius: 10px; font-family: inherit; font-size: 20px; letter-spacing: 6px; color: #1C1530; box-sizing: border-box;">
+                          <button type="button" onClick="{{verifyOtp}}" style="min-height: 48px; padding: 0 22px; border: none; border-radius: 10px; background: #C8336B; color: #FFFFFF; font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer;">Verify</button>
+                        </div>
+                        <span style="font-size: 13px; color: #5E5873;">Sent to +966 55 123 4567 and ahmed@beanstreet.sa · Prototype code: 1234</span>
+                      </sc-if>
+                      <sc-if value="{{otpOk}}" hint-placeholder-val="{{false}}">
+                        <div style="display: flex; align-items: center; gap: 10px; color: #17633F; font-size: 15px; font-weight: 600;">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"></path></svg>
+                          <span>Phone and email verified</span>
+                        </div>
+                      </sc-if>
+                    </div>
+                  </sc-if>
+
+                  <sc-if value="{{m.cardDocs}}" hint-placeholder-val="{{false}}">
+                    <div style="background: #FFFFFF; border: 1px solid #E3E0EA; border-radius: 14px; padding: 12px 16px 4px;">
+                      <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; padding-bottom: 8px;">
+                        <span style="font-size: 14px; font-weight: 600; color: #1C1530;">Documents</span>
+                        <span style="font-size: 13px; color: #5E5873;">{{docsReqLabel}}</span>
+                      </div>
+                      <sc-for list="{{docs}}" as="d" hint-placeholder-count="5">
+                        <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid #F0EEF4;">
+                          <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px;">
+                            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                              <span style="font-size: 14px; font-weight: 600; color: #1C1530;">{{d.label}}</span>
+                              <span style="{{d.tagStyle}}">{{d.tag}}</span>
+                            </div>
+                            <span style="{{d.statusStyle}}">{{d.status}}</span>
+                          </div>
+                          <button type="button" onClick="{{d.toggle}}" style="{{d.btnStyle}}">{{d.btnLabel}}</button>
+                        </div>
+                      </sc-for>
+                      <div style="font-size: 12px; color: #5E5873; padding: 10px 0 12px; border-top: 1px solid #F0EEF4;">PDF, JPG, PNG, DOC, XLSX, ZIP · up to 5 MB each · we only check that files are uploaded</div>
+                    </div>
+                  </sc-if>
+
+                  <sc-if value="{{m.cardReview}}" hint-placeholder-val="{{false}}">
+                    <div style="background: #FFFFFF; border: 1px solid #E3E0EA; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 16px;">
+                      <span style="font-size: 16px; font-weight: 700; color: #2E1A5B;">Review your inquiry</span>
+                      <sc-for list="{{reviewGroups}}" as="g" hint-placeholder-count="4">
+                        <div style="display: flex; flex-direction: column; gap: 2px;">
+                          <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.6px; text-transform: uppercase; color: #5E5873;">{{g.title}}</span>
+                          <sc-for list="{{g.rows}}" as="r" hint-placeholder-count="3">
+                            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 8px 0; border-bottom: 1px solid #F0EEF4;">
+                              <span style="font-size: 13px; color: #5E5873; width: 130px; flex: none;">{{r.label}}</span>
+                              <span style="{{r.valueStyle}}">{{r.value}}</span>
+                              <sc-if value="{{r.badgeShow}}" hint-placeholder-val="{{true}}"><span style="{{r.badgeStyle}}">{{r.badgeText}}</span></sc-if>
+                            </div>
+                          </sc-for>
+                        </div>
+                      </sc-for>
+                      <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.6px; text-transform: uppercase; color: #5E5873;">Documents and checks</span>
+                        <sc-for list="{{checks}}" as="c" hint-placeholder-count="3">
+                          <div style="display: flex; align-items: center; gap: 8px; font-size: 14px;">
+                            <span style="{{c.dotStyle}}"></span>
+                            <span style="color: #1C1530;">{{c.label}}</span>
+                          </div>
+                        </sc-for>
+                      </div>
+                      <label style="display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: #1C1530; cursor: pointer; min-height: 44px;">
+                        <input type="checkbox" checked="{{consent}}" onChange="{{toggleConsent}}" style="width: 20px; height: 20px; margin: 2px 0 0; accent-color: #C8336B; flex: none;">
+                        <span>I agree to the <a href="#">terms &amp; conditions</a> and <a href="#">privacy policy</a>.</span>
+                      </label>
+                      <button type="button" onClick="{{submit}}" disabled="{{submitDisabled}}" style="{{submitStyle}}">Submit inquiry</button>
+                      <sc-if value="{{submitHintShow}}" hint-placeholder-val="{{true}}">
+                        <span style="font-size: 13px; color: #5E5873;">{{submitHint}}</span>
+                      </sc-if>
+                    </div>
+                  </sc-if>
+
+                  <sc-if value="{{m.cardSuccess}}" hint-placeholder-val="{{false}}">
+                    <div style="background: #FFFFFF; border: 1px solid #E3E0EA; border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 16px;">
+                      <div style="display: flex; align-items: center; gap: 12px;">
+                        <div aria-hidden="true" style="width: 44px; height: 44px; border-radius: 12px; background: #DDF5E8; color: #17633F; display: flex; align-items: center; justify-content: center;">
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"></path></svg>
+                        </div>
+                        <span style="font-size: 18px; font-weight: 700; color: #1C1530;">Your inquiry has been sent</span>
+                      </div>
+                      <div style="background: #F3F2F7; border: 1px solid #E3E0EA; border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+                        <div style="display: flex; flex-direction: column; gap: 2px;">
+                          <span style="font-size: 13px; color: #5E5873;">Reference number</span>
+                          <span style="font-size: 24px; font-weight: 700; letter-spacing: 0.5px; color: #1C1530;">{{reference}}</span>
+                        </div>
+                        <button type="button" onClick="{{copyRef}}" style="min-height: 44px; padding: 0 16px; border: 1px solid #D9D6E2; border-radius: 10px; background: #FFFFFF; font-family: inherit; font-size: 14px; font-weight: 600; color: #2E1A5B; cursor: pointer;">{{copyLabel}}</button>
+                      </div>
+                      <ol style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px;">
+                        <li style="display: flex; gap: 12px;">
+                          <span aria-hidden="true" style="width: 26px; height: 26px; flex: none; border-radius: 50%; background: #DDF5E8; color: #17633F; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700;">1</span>
+                          <span style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 14px; font-weight: 600;">Inquiry submitted</span><span style="font-size: 13px; color: #5E5873;">Just now</span></span>
+                        </li>
+                        <li style="display: flex; gap: 12px;">
+                          <span aria-hidden="true" style="width: 26px; height: 26px; flex: none; border-radius: 50%; border: 2px solid #B9A8E6; color: #2E1A5B; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; box-sizing: border-box;">2</span>
+                          <span style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 14px; font-weight: 600;">Review</span><span style="font-size: 13px; color: #5E5873;">Our team verifies your details and documents.</span></span>
+                        </li>
+                        <li style="display: flex; gap: 12px;">
+                          <span aria-hidden="true" style="width: 26px; height: 26px; flex: none; border-radius: 50%; background: #EEECF2; color: #5E5873; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700;">3</span>
+                          <span style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 14px; font-weight: 600;">Sign in to Tenant Central</span><span style="font-size: 13px; color: #5E5873;">After approval, with the email you registered.</span></span>
+                        </li>
+                      </ol>
+                      <a href="#" style="align-self: flex-start; min-height: 44px; padding: 0 20px; border-radius: 10px; background: #E6DEF7; color: #2E1A5B; font-size: 15px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center;">Track your inquiry</a>
+                    </div>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-if>
+          </sc-for>
+
+          <sc-if value="{{typing}}" hint-placeholder-val="{{false}}">
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <div aria-hidden="true" style="width: 32px; height: 32px; flex: none; border-radius: 10px; background: #2E1A5B; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;">C</div>
+              <div aria-label="Assistant is typing" style="background: #FFFFFF; border: 1px solid #ECEAF1; padding: 12px 14px; border-radius: 16px; display: flex; gap: 5px;">
+                <span class="dot"></span><span class="dot dot2"></span><span class="dot dot3"></span>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+
+        <div style="border-top: 1px solid #EEECF2; padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 10px; background: #FFFFFF;">
+          <sc-if value="{{chipsShow}}" hint-placeholder-val="{{true}}">
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+              <sc-for list="{{chips}}" as="c" hint-placeholder-count="2">
+                <button type="button" onClick="{{c.go}}" style="min-height: 44px; padding: 8px 16px; border: 1.5px solid #C8336B; border-radius: 999px; background: #FFFFFF; color: #A3214F; font-family: inherit; font-size: 14px; font-weight: 600; text-align: left; cursor: pointer;">{{c.label}}</button>
+              </sc-for>
+            </div>
+          </sc-if>
+          <div style="display: flex; gap: 8px;">
+            <label for="composer" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Message</label>
+            <input id="composer" placeholder="Type a message…" value="{{draftText}}" onChange="{{onDraft}}" onKeyDown="{{onDraftKey}}" style="flex: 1; min-width: 0; min-height: 48px; padding: 0 16px; border: 1px solid #CFCBDA; border-radius: 12px; font-family: inherit; font-size: 15px; color: #1C1530; box-sizing: border-box;">
+            <button type="button" onClick="{{sendDraft}}" aria-label="Send message" style="width: 48px; height: 48px; flex: none; border: none; border-radius: 12px; background: #C8336B; color: #FFFFFF; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path></svg>
+            </button>
+          </div>
+          <span style="font-size: 12px; color: #5E5873;">Prototype: replies follow a scripted demo path. Tap a suggestion to continue.</span>
+        </div>
+      </section>
+
+      <sc-if value="{{showDraft}}" hint-placeholder-val="{{true}}">
+        <aside aria-label="Inquiry draft" style="flex: 1 1 320px; min-width: 0; height: 820px; background: #FFFFFF; border: 1px solid #E6E4EC; border-radius: 20px; display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box;">
+          <div style="padding: 20px 20px 16px; border-bottom: 1px solid #EEECF2; display: flex; flex-direction: column; gap: 14px; flex: none;">
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="font-size: 18px; font-weight: 700; color: #2E1A5B;">Inquiry draft</span>
+            <span style="font-size: 13px; color: #5E5873; line-height: 1.45;">What the agent has collected so far, and where each value came from.</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; justify-content: space-between; font-size: 13px;">
+              <span style="color: #3F3955; font-weight: 600;">Required fields</span>
+              <span style="color: #3F3955;">{{reqLabel}}</span>
+            </div>
+            <div style="height: 8px; border-radius: 999px; background: #EEECF2; overflow: hidden;">
+              <div style="{{reqBarStyle}}"></div>
+            </div>
+          </div>
+          </div>
+          <div ref="{{setDraft}}" style="flex: 1; min-height: 0; overflow-y: auto; position: relative; padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 18px;">
+          <sc-for list="{{draftGroups}}" as="g" hint-placeholder-count="4">
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.6px; text-transform: uppercase; color: #5E5873; padding-bottom: 4px;">{{g.title}}</span>
+              <sc-for list="{{g.rows}}" as="r" hint-placeholder-count="3">
+                <div id="{{r.domId}}" style="{{r.rowStyle}}">
+                  <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                    <span style="font-size: 12px; color: #5E5873;">{{r.label}}</span>
+                    <sc-if value="{{r.badgeShow}}" hint-placeholder-val="{{false}}"><span style="{{r.badgeStyle}}">{{r.badgeText}}</span></sc-if>
+                  </div>
+                  <span style="{{r.valueStyle}}">{{r.value}}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-for>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.6px; text-transform: uppercase; color: #5E5873;">Checks before submit</span>
+            <sc-for list="{{checks}}" as="c" hint-placeholder-count="3">
+              <div style="display: flex; align-items: center; gap: 8px; font-size: 14px;">
+                <span style="{{c.dotStyle}}"></span>
+                <span style="color: #1C1530;">{{c.label}}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px; padding-top: 4px; border-top: 1px solid #F0EEF4;">
+            <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.6px; text-transform: uppercase; color: #5E5873; padding-top: 12px;">Source badges</span>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+              <span style="{{legend.user}}">You said</span>
+              <span style="{{legend.verified}}">From your CR</span>
+              <span style="{{legend.pending}}">Suggested · confirm</span>
+              <span style="{{legend.derived}}">Suggested · confirmed</span>
+              <span style="{{legend.def}}">Default</span>
+            </div>
+          </div>
+          </div>
+        </aside>
+      </sc-if>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"showDraft":{"editor":"boolean","default":true},"$preview":{"width":1440,"height":1100}}'>
+var MALLS = [
+  { id: 'a', name: 'Riyadh Mall A' },
+  { id: 'b', name: 'Riyadh Mall B' },
+  { id: 'c', name: 'Riyadh Mall C' },
+  { id: 'd', name: 'Riyadh Mall D' }
+];
+var DOCS = [
+  { id: 'company', label: 'Company Profile', req: true, file: 'BeanStreet_Company_Profile.pdf · 1.8 MB' },
+  { id: 'brand', label: 'Brand Profile', req: true, file: 'BeanStreet_Brand_Deck.pdf · 3.2 MB' },
+  { id: 'cr', label: 'CR certificate', req: false, file: 'CR_1010123456.pdf · 0.6 MB' },
+  { id: 'vat', label: 'VAT certificate', req: false, file: 'VAT_Certificate.pdf · 0.4 MB' },
+  { id: 'nid', label: 'National ID / Iqama', req: false, file: 'National_ID.jpg · 0.9 MB' },
+  { id: 'addr', label: 'National Address', req: false, file: 'National_Address.pdf · 0.3 MB' },
+  { id: 'aoa', label: 'Article of Association', req: false, file: 'Articles.pdf · 1.1 MB' }
+];
+var REQ = ['companyName', 'companyAddress', 'brandEn', 'brandAr', 'unitType', 'salesCategory', 'firstName', 'lastName', 'email', 'mobile', 'malls'];
+var GROUPS = [
+  { title: 'Company', keys: [['cr', 'CR number'], ['companyName', 'Company name'], ['companyAddress', 'Company address']] },
+  { title: 'Brand', keys: [['brandEn', 'Brand name (EN)'], ['brandAr', 'Brand name (AR)'], ['unitType', 'Unit type'], ['salesCategory', 'Sales category']] },
+  { title: 'Space', keys: [['malls', 'Malls'], ['area', 'Desired area'], ['rent', 'Desired rent'], ['lease', 'Lease period']] },
+  { title: 'Contact', keys: [['firstName', 'First name'], ['lastName', 'Last name'], ['email', 'Email'], ['mobile', 'Mobile']] }
+];
+var PILL = 'display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; white-space: nowrap; ';
+var BADGE = {
+  user: PILL + 'background: #EEF0F4; color: #3F4654;',
+  verified: PILL + 'background: #DDF5E8; color: #17633F;',
+  pending: PILL + 'background: #FFEFD6; color: #7A4100;',
+  derived: PILL + 'background: #EDE6FA; color: #4B2A8A;',
+  def: PILL + 'background: #FFFFFF; color: #5B6270; border: 1px solid #D5D8DE;'
+};
+
+function F(v, src, ok) { return { v: v, src: src, ok: ok }; }
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.n = 0;
+    this.state = this.initial();
+    this.setList = (el) => { this.listEl = el; };
+    this.setDraft = (el) => { this.draftEl = el; };
+  }
+
+  initial() {
+    return {
+      step: 0,
+      typing: false,
+      draftText: '',
+      otpInput: '',
+      otpAttempts: 3,
+      otpOk: false,
+      consent: false,
+      copied: false,
+      reference: '',
+      mallSel: {},
+      docs: {},
+      flash: {},
+      f: { area: F('10 – 25,000 sqm', 'default', true) },
+      messages: [
+        { id: 'w1', from: 'bot', text: 'Marhaba, and welcome to Cenomi Tenant Central! I’m your leasing assistant.' },
+        { id: 'w2', from: 'bot', text: 'I’ll help you send a leasing inquiry in a few minutes, no long form. To start, do you have your company’s CR number? I’ll check whether you already have an account with us.' }
+      ]
+    };
+  }
+
+  componentDidUpdate(pp, ps) {
+    if (this.listEl && (ps.messages.length !== this.state.messages.length || ps.typing !== this.state.typing)) {
+      this.listEl.scrollTop = this.listEl.scrollHeight;
+    }
+    if (ps.f !== this.state.f) {
+      var nf = this.state.f, of = ps.f;
+      var changed = [];
+      GROUPS.forEach((g) => g.keys.forEach((k) => {
+        var key = k[0], a = of[key], b = nf[key];
+        if ((a ? a.v : null) !== (b ? b.v : null) || (a ? a.ok : null) !== (b ? b.ok : null)) changed.push(key);
+      }));
+      if (changed.length) {
+        var fl = {};
+        changed.forEach((k) => { fl[k] = true; });
+        this.setState({ flash: fl });
+        clearTimeout(this.ft);
+        this.ft = setTimeout(() => this.setState({ flash: {} }), 1800);
+        if (this.draftEl) {
+          var el = this.draftEl.querySelector('#draft-' + changed[0]);
+          if (el) {
+            var top = Math.max(0, el.offsetTop - 12);
+            try { this.draftEl.scrollTo({ top: top, behavior: 'smooth' }); } catch (e) { this.draftEl.scrollTop = top; }
+          }
+        }
+      }
+    }
+  }
+
+  componentWillUnmount() { clearTimeout(this.t); clearTimeout(this.ft); }
+
+  nid() { this.n += 1; return 'm' + this.n; }
+
+  setF(patch) { return Object.assign({}, this.state.f, patch); }
+
+  say(userText, bots, patch) {
+    if (this.state.typing) return;
+    var msgs = this.state.messages.slice();
+    if (userText) msgs.push({ id: this.nid(), from: 'user', text: userText });
+    this.setState({ messages: msgs, typing: true });
+    clearTimeout(this.t);
+    this.t = setTimeout(() => {
+      var add = bots.map((b) => ({ id: this.nid(), from: 'bot', text: b.text || '', card: b.card || null }));
+      this.setState(Object.assign({ messages: this.state.messages.concat(add), typing: false }, patch || {}));
+    }, 750);
+  }
+
+  confirm(keys) {
+    var f = Object.assign({}, this.state.f);
+    keys.forEach((k) => { if (f[k]) f[k] = F(f[k].v, f[k].src, true); });
+    return f;
+  }
+
+  missingReq() {
+    var f = this.state.f;
+    return REQ.filter((k) => !f[k] || !f[k].v);
+  }
+
+  canSubmit() {
+    var f = this.state.f;
+    var fieldsOk = REQ.every((k) => f[k] && f[k].v && f[k].ok);
+    var docsOk = this.state.docs.company && this.state.docs.brand;
+    return !!(fieldsOk && docsOk && this.state.otpOk && this.state.consent);
+  }
+
+  chipsFor(step) {
+    var s = this.state;
+    if (step === 0) return [
+      { label: 'My CR number is 1010123456', go: () => this.say('My CR number is 1010123456', [
+        { text: 'Thanks! I checked: there’s no existing account for this CR, so you’re all set to send an inquiry.' },
+        { text: 'Here’s what your CR record shows. Is it still correct?', card: 'cr' }
+      ], { step: 1, f: this.setF({ cr: F('1010123456', 'user', true), companyName: F('Bean Street Trading Co.', 'verified', false), companyAddress: F('King Fahd Road, Al Olaya, Riyadh', 'verified', false) }) }) },
+      { label: 'Hi! How are you?', go: () => this.say('Hi! How are you?', [
+        { text: 'Doing well, thanks for asking! Ready when you are. Do you have your CR number handy?' }
+      ]) },
+      { label: 'What do I need to get started?', go: () => this.say('What do I need to get started?', [
+        { text: 'Just a few details about your brand and the space you want, a contact number for verification, and two documents: your company profile and brand profile. Other documents are optional.' }
+      ]) }
+    ];
+    if (step === 1) return [
+      { label: 'Yes, that’s correct', go: () => this.say('Yes, that’s correct', [
+        { text: 'Perfect. Now the fun part: tell me about your brand and what you’d like to open.' }
+      ], { step: 2, f: this.confirm(['companyName', 'companyAddress']) }) }
+    ];
+    if (step === 2) return [
+      { label: 'We’re Bean Street, a specialty coffee brand. We’d like a kiosk.', go: () => this.say('We’re Bean Street, a specialty coffee brand. We’d like a kiosk.', [
+        { text: 'Specialty coffee, lovely. That works well in busy mall walkways.' },
+        { text: 'Here’s what I picked up. Anything to change?', card: 'brand' }
+      ], { step: 3, f: this.setF({ brandEn: F('Bean Street', 'user', true), brandAr: F('بين ستريت', 'derived', false), unitType: F('Specialty', 'derived', false), salesCategory: F('Food & Beverage · Café', 'derived', false) }) }) },
+      { label: 'How long does the review take?', go: () => this.say('How long does the review take?', [
+        { text: 'Once you submit, our leasing team reviews your details and documents, and you get a reference number to track progress. [Exact review time to be confirmed.]' }
+      ]) }
+    ];
+    if (step === 3) {
+      var c = [
+        { label: 'All good', go: () => this.say('All good', [
+          { text: 'Great. Where would you like to open, and roughly how much space and budget do you have in mind?' }
+        ], { step: 4, f: this.confirm(['brandAr', 'unitType', 'salesCategory']) }) }
+      ];
+      if (s.f.unitType && s.f.unitType.v !== 'Store') c.push({ label: 'Make it a Store instead', go: () => this.say('Make it a Store instead', [
+        { text: 'Done, I’ve changed the unit type to Store. Anything else?' }
+      ], { f: this.setF({ unitType: F('Store', 'user', true) }) }) });
+      return c;
+    }
+    if (step === 4) return [
+      { label: 'Riyadh, around 30 sqm, up to 250k SAR a year, 3-year lease', go: () => this.say('Riyadh, around 30 sqm, up to 250k SAR a year, 3-year lease', [
+        { text: 'Got it. I’ve set the area to 25–35 sqm, rent up to SAR 250,000 per year and a 3-year lease. You can change these anytime.' },
+        { text: 'Here are our malls in Riyadh. Pick as many as you like:', card: 'malls' }
+      ], { step: 5, f: this.setF({ area: F('25 – 35 sqm', 'derived', false), rent: F('Up to SAR 250,000 / year', 'user', true), lease: F('3 years', 'user', true) }) }) }
+    ];
+    if (step === 5) return [
+      { label: 'Done selecting', go: () => {
+        var names = MALLS.filter((m) => s.mallSel[m.id]).map((m) => m.name);
+        if (!names.length) {
+          this.say('Done selecting', [{ text: 'Pick at least one mall so I can route your inquiry to the right leasing team.' }]);
+          return;
+        }
+        var line = names.join(' and ') + ', please. The area range works too.';
+        this.say(line, [
+          { text: 'Nice picks. Who should our leasing team contact about this?' }
+        ], { step: 6, f: Object.assign(this.confirm(['area']), { malls: F(names.join(', '), 'user', true) }) });
+      } }
+    ];
+    if (step === 6) return [
+      { label: 'I’m Ahmed Al-Harbi, ahmed@beanstreet.sa, +966 55 123 4567', go: () => this.say('I’m Ahmed Al-Harbi, ahmed@beanstreet.sa, +966 55 123 4567', [
+        { text: 'Thanks, Ahmed! +966 55 123 4567 is a mobile number, so I’ll use it for verification.' },
+        { text: 'I’ve sent a 4-digit code to your phone and email. Enter it here:', card: 'otp' }
+      ], { step: 7, f: this.setF({ firstName: F('Ahmed', 'user', true), lastName: F('Al-Harbi', 'user', true), email: F('ahmed@beanstreet.sa', 'user', true), mobile: F('+966 55 123 4567', 'user', true) }) }) }
+    ];
+    if (step === 7) return [
+      { label: 'I didn’t get the code', go: () => this.say('I didn’t get the code', [
+        { text: 'No worries, I’ve sent a fresh code to your phone and email. (Prototype code: 1234.)' }
+      ], { otpAttempts: 3 }) }
+    ];
+    if (step === 8) return [
+      { label: 'Continue to review', go: () => {
+        var miss = DOCS.filter((d) => d.req && !s.docs[d.id]).map((d) => d.label);
+        if (miss.length) {
+          this.say('Continue to review', [{ text: 'Almost there. I still need your ' + miss.join(' and ') + ' before we can submit.' }]);
+          return;
+        }
+        this.say('Continue to review', [
+          { text: 'Here’s everything in one place. Check the details, accept the terms, and submit when you’re ready.', card: 'review' }
+        ], { step: 9 });
+      } },
+      { label: 'Why do you need the brand profile?', go: () => this.say('Why do you need the brand profile?', [
+        { text: 'It helps our leasing team understand your concept and positioning, so they can match you with the right spaces.' }
+      ]) }
+    ];
+    if (step === 9) return [
+      { label: 'Can I change something later?', go: () => this.say('Can I change something later?', [
+        { text: 'Yes. Just tell me what to change before you submit, and I’ll update it. After submitting, our leasing team can help with changes. [Process to be confirmed.]' }
+      ]) }
+    ];
+    if (step === 10) return [
+      { label: 'What happens next?', go: () => this.say('What happens next?', [
+        { text: 'Our leasing team will review your details and documents. Once approved, you’ll sign in to Tenant Central with ahmed@beanstreet.sa. You can track progress anytime with your reference number.' }
+      ]) },
+      { label: 'Thanks!', go: () => this.say('Thanks!', [
+        { text: 'My pleasure, Ahmed. Best of luck with Bean Street, we hope to welcome you soon!' }
+      ]) }
+    ];
+    return [];
+  }
+
+  verifyOtp() {
+    var s = this.state;
+    if (s.otpOk || s.typing) return;
+    var code = s.otpInput;
+    if (code === '1234') {
+      this.say('Code entered', [
+        { text: 'You’re verified, thank you!' },
+        { text: 'Last step before review: documents. Company Profile and Brand Profile are required; the rest are optional but help our team move faster.', card: 'docs' }
+      ], { step: 8, otpOk: true });
+      return;
+    }
+    var left = s.otpAttempts - 1;
+    if (left <= 0) {
+      this.say('Code entered', [{ text: 'That code didn’t match and you’re out of attempts, so I’ve sent you a fresh code. (Prototype code: 1234.)' }], { otpAttempts: 3, otpInput: '' });
+    } else {
+      this.say('Code entered', [{ text: 'Hmm, that code didn’t match. You have ' + left + ' attempt' + (left === 1 ? '' : 's') + ' left.' }], { otpAttempts: left, otpInput: '' });
+    }
+  }
+
+  submit() {
+    if (!this.canSubmit() || this.state.typing) return;
+    var u = this.state.f.unitType.v;
+    var code = u === 'Store' ? 'STR' : u === 'Media' ? 'MED' : u === 'Office' ? 'OFF' : 'SPC';
+    var ref = 'GEO-' + code + '-482913';
+    this.say('Submit inquiry', [
+      { text: 'Thank you, Ahmed! Your inquiry is in.', card: 'success' }
+    ], { step: 10, reference: ref });
+  }
+
+  badgeFor(fv) {
+    if (!fv || !fv.v) return { badgeShow: false, badgeText: '', badgeStyle: '' };
+    if (fv.src === 'user') return { badgeShow: true, badgeText: 'You said', badgeStyle: BADGE.user };
+    if (fv.src === 'default') return { badgeShow: true, badgeText: 'Default', badgeStyle: BADGE.def };
+    if (fv.src === 'verified') return fv.ok ? { badgeShow: true, badgeText: 'From your CR', badgeStyle: BADGE.verified } : { badgeShow: true, badgeText: 'From CR · confirm', badgeStyle: BADGE.pending };
+    return fv.ok ? { badgeShow: true, badgeText: 'Suggested · confirmed', badgeStyle: BADGE.derived } : { badgeShow: true, badgeText: 'Suggested · confirm', badgeStyle: BADGE.pending };
+  }
+
+  row(key, label, emptyText) {
+    var fv = this.state.f[key];
+    var b = this.badgeFor(fv);
+    var has = !!(fv && fv.v);
+    return Object.assign({
+      label: label,
+      value: has ? fv.v : emptyText,
+      valueStyle: has ? 'font-size: 14px; font-weight: 600; color: #1C1530; flex: 1; min-width: 140px; overflow-wrap: anywhere;' : 'font-size: 14px; color: #8A8499; flex: 1; min-width: 140px;'
+    }, b);
+  }
+
+  renderVals() {
+    var s = this.state;
+    var showDraft = this.props.showDraft ?? true;
+
+    var msgs = s.messages.map((m, i) => {
+      var prev = s.messages[i - 1];
+      var isBot = m.from === 'bot';
+      var showAvatar = isBot && (!prev || prev.from !== 'bot');
+      return {
+        id: m.id,
+        text: m.text,
+        isUser: !isBot,
+        isBot: isBot,
+        showAvatar: showAvatar,
+        noAvatar: isBot && !showAvatar,
+        hasText: !!m.text,
+        cardCr: m.card === 'cr',
+        cardBrand: m.card === 'brand',
+        cardMalls: m.card === 'malls',
+        cardOtp: m.card === 'otp',
+        cardDocs: m.card === 'docs',
+        cardReview: m.card === 'review',
+        cardSuccess: m.card === 'success'
+      };
+    });
+
+    var stageDefs = [['Company', 0, 1], ['Brand', 2, 3], ['Space', 4, 5], ['Contact', 6, 7], ['Documents', 8, 8], ['Review', 9, 10]];
+    var stages = stageDefs.map((d) => {
+      var done = s.step > d[2] || s.step === 10;
+      var cur = !done && s.step >= d[1] && s.step <= d[2];
+      var base = 'padding: 4px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 600; ';
+      var style = done ? base + 'background: #DDF5E8; color: #17633F;' : cur ? base + 'background: #2E1A5B; color: #FFFFFF;' : base + 'background: #F1EFF5; color: #5E5873;';
+      return { label: (done ? '✓ ' : '') + d[0], style: style };
+    });
+
+    var malls = MALLS.map((m) => {
+      var on = !!s.mallSel[m.id];
+      return {
+        name: m.name,
+        pressed: on ? 'true' : 'false',
+        mark: on ? '✓' : '+',
+        markStyle: on ? 'width: 26px; height: 26px; flex: none; border-radius: 50%; background: #C8336B; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700;' : 'width: 26px; height: 26px; flex: none; border-radius: 50%; border: 1.5px solid #CFCBDA; color: #5E5873; display: flex; align-items: center; justify-content: center; font-size: 16px; box-sizing: border-box;',
+        style: 'min-height: 64px; padding: 10px 12px; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-family: inherit; color: #1C1530; cursor: pointer; ' + (on ? 'background: #FCEEF3; border: 1.5px solid #C8336B;' : 'background: #FFFFFF; border: 1.5px solid #E3E0EA;'),
+        toggle: () => {
+          if (s.step !== 5) return;
+          var sel = Object.assign({}, this.state.mallSel);
+          sel[m.id] = !sel[m.id];
+          this.setState({ mallSel: sel });
+        }
+      };
+    });
+    var mallCount = MALLS.filter((m) => s.mallSel[m.id]).length;
+
+    var docs = DOCS.map((d) => {
+      var up = !!s.docs[d.id];
+      return {
+        label: d.label,
+        tag: d.req ? 'Required' : 'Optional',
+        tagStyle: d.req ? PILL + 'background: #FCEEF3; color: #A3214F;' : PILL + 'background: #F1EFF5; color: #5E5873;',
+        status: up ? 'Uploaded · ' + d.file : 'Not uploaded',
+        statusStyle: up ? 'font-size: 13px; color: #17633F; overflow-wrap: anywhere;' : 'font-size: 13px; color: #6B6480;',
+        btnLabel: up ? 'Remove' : 'Upload',
+        btnStyle: 'min-height: 44px; min-width: 88px; padding: 0 14px; border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; ' + (up ? 'background: #FFFFFF; color: #3F3955; border: 1px solid #D9D6E2;' : 'background: #2E1A5B; color: #FFFFFF; border: 1px solid #2E1A5B;'),
+        toggle: () => {
+          var nd = Object.assign({}, this.state.docs);
+          nd[d.id] = !nd[d.id];
+          this.setState({ docs: nd });
+        }
+      };
+    });
+    var reqDocs = DOCS.filter((d) => d.req && s.docs[d.id]).length;
+
+    var crRows = [this.row('companyName', 'Company name', '—'), this.row('companyAddress', 'Address', '—')];
+    var brandRows = [this.row('brandEn', 'Brand name (EN)', '—'), this.row('brandAr', 'Brand name (AR)', '—'), this.row('unitType', 'Unit type', '—'), this.row('salesCategory', 'Sales category', '—')];
+
+    var draftGroups = GROUPS.map((g) => ({ title: g.title, rows: g.keys.map((k) => Object.assign(this.row(k[0], k[1], 'Not yet collected'), {
+      domId: 'draft-' + k[0],
+      rowStyle: 'display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; margin: 0 -10px; border-bottom: 1px solid #F0EEF4; border-radius: 8px; transition: background-color 0.6s ease; ' + (s.flash[k[0]] ? 'background: #FFF4DE;' : 'background: transparent;')
+    })) }));
+    var reviewGroups = GROUPS.map((g) => ({ title: g.title, rows: g.keys.map((k) => this.row(k[0], k[1], 'Not provided')) }));
+
+    var filled = REQ.filter((k) => s.f[k] && s.f[k].v).length;
+    var dotOk = 'width: 10px; height: 10px; border-radius: 50%; background: #1F8A55; flex: none;';
+    var dotNo = 'width: 10px; height: 10px; border-radius: 50%; border: 2px solid #B8B3C6; flex: none; box-sizing: border-box;';
+    var unconfirmed = REQ.filter((k) => s.f[k] && s.f[k].v && !s.f[k].ok).length;
+    var checks = [
+      { label: unconfirmed ? unconfirmed + ' suggested value' + (unconfirmed === 1 ? '' : 's') + ' to confirm' : 'All suggested values confirmed', dotStyle: unconfirmed || filled < REQ.length ? dotNo : dotOk },
+      { label: s.otpOk ? 'Phone and email verified' : 'Phone and email not verified yet', dotStyle: s.otpOk ? dotOk : dotNo },
+      { label: reqDocs + ' of 2 required documents uploaded', dotStyle: reqDocs === 2 ? dotOk : dotNo },
+      { label: s.consent ? 'Terms accepted' : 'Terms not accepted yet', dotStyle: s.consent ? dotOk : dotNo }
+    ];
+
+    var can = this.canSubmit();
+    var submitted = s.step === 10;
+    var hint = '';
+    if (!submitted && !can) {
+      var missing = this.missingReq();
+      if (missing.length) hint = missing.length + ' required field' + (missing.length === 1 ? '' : 's') + ' still missing.';
+      else if (!s.consent) hint = 'Accept the terms to submit.';
+    }
+
+    return {
+      showDraft: showDraft,
+      reset: () => { clearTimeout(this.t); this.setState(this.initial()); },
+      setList: this.setList,
+      setDraft: this.setDraft,
+      stages: stages,
+      messages: msgs,
+      typing: s.typing,
+      crRows: crRows,
+      brandRows: brandRows,
+      malls: malls,
+      mallCountLabel: mallCount ? mallCount + ' selected' : 'Select one or more',
+      otpInput: s.otpInput,
+      otpPending: !s.otpOk,
+      otpOk: s.otpOk,
+      onOtp: (e) => this.setState({ otpInput: String(e.target.value || '').replace(/\D/g, '').slice(0, 4) }),
+      verifyOtp: () => this.verifyOtp(),
+      docs: docs,
+      docsReqLabel: reqDocs + ' of 2 required uploaded',
+      reviewGroups: reviewGroups,
+      checks: checks,
+      consent: s.consent,
+      toggleConsent: () => { if (!submitted) this.setState({ consent: !this.state.consent }); },
+      submit: () => this.submit(),
+      submitDisabled: !can || submitted,
+      submitStyle: 'min-height: 48px; border: none; border-radius: 12px; font-family: inherit; font-size: 16px; font-weight: 600; ' + (can && !submitted ? 'background: #C8336B; color: #FFFFFF; cursor: pointer;' : 'background: #E7E4EE; color: #6B6480; cursor: not-allowed;'),
+      submitHintShow: !!hint,
+      submitHint: hint,
+      reference: s.reference,
+      copyLabel: s.copied ? 'Copied' : 'Copy',
+      copyRef: () => {
+        try { if (navigator.clipboard) navigator.clipboard.writeText(this.state.reference); } catch (e) {}
+        this.setState({ copied: true });
+      },
+      chips: this.chipsFor(s.step),
+      chipsShow: !s.typing,
+      draftText: s.draftText,
+      onDraft: (e) => this.setState({ draftText: e.target.value }),
+      onDraftKey: (e) => { if (e.key === 'Enter') { e.preventDefault(); this.sendFree(); } },
+      sendDraft: () => this.sendFree(),
+      draftGroups: draftGroups,
+      reqLabel: filled + ' of ' + REQ.length,
+      reqBarStyle: 'height: 100%; border-radius: 999px; background: #C8336B; width: ' + Math.round(filled / REQ.length * 100) + '%;',
+      legend: BADGE
+    };
+  }
+
+  sendFree() {
+    var t = (this.state.draftText || '').trim();
+    if (!t || this.state.typing) return;
+    this.setState({ draftText: '' });
+    this.say(t, [{ text: 'Thanks! In this prototype I follow a scripted demo path, so please tap one of the suggestions below to continue. The real agent will understand free text.' }]);
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+---
+description: Always-on context for the Send Inquiry Agent POC (Cenomi Tenant Central)
+alwaysApply: true
+---
+
+# Send Inquiry Agent POC
+
+We are replacing the "Send Inquiry" form on the Cenomi Tenant Central sign-in page with a friendly chat agent.
+The agent collects the same data as the form, derives what it can from conversation, confirms derived values
+with the user, verifies the user with an OTP, checks that the mandatory documents were uploaded, and submits
+the same inquiry payload. Target: about 5 user turns instead of ~25 form inputs.
+
+## Stack
+- `frontend/`: React 18, Vite, TypeScript, CSS Modules + CSS variables (no UI framework), `@microsoft/fetch-event-source` for SSE over POST, Vitest + React Testing Library.
+- `backend/`: Python 3.11+, FastAPI, Pydantic v2, pydantic-settings, sse-starlette, LangGraph, langchain-openai, python-multipart, slowapi, pytest + httpx. Package manager: `uv`.
+- LLM: OpenAI chat model with tool calling, name from `OPENAI_MODEL` env var. Never hard-code a model name.
+
+## Source of truth
+- Contracts (models, tools, API, SSE events, card payloads): `docs/spec.md`. Follow it exactly; if something is missing, add it to the spec in the same change and say so.
+- Visual design: `docs/design-spec.md` and `design/prototype.dc.html`.
+- Agent persona and rules: `docs/agent-system-prompt.md`.
+- Assumptions (mocks, OTP code 1234, reference format): `docs/assumptions.md`.
+
+## Golden rules
+1. The LLM acts only through tools. It never writes state directly.
+2. Every draft field records `source` (user | derived | verified | default) and `confirmed`. Derived and verified values must be confirmed by the user before submit.
+3. Submit rules are enforced in code (`can_submit`, the guard node and the `submit_inquiry` tool), never trusted to the LLM.
+4. Consent (`terms_accepted`) can only be set by a UI action from the review card, never by the LLM.
+5. Documents: only check presence, extension and size (5 MB). Never read or analyse file content.
+6. All external systems (CR verify, OTP, storage, submit, status) are mocks behind interfaces in `backend/app/services/`.
+7. Mall, unit-type and FAQ answers come only from seeded data in `backend/app/data/`. Never invent facts.
+8. Never log OTP codes, uploaded file contents or full contact details at INFO level.
+
+## Conventions
+- Small, focused modules; type everything (TypeScript strict, Python type hints + mypy-friendly).
+- Tests alongside each step; keep them green before moving on.
+- No new dependencies beyond the stack above without stating why.
+- Commands: `make dev`, `make test`, `make lint` (root Makefile).

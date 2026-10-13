@@ -1,0 +1,29 @@
+---
+description: Backend conventions (FastAPI, Pydantic, mocks, tests)
+globs: backend/**
+alwaysApply: false
+---
+
+# Backend rules
+
+## Layout
+```
+backend/app/
+  main.py            # app factory, CORS, routers, rate limiting
+  config.py          # pydantic-settings Settings (env vars in docs/spec.md)
+  api/               # routers: sessions, chat, documents, master, inquiries
+  agent/             # LangGraph: state, prompts, tools, guard, graph, streaming
+  domain/            # models.py (InquiryDraft etc.), validation.py, summary.py
+  services/          # interfaces + mock implementations (cr, otp, storage, submit, status)
+  data/              # master_data.json, faq.json
+backend/tests/       # pytest; mirrors app/
+```
+
+## Practices
+- Pydantic v2 models for every request, response and payload in `docs/spec.md`; responses use `response_model`.
+- Services are Protocol interfaces with `Mock*` implementations, wired through a small dependency container in `main.py`. Routers and tools depend on the interface, never the mock class.
+- Session store: in-memory dict keyed by `session_id`, plus the LangGraph `MemorySaver` keyed by `thread_id = session_id`. Wrap both behind `SessionStore` so it can move to Redis later.
+- Validation lives in `domain/validation.py` and is reused by tools, REST endpoints and the guard. One function per rule; return a typed error, don't raise for user mistakes.
+- Errors: HTTP errors use `{"error": {"code": str, "message": str}}`. User-facing messages are friendly and never expose internals.
+- Uploads: check extension (pdf, jpg, jpeg, png, doc, docx, xlsx, zip) and size (≤ `MAX_UPLOAD_MB`) before storing. Never open the file.
+- Tests: pytest + httpx `AsyncClient`. No network calls in tests; the LLM is replaced by a scripted fake (see agent rules).
