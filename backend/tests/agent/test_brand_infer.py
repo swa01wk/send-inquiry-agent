@@ -1,3 +1,4 @@
+import pytest
 from app.agent.brand_infer import (
     extract_arabic_brand_from_message,
     extract_latin_brand_from_message,
@@ -18,6 +19,27 @@ def test_latin_paren_fills_en() -> None:
     assert extract_latin_brand_from_message("Bean Street (بين ستريت) café") == "Bean Street"
 
 
+@pytest.mark.parametrize(
+    "user_text",
+    [
+        "Our brand is Bean Street (بين ستريت)",
+        "We run a coffee kiosk called Bean Street (بين ستريت)",
+        "…Riyadh. Brand Bean Street (بين ستريت), specialty café",
+        "Zara Home (زارا هوم)",
+    ],
+)
+def test_paren_en_cap_run_with_filler(user_text: str) -> None:
+    draft = new_inquiry_draft()
+    updated, changed = fill_brands_from_user_message(draft, user_text)
+    assert FieldKey.BRAND_NAME_EN.value in changed
+    expected = "Zara Home" if "Zara Home" in user_text else "Bean Street"
+    assert updated.fields[FieldKey.BRAND_NAME_EN].value == expected
+    assert updated.fields[FieldKey.BRAND_NAME_EN].source == Source.DERIVED
+    assert updated.fields[FieldKey.BRAND_NAME_EN].confirmed is False
+    assert updated.fields[FieldKey.BRAND_NAME_AR].source == Source.USER
+    assert updated.fields[FieldKey.BRAND_NAME_AR].confirmed is True
+
+
 def test_fill_brand_en_when_ar_user_and_paren_in_message() -> None:
     master = load_master_data()
     draft = new_inquiry_draft()
@@ -30,8 +52,8 @@ def test_fill_brand_en_when_ar_user_and_paren_in_message() -> None:
     updated, filled = fill_missing_brand_name_en(draft, user_text)
     assert filled is True
     assert updated.fields[FieldKey.BRAND_NAME_EN].value == "Bean Street"
-    assert updated.fields[FieldKey.BRAND_NAME_EN].source == Source.USER
-    assert updated.fields[FieldKey.BRAND_NAME_EN].confirmed is True
+    assert updated.fields[FieldKey.BRAND_NAME_EN].source == Source.DERIVED
+    assert updated.fields[FieldKey.BRAND_NAME_EN].confirmed is False
 
 
 def test_fill_both_brands_from_paren_without_prior_draft() -> None:
@@ -45,7 +67,10 @@ def test_fill_both_brands_from_paren_without_prior_draft() -> None:
     assert FieldKey.BRAND_NAME_AR.value in changed
     assert updated.fields[FieldKey.BRAND_NAME_EN].value == "Bean Street"
     assert updated.fields[FieldKey.BRAND_NAME_AR].value == "بين ستريت"
-    assert updated.fields[FieldKey.BRAND_NAME_EN].source == Source.USER
+    assert updated.fields[FieldKey.BRAND_NAME_EN].source == Source.DERIVED
+    assert updated.fields[FieldKey.BRAND_NAME_EN].confirmed is False
+    assert updated.fields[FieldKey.BRAND_NAME_AR].source == Source.USER
+    assert updated.fields[FieldKey.BRAND_NAME_AR].confirmed is True
 
 
 def test_paren_en_fills_when_user_stated_it_even_if_ar_derived() -> None:
@@ -63,5 +88,6 @@ def test_paren_en_fills_when_user_stated_it_even_if_ar_derived() -> None:
     updated, filled = fill_missing_brand_name_en(draft, user_text)
     assert filled is True
     assert updated.fields[FieldKey.BRAND_NAME_EN].value == "Bean Street"
-    assert updated.fields[FieldKey.BRAND_NAME_EN].source == Source.USER
+    assert updated.fields[FieldKey.BRAND_NAME_EN].source == Source.DERIVED
+    assert updated.fields[FieldKey.BRAND_NAME_EN].confirmed is False
     assert updated.fields[FieldKey.BRAND_NAME_AR].source == Source.DERIVED

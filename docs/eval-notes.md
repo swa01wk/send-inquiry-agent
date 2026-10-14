@@ -31,6 +31,7 @@ Requires `OPENAI_API_KEY` and `OPENAI_MODEL`. Target: all scenarios but at most 
 | 2026-10-14 | **14/15** + **14/15** (retractions: **0** / **0**) | Brand: no company→EN inference; guard `guard_not_shown` blocks confirm until reply shows value; mall id verification via `filter_mall_ids` (no guard mall clearing). **CR company differs from brand (Zara Home)** failed both runs: model saved brand but not `mall-of-arabia` (asked for city instead). **Unknown mall** + new checks pass; retractions **0**. Seed: Mall of Arabia, Mall of Dhahran; CR `1010222222` → Fawaz Alhokair. |
 | 2026-10-14 | **15/15** + **15/15** (retractions: **0** / **0**) | `fill_mentioned_malls` in guard/`update_draft`: when `malls` is empty and the user message names a seed mall (e.g. Mall of Arabia → `mall-of-arabia`), write ids as user. **Zara Home** scenario passes both runs. |
 | 2026-10-14 | **16/17** + **17/17** (retractions: **1** / **0**) | Strict `mall_match` (full-name `\b` match, mall `aliases`); `brand_infer` paren EN as user/confirmed; removed `guard_not_shown`. New eval: **City only**, **Country mention** pass both runs. Run 1: **4 many fields** failed once (re-ask brand flake, 1 retraction). |
+| 2026-10-14 | **16/17** + **17/17** (retractions: **0** / **1**) | `brand_infer`: cap-word run (max 4) before Arabic paren → EN **derived**/unconfirmed; AR in parens **user**/confirmed; filler strip (Brand, Our, …). Run 1: **C** missed contact parse once; run 2 all pass. |
 
 ## Prompt changes (2026-10-14, fix/conversational-friendliness)
 
@@ -47,7 +48,7 @@ Requires `OPENAI_API_KEY` and `OPENAI_MODEL`. Target: all scenarios but at most 
 | Drop company→brand EN; `guard_not_shown` + bundle hint | Company name ≠ brand; confirm-by-continuing only after user saw derived values (later removed: paren EN is user-sourced) |
 | `filter_mall_ids` in `update_draft`; no guard mall clearing | Accept ids only when user named mall or picker already selected |
 | Strict mall name matching + optional `aliases` | No city/country false positives; “Saudi Arabia” ≠ Mall of Arabia |
-| Paren Latin brand → `user`, confirmed | `Bean Street (بين ستريت)` is not derived |
+| Paren Latin brand → `derived`, unconfirmed; Arabic in parens → `user` | EN is inferred from cap-word run before `(…)`; Arabic text is exact user input |
 
 ## Failure excerpt (pre-fix run 1)
 
