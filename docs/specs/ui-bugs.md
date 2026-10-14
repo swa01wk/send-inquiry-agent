@@ -28,6 +28,7 @@ Plus uploading a real PDF to Company Profile and Brand Profile.
 | B5 | Documents reply never says Company Profile and Brand Profile are required | Medium | Prompt |
 | B6 | Welcome chip "I have my CR number" gets a robotic reply | Medium | Frontend + API |
 | B7 | Draft panel shows "Office landline: Not yet collected" when a mobile was given | Low | Frontend |
+| B8 | No guidance for users who are lost or give unclear answers ("i want shop", "?", "idk") | Medium | Prompt |
 
 ---
 
@@ -155,6 +156,19 @@ Plus uploading a real PDF to Company Profile and Brand Profile.
 **Fix:** draft panel (and review card) show one **Phone** row: value from mobile or landline, small hint "Mobile" / "Landline". Hide the empty one. Backend `DraftSummary` unchanged; grouping happens in `components/draft/draftGroups.ts`.
 
 **Acceptance:** with mobile set, panel shows "Phone · +966501234567 · Mobile" and no landline row; required count unchanged (11 of 11).
+
+---
+
+## B8 — Users who are lost or unclear
+
+**Need:** many users are not technical. They may write "i want shop", "?", "idk", "what? i dont understand". Today the prompt has no rule for this, so the agent may repeat the same bundled question or answer with a long explanation.
+
+**Fix (prompt, under "Conversation"):**
+- "If the user seems lost or their answer is unclear, don't repeat your last message. Re-explain the current step in one or two plain sentences, say in a few words what's already done, and ask one easy question. Offer 2–3 short reply chips with `suggest_replies` (e.g. "I have my CR number", "I don't have it").
+- "Explain terms in everyday words the first time you use them, e.g. 'CR number — the number on your commercial registration certificate'."
+- "Never send the same reply twice in a row."
+
+**Acceptance:** e2e scenarios 21 and 22 (`e2e-playwright.md`): replies ≤ 2 sentences, one question, chips offered, no identical consecutive replies, draft unchanged by confusion turns.
 
 ---
 

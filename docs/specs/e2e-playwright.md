@@ -106,13 +106,15 @@ Tags: all scenarios are `@scripted` (with a script). Those marked **L** also run
 | 18 **L** | Demo sequence | the 8 demo queries from `ui-bugs.md`, `enterCode("1234")`, upload both PDFs, `acceptAndSubmit()` | One company card ending "From your CR"; one brand card; unit `store`; documents reply names both required docs; success reference matches `^GEO-(STR|MED|SPC|OFF)-\d{6}$` |
 | 19 | CR chip | tap "I have my CR number" | Composer focused, placeholder "Type your 10-digit CR number", no `/chat` request |
 | 20 | Formatting | scripted reply with a bullet list | Rendered as a list, line breaks kept |
+| 21 **L** | Very unclear user | "i want shop" → "?" → "idk" → "how" | Each reply is 1–2 short sentences, gives one simple next step (e.g. "Do you have your company's CR number? It's on your commercial registration certificate"), offers chips; never repeats the same reply twice; no jargon |
+| 22 **L** | Lost mid-way | after brand summary: "what? i dont understand" → "what do i do now" | Agent re-explains the current step in plain words (≤ 2 sentences), shows what's done so far in one line, and asks one easy question; draft unchanged |
 
 ## 6. Live suite rules
 
 - `retries: 1`; a scenario passes if either attempt passes.
 - Writes `e2e/results/live-<date>.json`: per scenario pass/fail, turns, retractions, duration.
 - Adds a row to `docs/eval-notes.md` (date, pass count, total retractions).
-- Target: ≥ 11/12 live scenarios on two consecutive runs.
+- Target: ≥ 13/14 live scenarios on two consecutive runs.
 
 ## 7. CI
 
@@ -123,5 +125,5 @@ Tags: all scenarios are `@scripted` (with a script). Those marked **L** also run
 ## 8. Done when
 
 - `make e2e` green on desktop and mobile.
-- `make e2e-live` ≥ 11/12 twice; results logged.
+- `make e2e-live` ≥ 13/14 twice; results logged.
 - Every bug in `ui-bugs.md` has at least one failing-before / passing-after e2e or unit test.
