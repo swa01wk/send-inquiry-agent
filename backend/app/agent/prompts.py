@@ -7,6 +7,7 @@ from pathlib import Path
 
 from langchain_core.messages import SystemMessage
 
+from app.agent.bundles import next_bundle_hint
 from app.domain.master import MasterData
 from app.domain.models import InquiryDraft
 from app.domain.summary import prompt_summary
@@ -26,5 +27,6 @@ def clear_prompt_cache() -> None:
 
 def build_system_message(draft: InquiryDraft, master: MasterData) -> SystemMessage:
     dynamic = prompt_summary(draft, master)
-    content = f"{_static_prompt()}\n\n{dynamic}"
+    hint = next_bundle_hint(draft)
+    content = f"{_static_prompt()}\n\n## Current state\n{dynamic}\n{hint}"
     return SystemMessage(content=content)

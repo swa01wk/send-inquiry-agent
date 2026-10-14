@@ -16,11 +16,12 @@ from app.config import get_settings
 
 
 def get_chat_model() -> ChatOpenAI:
-    api_key, model = get_settings().require_openai()
+    settings = get_settings()
+    api_key, model = settings.require_openai()
     return ChatOpenAI(
         model=model,
         api_key=SecretStr(api_key),
-        temperature=0.3,
+        temperature=settings.openai_temperature,
         streaming=True,
     )
 

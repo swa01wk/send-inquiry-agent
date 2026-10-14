@@ -1,4 +1,12 @@
-"""Stream a single agent turn as SSE-shaped events."""
+"""Stream a single agent turn as SSE-shaped events.
+
+Assistant text is forwarded as it is generated (token by token), so the user sees
+the reply being written instead of waiting for the whole turn. Each LLM call that
+produces text gets its own ``message_id`` (its own chat bubble). Draft updates are
+forwarded immediately so the draft panel fills live; cards are held until the end
+of the turn and attached to the final reply. When the guard rejects a reply it
+emits ``retract_reply`` and we tell the frontend to remove that bubble.
+"""
 
 from __future__ import annotations
 
@@ -18,7 +26,9 @@ from app.sessions import Session
 
 logger = logging.getLogger(__name__)
 
-EventType = Literal["token", "ui_card", "draft", "done", "error"]
+EventType = Literal["token", "ui_card", "draft", "message_remove", "done", "error"]
+
+_AGENT_NODE = "agent"
 
 
 class SseEvent(TypedDict):
@@ -33,6 +43,64 @@ def _graph_config(session: Session, runtime: AgentRuntime) -> RunnableConfig:
             "runtime": runtime,
         }
     }
+
+
+def _new_message_id() -> str:
+    return f"m_{uuid.uuid4().hex[:10]}"
+
+
+def _text_of(message: BaseMessage) -> str:
+    content = message.content
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: list[str] = []
+        for part in content:
+            if isinstance(part, str):
+                parts.append(part)
+            elif isinstance(part, dict) and part.get("type") == "text":
+                parts.append(str(part.get("text", "")))
+        return "".join(parts)
+    return ""
+
+
+class _ReplyTracker:
+    """Maps each agent LLM call to a chat bubble id."""
+
+    def __init__(self) -> None:
+        self._ids: dict[str, str] = {}
+        self._chunked: set[str] = set()
+        self.latest_key: str | None = None
+        self.last_text_id: str | None = None
+
+    def key_for(self, meta: dict[str, Any]) -> str:
+        return f"{meta.get('checkpoint_ns', '')}|{meta.get('langgraph_step', '')}"
+
+    def note_call(self, key: str) -> None:
+        self.latest_key = key
+
+    def id_for(self, key: str) -> str:
+        if key not in self._ids:
+            self._ids[key] = _new_message_id()
+        self.last_text_id = self._ids[key]
+        return self._ids[key]
+
+    def mark_chunked(self, key: str) -> None:
+        self._chunked.add(key)
+
+    def was_chunked(self, key: str) -> bool:
+        return key in self._chunked
+
+    def retract_latest(self) -> str | None:
+        """Forget the latest call's bubble; return its id if it showed any text."""
+        if self.latest_key is None or self.latest_key not in self._ids:
+            return None
+        removed = self._ids.pop(self.latest_key)
+        self._chunked.discard(self.latest_key)
+        if self.last_text_id == removed:
+            remaining = list(self._ids.values())
+            self.last_text_id = remaining[-1] if remaining else None
+        return removed
 
 
 async def run_turn(
@@ -52,9 +120,8 @@ async def run_turn(
     state["cards_shown"] = list(session.cards_shown)
 
     config = _graph_config(session, runtime)
-    message_id = f"m_{uuid.uuid4().hex[:10]}"
-    pending_custom: list[SseEvent] = []
-    tokens: list[SseEvent] = []
+    replies = _ReplyTracker()
+    pending_cards: list[SseEvent] = []
     timer = TurnTimer()
     streamed_token_chars = 0
     final_messages: list[BaseMessage] = []
@@ -66,36 +133,44 @@ async def run_turn(
             stream_mode=["messages", "custom"],
         ):
             if mode == "custom":
-                payload = chunk
-                if isinstance(payload, dict):
-                    event_type = payload.get("type")
-                    data = payload.get("data")
-                    if event_type in ("ui_card", "draft") and isinstance(data, dict):
-                        pending_custom.append(
-                            SseEvent(event=event_type, data=data),
-                        )
-            elif mode == "messages":
-                message_chunk, _meta = chunk
-                if isinstance(message_chunk, AIMessageChunk) and message_chunk.content:
-                    text = message_chunk.content
-                    if isinstance(text, str) and text:
-                        streamed_token_chars += len(text)
-                        tokens.append(
-                            SseEvent(
-                                event="token",
-                                data={"message_id": message_id, "text": text},
-                            )
-                        )
-                elif isinstance(message_chunk, AIMessage) and message_chunk.content:
-                    text = message_chunk.content
-                    if isinstance(text, str) and text:
-                        streamed_token_chars += len(text)
-                        tokens.append(
-                            SseEvent(
-                                event="token",
-                                data={"message_id": message_id, "text": text},
-                            )
-                        )
+                if not isinstance(chunk, dict):
+                    continue
+                event_type = chunk.get("type")
+                data = chunk.get("data")
+                if event_type == "draft" and isinstance(data, dict):
+                    yield SseEvent(event="draft", data=data)
+                elif event_type == "ui_card" and isinstance(data, dict):
+                    pending_cards.append(SseEvent(event="ui_card", data=data))
+                elif event_type == "retract_reply":
+                    removed = replies.retract_latest()
+                    if removed is not None:
+                        yield SseEvent(event="message_remove", data={"message_id": removed})
+                continue
+
+            if mode != "messages":
+                continue
+            message_chunk, meta = chunk
+            if not isinstance(meta, dict) or meta.get("langgraph_node") != _AGENT_NODE:
+                continue
+            if not isinstance(message_chunk, AIMessage):
+                continue
+
+            key = replies.key_for(meta)
+            replies.note_call(key)
+            is_chunk = isinstance(message_chunk, AIMessageChunk)
+            if not is_chunk and replies.was_chunked(key):
+                # Full message for a call we already streamed chunk by chunk.
+                continue
+            text = _text_of(message_chunk)
+            if not text:
+                continue
+            if is_chunk:
+                replies.mark_chunked(key)
+            streamed_token_chars += len(text)
+            yield SseEvent(
+                event="token",
+                data={"message_id": replies.id_for(key), "text": text},
+            )
 
         snapshot = await graph.aget_state(config)
         final = cast(AgentState, snapshot.values)
@@ -103,23 +178,22 @@ async def run_turn(
         session.draft = final["draft"]
         session.cards_shown = set(final.get("cards_shown", []))
 
-        if not tokens:
-            for message in reversed(final["messages"]):
-                if isinstance(message, AIMessage):
-                    content = message.content
-                    if isinstance(content, str) and content:
-                        tokens.append(
-                            SseEvent(
-                                event="token",
-                                data={"message_id": message_id, "text": content},
-                            )
-                        )
-                        break
+        if replies.last_text_id is None:
+            # Nothing was streamed (e.g. a model without streaming); send the final reply.
+            for message in reversed(final_messages):
+                if isinstance(message, AIMessage) and _text_of(message):
+                    reply_id = _new_message_id()
+                    replies.last_text_id = reply_id
+                    yield SseEvent(
+                        event="token",
+                        data={"message_id": reply_id, "text": _text_of(message)},
+                    )
+                    break
 
-        for event in tokens:
-            yield event
-        for event in pending_custom:
-            yield event
+        for card_event in pending_cards:
+            if card_event["data"].get("message_id") is None and replies.last_text_id:
+                card_event["data"]["message_id"] = replies.last_text_id
+            yield card_event
 
         done_phase = str(final.get("phase", phase))
         log_chat_turn(

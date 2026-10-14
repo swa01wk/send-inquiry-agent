@@ -51,6 +51,7 @@ Live prompt check (not CI): `cd backend && uv run python scripts/eval_live.py`
 | --- | --- | --- |
 | `OPENAI_API_KEY` | backend | Required for agent |
 | `OPENAI_MODEL` | backend | Chat model name |
+| `OPENAI_TEMPERATURE` | backend | Default `0.6` (warmer, more varied replies) |
 | `OTP_MOCK_CODE` | backend | Default `1234` |
 | `MAX_UPLOAD_MB` | backend | Default `5` |
 | `UPLOAD_DIR` | backend | Local upload storage |

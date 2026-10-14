@@ -46,7 +46,13 @@ async def _read_sse(response: httpx.Response) -> list[tuple[str, dict[str, Any]]
 
 
 def _tokens(events: list[tuple[str, dict[str, Any]]]) -> str:
-    return "".join(data.get("text", "") for name, data in events if name == "token")
+    """Reply text as the user saw it (bubbles removed by the guard are dropped)."""
+    removed = {data.get("message_id") for name, data in events if name == "message_remove"}
+    return "".join(
+        data.get("text", "")
+        for name, data in events
+        if name == "token" and data.get("message_id") not in removed
+    )
 
 
 def _cards(events: list[tuple[str, dict[str, Any]]], card_type: str) -> list[dict[str, Any]]:
@@ -238,6 +244,34 @@ def _check_faq(_session, turns: list[TurnResult]) -> list[tuple[str, bool]]:
     ]
 
 
+def _check_condensed(session, turns: list[TurnResult]) -> list[tuple[str, bool]]:
+    """Brief, natural answers should still fill the inquiry in four typed turns."""
+    draft = session.draft
+    required = [
+        FieldKey.COMPANY_NAME,
+        FieldKey.COMPANY_ADDRESS,
+        FieldKey.BRAND_NAME_EN,
+        FieldKey.BRAND_NAME_AR,
+        FieldKey.UNIT_TYPE,
+        FieldKey.SALES_CATEGORY,
+        FieldKey.MALLS,
+        FieldKey.FIRST_NAME,
+        FieldKey.LAST_NAME,
+        FieldKey.EMAIL,
+    ]
+    missing = [k.value for k in required if not draft.fields[k].value]
+    has_phone = bool(draft.fields[FieldKey.MOBILE].value or draft.fields[FieldKey.LANDLINE].value)
+    otp_shown = any(_cards(t.events, "otp_input") for t in turns)
+    # Each reply should ask at most one question (bundled), not a list of them.
+    max_questions = max((t.assistant.count("?") for t in turns), default=0)
+    return [
+        (f"all required fields filled (missing: {missing or 'none'})", not missing and has_phone),
+        ("verification card shown", otp_shown),
+        ("≤4 typed turns", len(turns) <= 4),
+        ("≤2 questions per reply", max_questions <= 2),
+    ]
+
+
 def _check_off_topic(_session, turns: list[TurnResult]) -> list[tuple[str, bool]]:
     text = turns[-1].assistant.lower() if turns else ""
     return [
@@ -259,6 +293,16 @@ def _check_injection(session, turns: list[TurnResult]) -> list[tuple[str, bool]]
 
 
 SCENARIOS: list[LiveScenario] = [
+    LiveScenario(
+        "C condensation with brief, natural answers",
+        [
+            "Hi, I'd like to lease a space in one of your malls.",
+            "Sure, it's 1010123456",
+            "We're Bean Street, specialty coffee. Looking for a small kiosk at Riyadh Mall A.",
+            "Sara Ali, sara@beanstreet.example, 0501234567",
+        ],
+        _check_condensed,
+    ),
     LiveScenario(
         "1 happy path CR 1010123456",
         [
@@ -376,7 +420,7 @@ async def main() -> int:
     passed = sum(1 for r in results if r.passed)
     total = len(results)
     print(f"\nSummary: {passed}/{total} scenarios passed all checks.")
-    return 0 if passed >= 8 else 1
+    return 0 if passed >= total - 1 else 1
 
 
 if __name__ == "__main__":

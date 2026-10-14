@@ -12,10 +12,18 @@ interface MessageListProps {
   messages: ChatMessage[]
   cards: Record<string, UiCard>
   isStreaming: boolean
+  /** Show the typing dots (streaming, but no reply text yet). */
+  showTyping?: boolean
   cardActions: ChatCardActions
 }
 
-export function MessageList({ messages, cards, isStreaming, cardActions }: MessageListProps) {
+export function MessageList({
+  messages,
+  cards,
+  isStreaming,
+  showTyping = isStreaming,
+  cardActions,
+}: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const seenCardIds = useRef<Set<string>>(new Set())
@@ -47,7 +55,8 @@ export function MessageList({ messages, cards, isStreaming, cardActions }: Messa
   useEffect(() => {
     const el = bottomRef.current
     if (el && typeof el.scrollIntoView === 'function') {
-      el.scrollIntoView({ behavior: 'smooth', block: 'end' })
+      // Instant while text streams in (smooth scrolling on every token stutters).
+      el.scrollIntoView({ behavior: isStreaming ? 'auto' : 'smooth', block: 'end' })
       return
     }
     if (listRef.current) {
@@ -91,7 +100,7 @@ export function MessageList({ messages, cards, isStreaming, cardActions }: Messa
           </div>
         )
       })}
-      {isStreaming ? <TypingIndicator /> : null}
+      {showTyping ? <TypingIndicator /> : null}
       <div ref={bottomRef} />
     </div>
   )

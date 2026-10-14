@@ -204,6 +204,7 @@ export type ChatRequest =
 export type SseEvent =
   | { event: 'token'; data: { message_id: string; text: string } }
   | { event: 'ui_card'; data: UiCard }
+  | { event: 'message_remove'; data: { message_id: string } }
   | { event: 'draft'; data: DraftSummary }
   | { event: 'done'; data: { phase: Phase } }
   | { event: 'error'; data: { code: string; message: string } }

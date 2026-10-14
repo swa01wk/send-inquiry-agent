@@ -24,6 +24,7 @@ export function ChatPanel({ draftPanelVisible, onToggleDraftPanel }: ChatPanelPr
     status,
     error,
     isStreaming,
+    awaitingReply,
     sendMessage,
     sendAction,
     uploadDocument,
@@ -60,6 +61,7 @@ export function ChatPanel({ draftPanelVisible, onToggleDraftPanel }: ChatPanelPr
         messages={messages}
         cards={cards}
         isStreaming={isStreaming}
+        showTyping={isStreaming && awaitingReply}
         cardActions={cardActions}
       />
       {status === 'error' ? (
