@@ -33,6 +33,7 @@ Requires `OPENAI_API_KEY` and `OPENAI_MODEL`. Target: all scenarios but at most 
 | 2026-10-14 | **16/17** + **17/17** (retractions: **1** / **0**) | Strict `mall_match` (full-name `\b` match, mall `aliases`); `brand_infer` paren EN as user/confirmed; removed `guard_not_shown`. New eval: **City only**, **Country mention** pass both runs. Run 1: **4 many fields** failed once (re-ask brand flake, 1 retraction). |
 | 2026-10-14 | **16/17** + **17/17** (retractions: **0** / **1**) | `brand_infer`: cap-word run (max 4) before Arabic paren → EN **derived**/unconfirmed; AR in parens **user**/confirmed; filler strip (Brand, Our, …). Run 1: **C** missed contact parse once; run 2 all pass. |
 | 2026-10-14 | **17/17** + **17/17** (retractions: **1** / **1**) | `contact_infer`: parse name/email/phone lines in guard + `update_draft`; guard nudges `send_otp` on contact-only turns. **C condensation** passes both runs. |
+| 2026-10-14 | **18/18** + **18/18** (retractions: **1** / **1**) | Contact: detection-only parse (no guessed `source=user` in guard/tools); guard `_incomplete_contact_capture_note` retries once; three-part names; CR/VAT-aware phone match. **Three-part name** eval scenario. `brand_infer`: «اسم العلامة» → derived/unconfirmed. |
 
 ## Prompt changes (2026-10-14, fix/conversational-friendliness)
 
@@ -50,6 +51,8 @@ Requires `OPENAI_API_KEY` and `OPENAI_MODEL`. Target: all scenarios but at most 
 | `filter_mall_ids` in `update_draft`; no guard mall clearing | Accept ids only when user named mall or picker already selected |
 | Strict mall name matching + optional `aliases` | No city/country false positives; “Saudi Arabia” ≠ Mall of Arabia |
 | Paren Latin brand → `derived`, unconfirmed; Arabic in parens → `user` | EN is inferred from cap-word run before `(…)`; Arabic text is exact user input |
+| Contact parse detection-only; guard saves via agent | Never write contact fields as `source=user` from heuristics; guard note + `update_draft` / `send_otp` |
+| Deterministic parser rule in guard + agent.mdc | Exact mall match may write user; else derived or guard note |
 
 ## Failure excerpt (pre-fix run 1)
 

@@ -1,12 +1,8 @@
 import pytest
 from app.agent.contact_infer import (
-    fill_contact_from_user_message,
     message_has_contact_line,
     parse_contact_from_message,
 )
-from app.domain.draft_ops import new_inquiry_draft, write_fields
-from app.domain.master import load_master_data
-from app.domain.models import FieldKey, Source
 
 
 @pytest.mark.parametrize(
@@ -15,6 +11,7 @@ from app.domain.models import FieldKey, Source
         "Sara Ali, sara@beanstreet.example, 0501234567",
         "Sara Ali sara@beanstreet.example +966501234567",
         "سارة علي، sara@beanstreet.example، 0501234567",
+        "Contact Sara Ali at sara@x.sa / +966501234567",
     ],
 )
 def test_parse_contact_line(user_text: str) -> None:
@@ -23,38 +20,21 @@ def test_parse_contact_line(user_text: str) -> None:
     first, last, email, _phone = parsed
     assert first in ("Sara", "سارة")
     assert last in ("Ali", "علي")
-    assert email == "sara@beanstreet.example"
+    assert email in ("sara@beanstreet.example", "sara@x.sa")
 
 
-def test_fill_contact_on_empty_draft() -> None:
-    master = load_master_data()
-    draft = new_inquiry_draft()
-    text = "Sara Ali, sara@beanstreet.example, 0501234567"
-    updated, changed = fill_contact_from_user_message(draft, text, master=master)
-    assert FieldKey.FIRST_NAME.value in changed
-    assert FieldKey.LAST_NAME.value in changed
-    assert FieldKey.EMAIL.value in changed
-    assert FieldKey.MOBILE.value in changed
-    assert updated.fields[FieldKey.FIRST_NAME].value == "Sara"
-    assert updated.fields[FieldKey.LAST_NAME].value == "Ali"
-    assert updated.fields[FieldKey.EMAIL].value == "sara@beanstreet.example"
-    assert updated.fields[FieldKey.MOBILE].value == "+966501234567"
-    assert updated.fields[FieldKey.FIRST_NAME].source == Source.USER
-    assert updated.fields[FieldKey.FIRST_NAME].confirmed is True
+def test_three_part_name() -> None:
+    text = "Abdullah Al Harbi, abdullah@beanstreet.example, 0551234567"
+    parsed = parse_contact_from_message(text)
+    assert parsed is not None
+    assert parsed[0] == "Abdullah"
+    assert parsed[1] == "Al Harbi"
 
 
-def test_fill_contact_does_not_overwrite_existing() -> None:
-    master = load_master_data()
-    draft = new_inquiry_draft()
-    draft, _, _ = write_fields(
-        draft,
-        [(FieldKey.EMAIL.value, "other@example.com", Source.USER)],
-        master=master,
-    )
-    text = "Sara Ali, sara@beanstreet.example, 0501234567"
-    updated, changed = fill_contact_from_user_message(draft, text, master=master)
-    assert FieldKey.EMAIL.value not in changed
-    assert updated.fields[FieldKey.EMAIL].value == "other@example.com"
+def test_parse_contact_no_phone_inside_cr() -> None:
+    text = "My CR is 1010123456. Sara Ali, sara@x.sa"
+    assert parse_contact_from_message(text) is None
+    assert not message_has_contact_line(text)
 
 
 def test_parse_contact_after_bulk_preamble() -> None:

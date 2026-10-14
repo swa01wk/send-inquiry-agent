@@ -1,5 +1,10 @@
 """Deterministic post-agent guard (spec section 5).
 
+Deterministic parsers may write to the draft only on exact, unambiguous matches
+(e.g. a full seeded mall name). Otherwise they produce a guard note for the agent,
+or write ``source=derived`` (unconfirmed) so the agent shows the value before it
+can be confirmed. Never write ``source=user`` from a heuristic.
+
 Runs after the agent's final reply each turn. It never talks to the user itself;
 when a reply breaks a rule it retracts that reply (the frontend removes the bubble)
 and sends the agent back once with a short instruction.
@@ -17,8 +22,8 @@ from app.agent.brand_infer import fill_brands_from_user_message, user_message_na
 from app.agent.confirm_policy import keys_blocked_from_confirmation
 from app.agent.contact_infer import (
     contact_fields_ready,
-    fill_contact_from_user_message,
     message_has_contact_line,
+    parse_contact_from_message,
 )
 from app.agent.mall_match import fill_mentioned_malls, unknown_mall_phrases
 from app.agent.runtime import AgentRuntime
@@ -176,6 +181,30 @@ def _missing_send_otp_note(
     return f"{GUARD_PREFIX} The user sent name, email, and phone. Call send_otp before you reply."
 
 
+def _incomplete_contact_capture_note(
+    state: AgentState,
+    draft: Any,
+    user_text: str,
+    phase: str,
+) -> str | None:
+    if phase not in ("gate", "collecting", "verifying"):
+        return None
+    if _is_bulk_inquiry_message(user_text):
+        return None
+    if not message_has_contact_line(user_text) or contact_fields_ready(draft):
+        return None
+    parsed = parse_contact_from_message(user_text)
+    example = ""
+    if parsed:
+        first, last, _email, _phone = parsed
+        example = f" (e.g. {first!r} / {last!r})"
+    return (
+        f"{GUARD_PREFIX} The user gave contact details; save first_name, last_name, email "
+        "and contact_number with update_draft (split the full name: first word = first name, "
+        f"rest = last name){example}, then call send_otp."
+    )
+
+
 def _incomplete_bulk_capture_note(state: AgentState, phase: str) -> str | None:
     user_text, turn_messages = _current_turn(state)
     if phase not in ("gate", "collecting", "verifying") or not _is_bulk_inquiry_message(user_text):
@@ -296,14 +325,8 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
     user_text, turn_messages = _current_turn({**state, "draft": draft})
     draft, brands_filled = fill_brands_from_user_message(draft, user_text)
     draft, malls_filled = fill_mentioned_malls(draft, user_text, runtime.master)
-    draft, contact_filled = fill_contact_from_user_message(
-        draft,
-        user_text,
-        master=runtime.master,
-    )
     draft_changed = list(doubt_unconfirmed)
     draft_changed.extend(brands_filled)
-    draft_changed.extend(contact_filled)
     if malls_filled:
         draft_changed.append(FieldKey.MALLS.value)
     phase = compute_phase(draft).value
@@ -336,6 +359,12 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
             note = (
                 _brand_reask_note({**state, "draft": draft}, ai_text)
                 or _incomplete_bulk_capture_note({**state, "draft": draft}, phase)
+                or _incomplete_contact_capture_note(
+                    {**state, "draft": draft},
+                    draft,
+                    user_text,
+                    phase,
+                )
                 or _missing_send_otp_note(
                     state,
                     draft,

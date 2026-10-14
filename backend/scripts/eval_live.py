@@ -390,6 +390,16 @@ def _check_arabic_user(session, turns: list[TurnResult], _app=None) -> list[tupl
     ]
 
 
+def _check_three_part_name(session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
+    draft = session.draft
+    otp_shown = any(_cards(t.events, "otp_input") for t in turns)
+    return [
+        ("first_name is Abdullah", draft.fields[FieldKey.FIRST_NAME].value == "Abdullah"),
+        ("last_name is Al Harbi", draft.fields[FieldKey.LAST_NAME].value == "Al Harbi"),
+        ("OTP card shown", otp_shown),
+    ]
+
+
 def _check_generic_mall_after_picker(session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
     malls_raw = session.draft.fields[FieldKey.MALLS].value
     malls = list(malls_raw) if isinstance(malls_raw, list) else []
@@ -562,6 +572,15 @@ SCENARIOS: list[LiveScenario] = [
         ["We'd like to be near the food court in the mall."],
         _check_generic_mall_after_picker,
         setup=_setup_riyadh_mall_picker,
+    ),
+    LiveScenario(
+        "Three-part name",
+        [
+            "Skip CR please.",
+            "Acme Trading LLC, King Abdullah Road. Bean Street café at Riyadh Mall A.",
+            "Abdullah Al Harbi, abdullah@beanstreet.example, 0551234567",
+        ],
+        _check_three_part_name,
     ),
 ]
 

@@ -14,7 +14,6 @@ from pydantic import BaseModel
 from app.agent.blockers import format_blockers
 from app.agent.brand_infer import fill_brands_from_user_message
 from app.agent.confirm_policy import keys_blocked_from_confirmation
-from app.agent.contact_infer import fill_contact_from_user_message
 from app.agent.mall_match import fill_mentioned_malls, filter_mall_ids
 from app.agent.runtime import runtime_from_config
 from app.agent.state import AgentState
@@ -268,14 +267,6 @@ def update_draft(
     updated, written, errors = draft_ops.write_fields(draft, entries, master=rt.master)
     updated, brands_filled = fill_brands_from_user_message(updated, user_text)
     for key in brands_filled:
-        if key not in written:
-            written = [*written, key]
-    updated, contact_filled = fill_contact_from_user_message(
-        updated,
-        user_text,
-        master=rt.master,
-    )
-    for key in contact_filled:
         if key not in written:
             written = [*written, key]
     updated, malls_filled = fill_mentioned_malls(updated, user_text, rt.master)

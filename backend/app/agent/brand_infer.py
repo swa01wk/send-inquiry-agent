@@ -109,9 +109,22 @@ def _write_brand_user(
     key: FieldKey,
     value: str,
 ) -> InquiryDraft:
+    """Exact user text (e.g. Arabic inside parentheses), not a heuristic guess."""
     updated = draft.model_copy(deep=True)
     updated.fields[key] = draft.fields[key].model_copy(
         update={"value": value, "source": Source.USER, "confirmed": True},
+    )
+    return updated
+
+
+def _write_brand_ar_derived(
+    draft: InquiryDraft,
+    value: str,
+) -> InquiryDraft:
+    updated = draft.model_copy(deep=True)
+    key = FieldKey.BRAND_NAME_AR
+    updated.fields[key] = draft.fields[key].model_copy(
+        update={"value": value, "source": Source.DERIVED, "confirmed": False},
     )
     return updated
 
@@ -151,7 +164,7 @@ def fill_brands_from_user_message(
 
     ar_label = extract_arabic_brand_from_message(user_text)
     if ar_label and not _field_text(updated, FieldKey.BRAND_NAME_AR):
-        updated = _write_brand_user(updated, FieldKey.BRAND_NAME_AR, ar_label)
+        updated = _write_brand_ar_derived(updated, ar_label)
         changed.append(FieldKey.BRAND_NAME_AR.value)
 
     if not _field_text(updated, FieldKey.BRAND_NAME_EN):
