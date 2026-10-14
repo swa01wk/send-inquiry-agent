@@ -1,0 +1,62 @@
+[
+  {
+    "id": "process_steps",
+    "question": "What are the steps to send a leasing inquiry?",
+    "keywords": ["process", "steps", "how it works", "inquiry flow", "send inquiry"],
+    "answer": "You share your brand and space needs in chat, confirm the details we fill in, verify your phone and email, upload the required documents, then review and submit. We keep it conversational so you are not filling a long form."
+  },
+  {
+    "id": "review_time",
+    "question": "How long does approval or review take?",
+    "keywords": ["review time", "approval", "how long", "timeline", "decision", "response time"],
+    "answer": "After you submit, the leasing team reviews your inquiry. Typical review timelines are [to be confirmed]. You can track your reference on Tenant Central once you have it."
+  },
+  {
+    "id": "required_documents",
+    "question": "Which documents are required?",
+    "keywords": ["documents", "required", "upload", "company profile", "brand profile"],
+    "answer": "Company Profile and Brand Profile are required to submit. CR certificate, VAT certificate, National ID or Iqama, National Address, and Articles of Association are optional but help the team move faster."
+  },
+  {
+    "id": "cr_number",
+    "question": "What is a CR number?",
+    "keywords": ["CR", "commercial registration", "cr number", "company registration"],
+    "answer": "A CR (Commercial Registration) number is the official company identifier in Saudi Arabia. It is ten digits. If you do not have it handy, you can skip and enter your company name and address instead."
+  },
+  {
+    "id": "vat_certificate",
+    "question": "What is a VAT certificate?",
+    "keywords": ["VAT", "vat certificate", "tax", "zakat"],
+    "answer": "A VAT certificate shows your business is registered for Value Added Tax with ZATCA. It is optional for this inquiry unless your company policy requires it. Specific VAT rules for tenants are [to be confirmed]."
+  },
+  {
+    "id": "unit_types",
+    "question": "What do the unit types mean?",
+    "keywords": ["unit type", "store", "media", "specialty", "office", "space type"],
+    "answer": "Store is a standard retail unit, Media is advertising or screen space, Specialty suits kiosks or small formats, and Office is office space in the mall. Your leasing contact can confirm the best fit for your brand."
+  },
+  {
+    "id": "edit_after_submit",
+    "question": "Can I edit my inquiry after submitting?",
+    "keywords": ["edit", "change", "after submit", "update inquiry", "mistake"],
+    "answer": "Once submitted, this chat inquiry is sent to the team as-is. If something needs changing, contact leasing support with your reference number. Whether post-submit edits are supported in Tenant Central is [to be confirmed]."
+  },
+  {
+    "id": "track_inquiry",
+    "question": "How do I track my inquiry?",
+    "keywords": ["track", "status", "reference", "GEO", "follow up"],
+    "answer": "After submit you receive a reference like GEO-STR-123456. Use that reference on Tenant Central or ask the assistant for a status check. Status details shown in the POC are simplified to under review."
+  },
+  {
+    "id": "verify_contact",
+    "question": "Why do you verify my phone and email?",
+    "keywords": ["verify", "OTP", "phone", "email", "why verify", "code"],
+    "answer": "Verification helps us reach you about your inquiry and reduces spam. We send a one-time code to your mobile and email; enter it in the code box, not in the chat."
+  },
+  {
+    "id": "document_handling",
+    "question": "What happens to the documents I upload?",
+    "keywords": ["documents", "upload", "privacy", "storage", "what happens", "files"],
+    "answer": "Files are stored securely for the leasing team to review your inquiry. We check file type and size only, not the contents, in this POC. Retention and access policies for production are [to be confirmed]."
+  }
+]

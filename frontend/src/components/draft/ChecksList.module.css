@@ -1,0 +1,39 @@
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.dotOk {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-success-dot);
+  flex: none;
+}
+
+.dotNo {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--color-check-outline);
+  flex: none;
+  box-sizing: border-box;
+}

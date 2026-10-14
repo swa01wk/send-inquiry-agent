@@ -1,0 +1,29 @@
+.track {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.pill {
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.pill[data-state='done'] {
+  background: var(--color-success-bg);
+  color: var(--color-success-fg);
+}
+
+.pill[data-state='current'] {
+  background: var(--color-brand);
+  color: var(--color-surface);
+}
+
+.pill[data-state='upcoming'] {
+  background: var(--color-muted-fill);
+  color: var(--color-text-secondary);
+}

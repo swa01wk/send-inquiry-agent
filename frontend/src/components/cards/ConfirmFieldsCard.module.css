@@ -1,0 +1,27 @@
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 12px 0;
+}
+
+.label {
+  flex: none;
+  width: 130px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.value {
+  flex: 1;
+  min-width: 160px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.footer {
+  padding: 8px 0 12px;
+  border-top: 1px solid var(--color-divider);
+}

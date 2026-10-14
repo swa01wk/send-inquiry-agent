@@ -1,0 +1,46 @@
+.composer {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  padding: 0 16px 16px;
+}
+
+.input {
+  flex: 1;
+  min-height: 48px;
+  max-height: 120px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-input-border);
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.4;
+  resize: vertical;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.input:disabled {
+  background: var(--color-disabled-bg);
+  color: var(--color-disabled-fg);
+}
+
+.send {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border: none;
+  border-radius: 12px;
+  background: var(--color-accent);
+  color: var(--color-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.send:disabled {
+  background: var(--color-disabled-bg);
+  color: var(--color-disabled-fg);
+  cursor: not-allowed;
+}

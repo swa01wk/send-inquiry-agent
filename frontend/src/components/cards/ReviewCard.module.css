@@ -1,0 +1,133 @@
+.title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-brand);
+}
+
+.layout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.groupTitle {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.rowLabel {
+  flex: none;
+  width: 130px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.rowValue {
+  flex: 1;
+  min-width: 120px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.rowValueEmpty {
+  composes: rowValue;
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.editRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  flex: 1;
+  min-width: 200px;
+}
+
+.editInput {
+  flex: 1;
+  min-width: 140px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-control);
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.checks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.checkRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.dotOk {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-success-dot);
+  flex: none;
+}
+
+.dotNo {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--color-check-outline);
+  flex: none;
+  box-sizing: border-box;
+}
+
+.consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--color-text);
+  cursor: pointer;
+  min-height: var(--touch);
+}
+
+.consent input {
+  width: 20px;
+  height: 20px;
+  margin: 2px 0 0;
+  accent-color: var(--color-accent);
+  flex: none;
+}
+
+.consent a {
+  color: var(--color-accent-text);
+}
+
+.hint {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}

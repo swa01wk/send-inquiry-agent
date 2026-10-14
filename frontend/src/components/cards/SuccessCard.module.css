@@ -1,0 +1,129 @@
+.layout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.iconTile {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--color-success-bg);
+  color: var(--color-success-fg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+.headline {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.refBox {
+  background: var(--color-subtle);
+  border: 1px solid var(--color-border-card);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.refLabel {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.refValue {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--color-text);
+}
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.step {
+  display: flex;
+  gap: 12px;
+}
+
+.stepMark {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  box-sizing: border-box;
+}
+
+.stepDone {
+  composes: stepMark;
+  background: var(--color-success-bg);
+  color: var(--color-success-fg);
+}
+
+.stepCurrent {
+  composes: stepMark;
+  border: 2px solid var(--color-step-current-ring);
+  color: var(--color-brand);
+}
+
+.stepUpcoming {
+  composes: stepMark;
+  background: var(--color-step-upcoming-bg);
+  color: var(--color-text-secondary);
+}
+
+.stepBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stepLabel {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.stepDetail {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.trackLink {
+  align-self: flex-start;
+  min-height: var(--touch);
+  padding: 0 20px;
+  border-radius: var(--radius-control);
+  background: var(--color-brand-tint);
+  color: var(--color-brand);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}

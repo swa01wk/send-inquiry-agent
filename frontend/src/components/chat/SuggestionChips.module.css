@@ -1,0 +1,22 @@
+.wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 16px 8px;
+}
+
+.chip {
+  min-height: var(--touch);
+  padding: 8px 16px;
+  border: 1.5px solid var(--color-accent);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-accent-text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chip:hover {
+  background: var(--color-accent-tint);
+}

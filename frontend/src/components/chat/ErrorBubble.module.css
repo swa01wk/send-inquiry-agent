@@ -1,0 +1,39 @@
+.wrap {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.bubble {
+  max-width: 88%;
+  padding: 12px 14px;
+  background: var(--color-pending-bg);
+  border: 1px solid var(--color-border-card);
+  border-radius: var(--radius-bubble);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.text {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--color-text);
+}
+
+.action {
+  align-self: flex-start;
+  min-height: var(--touch);
+  padding: 8px 16px;
+  border: 1px solid var(--color-control-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-brand);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.action:hover {
+  background: var(--color-subtle);
+}

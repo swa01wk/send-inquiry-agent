@@ -1,53 +1,122 @@
-# Send Inquiry Agent — Cursor build kit
+# Send Inquiry Agent (POC)
 
-A chat-driven replacement for the Cenomi Tenant Central "Send Inquiry" form.
-Stack: React (Vite, TypeScript) · FastAPI · LangGraph · OpenAI.
+Chat replacement for the Cenomi Tenant Central **Send Inquiry** form: React + FastAPI + LangGraph + OpenAI, with mock Cenomi services for local demo.
 
-This kit gives Cursor everything it needs to build the POC step by step.
+## Quick start (~10 minutes)
 
-## What's inside
+**Prerequisites:** Docker Desktop (or Node 20 + Python 3.11+ with [uv](https://docs.astral.sh/uv/)), OpenAI API key for the live agent.
 
-| Path | What it is |
+1. Clone and enter the repo.
+2. Copy env and set your key:
+   ```bash
+   cp backend/.env.example backend/.env
+   # Edit backend/.env: OPENAI_API_KEY, OPENAI_MODEL (e.g. gpt-4o-mini)
+   ```
+3. Start the demo stack:
+   ```bash
+   make demo
+   ```
+4. Open **http://localhost:5173**. OTP mock code is **1234** (`OTP_MOCK_CODE`).
+5. Follow [docs/demo-script.md](docs/demo-script.md).
+
+**Without Docker:**
+
+```bash
+# Terminal 1
+make dev-backend
+
+# Terminal 2
+cd frontend && npm install && npm run dev
+```
+
+Set `VITE_API_BASE=http://localhost:8000` if the API is not on the default port.
+
+**UI-only (no backend):** `cd frontend && VITE_MOCK=1 npm run dev`
+
+## Commands
+
+| Command | Purpose |
 | --- | --- |
-| `.cursor/rules/*.mdc` | Project rules Cursor loads automatically (always-on context + per-folder rules) |
-| `docs/spec.md` | **Source of truth**: data model, validation, tools, API, SSE events, card payloads |
-| `docs/design-spec.md` | Visual design: tokens, layout, every component and its states, key copy |
-| `docs/agent-system-prompt.md` | The agent's persona and rules (goes into the backend as-is) |
-| `docs/assumptions.md` | POC assumptions (mocks, OTP code, reference format, …) |
-| `design/prototype.dc.html` | The clickable prototype's markup and copy — a visual reference, not runnable as-is |
-| `prompts/00…11-*.md` | Composer prompts, one per build step, in order |
+| `make demo` | Docker Compose with `OTP_MOCK_CODE=1234` and `VITE_DEMO=1` |
+| `make dev` | Same stack without demo env defaults |
+| `make dev-backend` / `make dev-frontend` | Run one app locally |
+| `make test` | Backend pytest + frontend Vitest |
+| `make lint` | Ruff, mypy, ESLint, `tsc` |
 
-## How to use it
+Live prompt check (not CI): `cd backend && uv run python scripts/eval_live.py`
 
-1. Clone this repo: `git clone git@github.com:swa01wk/send-inquiry-agent.git`.
-2. Open the folder in Cursor. The rules in `.cursor/rules/` load on their own.
-3. For each prompt file, in order:
-   1. Open a **new** Agent chat and pick the Composer model.
-   2. Paste the prompt file's content and send it. Prompts already `@`-reference the docs they need.
-   3. Let it finish, then run the **Verify** steps at the bottom of the prompt.
-   4. Commit (`git commit -m "step NN: …"`) before moving on.
-4. For prompts **04** (agent) and **08** (cards), ask for a plan first and approve it before it writes code, since these are the biggest steps.
+## Environment variables
 
-## Build order
-
-| # | Prompt | Result |
+| Variable | Where | Description |
 | --- | --- | --- |
-| 00 | Bootstrap | Monorepo, Docker Compose, tooling, env |
-| 01 | Domain model | `InquiryDraft`, provenance, validation, `can_submit` + tests |
-| 02 | Data and mocks | Master data, FAQ, mock CR / OTP / storage / submit adapters |
-| 03 | REST API | Sessions, uploads, master data, draft, status endpoints + tests |
-| 04 | Agent | LangGraph state, tools, guard node, graph, system prompt |
-| 05 | Chat streaming | `/chat` SSE endpoint, UI actions, event stream + tests |
-| 06 | Frontend shell | Vite app, design tokens, page layout |
-| 07 | Chat UI | Messages, typing, chips, composer, SSE hook |
-| 08 | Rich cards | Confirm, malls, OTP, documents, review, success |
-| 09 | Draft panel | Live draft with source badges, auto-scroll, checks |
-| 10 | Integration | End-to-end flow + the 15 test scenarios |
-| 11 | Polish | Accessibility, responsive, errors, README, demo script |
+| `OPENAI_API_KEY` | backend | Required for agent |
+| `OPENAI_MODEL` | backend | Chat model name |
+| `OTP_MOCK_CODE` | backend | Default `1234` |
+| `MAX_UPLOAD_MB` | backend | Default `5` |
+| `UPLOAD_DIR` | backend | Local upload storage |
+| `SESSION_TTL_MINUTES` | backend | Default `120` |
+| `CORS_ORIGINS` | backend | Comma-separated frontend origins |
+| `VITE_API_BASE` | frontend | API origin |
+| `VITE_MOCK` | frontend | `1` = mock SSE, no backend |
+| `VITE_DEMO` | frontend | `1` = show **Restart** in chat header |
 
-## Tips for working with Composer
+See `backend/.env.example` and `frontend/.env.example` for the full list.
 
-- One prompt per chat keeps context clean. If a chat drifts, start a new one and say "continue step NN".
-- When it guesses at a contract, point it back to `@docs/spec.md`; that file wins every disagreement.
-- Ask it to run the tests it wrote. Every prompt ends with commands to check.
-- Keep the mock services; swapping in real Cenomi APIs later only touches `backend/app/services/`.
+## Architecture
+
+```mermaid
+flowchart LR
+  subgraph Browser
+    UI[React chat + draft panel]
+  end
+  subgraph FastAPI
+    API[Sessions / chat SSE / uploads]
+  end
+  subgraph Agent
+    LG[LangGraph]
+    Guard[Guard node]
+    Tools[Agent tools]
+  end
+  subgraph Data
+    Domain[domain rules + validation]
+    Mocks[Mock CR / OTP / storage / submit / status]
+    Master[(master_data.json + faq.json)]
+  end
+  OpenAI[(OpenAI chat)]
+
+  UI -->|REST + SSE| API
+  API --> LG
+  LG <-->|tool calls| OpenAI
+  LG --> Tools
+  Tools --> Domain
+  Tools --> Mocks
+  Tools --> Master
+  LG --> Guard
+  Guard --> Domain
+  Guard --> UI
+```
+
+**Source of truth:** [docs/spec.md](docs/spec.md) · Design: [docs/design-spec.md](docs/design-spec.md) · Agent persona: [docs/agent-system-prompt.md](docs/agent-system-prompt.md)
+
+## Swapping mocks for real Cenomi APIs
+
+Implement the protocols in `backend/app/services/` (`CrService`, `OtpService`, `StorageService`, `SubmitService`, `StatusService`) and wire implementations in `backend/app/services/container.py`. Routers and LangGraph tools depend on interfaces only — no agent changes required.
+
+## Known limitations (POC)
+
+- Sessions are in-memory (no cross-device resume).
+- Document uploads check presence, extension, and size only — no content analysis.
+- FAQ and mall master data are seeded placeholders.
+- Live eval (`eval_live.py`) can vary run-to-run; CI uses scripted LLM scenarios.
+- Lighthouse ≥ 95 is a manual check on the running demo page.
+
+## Repo layout
+
+| Path | Role |
+| --- | --- |
+| `frontend/` | Vite + React UI |
+| `backend/` | FastAPI, agent, domain, mocks |
+| `docs/` | Spec, design, demo script |
+| `prompts/` | Step-by-step build prompts (historical) |
+
+Built with the Cursor prompt sequence in `prompts/`; step **11** covers polish, demo, and this README.

@@ -1,0 +1,56 @@
+:root {
+  /* Brand */
+  --color-brand: #2E1A5B;          /* deep purple: logo, headings, user bubble, active stage, avatar */
+  --color-accent: #C8336B;         /* magenta: primary buttons, send, chip borders, selected mall, progress fill */
+  --color-accent-text: #A3214F;    /* magenta text on white (chips, links) — 4.5:1 */
+  --color-accent-tint: #FCEEF3;    /* selected mall, "Required" tag */
+  --color-brand-tint: #E6DEF7;     /* secondary button (Track your inquiry) */
+
+  /* Surfaces */
+  --color-page: #F5F5F7;
+  --color-surface: #FFFFFF;
+  --color-chat-bg: #FBFAFC;
+  --color-subtle: #F3F2F7;         /* reference box */
+  --color-muted-fill: #F1EFF5;     /* upcoming stage, "Optional" tag */
+
+  /* Text */
+  --color-text: #1C1530;
+  --color-text-body: #4A4460;
+  --color-text-secondary: #5E5873;
+  --color-text-muted: #6B6480;
+
+  /* Lines */
+  --color-border: #E6E4EC;         /* panels */
+  --color-border-card: #E3E0EA;    /* cards inside chat */
+  --color-divider: #F0EEF4;
+  --color-input-border: #CFCBDA;
+  --color-control-border: #D9D6E2; /* secondary buttons */
+
+  /* Status */
+  --color-success-bg: #DDF5E8;  --color-success-fg: #17633F;  --color-success-dot: #1F8A55;
+  --color-pending-bg: #FFEFD6;  --color-pending-fg: #7A4100;
+  --color-derived-bg: #EDE6FA;  --color-derived-fg: #4B2A8A;
+  --color-neutral-bg: #EEF0F4;  --color-neutral-fg: #3F4654;
+  --color-flash: #FFF4DE;          /* draft row highlight */
+  --color-disabled-bg: #E7E4EE; --color-disabled-fg: #5C5670;
+  --color-check-outline: #B8B3C6;
+  --color-step-current-ring: #B9A8E6;
+  --color-step-upcoming-bg: #EEECF2;
+  --color-badge-default-text: #5B6270;
+  --color-badge-default-border: #D5D8DE;
+
+  /* Type */
+  --font-sans: 'Albert Sans', system-ui, sans-serif;
+  --font-arabic: 'Noto Sans Arabic', sans-serif;
+
+  /* Radius */
+  --radius-panel: 20px;
+  --radius-card: 14px;
+  --radius-control: 10px;          /* buttons, inputs; 12px for composer + send */
+  --radius-bubble: 16px;           /* tail corner 4px */
+  --radius-pill: 999px;
+
+  /* Sizes */
+  --panel-height: 820px;
+  --touch: 44px;
+}

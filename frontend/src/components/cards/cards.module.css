@@ -1,0 +1,103 @@
+.shell {
+  width: 100%;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-card);
+  border-radius: var(--radius-card);
+}
+
+.shellPad {
+  composes: shell;
+  padding: 16px;
+}
+
+.shellRows {
+  composes: shell;
+  padding: 4px 16px;
+}
+
+.textLink {
+  min-height: var(--touch);
+  padding: 0 4px;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-accent-text);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.textLink:disabled {
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+.primaryBtn {
+  min-height: 48px;
+  padding: 0 22px;
+  border: none;
+  border-radius: var(--radius-control);
+  background: var(--color-accent);
+  color: var(--color-surface);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primaryBtn:disabled {
+  background: var(--color-disabled-bg);
+  color: var(--color-disabled-fg);
+  cursor: not-allowed;
+}
+
+.primaryBtnFull {
+  composes: primaryBtn;
+  width: 100%;
+}
+
+.secondaryBtn {
+  min-width: 88px;
+  min-height: var(--touch);
+  padding: 0 16px;
+  border: 1px solid var(--color-control-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-brand);
+  cursor: pointer;
+}
+
+.brandBtn {
+  min-width: 88px;
+  min-height: var(--touch);
+  padding: 0 16px;
+  border: none;
+  border-radius: var(--radius-control);
+  background: var(--color-brand);
+  color: var(--color-surface);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.caption {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}
+
+.captionError {
+  composes: caption;
+  color: var(--color-pending-fg);
+}
+
+.rowDivider {
+  border-bottom: 1px solid var(--color-divider);
+}

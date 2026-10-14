@@ -1,0 +1,41 @@
+{
+  "unit_types": [
+    {"id": "store", "label": "Store", "code": "STR"},
+    {"id": "media", "label": "Media", "code": "MED"},
+    {"id": "specialty", "label": "Specialty", "code": "SPC"},
+    {"id": "office", "label": "Office", "code": "OFF"}
+  ],
+  "sales_categories": [
+    {"id": "fnb_cafe", "label": "Food & Beverage · Café"},
+    {"id": "fnb_restaurant", "label": "Food & Beverage · Restaurant"},
+    {"id": "fashion", "label": "Fashion & Apparel"},
+    {"id": "beauty", "label": "Health & Beauty"},
+    {"id": "electronics", "label": "Electronics"},
+    {"id": "entertainment", "label": "Entertainment"},
+    {"id": "services", "label": "Services"}
+  ],
+  "cities": [
+    {"id": "riyadh", "label": "Riyadh"},
+    {"id": "jeddah", "label": "Jeddah"},
+    {"id": "dammam", "label": "Dammam"}
+  ],
+  "malls": [
+    {"id": "riyadh-mall-a", "name": "Riyadh Mall A", "city": "riyadh"},
+    {"id": "riyadh-mall-b", "name": "Riyadh Mall B", "city": "riyadh"},
+    {"id": "riyadh-mall-c", "name": "Riyadh Mall C", "city": "riyadh"},
+    {"id": "riyadh-mall-d", "name": "Riyadh Mall D", "city": "riyadh"},
+    {"id": "jeddah-mall-a", "name": "Jeddah Mall A", "city": "jeddah"},
+    {"id": "jeddah-mall-b", "name": "Jeddah Mall B", "city": "jeddah"},
+    {"id": "dammam-mall-a", "name": "Dammam Mall A", "city": "dammam"}
+  ],
+  "lease_periods": [
+    {"id": "1y", "label": "1 year"},
+    {"id": "2y", "label": "2 years"},
+    {"id": "3y", "label": "3 years"},
+    {"id": "5y", "label": "5 years"}
+  ],
+  "rent_periods": [
+    {"id": "monthly", "label": "Monthly"},
+    {"id": "yearly", "label": "Yearly"}
+  ]
+}

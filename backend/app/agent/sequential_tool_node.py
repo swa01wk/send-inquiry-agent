@@ -1,0 +1,82 @@
+"""Run multiple tool calls in order so each sees prior draft updates."""
+
+from __future__ import annotations
+
+from typing import Any
+
+from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
+from langchain_core.runnables import RunnableConfig
+from langgraph.prebuilt import ToolNode
+from langgraph.types import Command
+
+from app.agent.state import AgentState
+
+
+def _apply_command(
+    state: AgentState,
+    output: ToolMessage | Command[Any] | list[Any],
+) -> AgentState:
+    items: list[Any]
+    if isinstance(output, list):
+        items = output
+    else:
+        items = [output]
+
+    draft = state["draft"]
+    cards_shown = list(state["cards_shown"])
+    new_messages: list[BaseMessage] = []
+
+    for item in items:
+        if isinstance(item, Command):
+            update = item.update or {}
+            if "draft" in update:
+                draft = update["draft"]
+            if "cards_shown" in update:
+                cards_shown = list(update["cards_shown"])
+            for message in update.get("messages", []):
+                if isinstance(message, ToolMessage):
+                    new_messages.append(message)
+        elif isinstance(item, ToolMessage):
+            new_messages.append(item)
+
+    return {
+        **state,
+        "draft": draft,
+        "cards_shown": cards_shown,
+        "messages": [*state["messages"], *new_messages],
+    }
+
+
+def build_sequential_tool_node(tools: list[Any]) -> Any:
+    base = ToolNode(tools)
+
+    async def sequential_tools_node(state: AgentState, config: RunnableConfig) -> Any:
+        messages = state["messages"]
+        if not messages:
+            return {}
+        last = messages[-1]
+        if not isinstance(last, AIMessage) or not last.tool_calls or len(last.tool_calls) == 1:
+            return await base.ainvoke(state, config)
+
+        tool_calls = last.tool_calls
+
+        prefix = messages[:-1]
+        working = state
+        for call in tool_calls:
+            step_state: AgentState = {
+                **working,
+                "messages": [
+                    *prefix,
+                    AIMessage(content=last.content or "", tool_calls=[call]),
+                ],
+            }
+            output = await base.ainvoke(step_state, config)
+            working = _apply_command(working, output)
+
+        return {
+            "draft": working["draft"],
+            "cards_shown": working["cards_shown"],
+            "messages": working["messages"][len(state["messages"]) :],
+        }
+
+    return sequential_tools_node

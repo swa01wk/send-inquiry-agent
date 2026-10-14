@@ -1,0 +1,36 @@
+.row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  max-width: 88%;
+}
+
+.avatar {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--color-brand);
+  color: var(--color-surface);
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatarSpacer {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+}
+
+.bubble {
+  padding: 10px 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-card);
+  color: var(--color-text);
+  font-size: 15px;
+  line-height: 1.5;
+  border-radius: 16px 16px 16px 4px;
+}

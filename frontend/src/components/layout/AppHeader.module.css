@@ -1,0 +1,50 @@
+.header {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 16px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.brandRow {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.wordmark {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--color-brand);
+}
+
+.productName {
+  font-size: 15px;
+  color: var(--color-text-secondary);
+}
+
+.langButton {
+  min-height: var(--touch);
+  padding: 0 20px;
+  border: 1px solid var(--color-control-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  font-family: var(--font-arabic);
+  font-size: 16px;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+@media (max-width: 480px) {
+  .inner {
+    padding: 16px 20px;
+  }
+}

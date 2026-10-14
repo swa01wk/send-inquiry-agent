@@ -1,0 +1,15 @@
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.title {
+  margin: 0;
+  padding-bottom: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
