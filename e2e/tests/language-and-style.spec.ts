@@ -18,7 +18,7 @@ test.describe('Language and style @scripted', () => {
     await afterTurnChecks(inquiry)
     const replies = await inquiry.allReplies()
     expect(replies.some((r) => /[\u0600-\u06FF]/.test(r))).toBeTruthy()
-    expect(countRetractions(await inquiry.events())).toBeLessThanOrEqual(1)
+    expect(countRetractions(await inquiry.events())).toBe(0)
     const draft = await inquiry.draft()
     expect(fieldDisplay(draft, 'email')).toContain('@')
     expect(fieldDisplay(draft, 'mobile')).toContain('966')

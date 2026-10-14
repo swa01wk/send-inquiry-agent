@@ -30,6 +30,8 @@ export default defineConfig({
       env: {
         AGENT_MODE: process.env.E2E_LIVE ? 'openai' : 'scripted',
         CORS_ORIGINS: 'http://localhost:5173,http://127.0.0.1:5173',
+        RATE_LIMIT_IP: '1000/minute',
+        RATE_LIMIT_SESSION: '1000/minute',
         ...(process.env.OPENAI_API_KEY ? { OPENAI_API_KEY: process.env.OPENAI_API_KEY } : {}),
         ...(process.env.OPENAI_MODEL ? { OPENAI_MODEL: process.env.OPENAI_MODEL } : {}),
       },

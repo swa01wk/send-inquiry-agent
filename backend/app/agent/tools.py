@@ -298,15 +298,28 @@ def update_draft(
 
     cards_update = cards_shown
     confirm_card_keys = dict(state.get("confirm_card_keys", {}))
-    if derived_written:
-        existing_id = confirm_card_id_for_keys(cards_shown, confirm_card_keys, derived_written)
+    user_written = [key for key in written if key not in derived_keys]
+    card_refresh_keys = list(
+        dict.fromkeys(
+            [
+                *derived_written,
+                *[
+                    key
+                    for key in user_written
+                    if confirm_card_id_for_keys(cards_shown, confirm_card_keys, [key])
+                ],
+            ],
+        ),
+    )
+    if card_refresh_keys:
+        existing_id = confirm_card_id_for_keys(cards_shown, confirm_card_keys, card_refresh_keys)
         card_id = existing_id or allocate_confirm_card_id(cards_shown)
         if existing_id:
             card_keys = list(
-                dict.fromkeys([*confirm_card_keys.get(existing_id, []), *derived_written]),
+                dict.fromkeys([*confirm_card_keys.get(existing_id, []), *card_refresh_keys]),
             )
         else:
-            card_keys = derived_written
+            card_keys = card_refresh_keys
         card = build_confirm_fields_card(
             updated,
             rt.master,

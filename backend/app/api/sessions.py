@@ -10,10 +10,11 @@ from app.api.cards import (
     WELCOME_MESSAGE_2,
     build_welcome_quick_replies_card,
 )
-from app.api.deps import get_master_data, get_session_store, get_settings
+from app.api.deps import get_master_data, get_session_store
+from app.api.deps import get_settings as get_settings_dep
 from app.api.limiter import limiter
 from app.api.schemas import AssistantMessage, CreateSessionResponse
-from app.config import Settings
+from app.config import Settings, get_settings
 from app.domain.master import MasterData
 from app.domain.summary import DraftSummary, build_draft_summary
 from app.sessions import SessionStore
@@ -25,12 +26,12 @@ WELCOME_MSG_ID_2 = "welcome-2"
 
 
 @router.post("", response_model=CreateSessionResponse)
-@limiter.limit("60/minute")
+@limiter.limit(get_settings().rate_limit_ip)
 async def create_session(
     request: Request,
     store: SessionStore = Depends(get_session_store),
     master: MasterData = Depends(get_master_data),
-    settings: Settings = Depends(get_settings),
+    settings: Settings = Depends(get_settings_dep),
 ) -> CreateSessionResponse:
     session = await store.create()
     if settings.agent_mode == "scripted":
@@ -53,7 +54,7 @@ async def create_session(
 
 
 @router.get("/{session_id}/draft", response_model=DraftSummary)
-@limiter.limit("60/minute")
+@limiter.limit(get_settings().rate_limit_ip)
 async def get_draft(
     request: Request,
     session_id: str,

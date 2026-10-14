@@ -1,7 +1,12 @@
 import { expect, type Locator, type Page } from '@playwright/test'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { clearCapturedEvents, readCapturedEvents, type CapturedSseEvent } from '../support/events'
+import {
+  clearCapturedEvents,
+  readCapturedEvents,
+  readDoneEventCount,
+  type CapturedSseEvent,
+} from '../support/events'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const fixtures = path.join(__dirname, '../fixtures/files')
@@ -40,10 +45,21 @@ export class InquiryPage {
     this.page.on('response', onResponse)
     const url = scenario ? `/?e2eScenario=${encodeURIComponent(scenario)}` : '/'
     await this.page.goto(url)
-    await expect(this.page.getByRole('textbox', { name: 'Message' })).toBeEnabled({ timeout: 60_000 })
     await expect
-      .poll(() => sessionIds.length, { timeout: 60_000, message: 'session create response' })
+      .poll(() => sessionIds.length, { timeout: 120_000, message: 'session create response' })
       .toBeGreaterThan(0)
+    await expect
+      .poll(
+        () =>
+          this.page.evaluate(() => {
+            const w = window as Window & { __e2eSessionId?: string }
+            return w.__e2eSessionId ?? null
+          }),
+        { timeout: 120_000, message: 'frontend session ready' },
+      )
+      .toBeTruthy()
+    const box = this.page.getByRole('textbox', { name: 'Message' })
+    await expect(box).toBeEnabled({ timeout: 120_000 })
     this.page.off('response', onResponse)
     this.sessionId = sessionIds[sessionIds.length - 1] ?? null
     const fromWindow = await this.page.evaluate(() => {
@@ -57,18 +73,20 @@ export class InquiryPage {
   async say(text: string) {
     this.userSoFar += `\n${text}`
     const box = this.page.getByRole('textbox', { name: 'Message' })
+    const doneBefore = await readDoneEventCount(this.page)
     await box.fill(text)
     await box.press('Enter')
-    await this.waitForTurnDone()
+    await this.waitForTurnDone(doneBefore)
   }
 
-  async waitForTurnDone() {
+  async waitForTurnDone(doneBefore: number) {
+    await expect
+      .poll(() => readDoneEventCount(this.page), {
+        timeout: 120_000,
+        message: 'SSE done event after turn',
+      })
+      .toBe(doneBefore + 1)
     const box = this.page.getByRole('textbox', { name: 'Message' })
-    try {
-      await expect(box).toBeDisabled({ timeout: 5_000 })
-    } catch {
-      /* UI actions like OTP verify may not disable the composer */
-    }
     await expect(box).toBeEnabled({ timeout: 120_000 })
   }
 
@@ -77,23 +95,26 @@ export class InquiryPage {
   }
 
   async confirmCard() {
+    const doneBefore = await readDoneEventCount(this.page)
     await this.page.getByRole('button', { name: 'Looks right' }).last().click()
-    await this.waitForTurnDone()
+    await this.waitForTurnDone(doneBefore)
   }
 
   async pickMalls(names: string[]) {
     for (const name of names) {
       await this.page.getByRole('button', { name, exact: true }).click()
     }
+    const doneBefore = await readDoneEventCount(this.page)
     await this.page.getByRole('button', { name: 'Done' }).click()
-    await this.waitForTurnDone()
+    await this.waitForTurnDone(doneBefore)
   }
 
   async enterCode(code: string) {
     const input = this.page.locator('#otp-code')
     await input.fill(code)
+    const doneBefore = await readDoneEventCount(this.page)
     await this.page.getByRole('button', { name: /verify/i }).click()
-    await this.waitForTurnDone()
+    await this.waitForTurnDone(doneBefore)
   }
 
   async pickFile(docLabel: string, fileName: string) {
@@ -123,8 +144,9 @@ export class InquiryPage {
     const review = this.cards('review')
     await expect(review).toBeVisible({ timeout: 60_000 })
     await review.getByRole('checkbox').check()
+    const doneBefore = await readDoneEventCount(this.page)
     await review.getByRole('button', { name: 'Submit inquiry' }).click()
-    await this.waitForTurnDone()
+    await this.waitForTurnDone(doneBefore)
   }
 
   async lastReply(): Promise<string> {

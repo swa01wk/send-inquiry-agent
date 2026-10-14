@@ -3,7 +3,6 @@ import { InquiryPage } from '../pages/inquiry'
 import { afterTurnChecks, finishA11y } from '../support/turnChecks'
 
 test.describe('Confused users @scripted', () => {
-  test.describe.configure({ retries: 1 })
   test('11 impatient before OTP', async ({ page }, testInfo) => {
     const inquiry = new InquiryPage(page)
     await inquiry.open('11-impatient')

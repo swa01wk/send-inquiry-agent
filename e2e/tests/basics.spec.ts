@@ -60,17 +60,30 @@ test.describe('Basics @scripted', () => {
     test.setTimeout(180_000)
     const inquiry = new InquiryPage(page)
     await inquiry.open('18-demo-sequence')
-    const demoTurns = [
+    const demoTurnsBeforeUnitChange = [
       'Marhaba',
       'My CR number is 1010123456',
       "Yes, that's correct",
       'Bean Street specialty coffee kiosk at Riyadh Mall A — about 30 sqm, budget up to 250,000 SAR per year, 3-year lease. Sara Ali, sara@beanstreet.example, +966501234567',
       'Yes, all correct',
+    ]
+    const demoTurnsAfterUnitChange = [
       'Actually we want a full store unit, not specialty or kiosk.',
       'What documents do I need to upload?',
       'Can I review and submit now?',
     ]
-    for (const text of demoTurns) {
+    for (const text of demoTurnsBeforeUnitChange) {
+      await inquiry.say(text)
+      await afterTurnChecks(inquiry)
+    }
+    const brandCardsBefore = inquiry.page
+      .locator('[data-testid^="confirm-fields-"]')
+      .filter({ hasText: 'Unit type' })
+    await expect(brandCardsBefore).toHaveCount(1)
+    const brandCardTestId = await brandCardsBefore.first().getAttribute('data-testid')
+    expect(brandCardTestId).toBeTruthy()
+
+    for (const text of demoTurnsAfterUnitChange) {
       await inquiry.say(text)
       await afterTurnChecks(inquiry)
     }
@@ -79,11 +92,16 @@ test.describe('Basics @scripted', () => {
     for (const r of repliesBeforeCoffee.slice(0, 3)) {
       expect(r.toLowerCase()).not.toContain('coffee')
     }
-    const companyCards = inquiry.page.locator('[data-testid^="confirm-fields-"]').filter({ hasText: 'From your CR' })
+    const companyCards = inquiry.page
+      .locator('[data-testid^="confirm-fields-"]')
+      .filter({ hasText: 'Company name' })
     await expect(companyCards).toHaveCount(1)
     await expect(companyCards.first().getByRole('button', { name: 'Looks right' })).toHaveCount(0)
-    const brandCards = inquiry.page.locator('[data-testid^="confirm-fields-"]').filter({ hasText: 'Bean Street' })
-    await expect(brandCards).toHaveCount(1)
+    const brandCard = inquiry.page.locator(`[data-testid="${brandCardTestId}"]`)
+    await expect(brandCard).toBeVisible()
+    const unitTypeRow = brandCard.locator('div').filter({ hasText: 'Unit type' }).first()
+    await expect(unitTypeRow).toContainText('Store')
+    await expect(unitTypeRow.getByText('You said')).toBeVisible()
     const draftMid = await inquiry.draft()
     expect(fieldSource(draftMid, 'unit_type')).toBe('user')
     expect(fieldDisplay(draftMid, 'unit_type')).toMatch(/store/i)

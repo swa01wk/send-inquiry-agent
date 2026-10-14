@@ -19,3 +19,11 @@ export async function clearCapturedEvents(page: Page): Promise<void> {
 export function countRetractions(events: CapturedSseEvent[]): number {
   return events.filter((e) => e.event === 'message_remove').length
 }
+
+export function countDoneEvents(events: CapturedSseEvent[]): number {
+  return events.filter((e) => e.event === 'done').length
+}
+
+export async function readDoneEventCount(page: Page): Promise<number> {
+  return countDoneEvents(await readCapturedEvents(page))
+}
