@@ -355,7 +355,7 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
                 f"{GUARD_PREFIX} This user already has an account. "
                 "Reply again, kindly pointing them to Sign In on Tenant Central."
             )
-        elif runtime.settings.agent_mode != "scripted":
+        else:
             note = (
                 _brand_reask_note({**state, "draft": draft}, ai_text)
                 or _incomplete_bulk_capture_note({**state, "draft": draft}, phase)

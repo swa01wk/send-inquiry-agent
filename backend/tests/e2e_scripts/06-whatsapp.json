@@ -1,5 +1,8 @@
 [
   {
+    "content": "Hi — happy to help with your leasing inquiry."
+  },
+  {
     "content": "",
     "tool_calls": [
       {
@@ -13,7 +16,7 @@
     ]
   },
   {
-    "content": "Happy to help — company details are in the card."
+    "content": "Got your CR — company details are in the card."
   },
   {
     "content": "",
@@ -48,7 +51,24 @@
                 "riyadh-mall-a"
               ],
               "source": "user"
-            },
+            }
+          ]
+        },
+        "id": "f2",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Got it — tell me who to contact for this inquiry."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
             {
               "key": "first_name",
               "value": "Sara",
@@ -71,7 +91,7 @@
             }
           ]
         },
-        "id": "f2",
+        "id": "f3",
         "type": "tool_call"
       }
     ]
@@ -84,7 +104,7 @@
         "args": {
           "resend": false
         },
-        "id": "f3",
+        "id": "f4",
         "type": "tool_call"
       }
     ]

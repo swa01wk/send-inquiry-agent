@@ -34,6 +34,12 @@ export function assertPlainLanguageReply(text: string, userSoFar: string) {
   if (!userLower.includes('kiosk')) {
     expect(lower, 'no kiosk before user mentions it').not.toContain('kiosk')
   }
+  const seededMalls = ['riyadh mall a', 'jeddah mall a', 'mall of arabia', 'mall of dhahran']
+  for (const name of seededMalls) {
+    if (!userLower.includes(name)) {
+      expect(lower, `no ${name} before user mentions it`).not.toContain(name)
+    }
+  }
 }
 
 export function assertNoDuplicateConfirmCards(events: CapturedLike[]) {

@@ -13,6 +13,9 @@
     ]
   },
   {
+    "content": "Thanks — company card below."
+  },
+  {
     "content": "",
     "tool_calls": [
       {
@@ -52,6 +55,9 @@
         "type": "tool_call"
       }
     ]
+  },
+  {
+    "content": "Almost there — what's the best mobile number?"
   },
   {
     "content": "",

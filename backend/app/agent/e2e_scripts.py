@@ -17,6 +17,16 @@ def list_e2e_script_names() -> tuple[str, ...]:
     return tuple(sorted(p.stem for p in _SCRIPTS_DIR.glob("*.json")))
 
 
+def resolve_e2e_scenario(name: str | None) -> str | None:
+    """Return the scenario stem if it is a known script name, else None."""
+    if not name or not name.strip():
+        return None
+    stem = name.strip()
+    if stem not in list_e2e_script_names():
+        return None
+    return stem
+
+
 def load_e2e_script_steps(name: str) -> list[dict[str, Any]]:
     path = _SCRIPTS_DIR / f"{name}.json"
     if not path.is_file():

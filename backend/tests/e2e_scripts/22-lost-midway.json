@@ -13,6 +13,9 @@
     ]
   },
   {
+    "content": "Company saved — see the card."
+  },
+  {
     "content": "",
     "tool_calls": [
       {
@@ -54,7 +57,10 @@
     ]
   },
   {
-    "content": "You're on the brand step — check the summary card. What would you like to change?"
+    "content": "You're on the brand step — check the summary card."
+  },
+  {
+    "content": "That card is your brand summary — tap Looks right when it matches."
   },
   {
     "content": "",

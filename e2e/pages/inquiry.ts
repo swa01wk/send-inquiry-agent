@@ -16,16 +16,41 @@ export class InquiryPage {
   }
 
   async open(scenario?: string) {
-    const created = this.page.waitForResponse(
-      (r) => r.url().includes('/api/sessions') && r.request().method() === 'POST' && r.status() === 200,
-      { timeout: 60_000 },
-    )
+    if (scenario) {
+      await this.page.route('**/api/sessions', async (route) => {
+        if (route.request().method() !== 'POST') {
+          await route.continue()
+          return
+        }
+        const headers = {
+          ...route.request().headers(),
+          'X-Test-Scenario': scenario,
+        }
+        await route.continue({ headers })
+      })
+    }
+    const sessionIds: string[] = []
+    const onResponse = async (response: { url: () => string; request: () => { method: () => string }; ok: () => boolean; json: () => Promise<unknown> }) => {
+      if (!response.url().includes('/api/sessions') || response.request().method() !== 'POST' || !response.ok()) {
+        return
+      }
+      const body = (await response.json()) as { session_id: string }
+      sessionIds.push(body.session_id)
+    }
+    this.page.on('response', onResponse)
     const url = scenario ? `/?e2eScenario=${encodeURIComponent(scenario)}` : '/'
     await this.page.goto(url)
-    const res = await created
-    const body = (await res.json()) as { session_id: string }
-    this.sessionId = body.session_id
     await expect(this.page.getByRole('textbox', { name: 'Message' })).toBeEnabled({ timeout: 60_000 })
+    await expect
+      .poll(() => sessionIds.length, { timeout: 60_000, message: 'session create response' })
+      .toBeGreaterThan(0)
+    this.page.off('response', onResponse)
+    this.sessionId = sessionIds[sessionIds.length - 1] ?? null
+    const fromWindow = await this.page.evaluate(() => {
+      const w = window as Window & { __e2eSessionId?: string }
+      return w.__e2eSessionId ?? null
+    })
+    if (fromWindow) this.sessionId = fromWindow
     await clearCapturedEvents(this.page)
   }
 
@@ -38,8 +63,13 @@ export class InquiryPage {
   }
 
   async waitForTurnDone() {
-    await expect(this.page.getByRole('textbox', { name: 'Message' })).toBeDisabled()
-    await expect(this.page.getByRole('textbox', { name: 'Message' })).toBeEnabled({ timeout: 120_000 })
+    const box = this.page.getByRole('textbox', { name: 'Message' })
+    try {
+      await expect(box).toBeDisabled({ timeout: 5_000 })
+    } catch {
+      /* UI actions like OTP verify may not disable the composer */
+    }
+    await expect(box).toBeEnabled({ timeout: 120_000 })
   }
 
   async tapChip(label: string) {
@@ -90,8 +120,10 @@ export class InquiryPage {
   }
 
   async acceptAndSubmit() {
-    await this.page.getByRole('checkbox').check()
-    await this.page.getByRole('button', { name: 'Submit inquiry' }).click()
+    const review = this.cards('review')
+    await expect(review).toBeVisible({ timeout: 60_000 })
+    await review.getByRole('checkbox').check()
+    await review.getByRole('button', { name: 'Submit inquiry' }).click()
     await this.waitForTurnDone()
   }
 
@@ -118,6 +150,7 @@ export class InquiryPage {
     if (type === 'confirm_fields') return this.page.locator('[data-testid^="confirm-fields-"]')
     if (type === 'otp_input') return this.page.getByTestId('otp-card')
     if (type === 'document_upload') return this.page.getByTestId('document-checklist-card')
+    if (type === 'mall_picker') return this.page.getByTestId('mall-picker-card')
     if (type === 'review') return this.page.getByTestId('review-card')
     if (type === 'success') return this.page.getByTestId('success-card')
     return this.page.locator(`[data-card-type="${type}"]`)

@@ -51,7 +51,24 @@
                 "riyadh-mall-a"
               ],
               "source": "user"
-            },
+            }
+          ]
+        },
+        "id": "a2",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Got it — check the brand summary card."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
             {
               "key": "first_name",
               "value": "Sara",
@@ -74,7 +91,7 @@
             }
           ]
         },
-        "id": "a2",
+        "id": "a3",
         "type": "tool_call"
       }
     ]
@@ -87,26 +104,12 @@
         "args": {
           "resend": false
         },
-        "id": "a3",
-        "type": "tool_call"
-      }
-    ]
-  },
-  {
-    "content": "Enter the code in the box when it arrives."
-  },
-  {
-    "content": "",
-    "tool_calls": [
-      {
-        "name": "request_documents",
-        "args": {},
         "id": "a4",
         "type": "tool_call"
       }
     ]
   },
   {
-    "content": "Company Profile and Brand Profile are required to submit."
+    "content": "Enter the code in the box when it arrives."
   }
 ]

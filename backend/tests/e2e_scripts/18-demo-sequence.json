@@ -1,5 +1,8 @@
 [
   {
+    "content": "Marhaba — send your CR number when you're ready."
+  },
+  {
     "content": "",
     "tool_calls": [
       {
@@ -30,6 +33,9 @@
         "type": "tool_call"
       }
     ]
+  },
+  {
+    "content": "Thanks — company details confirmed."
   },
   {
     "content": "",
@@ -84,6 +90,21 @@
               "key": "contact_number",
               "value": "0501234567",
               "source": "user"
+            },
+            {
+              "key": "area_min",
+              "value": 30,
+              "source": "user"
+            },
+            {
+              "key": "rent_max",
+              "value": 250000,
+              "source": "user"
+            },
+            {
+              "key": "lease_period",
+              "value": "3 years",
+              "source": "user"
             }
           ]
         },
@@ -91,6 +112,9 @@
         "type": "tool_call"
       }
     ]
+  },
+  {
+    "content": "Saved — check the brand summary card."
   },
   {
     "content": "",
@@ -115,6 +139,22 @@
     "content": "",
     "tool_calls": [
       {
+        "name": "send_otp",
+        "args": {
+          "resend": false
+        },
+        "id": "p5",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Enter the code in the box when it arrives."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
         "name": "update_draft",
         "args": {
           "fields": [
@@ -125,10 +165,13 @@
             }
           ]
         },
-        "id": "p5",
+        "id": "p6",
         "type": "tool_call"
       }
     ]
+  },
+  {
+    "content": "Updated to a full store — see the card."
   },
   {
     "content": "",
@@ -136,7 +179,7 @@
       {
         "name": "request_documents",
         "args": {},
-        "id": "p6",
+        "id": "p7",
         "type": "tool_call"
       }
     ]
@@ -145,17 +188,20 @@
     "content": "Company Profile and Brand Profile are required. CR, VAT, ID, address and articles are optional."
   },
   {
+    "content": "After you verify your phone, upload both required PDFs — then we can review."
+  },
+  {
     "content": "",
     "tool_calls": [
       {
         "name": "show_review",
         "args": {},
-        "id": "p7",
+        "id": "p8",
         "type": "tool_call"
       }
     ]
   },
   {
-    "content": "Upload both required PDFs, then review and submit on the card."
+    "content": "When you're ready, tick consent on the review card and submit."
   }
 ]

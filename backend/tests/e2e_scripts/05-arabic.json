@@ -1,5 +1,8 @@
 [
   {
+    "content": "مرحباً — أرسلي رقم السجل التجاري عندما تكونين جاهزة."
+  },
+  {
     "content": "",
     "tool_calls": [
       {
@@ -48,7 +51,24 @@
                 "riyadh-mall-a"
               ],
               "source": "user"
-            },
+            }
+          ]
+        },
+        "id": "e2",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "تم حفظ العلامة — راجعي البطاقة."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
             {
               "key": "first_name",
               "value": "Sara",
@@ -71,7 +91,7 @@
             }
           ]
         },
-        "id": "e2",
+        "id": "e3",
         "type": "tool_call"
       }
     ]
@@ -84,7 +104,7 @@
         "args": {
           "resend": false
         },
-        "id": "e3",
+        "id": "e4",
         "type": "tool_call"
       }
     ]

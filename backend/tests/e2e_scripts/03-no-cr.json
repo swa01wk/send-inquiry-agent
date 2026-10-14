@@ -1,6 +1,6 @@
 [
   {
-    "content": "A CR number is the ID on your commercial registration certificate."
+    "content": "A CR number is the 10-digit ID on your commercial registration certificate."
   },
   {
     "content": "",
@@ -12,6 +12,9 @@
         "type": "tool_call"
       }
     ]
+  },
+  {
+    "content": "No problem — tell me your company name and address."
   },
   {
     "content": "",
@@ -38,6 +41,6 @@
     ]
   },
   {
-    "content": "Tell me about your brand and where you'd like to open."
+    "content": "Saved — tell me about your brand and where you'd like to open."
   }
 ]

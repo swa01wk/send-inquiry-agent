@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request
 
+from app.agent.e2e_scripts import resolve_e2e_scenario
 from app.api.cards import (
     WELCOME_MESSAGE_1,
     WELCOME_MESSAGE_2,
@@ -33,9 +34,9 @@ async def create_session(
 ) -> CreateSessionResponse:
     session = await store.create()
     if settings.agent_mode == "scripted":
-        scenario = request.headers.get("X-Test-Scenario")
-        if scenario:
-            session.test_scenario = scenario.strip()
+        resolved = resolve_e2e_scenario(request.headers.get("X-Test-Scenario"))
+        if resolved:
+            session.test_scenario = resolved
             session.script_step = 0
     messages = [
         AssistantMessage(id=WELCOME_MSG_ID_1, text=WELCOME_MESSAGE_1),

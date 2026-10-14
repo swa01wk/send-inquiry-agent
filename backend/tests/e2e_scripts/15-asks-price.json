@@ -3,10 +3,9 @@
     "content": "",
     "tool_calls": [
       {
-        "name": "get_master_data",
+        "name": "search_faq",
         "args": {
-          "kind": "malls",
-          "city": "riyadh"
+          "query": "rent riyadh mall"
         },
         "id": "m1",
         "type": "tool_call"

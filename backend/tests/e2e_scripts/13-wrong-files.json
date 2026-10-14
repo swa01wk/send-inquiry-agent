@@ -3,9 +3,102 @@
     "content": "",
     "tool_calls": [
       {
+        "name": "verify_cr",
+        "args": {
+          "cr_number": "1010123456"
+        },
+        "id": "l1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Thanks — company card below."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "brand_name_en",
+              "value": "Bean Street",
+              "source": "user"
+            },
+            {
+              "key": "brand_name_ar",
+              "value": "بين ستريت",
+              "source": "derived"
+            },
+            {
+              "key": "unit_type",
+              "value": "specialty",
+              "source": "derived"
+            },
+            {
+              "key": "sales_category",
+              "value": "fnb_cafe",
+              "source": "derived"
+            },
+            {
+              "key": "malls",
+              "value": [
+                "riyadh-mall-a"
+              ],
+              "source": "user"
+            },
+            {
+              "key": "first_name",
+              "value": "Sara",
+              "source": "user"
+            },
+            {
+              "key": "last_name",
+              "value": "Ali",
+              "source": "user"
+            },
+            {
+              "key": "email",
+              "value": "sara@beanstreet.example",
+              "source": "user"
+            },
+            {
+              "key": "contact_number",
+              "value": "0501234567",
+              "source": "user"
+            }
+          ]
+        },
+        "id": "l2",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "send_otp",
+        "args": {
+          "resend": false
+        },
+        "id": "l3",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Code sent — use the box below."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
         "name": "request_documents",
         "args": {},
-        "id": "l0",
+        "id": "l4",
         "type": "tool_call"
       }
     ]

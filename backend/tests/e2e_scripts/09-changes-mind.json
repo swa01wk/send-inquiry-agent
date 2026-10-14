@@ -13,6 +13,9 @@
     ]
   },
   {
+    "content": "Company saved — see the card."
+  },
+  {
     "content": "",
     "tool_calls": [
       {
@@ -52,6 +55,9 @@
         "type": "tool_call"
       }
     ]
+  },
+  {
+    "content": "Brand summary is in the card — confirm when ready."
   },
   {
     "content": "",
