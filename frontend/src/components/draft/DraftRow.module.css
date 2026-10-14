@@ -44,3 +44,9 @@
   font-weight: 400;
   color: var(--color-text-muted);
 }
+
+.phoneKind {
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}

@@ -25,7 +25,7 @@ from app.api.cards import (
     build_otp_input_card,
     build_quick_replies_card,
     build_review_card,
-    last_confirm_card_id,
+    confirm_card_id_for_keys,
 )
 from app.api.schemas import UiCard
 from app.domain import draft_ops
@@ -70,12 +70,15 @@ def _tool_result(
     content: str,
     changed_keys: list[str] | None = None,
     cards_shown: list[str] | None = None,
+    confirm_card_keys: dict[str, list[str]] | None = None,
 ) -> Command[Any]:
     update: dict[str, Any] = {"draft": draft}
     if changed_keys is not None:
         _emit_draft(draft, changed_keys, runtime)
     if cards_shown is not None:
         update["cards_shown"] = cards_shown
+    if confirm_card_keys is not None:
+        update["confirm_card_keys"] = confirm_card_keys
     return Command(
         update={
             **update,
@@ -84,6 +87,16 @@ def _tool_result(
             ],
         }
     )
+
+
+def _remember_confirm_card_keys(
+    confirm_card_keys: dict[str, list[str]],
+    card_id: str,
+    keys: list[str],
+) -> dict[str, list[str]]:
+    updated = dict(confirm_card_keys)
+    updated[card_id] = list(keys)
+    return updated
 
 
 @tool
@@ -150,6 +163,11 @@ def verify_cr(
     )
     if card_id not in cards_shown:
         cards_shown.append(card_id)
+    confirm_card_keys = _remember_confirm_card_keys(
+        dict(state.get("confirm_card_keys", {})),
+        card_id,
+        confirm_keys,
+    )
     _emit_card(card, runtime)
     return _tool_result(
         runtime,
@@ -157,6 +175,7 @@ def verify_cr(
         content="CR verified as new. Company details prefilled for confirmation.",
         changed_keys=written,
         cards_shown=cards_shown,
+        confirm_card_keys=confirm_card_keys,
     )
 
 
@@ -274,24 +293,37 @@ def update_draft(
         written = [*written, FieldKey.MALLS.value]
     derived_keys = {item.key for item in fields if item.source == "derived"}
     derived_written = [key for key in written if key in derived_keys]
+    requested_keys = {item.key for item in fields}
+    unchanged = sorted(requested_keys - set(written) - set(errors) - set(rejected))
 
     cards_update = cards_shown
+    confirm_card_keys = dict(state.get("confirm_card_keys", {}))
     if derived_written:
-        card_id = allocate_confirm_card_id(cards_shown)
+        existing_id = confirm_card_id_for_keys(cards_shown, confirm_card_keys, derived_written)
+        card_id = existing_id or allocate_confirm_card_id(cards_shown)
+        if existing_id:
+            card_keys = list(
+                dict.fromkeys([*confirm_card_keys.get(existing_id, []), *derived_written]),
+            )
+        else:
+            card_keys = derived_written
         card = build_confirm_fields_card(
             updated,
             rt.master,
-            derived_written,
+            card_keys,
             card_id=card_id,
         )
         if card_id not in cards_shown:
             cards_shown = cards_shown + [card_id]
             cards_update = cards_shown
+        confirm_card_keys = _remember_confirm_card_keys(confirm_card_keys, card_id, card_keys)
         _emit_card(card, runtime)
 
     parts = []
     if written:
         parts.append(f"Updated: {', '.join(written)}.")
+    if unchanged:
+        parts.append(f"Unchanged: {', '.join(unchanged)}.")
     if errors:
         parts.append("Errors: " + "; ".join(f"{k}: {v.message}" for k, v in errors.items()))
     if rejected:
@@ -302,6 +334,7 @@ def update_draft(
         content=" ".join(parts) or "Nothing changed.",
         changed_keys=written,
         cards_shown=cards_update,
+        confirm_card_keys=confirm_card_keys,
     )
 
 
@@ -361,9 +394,11 @@ def confirm_fields(
         )
 
     updated = draft_ops.confirm(draft, confirmable)
-    card_id = last_confirm_card_id(cards_shown)
+    confirm_card_keys = dict(state.get("confirm_card_keys", {}))
+    card_id = confirm_card_id_for_keys(cards_shown, confirm_card_keys, confirmable)
     if card_id:
-        card = build_confirm_fields_card(updated, rt.master, keys, card_id=card_id)
+        listed = confirm_card_keys.get(card_id, confirmable)
+        card = build_confirm_fields_card(updated, rt.master, listed, card_id=card_id)
         _emit_card(card, runtime)
 
     return _tool_result(
@@ -372,6 +407,7 @@ def confirm_fields(
         content=f"Confirmed: {', '.join(confirmable)}.",
         changed_keys=confirmable,
         cards_shown=cards_shown,
+        confirm_card_keys=confirm_card_keys,
     )
 
 
@@ -523,7 +559,9 @@ def suggest_replies(
             draft=state["draft"],
             content="Each reply option must be 60 characters or less.",
         )
-    pairs = [(opt, opt) for opt in cleaned]
+    pairs: list[tuple[str, str, str | None, str | None]] = [
+        (opt, opt, None, None) for opt in cleaned
+    ]
     card = build_quick_replies_card(pairs)
     _emit_card(card, runtime)
     return _tool_result(

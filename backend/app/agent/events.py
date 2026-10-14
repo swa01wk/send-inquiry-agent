@@ -120,6 +120,7 @@ async def run_turn(
     )
     state["messages"] = [user_input]
     state["cards_shown"] = list(session.cards_shown)
+    state["confirm_card_keys"] = dict(session.confirm_card_keys)
 
     config = _graph_config(session, runtime)
     replies = _ReplyTracker()
@@ -181,6 +182,7 @@ async def run_turn(
         final_messages = list(final.get("messages", []))
         session.draft = final["draft"]
         session.cards_shown = set(final.get("cards_shown", []))
+        session.confirm_card_keys = dict(final.get("confirm_card_keys", session.confirm_card_keys))
 
         if replies.last_text_id is None:
             # Nothing was streamed (e.g. a model without streaming); send the final reply.

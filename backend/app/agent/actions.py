@@ -14,7 +14,6 @@ from app.api.cards import (
     build_otp_input_card,
     build_review_card,
     build_success_card,
-    last_confirm_card_id,
     remember_confirm_card_keys,
 )
 from app.api.schemas import UiCard
@@ -221,8 +220,7 @@ async def _confirm_card(
     draft = draft_ops.confirm(session.draft, keys)
     session.draft = draft
     events: list[SseEvent] = [_draft_event(draft, runtime, keys)]
-    confirm_id = last_confirm_card_id(list(session.cards_shown)) or card_id
-    card = build_confirm_fields_card(draft, runtime.master, keys, card_id=confirm_id)
+    card = build_confirm_fields_card(draft, runtime.master, listed, card_id=card_id)
     events.append(_card_event(session, card))
     return ActionResult(
         note=HumanMessage(content=f"[ui_event] fields_confirmed {' '.join(keys)}"),

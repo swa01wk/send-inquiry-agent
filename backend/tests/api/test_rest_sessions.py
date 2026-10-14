@@ -17,7 +17,10 @@ async def test_create_session_welcome_copy_and_chips(client: AsyncClient) -> Non
     assert card["card_id"] == "quick-replies"
     assert card["card_type"] == "quick_replies"
     labels = [opt["label"] for opt in card["payload"]["options"]]
-    assert labels == [label for label, _ in WELCOME_QUICK_REPLIES]
+    assert labels == [label for label, _, _, _ in WELCOME_QUICK_REPLIES]
+    first = card["payload"]["options"][0]
+    assert first["action"] == "focus_input"
+    assert first["placeholder"] == "Type your 10-digit CR number"
 
     assert body["draft"]["phase"] == "gate"
     assert body["draft"]["changed_keys"] == []

@@ -134,6 +134,8 @@ class SuccessPayload(BaseModel):
 class QuickReplyOption(BaseModel):
     label: str
     text: str
+    action: Literal["send", "focus_input"] = "send"
+    placeholder: str | None = None
 
 
 class QuickRepliesPayload(BaseModel):

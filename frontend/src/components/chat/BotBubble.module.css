@@ -33,4 +33,20 @@
   font-size: 15px;
   line-height: 1.5;
   border-radius: 16px 16px 16px 4px;
+  white-space: pre-line;
+}
+
+.paragraph {
+  margin: 0;
+}
+
+.paragraph + .paragraph,
+.paragraph + .list,
+.list + .paragraph {
+  margin-top: 0.5em;
+}
+
+.list {
+  margin: 0;
+  padding-left: 1.25em;
 }

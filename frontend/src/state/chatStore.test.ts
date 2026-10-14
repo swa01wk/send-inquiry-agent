@@ -23,6 +23,57 @@ describe('chatReducer', () => {
     expect(state.messages[0].text).toBe('Hello world')
   })
 
+  it('merges overlapping confirm_fields cards by key', () => {
+    let state: ChatState = {
+      ...initialChatState,
+      messages: [{ id: 'm1', role: 'assistant', text: 'Hi', cardIds: ['confirm-1'] }],
+      cards: {
+        'confirm-1': {
+          card_id: 'confirm-1',
+          card_type: 'confirm_fields',
+          message_id: 'm1',
+          payload: {
+            title: 'Company',
+            fields: [
+              {
+                key: 'company_name',
+                label: 'Company name',
+                display: 'Acme',
+                source: 'verified',
+                confirmed: false,
+              },
+            ],
+            all_confirmed: false,
+          },
+        },
+      },
+    }
+    state = reduceSse(state, {
+      event: 'ui_card',
+      data: {
+        card_id: 'confirm-2',
+        card_type: 'confirm_fields',
+        message_id: 'm2',
+        payload: {
+          title: 'Company',
+          fields: [
+            {
+              key: 'company_name',
+              label: 'Company name',
+              display: 'Acme',
+              source: 'verified',
+              confirmed: true,
+            },
+          ],
+          all_confirmed: true,
+        },
+      },
+    })
+    expect(Object.keys(state.cards)).toEqual(['confirm-1'])
+    const card = state.cards['confirm-1']
+    expect(card.card_type === 'confirm_fields' && card.payload.all_confirmed).toBe(true)
+  })
+
   it('inserts a new card on message and replaces by card_id', () => {
     let state: ChatState = {
       ...initialChatState,

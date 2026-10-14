@@ -5,9 +5,10 @@ import styles from './DraftRow.module.css'
 interface DraftRowProps {
   field: DraftFieldRow
   flash: boolean
+  phoneKind?: 'Mobile' | 'Landline'
 }
 
-export function DraftRow({ field, flash }: DraftRowProps) {
+export function DraftRow({ field, flash, phoneKind }: DraftRowProps) {
   const hasValue = Boolean(field.display)
   return (
     <div
@@ -20,7 +21,14 @@ export function DraftRow({ field, flash }: DraftRowProps) {
         {field.source ? <SourceBadge source={field.source} confirmed={field.confirmed} /> : null}
       </div>
       <span className={hasValue ? styles.value : styles.valueEmpty}>
-        {hasValue ? field.display : 'Not yet collected'}
+        {hasValue ? (
+          <>
+            {field.display}
+            {phoneKind ? <span className={styles.phoneKind}> · {phoneKind}</span> : null}
+          </>
+        ) : (
+          'Not yet collected'
+        )}
       </span>
     </div>
   )

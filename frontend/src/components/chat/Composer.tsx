@@ -1,13 +1,21 @@
-import { useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import styles from './Composer.module.css'
 
 interface ComposerProps {
   disabled: boolean
   onSend: (text: string) => void
+  inputPlaceholder?: string
+  focusNonce?: number
 }
 
-export function Composer({ disabled, onSend }: ComposerProps) {
+export function Composer({ disabled, onSend, inputPlaceholder, focusNonce }: ComposerProps) {
   const [value, setValue] = useState('')
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    if (focusNonce === undefined || focusNonce === 0) return
+    inputRef.current?.focus()
+  }, [focusNonce])
 
   const submit = () => {
     const trimmed = value.trim()
@@ -31,11 +39,12 @@ export function Composer({ disabled, onSend }: ComposerProps) {
   return (
     <form className={styles.composer} onSubmit={onSubmit}>
       <textarea
+        ref={inputRef}
         className={styles.input}
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={onKeyDown}
-        placeholder="Type a message…"
+        placeholder={inputPlaceholder ?? 'Type a message…'}
         disabled={disabled}
         rows={1}
         aria-label="Message"

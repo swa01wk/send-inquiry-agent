@@ -128,6 +128,8 @@ export interface SuccessPayload {
 export interface QuickReplyOption {
   label: string
   text: string
+  action?: 'send' | 'focus_input'
+  placeholder?: string | null
 }
 
 export interface QuickRepliesPayload {

@@ -195,10 +195,10 @@ At the start of each turn the frontend clears the previous `quick_replies` chips
 | `confirm_fields` | `{title, fields:[{key, label, display, source, confirmed}], all_confirmed}` |
 | `mall_picker` | `{city:{id,label}, malls:[{id,name}], selected:[id], min_select:1}` |
 | `otp_input` | `{sent_to:{mobile_masked, email_masked}, attempts_left, verified, code_length:4}` |
-| `document_upload` | `{docs:[{doc_type,label,required,uploaded,file_name,size_bytes}], required_uploaded, required_total, allowed_extensions, max_mb}` |
+| `document_upload` | `{docs:[{doc_type,label,required,uploaded,file_name,size_bytes}], required_uploaded, required_total, allowed_extensions (dotted, e.g. `.pdf`), max_mb}` |
 | `review` | `{groups:[{title, rows:[{key,label,display,source,confirmed,required}]}], documents:[...], checks:Checks, can_submit, terms_accepted, blockers:[str]}` |
 | `success` | `{reference, tracking_url, steps:[{label, detail, state}]}` |
-| `quick_replies` | `{options:[{label, text}]}` |
+| `quick_replies` | `{options:[{label, text, action?: "send" \| "focus_input", placeholder?: string}]}` — default `action` is `send` |
 
 ### `DraftSummary`
 ```json
