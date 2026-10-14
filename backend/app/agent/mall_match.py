@@ -17,9 +17,39 @@ _MALL_STANDALONE_RE = re.compile(
     r"\b([A-Z][A-Za-z0-9'\-\s]{1,40}Mall(?:\s+[A-Z0-9])?)\b",
 )
 
+_GENERIC_MALL_LEADERS = frozenset(
+    {
+        "a",
+        "an",
+        "the",
+        "your",
+        "our",
+        "my",
+        "any",
+        "one",
+        "this",
+        "that",
+        "which",
+        "every",
+        "each",
+        "some",
+        "another",
+    }
+)
+
 
 def _normalize_phrase(text: str) -> str:
     return re.sub(r"\s+", " ", text.strip().lower())
+
+
+def _is_plausible_mall_name(phrase: str) -> bool:
+    words = phrase.split()
+    if not words:
+        return False
+    if words[0].lower() in _GENERIC_MALL_LEADERS:
+        return False
+    has_capital = any(word[0].isupper() and word.lower() != "mall" for word in words if word)
+    return has_capital
 
 
 def extract_mall_phrases(user_text: str) -> list[str]:
@@ -28,12 +58,16 @@ def extract_mall_phrases(user_text: str) -> list[str]:
     phrases: list[str] = []
     for match in _MALL_AT_IN_RE.finditer(user_text):
         phrase = match.group(1).strip()
+        if not _is_plausible_mall_name(phrase):
+            continue
         key = _normalize_phrase(phrase)
         if key not in seen:
             seen.add(key)
             phrases.append(phrase)
     for match in _MALL_STANDALONE_RE.finditer(user_text):
         phrase = match.group(1).strip()
+        if not _is_plausible_mall_name(phrase):
+            continue
         key = _normalize_phrase(phrase)
         if key not in seen:
             seen.add(key)

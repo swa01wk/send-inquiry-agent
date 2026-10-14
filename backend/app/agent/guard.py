@@ -19,7 +19,7 @@ from app.agent.runtime import AgentRuntime
 from app.agent.state import AgentState
 from app.api.cards import build_document_upload_card, build_review_card
 from app.api.schemas import UiCard
-from app.domain.models import FieldKey, FieldValue, InquiryDraft
+from app.domain.models import FieldKey, FieldValue, InquiryDraft, Source
 from app.domain.rules import compute_phase
 from app.domain.summary import build_draft_summary
 
@@ -43,7 +43,6 @@ _SIGN_IN_RE = re.compile(r"sign\s*in", re.IGNORECASE)
 _CR_NUMBER_RE = re.compile(r"\b(?!05)\d{10}\b")
 _DATA_HINT_RE = re.compile(
     r"(@[\w-]+\.|\+?966|\b05\d{8}\b|\b\d{10}\b|\b(LLC|Ltd|Trading|Co\.)\b|"
-    r"[\u0600-\u06FF]{3,}|"
     r"\bmall\s+[a-z]\b|\b(kiosk|boutique|restaurant|caf[eé]|coffee|store|shop)\b|"
     r"\b\d+\s*(sqm|sq\.?\s*m|square)\b|\b\d+\s*(k|,000)\b)",
     re.IGNORECASE,
@@ -53,7 +52,18 @@ _QUESTION_START_RE = re.compile(
     re.IGNORECASE,
 )
 _CAPTURE_TOOLS = {"update_draft", "verify_cr"}
-_REASK_BRAND_RE = re.compile(r"\bbrand name\b", re.IGNORECASE)
+_ASK_WHAT_BRAND_RE = re.compile(
+    r"\bwhat(?:'s|\s+is)\s+(?:your|the)\s+brand\b",
+    re.IGNORECASE,
+)
+_TELL_BRAND_NAME_RE = re.compile(
+    r"\btell me\s+(?:your|the)\s+brand name\b",
+    re.IGNORECASE,
+)
+_BRAND_NAME_QUESTION_RE = re.compile(
+    r"[^.!\n]*\bbrand name\b[^.!\n]*[?؟]",
+    re.IGNORECASE,
+)
 _BULK_INQUIRY_RE = re.compile(
     r"@.*?(?:\+?966|\b05\d{8}\b)|(?:\+?966|\b05\d{8}\b).*?@",
     re.IGNORECASE | re.DOTALL,
@@ -102,9 +112,17 @@ def message_likely_has_inquiry_data(text: str) -> bool:
     stripped = text.strip()
     if not stripped or stripped.startswith("[ui_event]"):
         return False
-    if stripped.endswith("?") or _QUESTION_START_RE.match(stripped):
+    if stripped.endswith(("?", "؟")) or _QUESTION_START_RE.match(stripped):
         return False
     return _DATA_HINT_RE.search(stripped) is not None
+
+
+def _reply_asks_for_brand_name(ai_text: str) -> bool:
+    if _ASK_WHAT_BRAND_RE.search(ai_text):
+        return True
+    if _TELL_BRAND_NAME_RE.search(ai_text):
+        return True
+    return _BRAND_NAME_QUESTION_RE.search(ai_text) is not None
 
 
 def _field_has_value(draft: Any, key: FieldKey) -> bool:
@@ -153,7 +171,7 @@ def _incomplete_bulk_capture_note(state: AgentState, phase: str) -> str | None:
 
 
 def _brand_reask_note(state: AgentState, ai_text: str) -> str | None:
-    if not _REASK_BRAND_RE.search(ai_text):
+    if not _reply_asks_for_brand_name(ai_text):
         return None
     if not _field_has_value(state["draft"], FieldKey.BRAND_NAME_EN):
         return None
@@ -208,13 +226,28 @@ def _clear_malls_for_unknown_name(
 ) -> tuple[InquiryDraft, str | None, bool]:
     """Drop mall ids when the user named a mall that is not in seed data."""
     unmatched = unmatched_mall_phrases(user_text, master)
-    if not unmatched or not _field_has_value(draft, FieldKey.MALLS):
+    if not unmatched:
         return draft, None, False
     if "show_mall_picker" in _tools_called(turn_messages):
         return draft, None, False
+    malls_field = draft.fields[FieldKey.MALLS]
+    label = unmatched[0]
+    note = (
+        f"{GUARD_PREFIX} The user named «{label}», which is not in seeded mall data. "
+        "Do not write a different mall id. Leave malls empty or call show_mall_picker "
+        "for the city they mean, then reply."
+    )
+    if malls_field.source == Source.USER and _field_has_value(draft, FieldKey.MALLS):
+        note = (
+            f"{GUARD_PREFIX} The user named «{label}», which is not in seeded mall data. "
+            "Do not write a different mall id. Leave malls as the user already selected "
+            "or call show_mall_picker for the city they mean, then reply."
+        )
+        return draft, note, False
+    if not _field_has_value(draft, FieldKey.MALLS):
+        return draft, None, False
     cleared = draft.model_copy(deep=True)
     cleared.fields[FieldKey.MALLS] = FieldValue(value=[], source=None, confirmed=False)
-    label = unmatched[0]
     note = (
         f"{GUARD_PREFIX} The user named «{label}», which is not in seeded mall data. "
         "Do not write a different mall id. Leave malls empty or call show_mall_picker "

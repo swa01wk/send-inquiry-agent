@@ -10,7 +10,7 @@ def test_clears_malls_when_user_named_unknown_mall() -> None:
     draft = new_inquiry_draft()
     draft, _, _ = write_fields(
         draft,
-        [(FieldKey.MALLS.value, ["riyadh-mall-a"], Source.USER)],
+        [(FieldKey.MALLS.value, ["riyadh-mall-a"], Source.DERIVED)],
         master=master,
     )
     user_text = "Bean Street kiosk at Red Sea Mall."

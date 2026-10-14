@@ -28,6 +28,18 @@ def test_brand_reask_note_when_brand_already_known() -> None:
     assert "brand name" in note.lower()
 
 
+def test_brand_reask_note_not_on_arabic_brand_statement() -> None:
+    master = load_master_data()
+    draft = new_inquiry_draft()
+    draft, _, _ = write_fields(
+        draft,
+        [(FieldKey.BRAND_NAME_EN.value, "Bean Street", Source.USER)],
+        master=master,
+    )
+    state = _state(draft, [])
+    assert _brand_reask_note(state, "Please share your Arabic brand name next.") is None
+
+
 def test_incomplete_bulk_capture_after_partial_update() -> None:
     draft = new_inquiry_draft()
     draft.cr_status = "skipped"

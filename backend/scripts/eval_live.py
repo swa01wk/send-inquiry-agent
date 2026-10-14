@@ -160,6 +160,7 @@ class LiveScenario:
     user_turns: list[str]
     evaluate: Any  # callable(session, turns, app) -> list[tuple[str, bool]]
     auto_otp: bool = True
+    setup: Any | None = None  # async (client, session_id) -> None
 
 
 def _check_cr_happy(session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
@@ -314,6 +315,51 @@ def _check_otp_chat_during_faq(session, turns: list[TurnResult], app) -> list[tu
     ]
 
 
+def _has_arabic_letters(text: str) -> bool:
+    return any("\u0600" <= ch <= "\u06FF" for ch in text)
+
+
+def _retraction_count(turns: list[TurnResult]) -> int:
+    return sum(
+        1
+        for turn in turns
+        for name, _data in turn.events
+        if name == "message_remove"
+    )
+
+
+def _check_arabic_user(session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
+    draft = session.draft
+    required = [
+        FieldKey.BRAND_NAME_EN,
+        FieldKey.UNIT_TYPE,
+        FieldKey.EMAIL,
+        FieldKey.MALLS,
+        FieldKey.FIRST_NAME,
+        FieldKey.LAST_NAME,
+    ]
+    missing = [k.value for k in required if not draft.fields[k].value]
+    has_phone = bool(draft.fields[FieldKey.MOBILE].value or draft.fields[FieldKey.LANDLINE].value)
+    replies_arabic = all(_has_arabic_letters(t.assistant) for t in turns if t.assistant.strip())
+    no_retractions = _retraction_count(turns) == 0
+    otp_shown = any(_cards(t.events, "otp_input") for t in turns)
+    return [
+        ("replies contain Arabic letters", replies_arabic),
+        ("no message_remove events", no_retractions),
+        (f"required fields filled (missing: {missing or 'none'})", not missing and has_phone),
+        ("OTP card shown", otp_shown),
+    ]
+
+
+def _check_generic_mall_after_picker(session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
+    malls_raw = session.draft.fields[FieldKey.MALLS].value
+    malls = list(malls_raw) if isinstance(malls_raw, list) else []
+    return [
+        ("malls still set after generic phrase", malls == ["riyadh-mall-a"]),
+        ("no message_remove events", _retraction_count(turns) == 0),
+    ]
+
+
 def _check_injection(session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
     return [
         ("no reference set", session.draft.reference is None),
@@ -324,6 +370,15 @@ def _check_injection(session, turns: list[TurnResult], _app=None) -> list[tuple[
             or session.draft.reference is None,
         ),
     ]
+
+
+async def _setup_riyadh_mall_picker(client: AsyncClient, session_id: str) -> None:
+    await _action(
+        client,
+        session_id,
+        "select_malls",
+        {"mall_ids": ["riyadh-mall-a"]},
+    )
 
 
 SCENARIOS: list[LiveScenario] = [
@@ -424,6 +479,22 @@ SCENARIOS: list[LiveScenario] = [
         _check_otp_chat_during_faq,
         auto_otp=False,
     ),
+    LiveScenario(
+        "Arabic user",
+        [
+            "السلام عليكم، نريد افتتاح كشك قهوة",
+            "رقم السجل 1010123456",
+            "اسم العلامة بين ستريت، كشك قهوة مختصة في Riyadh Mall A",
+            "سارة علي، sara@beanstreet.example، 0501234567",
+        ],
+        _check_arabic_user,
+    ),
+    LiveScenario(
+        "Generic mall phrase after picking",
+        ["We'd like to be near the food court in the mall."],
+        _check_generic_mall_after_picker,
+        setup=_setup_riyadh_mall_picker,
+    ),
 ]
 
 
@@ -431,6 +502,9 @@ async def run_scenario(client: AsyncClient, app, scenario: LiveScenario) -> Scen
     created = await client.post("/api/sessions")
     session_id = created.json()["session_id"]
     turns: list[TurnResult] = []
+
+    if scenario.setup is not None:
+        await scenario.setup(client, session_id)
 
     for user_text in scenario.user_turns:
         events = await _message(client, session_id, user_text)
@@ -487,7 +561,9 @@ async def main() -> int:
 
     passed = sum(1 for r in results if r.passed)
     total = len(results)
+    retractions = sum(_retraction_count(r.turns) for r in results)
     print(f"\nSummary: {passed}/{total} scenarios passed all checks.")
+    print(f"Total retractions (message_remove): {retractions}")
     return 0 if passed >= total - 1 else 1
 
 

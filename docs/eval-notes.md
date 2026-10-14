@@ -25,6 +25,8 @@ Requires `OPENAI_API_KEY` and `OPENAI_MODEL`. Target: all scenarios but at most 
 | 2026-10-14 | **10/12** (live eval run 2) | Same commit; failures: **4 many fields** (bulk capture), **Hesitation** (sales_category confirmed despite doubt). New scenarios **Unknown mall** and **Chat during OTP** passed both runs. |
 | 2026-10-14 | **12/12** then **11/12** | Doubt policy + guard bulk capture + brand re-ask. Fixed **4 many fields** and **Hesitation** both runs; one **Unknown mall** flake (model saved a mall id without picker). |
 | 2026-10-14 | **12/12** + **11/12** | `mall_match` + guard strip / `update_draft` reject on unknown mall names. **Unknown mall** passes both runs; run 2 missed **C** malls once (unrelated LLM flake). |
+| 2026-10-14 | **14/14** (retractions: **2**) | Guard heuristics: no Arabic bulk-data hint; generic “the mall” ignored; brand re-ask only on explicit ask; user/picker malls not cleared. New eval: **Arabic user**, **Generic mall phrase after picking**. |
+| 2026-10-14 | **13/14** (retractions: **3**) | Same commit; **Arabic user** missed `brand_name_en` once (model kept Arabic-only brand). **Generic mall phrase after picking** passed both runs. |
 
 ## Prompt changes (2026-10-14, fix/conversational-friendliness)
 
