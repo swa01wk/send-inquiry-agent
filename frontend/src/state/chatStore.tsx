@@ -71,6 +71,12 @@ function findLastAssistantMessageId(messages: ChatMessage[]): string | null {
   return null
 }
 
+/** Cards still in state but not linked to any message (e.g. after guard retracted a bubble). */
+function orphanCardIds(state: ChatState): string[] {
+  const attached = new Set(state.messages.flatMap((m) => m.cardIds))
+  return Object.keys(state.cards).filter((id) => !attached.has(id))
+}
+
 function attachCardToMessages(messages: ChatMessage[], card: UiCard): ChatMessage[] {
   const targetId = card.message_id ?? findLastAssistantMessageId(messages)
   if (!targetId) return messages
@@ -93,6 +99,7 @@ function applyUiCard(state: ChatState, card: UiCard): ChatState {
     return {
       ...state,
       cards: { ...state.cards, [card.card_id]: card },
+      messages: attachCardToMessages(state.messages, card),
     }
   }
 
@@ -119,7 +126,12 @@ function applySseEvent(state: ChatState, event: SseEvent): ChatState {
         awaitingReply: false,
         messages: [
           ...state.messages,
-          { id: message_id, role: 'assistant', text, cardIds: [] },
+          {
+            id: message_id,
+            role: 'assistant',
+            text,
+            cardIds: orphanCardIds(state),
+          },
         ],
       }
     }
@@ -128,12 +140,23 @@ function applySseEvent(state: ChatState, event: SseEvent): ChatState {
     case 'message_remove': {
       const removed = state.messages.find((m) => m.id === event.data.message_id)
       if (!removed) return state
-      const cards = { ...state.cards }
-      for (const cardId of removed.cardIds) delete cards[cardId]
+      // Keep cards (OTP, documents, etc.) — the reply bubble is retracted, not the user's task.
+      let messages = state.messages.filter((m) => m.id !== event.data.message_id)
+      const orphanIds = removed.cardIds.filter((id) => state.cards[id])
+      const anchorId = findLastAssistantMessageId(messages)
+      if (anchorId && orphanIds.length > 0) {
+        messages = messages.map((m) => {
+          if (m.id !== anchorId) return m
+          const cardIds = [...m.cardIds]
+          for (const id of orphanIds) {
+            if (!cardIds.includes(id)) cardIds.push(id)
+          }
+          return { ...m, cardIds }
+        })
+      }
       return {
         ...state,
-        cards,
-        messages: state.messages.filter((m) => m.id !== event.data.message_id),
+        messages,
         awaitingReply: state.status === 'streaming',
       }
     }

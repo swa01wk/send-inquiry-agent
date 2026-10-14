@@ -22,6 +22,7 @@ if str(_BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(_BACKEND_ROOT))
 
 import httpx
+from app.agent.eval_checks import off_topic_offers_continue
 from app.agent.graph import build_graph
 from app.agent.model import get_chat_model
 from app.config import get_settings
@@ -276,7 +277,7 @@ def _check_off_topic(_session, turns: list[TurnResult]) -> list[tuple[str, bool]
     text = turns[-1].assistant.lower() if turns else ""
     return [
         ("polite decline", "sorry" in text or "here to help" in text or "leasing" in text),
-        ("offer to continue", "continue" in text or "inquiry" in text),
+        ("offer to continue", off_topic_offers_continue(text)),
     ]
 
 

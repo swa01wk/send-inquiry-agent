@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { confirmFieldsCardExample, quickRepliesCardExample } from '../mocks/fixtures'
+import {
+  confirmFieldsCardExample,
+  otpCardExample,
+  quickRepliesCardExample,
+} from '../mocks/fixtures'
 import type { UiCard } from '../types/contracts'
 import { chatReducer, initialChatState, reduceSse, type ChatState } from './chatStore'
 
@@ -99,6 +103,22 @@ describe('streaming and retraction', () => {
     expect(state.awaitingReply).toBe(true)
     state = reduceSse(state, { event: 'token', data: { message_id: 'good', text: 'Not yet' } })
     expect(state.messages.map((m) => m.id)).toEqual(['good'])
+  })
+
+  it('keeps cards when a reply bubble is retracted and reattaches them', () => {
+    let state: ChatState = {
+      ...initialChatState,
+      status: 'streaming',
+      messages: [
+        { id: 'keep', role: 'assistant', text: 'Earlier', cardIds: [] },
+        { id: 'bad', role: 'assistant', text: 'Wrong claim', cardIds: ['otp-1'] },
+      ],
+      cards: { 'otp-1': { ...otpCardExample, card_id: 'otp-1', message_id: 'bad' } },
+    }
+    state = reduceSse(state, { event: 'message_remove', data: { message_id: 'bad' } })
+    expect(state.cards['otp-1']).toBeDefined()
+    expect(state.messages.find((m) => m.id === 'bad')).toBeUndefined()
+    expect(state.messages.find((m) => m.id === 'keep')?.cardIds).toEqual(['otp-1'])
   })
 
   it('ignores removal of an unknown message', () => {
