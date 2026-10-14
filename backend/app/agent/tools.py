@@ -12,7 +12,7 @@ from langgraph.types import Command
 from pydantic import BaseModel
 
 from app.agent.blockers import format_blockers
-from app.agent.brand_infer import fill_missing_brand_name_en
+from app.agent.brand_infer import fill_brands_from_user_message
 from app.agent.confirm_policy import keys_blocked_from_confirmation
 from app.agent.mall_match import fill_mentioned_malls, filter_mall_ids
 from app.agent.runtime import runtime_from_config
@@ -265,9 +265,10 @@ def update_draft(
         return _tool_result(runtime, draft=draft, content=msg)
 
     updated, written, errors = draft_ops.write_fields(draft, entries, master=rt.master)
-    updated, brand_en_filled = fill_missing_brand_name_en(updated, user_text)
-    if brand_en_filled and FieldKey.BRAND_NAME_EN.value not in written:
-        written = [*written, FieldKey.BRAND_NAME_EN.value]
+    updated, brands_filled = fill_brands_from_user_message(updated, user_text)
+    for key in brands_filled:
+        if key not in written:
+            written = [*written, key]
     updated, malls_filled = fill_mentioned_malls(updated, user_text, rt.master)
     if malls_filled and FieldKey.MALLS.value not in written:
         written = [*written, FieldKey.MALLS.value]

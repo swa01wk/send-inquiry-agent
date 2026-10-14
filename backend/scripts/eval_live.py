@@ -23,6 +23,7 @@ if str(_BACKEND_ROOT) not in sys.path:
 
 import httpx
 from app.agent.eval_checks import off_topic_offers_continue
+from app.agent.guard import reply_asks_for_brand_name
 from app.agent.graph import build_graph
 from app.agent.model import get_chat_model
 from app.config import get_settings
@@ -194,7 +195,7 @@ def _check_many_fields(session, turns: list[TurnResult], _app=None) -> list[tupl
         FieldKey.MOBILE,
     ]
     filled = all(draft.fields[k].value for k in keys)
-    reask = any("brand name" in t.assistant.lower() for t in turns[1:])
+    reask = any(reply_asks_for_brand_name(t.assistant) for t in turns[1:])
     return [
         ("bulk fields captured", filled),
         ("did not re-ask brand", not reask),

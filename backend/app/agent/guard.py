@@ -13,7 +13,7 @@ from typing import Any
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langgraph.config import get_stream_writer
 
-from app.agent.brand_infer import fill_missing_brand_name_en
+from app.agent.brand_infer import fill_brands_from_user_message, user_message_names_brand
 from app.agent.confirm_policy import keys_blocked_from_confirmation
 from app.agent.mall_match import fill_mentioned_malls, unknown_mall_phrases
 from app.agent.runtime import AgentRuntime
@@ -118,12 +118,16 @@ def message_likely_has_inquiry_data(text: str) -> bool:
     return _DATA_HINT_RE.search(stripped) is not None
 
 
-def _reply_asks_for_brand_name(ai_text: str) -> bool:
+def reply_asks_for_brand_name(ai_text: str) -> bool:
     if _ASK_WHAT_BRAND_RE.search(ai_text):
         return True
     if _TELL_BRAND_NAME_RE.search(ai_text):
         return True
     return _BRAND_NAME_QUESTION_RE.search(ai_text) is not None
+
+
+def _reply_asks_for_brand_name(ai_text: str) -> bool:
+    return reply_asks_for_brand_name(ai_text)
 
 
 def _field_has_value(draft: Any, key: FieldKey) -> bool:
@@ -174,7 +178,15 @@ def _incomplete_bulk_capture_note(state: AgentState, phase: str) -> str | None:
 def _brand_reask_note(state: AgentState, ai_text: str) -> str | None:
     if not _reply_asks_for_brand_name(ai_text):
         return None
-    if not _field_has_value(state["draft"], FieldKey.BRAND_NAME_EN):
+    draft = state["draft"]
+    user_text, _ = _current_turn(state)
+    if _field_has_value(draft, FieldKey.BRAND_NAME_EN) or _field_has_value(
+        draft, FieldKey.BRAND_NAME_AR
+    ):
+        known = True
+    else:
+        known = user_message_names_brand(user_text)
+    if not known:
         return None
     return (
         f"{GUARD_PREFIX} The user already provided a brand name. "
@@ -259,11 +271,10 @@ def _unconfirm_doubted_fields(state: AgentState) -> tuple[Any, list[str]]:
 def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
     draft, doubt_unconfirmed = _unconfirm_doubted_fields(state)
     user_text, turn_messages = _current_turn({**state, "draft": draft})
-    draft, brand_en_filled = fill_missing_brand_name_en(draft, user_text)
+    draft, brands_filled = fill_brands_from_user_message(draft, user_text)
     draft, malls_filled = fill_mentioned_malls(draft, user_text, runtime.master)
     draft_changed = list(doubt_unconfirmed)
-    if brand_en_filled:
-        draft_changed.append(FieldKey.BRAND_NAME_EN.value)
+    draft_changed.extend(brands_filled)
     if malls_filled:
         draft_changed.append(FieldKey.MALLS.value)
     phase = compute_phase(draft).value
