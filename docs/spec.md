@@ -145,6 +145,7 @@ After the agent's final reply each turn:
 2. Attach the card for a phase the user just entered if it hasn't been shown: `documents` → `document_upload`, `review` → `review`. (`verifying` cards come from `send_otp`.)
 3. If the reply claims the inquiry was submitted (regex on "submitted|sent your inquiry|reference") while `reference` is None → add a system note and route back to `agent` once.
 4. If phase is `existing_account`, ensure the reply points to Sign In.
+5. When `malls` is empty and the user's message names one or more seed malls (same mention rules as `filter_mall_ids`), write those mall ids as `user` (see `fill_mentioned_malls` in `mall_match.py`). Also runs after `update_draft` when malls were omitted.
 
 ## 6. REST API (`/api`)
 

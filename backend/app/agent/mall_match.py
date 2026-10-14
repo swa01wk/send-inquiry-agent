@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import re
 
+from app.domain import draft_ops
 from app.domain.master import MasterData
+from app.domain.models import FieldKey, InquiryDraft, Source
 
 # "at Red Sea Mall", "in Riyadh Mall A", "at Mall of Arabia"
 _MALL_AT_IN_RE = re.compile(
@@ -108,6 +110,43 @@ def user_message_mentions_mall(user_text: str, mall_name: str) -> bool:
     if not tokens:
         return name in msg
     return all(token in msg for token in tokens)
+
+
+def mentioned_seed_mall_ids(user_text: str, master: MasterData) -> list[str]:
+    """Seed mall ids the user's message names (order stable, deduped)."""
+    if not user_text.strip() or user_text.startswith("[ui_event]"):
+        return []
+    seen: set[str] = set()
+    ids: list[str] = []
+    for mall in master.malls:
+        if mall.id in seen:
+            continue
+        if user_message_mentions_mall(user_text, mall.name):
+            seen.add(mall.id)
+            ids.append(mall.id)
+    return ids
+
+
+def fill_mentioned_malls(
+    draft: InquiryDraft,
+    user_text: str,
+    master: MasterData,
+) -> tuple[InquiryDraft, bool]:
+    """When malls is empty and the user named seed mall(s), write matching ids as user."""
+    raw = draft.fields[FieldKey.MALLS].value
+    if isinstance(raw, list) and raw:
+        return draft, False
+    ids = mentioned_seed_mall_ids(user_text, master)
+    if not ids:
+        return draft, False
+    updated, written, errors = draft_ops.write_fields(
+        draft,
+        [(FieldKey.MALLS.value, ids, Source.USER)],
+        master=master,
+    )
+    if FieldKey.MALLS.value in written and FieldKey.MALLS.value not in errors:
+        return updated, True
+    return draft, False
 
 
 def filter_mall_ids(

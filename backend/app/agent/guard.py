@@ -16,7 +16,7 @@ from langgraph.config import get_stream_writer
 from app.agent.brand_infer import fill_missing_brand_name_en
 from app.agent.confirm_policy import keys_blocked_from_confirmation
 from app.agent.guard_shown import field_shown_in_reply
-from app.agent.mall_match import unknown_mall_phrases
+from app.agent.mall_match import fill_mentioned_malls, unknown_mall_phrases
 from app.agent.runtime import AgentRuntime
 from app.agent.state import AgentState
 from app.api.cards import build_document_upload_card, build_review_card
@@ -284,9 +284,12 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
     draft, doubt_unconfirmed = _unconfirm_doubted_fields(state)
     user_text, turn_messages = _current_turn({**state, "draft": draft})
     draft, brand_en_filled = fill_missing_brand_name_en(draft, user_text)
+    draft, malls_filled = fill_mentioned_malls(draft, user_text, runtime.master)
     draft_changed = list(doubt_unconfirmed)
     if brand_en_filled:
         draft_changed.append(FieldKey.BRAND_NAME_EN.value)
+    if malls_filled:
+        draft_changed.append(FieldKey.MALLS.value)
     phase = compute_phase(draft).value
     cards_shown = list(state["cards_shown"])
     guard_retries = state["guard_retries"]

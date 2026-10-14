@@ -1,11 +1,30 @@
 from app.agent.mall_match import (
     extract_mall_phrases,
+    fill_mentioned_malls,
     filter_mall_ids,
+    mentioned_seed_mall_ids,
     phrase_matches_seed_mall,
     unknown_mall_phrases,
     user_message_mentions_mall,
 )
+from app.domain.draft_ops import new_inquiry_draft
 from app.domain.master import load_master_data
+from app.domain.models import FieldKey
+
+
+def test_mentioned_seed_mall_ids_mall_of_arabia() -> None:
+    master = load_master_data()
+    text = "We're opening a Zara Home store at Mall of Arabia."
+    assert mentioned_seed_mall_ids(text, master) == ["mall-of-arabia"]
+
+
+def test_fill_mentioned_malls_on_empty_draft() -> None:
+    master = load_master_data()
+    draft = new_inquiry_draft()
+    text = "We're opening a Zara Home store at Mall of Arabia."
+    updated, filled = fill_mentioned_malls(draft, text, master)
+    assert filled is True
+    assert updated.fields[FieldKey.MALLS].value == ["mall-of-arabia"]
 
 
 def test_mall_of_arabia_mentioned() -> None:

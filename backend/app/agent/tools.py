@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from app.agent.blockers import format_blockers
 from app.agent.brand_infer import fill_missing_brand_name_en
 from app.agent.confirm_policy import keys_blocked_from_confirmation
-from app.agent.mall_match import filter_mall_ids
+from app.agent.mall_match import fill_mentioned_malls, filter_mall_ids
 from app.agent.runtime import runtime_from_config
 from app.agent.state import AgentState
 from app.api.cards import (
@@ -253,6 +253,14 @@ def update_draft(
         entries.append((item.key, item.value, Source(item.source)))
 
     if not entries and rejected:
+        updated, malls_filled = fill_mentioned_malls(draft, user_text, rt.master)
+        if malls_filled:
+            return _tool_result(
+                runtime,
+                draft=updated,
+                content="Updated: malls. Rejected: " + "; ".join(rejected),
+                changed_keys=[FieldKey.MALLS.value],
+            )
         msg = "No fields written. " + "; ".join(rejected)
         return _tool_result(runtime, draft=draft, content=msg)
 
@@ -260,6 +268,9 @@ def update_draft(
     updated, brand_en_filled = fill_missing_brand_name_en(updated, user_text)
     if brand_en_filled and FieldKey.BRAND_NAME_EN.value not in written:
         written = [*written, FieldKey.BRAND_NAME_EN.value]
+    updated, malls_filled = fill_mentioned_malls(updated, user_text, rt.master)
+    if malls_filled and FieldKey.MALLS.value not in written:
+        written = [*written, FieldKey.MALLS.value]
     derived_keys = {item.key for item in fields if item.source == "derived"}
     derived_written = [key for key in written if key in derived_keys]
 
