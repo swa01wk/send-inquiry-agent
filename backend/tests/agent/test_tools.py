@@ -9,8 +9,9 @@ from app.agent.tools import (
     verify_cr,
 )
 from app.domain.draft_ops import new_inquiry_draft, write_fields
-from app.domain.models import FieldKey, Source
+from app.domain.models import FieldKey, FieldValue, Source
 from app.domain.rules import compute_phase
+from langchain_core.messages import HumanMessage
 from langgraph.types import Command
 from tests.agent.conftest import make_tool_runtime
 
@@ -40,6 +41,18 @@ async def test_verify_cr_new_emits_confirm_card(agent_runtime, base_state, strea
     )
     assert result.update["draft"].cr_status == "new"
     assert any(e.get("type") == "ui_card" for e in events)
+
+
+@pytest.mark.asyncio
+async def test_verify_cr_fawaz_does_not_fill_brand_en(agent_runtime, base_state, stream_events):
+    events, writer = stream_events
+    runtime = make_tool_runtime(state=base_state, agent_runtime=agent_runtime, writer=writer)
+    result = verify_cr.invoke(
+        {"cr_number": "1010222222", "state": base_state, "runtime": runtime},
+    )
+    draft = result.update["draft"]
+    assert draft.fields[FieldKey.COMPANY_NAME].value == "Fawaz Alhokair Trading Co."
+    assert draft.fields[FieldKey.BRAND_NAME_EN].value is None
 
 
 def test_skip_cr_after_unknown(agent_runtime, base_state, stream_events):
@@ -101,3 +114,21 @@ def test_confirm_fields_already_confirmed(agent_runtime, stream_events):
         {"keys": [FieldKey.COMPANY_NAME.value], "state": state, "runtime": runtime},
     )
     assert "No fields confirmed" in result.update["messages"][0].content
+
+
+def test_confirm_fields_skips_category_when_user_doubts(agent_runtime, stream_events):
+    draft = new_inquiry_draft()
+    draft.fields[FieldKey.SALES_CATEGORY] = FieldValue(
+        value="fnb_cafe",
+        source=Source.DERIVED,
+        confirmed=False,
+    )
+    state = _state_with_draft(draft)
+    state["messages"] = [HumanMessage(content="Hmm, not sure about the category")]
+    events, writer = stream_events
+    runtime = make_tool_runtime(state=state, agent_runtime=agent_runtime, writer=writer)
+    result = confirm_fields.invoke(
+        {"keys": [FieldKey.SALES_CATEGORY.value], "state": state, "runtime": runtime},
+    )
+    assert "No fields confirmed" in result.update["messages"][0].content
+    assert result.update["draft"].fields[FieldKey.SALES_CATEGORY].confirmed is False

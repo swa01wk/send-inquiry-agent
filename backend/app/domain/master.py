@@ -22,6 +22,7 @@ class Mall(BaseModel):
     id: str
     name: str
     city: str
+    aliases: list[str] = Field(default_factory=list)
 
 
 class MasterData(BaseModel):

@@ -27,6 +27,24 @@ export async function createSession(): Promise<CreateSessionResponse> {
   return res.json() as Promise<CreateSessionResponse>
 }
 
+export type MasterListItem =
+  | { id: string; label: string }
+  | { id: string; name: string; city?: string }
+  | { id: string; label: string; code?: string }
+
+export async function fetchMasterKind(kind: string): Promise<MasterListItem[]> {
+  if (MOCK_MODE) {
+    return []
+  }
+
+  const res = await fetch(`${API_BASE}/api/master/${kind}`)
+  if (!res.ok) {
+    const err = await parseError(res)
+    throw Object.assign(new Error(err.message), { code: err.code })
+  }
+  return res.json() as Promise<MasterListItem[]>
+}
+
 export async function fetchDraft(sessionId: string): Promise<DraftSummary> {
   if (MOCK_MODE) {
     const session = await mockCreateSession()

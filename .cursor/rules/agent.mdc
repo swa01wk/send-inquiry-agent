@@ -6,6 +6,8 @@ alwaysApply: false
 
 # Agent rules
 
+Deterministic parsers may write to the draft only on exact, unambiguous matches (e.g. full mall name). Otherwise they produce a guard note for the agent, or write `source=derived` (unconfirmed) so the agent shows the value before it can be confirmed. Never write `source=user` from a heuristic.
+
 ## Graph
 ```
 START → agent ─(tool calls)→ tools → agent

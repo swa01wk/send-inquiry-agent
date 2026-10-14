@@ -18,7 +18,6 @@ from app.agent.prompts import build_system_message
 from app.agent.runtime import runtime_from_config
 from app.agent.sequential_tool_node import build_sequential_tool_node
 from app.agent.state import AgentState
-from app.agent.tool_choice import invoke_tool_choice
 from app.agent.tools import TOOLS
 from app.domain.rules import compute_phase
 
@@ -31,10 +30,14 @@ def build_graph(
 
     def agent_node(state: AgentState, config: RunnableConfig) -> dict[str, Any]:
         runtime = runtime_from_config(config)
-        system = build_system_message(state["draft"], runtime.master)
-        tool_choice = invoke_tool_choice(state)
-        model = chat_model.bind(**tool_choice) if tool_choice else chat_model
-        response = model.invoke([system, *state["messages"]], config=config)
+        system = build_system_message(
+            state["draft"],
+            runtime.master,
+            state["cards_shown"],
+        )
+        # No forced tool choice: questions like "which malls are in Riyadh?" must get an
+        # answer, not a forced save. The guard catches the rare missed save instead.
+        response = chat_model.invoke([system, *state["messages"]], config=config)
         phase = compute_phase(state["draft"]).value
         return {"messages": [response], "phase": phase, "retry_agent": False}
 

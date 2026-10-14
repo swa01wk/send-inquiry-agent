@@ -24,8 +24,10 @@ export function ChatPanel({ draftPanelVisible, onToggleDraftPanel }: ChatPanelPr
     status,
     error,
     isStreaming,
+    awaitingReply,
     sendMessage,
     sendAction,
+    editReviewField,
     uploadDocument,
     removeDocument,
     retry,
@@ -37,11 +39,12 @@ export function ChatPanel({ draftPanelVisible, onToggleDraftPanel }: ChatPanelPr
   const cardActions = useMemo(
     () => ({
       sendAction,
+      editReviewField,
       uploadDocument,
       removeDocument,
       mallsConfirmed,
     }),
-    [sendAction, uploadDocument, removeDocument, mallsConfirmed],
+    [sendAction, editReviewField, uploadDocument, removeDocument, mallsConfirmed],
   )
 
   const errorMessage = error?.message ?? GENERIC_ERROR
@@ -60,6 +63,7 @@ export function ChatPanel({ draftPanelVisible, onToggleDraftPanel }: ChatPanelPr
         messages={messages}
         cards={cards}
         isStreaming={isStreaming}
+        showTyping={isStreaming && awaitingReply}
         cardActions={cardActions}
       />
       {status === 'error' ? (

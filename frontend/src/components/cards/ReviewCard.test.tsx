@@ -7,7 +7,7 @@ import { ReviewCard } from './ReviewCard'
 describe('ReviewCard', () => {
   it('keeps submit disabled until consent and saves edit', async () => {
     const user = userEvent.setup()
-    const onEditField = vi.fn()
+    const onEditField = vi.fn(async () => true)
     const onSubmit = vi.fn()
     if (reviewCardExample.card_type !== 'review') throw new Error('bad fixture')
 

@@ -20,3 +20,9 @@ def test_cr_new_without_details():
     assert result.exists is False
     assert result.company_name is None
     assert result.company_address is None
+
+
+def test_cr_fawaz_alhokair():
+    result = MockCrService().verify("1010222222")
+    assert result.exists is False
+    assert result.company_name == "Fawaz Alhokair Trading Co."

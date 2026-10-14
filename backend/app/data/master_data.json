@@ -26,7 +26,9 @@
     {"id": "riyadh-mall-d", "name": "Riyadh Mall D", "city": "riyadh"},
     {"id": "jeddah-mall-a", "name": "Jeddah Mall A", "city": "jeddah"},
     {"id": "jeddah-mall-b", "name": "Jeddah Mall B", "city": "jeddah"},
-    {"id": "dammam-mall-a", "name": "Dammam Mall A", "city": "dammam"}
+    {"id": "mall-of-arabia", "name": "Mall of Arabia", "city": "jeddah", "aliases": ["Arabia Mall"]},
+    {"id": "dammam-mall-a", "name": "Dammam Mall A", "city": "dammam"},
+    {"id": "mall-of-dhahran", "name": "Mall of Dhahran", "city": "dammam"}
   ],
   "lease_periods": [
     {"id": "1y", "label": "1 year"},

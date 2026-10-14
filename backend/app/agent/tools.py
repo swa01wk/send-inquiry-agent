@@ -5,13 +5,16 @@ from __future__ import annotations
 import json
 from typing import Annotated, Any, Literal
 
-from langchain_core.messages import ToolMessage
+from langchain_core.messages import HumanMessage, ToolMessage
 from langchain_core.tools import tool
 from langgraph.prebuilt.tool_node import InjectedState, ToolRuntime
 from langgraph.types import Command
 from pydantic import BaseModel
 
 from app.agent.blockers import format_blockers
+from app.agent.brand_infer import fill_brands_from_user_message
+from app.agent.confirm_policy import keys_blocked_from_confirmation
+from app.agent.mall_match import fill_mentioned_malls, filter_mall_ids
 from app.agent.runtime import runtime_from_config
 from app.agent.state import AgentState
 from app.api.cards import (
@@ -220,6 +223,7 @@ def update_draft(
     entries: list[tuple[str, object, Source]] = []
     rejected: list[str] = []
 
+    user_text = _last_user_text(state)
     for item in fields:
         if item.key in PROTECTED_WRITE_KEYS:
             rejected.append(f"{item.key}: protected")
@@ -227,13 +231,47 @@ def update_draft(
         if item.source not in ("user", "derived"):
             rejected.append(f"{item.key}: invalid source")
             continue
+        if item.key == FieldKey.MALLS.value:
+            raw_ids = item.value if isinstance(item.value, list) else []
+            existing_raw = draft.fields[FieldKey.MALLS].value
+            existing_ids = list(existing_raw) if isinstance(existing_raw, list) else []
+            accepted, mall_rejected = filter_mall_ids(
+                [str(m) for m in raw_ids],
+                [str(m) for m in existing_ids],
+                user_text,
+                rt.master,
+            )
+            if mall_rejected:
+                rejected.append(
+                    f"{item.key}: mall_not_mentioned ({', '.join(mall_rejected)}); "
+                    "use show_mall_picker for the city",
+                )
+            if not accepted:
+                continue
+            entries.append((item.key, accepted, Source(item.source)))
+            continue
         entries.append((item.key, item.value, Source(item.source)))
 
     if not entries and rejected:
+        updated, malls_filled = fill_mentioned_malls(draft, user_text, rt.master)
+        if malls_filled:
+            return _tool_result(
+                runtime,
+                draft=updated,
+                content="Updated: malls. Rejected: " + "; ".join(rejected),
+                changed_keys=[FieldKey.MALLS.value],
+            )
         msg = "No fields written. " + "; ".join(rejected)
         return _tool_result(runtime, draft=draft, content=msg)
 
     updated, written, errors = draft_ops.write_fields(draft, entries, master=rt.master)
+    updated, brands_filled = fill_brands_from_user_message(updated, user_text)
+    for key in brands_filled:
+        if key not in written:
+            written = [*written, key]
+    updated, malls_filled = fill_mentioned_malls(updated, user_text, rt.master)
+    if malls_filled and FieldKey.MALLS.value not in written:
+        written = [*written, FieldKey.MALLS.value]
     derived_keys = {item.key for item in fields if item.source == "derived"}
     derived_written = [key for key in written if key in derived_keys]
 
@@ -267,6 +305,18 @@ def update_draft(
     )
 
 
+def _last_user_text(state: AgentState) -> str:
+    for message in reversed(state["messages"]):
+        if not isinstance(message, HumanMessage):
+            continue
+        content = message.content
+        text = content if isinstance(content, str) else str(content)
+        if text.startswith("[ui_event]"):
+            continue
+        return text
+    return ""
+
+
 @tool
 def confirm_fields(
     keys: list[str],
@@ -277,10 +327,14 @@ def confirm_fields(
     rt = runtime_from_config(runtime.config)
     draft = state["draft"]
     cards_shown = list(state["cards_shown"])
+    blocked = keys_blocked_from_confirmation(_last_user_text(state))
 
     confirmable: list[str] = []
     skipped: list[str] = []
     for key_str in keys:
+        if key_str in blocked:
+            skipped.append(f"{key_str}: user_expressed_doubt")
+            continue
         try:
             key = FieldKey(key_str)
         except ValueError:

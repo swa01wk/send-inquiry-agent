@@ -13,6 +13,7 @@ describe('MessageList', () => {
 
     const cardActions = {
       sendAction: () => undefined,
+      editReviewField: async () => true,
       uploadDocument: async () => undefined,
       removeDocument: async () => undefined,
       mallsConfirmed: false,

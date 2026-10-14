@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { fetchMasterKind, type MasterListItem } from '../../api/client'
 import type { DraftChecks, ReviewPayload } from '../../types/contracts'
 import { SourceBadge } from '../draft/SourceBadge'
 import { canSubmitWithConsent, submitBlockerHint } from './blockerHint'
@@ -7,8 +8,23 @@ import styles from './ReviewCard.module.css'
 
 interface ReviewCardProps {
   payload: ReviewPayload
-  onEditField: (key: string, value: string) => void
+  onEditField: (key: string, value: string) => Promise<boolean>
   onSubmit: () => void
+}
+
+const MASTER_KIND_BY_FIELD: Record<string, string> = {
+  unit_type: 'unit_types',
+  sales_category: 'sales_categories',
+  lease_period: 'lease_periods',
+  rent_period: 'rent_periods',
+}
+
+/** Review row key → draft field key for master-backed selects. */
+function draftFieldKey(rowKey: string): string | null {
+  if (rowKey in MASTER_KIND_BY_FIELD) return rowKey
+  if (rowKey === 'lease') return 'lease_period'
+  if (rowKey === 'rent') return 'rent_period'
+  return null
 }
 
 function checkRows(checks: DraftChecks, consent: boolean) {
@@ -37,29 +53,69 @@ function checkRows(checks: DraftChecks, consent: boolean) {
   ]
 }
 
+function optionLabel(item: MasterListItem): string {
+  if ('label' in item && item.label) return item.label
+  if ('name' in item && item.name) return item.name
+  return item.id
+}
+
 export function ReviewCard({ payload, onEditField, onSubmit }: ReviewCardProps) {
   const [consent, setConsent] = useState(false)
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
+  const [masterOptions, setMasterOptions] = useState<MasterListItem[]>([])
+  const [editError, setEditError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
 
   const submitEnabled = canSubmitWithConsent(payload.blockers, consent)
   const hint = submitBlockerHint(payload.blockers, consent)
 
-  const startEdit = (key: string, current: string | null) => {
-    setEditingKey(key)
+  const fieldKeyForEdit = editingKey ? draftFieldKey(editingKey) : null
+  const masterKind = fieldKeyForEdit ? MASTER_KIND_BY_FIELD[fieldKeyForEdit] : null
+
+  useEffect(() => {
+    if (!masterKind) {
+      setMasterOptions([])
+      return
+    }
+    let cancelled = false
+    void fetchMasterKind(masterKind).then((items) => {
+      if (!cancelled) setMasterOptions(items)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [masterKind])
+
+  const startEdit = (rowKey: string, current: string | null) => {
+    if (rowKey === 'malls') return
+    setEditError(null)
+    setEditingKey(rowKey)
     setEditValue(current ?? '')
   }
 
   const cancelEdit = () => {
     setEditingKey(null)
     setEditValue('')
+    setEditError(null)
   }
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (!editingKey) return
-    onEditField(editingKey, editValue)
+    const fieldKey = draftFieldKey(editingKey) ?? editingKey
+    setSaving(true)
+    setEditError(null)
+    const ok = await onEditField(fieldKey, editValue)
+    setSaving(false)
+    if (!ok) {
+      setEditError("Couldn't save that change. Try again or pick another value.")
+      return
+    }
     cancelEdit()
   }
+
+  const isMallsRow = (key: string) => key === 'malls'
+  const usesSelect = (rowKey: string) => draftFieldKey(rowKey) !== null
 
   return (
     <div className={`${shared.shellPad} ${styles.layout}`} data-testid="review-card">
@@ -72,21 +128,43 @@ export function ReviewCard({ payload, onEditField, onSubmit }: ReviewCardProps) 
               <span className={styles.rowLabel}>{row.label}</span>
               {editingKey === row.key ? (
                 <div className={styles.editRow}>
-                  <input
-                    className={styles.editInput}
-                    value={editValue}
-                    onChange={(e) => setEditValue(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') saveEdit()
-                      if (e.key === 'Escape') cancelEdit()
-                    }}
-                  />
-                  <button type="button" className={shared.primaryBtn} onClick={saveEdit}>
+                  {usesSelect(row.key) ? (
+                    <select
+                      className={styles.editInput}
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      disabled={saving || masterOptions.length === 0}
+                    >
+                      <option value="">Select…</option>
+                      {masterOptions.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {optionLabel(item)}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      className={styles.editInput}
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') void saveEdit()
+                        if (e.key === 'Escape') cancelEdit()
+                      }}
+                    />
+                  )}
+                  <button
+                    type="button"
+                    className={shared.primaryBtn}
+                    onClick={() => void saveEdit()}
+                    disabled={saving}
+                  >
                     Save
                   </button>
                   <button type="button" className={shared.secondaryBtn} onClick={cancelEdit}>
                     Cancel
                   </button>
+                  {editError ? <p className={styles.hint}>{editError}</p> : null}
                 </div>
               ) : (
                 <>
@@ -94,13 +172,17 @@ export function ReviewCard({ payload, onEditField, onSubmit }: ReviewCardProps) 
                     {row.display ?? 'Not yet collected'}
                   </span>
                   <SourceBadge source={row.source} confirmed={row.confirmed} />
-                  <button
-                    type="button"
-                    className={shared.textLink}
-                    onClick={() => startEdit(row.key, row.display)}
-                  >
-                    Edit
-                  </button>
+                  {isMallsRow(row.key) ? (
+                    <span className={styles.mallHint}>Change malls in the chat</span>
+                  ) : (
+                    <button
+                      type="button"
+                      className={shared.textLink}
+                      onClick={() => startEdit(row.key, row.display)}
+                    >
+                      Edit
+                    </button>
+                  )}
                 </>
               )}
             </div>

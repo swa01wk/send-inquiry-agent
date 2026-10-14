@@ -1,36 +1,272 @@
-"""Deterministic post-agent guard (spec section 5)."""
+"""Deterministic post-agent guard (spec section 5).
+
+Deterministic parsers may write to the draft only on exact, unambiguous matches
+(e.g. a full seeded mall name). Otherwise they produce a guard note for the agent,
+or write ``source=derived`` (unconfirmed) so the agent shows the value before it
+can be confirmed. Never write ``source=user`` from a heuristic.
+
+Runs after the agent's final reply each turn. It never talks to the user itself;
+when a reply breaks a rule it retracts that reply (the frontend removes the bubble)
+and sends the agent back once with a short instruction.
+"""
 
 from __future__ import annotations
 
 import re
 from typing import Any
 
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langgraph.config import get_stream_writer
 
+from app.agent.brand_infer import fill_brands_from_user_message, user_message_names_brand
+from app.agent.confirm_policy import keys_blocked_from_confirmation
+from app.agent.contact_infer import (
+    contact_fields_ready,
+    message_has_contact_line,
+    parse_contact_from_message,
+)
+from app.agent.mall_match import fill_mentioned_malls, unknown_mall_phrases
 from app.agent.runtime import AgentRuntime
 from app.agent.state import AgentState
 from app.api.cards import build_document_upload_card, build_review_card
 from app.api.schemas import UiCard
+from app.domain.models import FieldKey
 from app.domain.rules import compute_phase
 from app.domain.summary import build_draft_summary
 
+GUARD_PREFIX = "[ui_event] guard:"
+
+# A claim that the inquiry was submitted, e.g. "your inquiry has been submitted",
+# "I've sent your inquiry", "your reference number is GEO-…". Plain uses of the word
+# "reference" ("for your reference") do not match.
 _FALSE_SUBMIT_RE = re.compile(
-    r"submitted|sent your inquiry|reference",
+    r"\b(inquiry|enquiry|application|request)\b[^.!?\n]{0,40}?"
+    r"\b(has been|have been|was|is now|is)\s+"
+    r"(submitted|sent|received)\b"
+    r"|\bI(?:'ve| have)\s+(submitted|sent)\s+(your|the)\b"
+    r"|\byour reference(?: number)? is\b",
     re.IGNORECASE,
 )
 _SIGN_IN_RE = re.compile(r"sign\s*in", re.IGNORECASE)
+
+# Signals that a user message carries inquiry data the agent should have saved.
+# 10 digits, but not a local mobile number (05XXXXXXXX).
+_CR_NUMBER_RE = re.compile(r"\b(?!05)\d{10}\b")
+_DATA_HINT_RE = re.compile(
+    r"(@[\w-]+\.|\+?966|\b05\d{8}\b|\b\d{10}\b|\b(LLC|Ltd|Trading|Co\.)\b|"
+    r"\bmall\s+[a-z]\b|\b(kiosk|boutique|restaurant|caf[eé]|coffee|store|shop)\b|"
+    r"\b\d+\s*(sqm|sq\.?\s*m|square)\b|\b\d+\s*(k|,000)\b)",
+    re.IGNORECASE,
+)
+_QUESTION_START_RE = re.compile(
+    r"^\s*(what|which|how|where|when|why|who|can|could|do|does|is|are|should|will)\b",
+    re.IGNORECASE,
+)
+_CAPTURE_TOOLS = {"update_draft", "verify_cr"}
+_ASK_WHAT_BRAND_RE = re.compile(
+    r"\bwhat(?:'s|\s+is)\s+(?:your|the)\s+brand\b",
+    re.IGNORECASE,
+)
+_TELL_BRAND_NAME_RE = re.compile(
+    r"\btell me\s+(?:your|the)\s+brand name\b",
+    re.IGNORECASE,
+)
+_BRAND_NAME_QUESTION_RE = re.compile(
+    r"[^.!\n]*\bbrand name\b[^.!\n]*[?؟]",
+    re.IGNORECASE,
+)
+_BULK_INQUIRY_RE = re.compile(
+    r"@.*?(?:\+?966|\b05\d{8}\b)|(?:\+?966|\b05\d{8}\b).*?@",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def _content_text(message: BaseMessage) -> str:
+    content = message.content
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return " ".join(str(part) for part in content)
+    return ""
 
 
 def _last_ai_text(state: AgentState) -> str:
     for message in reversed(state["messages"]):
         if isinstance(message, AIMessage):
-            content = message.content
-            if isinstance(content, str):
-                return content
-            if isinstance(content, list):
-                return " ".join(str(part) for part in content)
+            return _content_text(message)
     return ""
+
+
+def _current_turn(state: AgentState) -> tuple[str, list[BaseMessage]]:
+    """The user's input for this turn and the messages that followed it."""
+    messages = state["messages"]
+    for index in range(len(messages) - 1, -1, -1):
+        message = messages[index]
+        if isinstance(message, HumanMessage) and not _content_text(message).startswith(
+            GUARD_PREFIX
+        ):
+            return _content_text(message), list(messages[index + 1 :])
+    return "", []
+
+
+def _tools_called(messages: list[BaseMessage]) -> set[str]:
+    names: set[str] = set()
+    for message in messages:
+        if isinstance(message, AIMessage):
+            for call in message.tool_calls or []:
+                names.add(str(call.get("name", "")))
+    return names
+
+
+def message_likely_has_inquiry_data(text: str) -> bool:
+    """True when a user message looks like it carries details to save (not a question)."""
+    stripped = text.strip()
+    if not stripped or stripped.startswith("[ui_event]"):
+        return False
+    if stripped.endswith(("?", "؟")) or _QUESTION_START_RE.match(stripped):
+        return False
+    return _DATA_HINT_RE.search(stripped) is not None
+
+
+def reply_asks_for_brand_name(ai_text: str) -> bool:
+    if _ASK_WHAT_BRAND_RE.search(ai_text):
+        return True
+    if _TELL_BRAND_NAME_RE.search(ai_text):
+        return True
+    return _BRAND_NAME_QUESTION_RE.search(ai_text) is not None
+
+
+def _reply_asks_for_brand_name(ai_text: str) -> bool:
+    return reply_asks_for_brand_name(ai_text)
+
+
+def _field_has_value(draft: Any, key: FieldKey) -> bool:
+    value = draft.fields[key].value
+    if value is None:
+        return False
+    if isinstance(value, str) and not value.strip():
+        return False
+    if isinstance(value, list) and not value:
+        return False
+    return True
+
+
+def _is_bulk_inquiry_message(text: str) -> bool:
+    if "@" not in text or not _BULK_INQUIRY_RE.search(text):
+        return False
+    return bool(
+        re.search(
+            r"\b(LLC|Ltd|Trading|caf[eé]|kiosk|restaurant|mall|street)\b",
+            text,
+            re.IGNORECASE,
+        )
+    )
+
+
+def _missing_send_otp_note(
+    state: AgentState,
+    draft: Any,
+    user_text: str,
+    turn_messages: list[BaseMessage],
+    cards_shown: list[str],
+) -> str | None:
+    if "otp" in cards_shown or draft.otp_verified:
+        return None
+    if _is_bulk_inquiry_message(user_text):
+        return None
+    if not message_has_contact_line(user_text) or not contact_fields_ready(draft):
+        return None
+    if "send_otp" in _tools_called(turn_messages):
+        return None
+    return f"{GUARD_PREFIX} The user sent name, email, and phone. Call send_otp before you reply."
+
+
+def _incomplete_contact_capture_note(
+    state: AgentState,
+    draft: Any,
+    user_text: str,
+    phase: str,
+) -> str | None:
+    if phase not in ("gate", "collecting", "verifying"):
+        return None
+    if _is_bulk_inquiry_message(user_text):
+        return None
+    if not message_has_contact_line(user_text) or contact_fields_ready(draft):
+        return None
+    parsed = parse_contact_from_message(user_text)
+    example = ""
+    if parsed:
+        first, last, _email, _phone = parsed
+        example = f" (e.g. {first!r} / {last!r})"
+    return (
+        f"{GUARD_PREFIX} The user gave contact details; save first_name, last_name, email "
+        "and contact_number with update_draft (split the full name: first word = first name, "
+        f"rest = last name){example}, then call send_otp."
+    )
+
+
+def _incomplete_bulk_capture_note(state: AgentState, phase: str) -> str | None:
+    user_text, turn_messages = _current_turn(state)
+    if phase not in ("gate", "collecting", "verifying") or not _is_bulk_inquiry_message(user_text):
+        return None
+    if "update_draft" not in _tools_called(turn_messages):
+        return None
+    draft = state["draft"]
+    missing: list[str] = []
+    for key in (FieldKey.BRAND_NAME_EN, FieldKey.UNIT_TYPE, FieldKey.EMAIL):
+        if not _field_has_value(draft, key):
+            missing.append(key.value)
+    if not (_field_has_value(draft, FieldKey.MOBILE) or _field_has_value(draft, FieldKey.LANDLINE)):
+        missing.append("contact_number")
+    if not missing:
+        return None
+    return (
+        f"{GUARD_PREFIX} The user's message combined company, brand, and contact details, "
+        f"but these draft fields are still empty: {', '.join(missing)}. "
+        "Call update_draft with every field you can extract from their message before replying."
+    )
+
+
+def _brand_reask_note(state: AgentState, ai_text: str) -> str | None:
+    if not _reply_asks_for_brand_name(ai_text):
+        return None
+    draft = state["draft"]
+    user_text, _ = _current_turn(state)
+    if _field_has_value(draft, FieldKey.BRAND_NAME_EN) or _field_has_value(
+        draft, FieldKey.BRAND_NAME_AR
+    ):
+        known = True
+    else:
+        known = user_message_names_brand(user_text)
+    if not known:
+        return None
+    return (
+        f"{GUARD_PREFIX} The user already provided a brand name. "
+        "Do not ask for 'brand name' again in your reply."
+    )
+
+
+def _missed_capture_note(state: AgentState, phase: str) -> str | None:
+    user_text, turn_messages = _current_turn(state)
+    if not user_text or user_text.startswith("[ui_event]"):
+        return None
+    called = _tools_called(turn_messages)
+    if phase == "gate" and _CR_NUMBER_RE.search(user_text) and "verify_cr" not in called:
+        return (
+            f"{GUARD_PREFIX} The user's last message contains a CR number. "
+            "Call verify_cr with it before replying."
+        )
+    if (
+        phase in ("gate", "collecting", "verifying")
+        and not (called & _CAPTURE_TOOLS)
+        and message_likely_has_inquiry_data(user_text)
+    ):
+        return (
+            f"{GUARD_PREFIX} The user's last message looks like it contains inquiry details "
+            "you did not save. If it does, call update_draft with every field you can find "
+            "in it, then reply. If it doesn't, simply reply again."
+        )
+    return None
 
 
 def _emit_draft(state: AgentState, runtime: AgentRuntime, changed_keys: list[str]) -> None:
@@ -47,16 +283,112 @@ def _emit_card(card: UiCard, writer: Any) -> None:
     writer({"type": "ui_card", "data": card.model_dump()})
 
 
+def _unknown_mall_note(
+    user_text: str,
+    master: Any,
+    turn_messages: list[BaseMessage],
+) -> str | None:
+    unknown = unknown_mall_phrases(user_text, master)
+    if not unknown:
+        return None
+    if "show_mall_picker" in _tools_called(turn_messages):
+        return None
+    label = unknown[0]
+    return (
+        f"{GUARD_PREFIX} The user named «{label}», which is not in seeded mall data. "
+        "Do not write a different mall id. Leave malls empty or call show_mall_picker "
+        "for the city they mean, then reply."
+    )
+
+
+def _unconfirm_doubted_fields(state: AgentState) -> tuple[Any, list[str]]:
+    user_text, _ = _current_turn(state)
+    blocked = keys_blocked_from_confirmation(user_text)
+    if not blocked:
+        return state["draft"], []
+    draft = state["draft"].model_copy(deep=True)
+    changed: list[str] = []
+    for key_str in blocked:
+        try:
+            key = FieldKey(key_str)
+        except ValueError:
+            continue
+        field = draft.fields[key]
+        if field.confirmed:
+            draft.fields[key] = field.model_copy(update={"confirmed": False})
+            changed.append(key_str)
+    return draft, changed
+
+
 def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
-    draft = state["draft"]
+    draft, doubt_unconfirmed = _unconfirm_doubted_fields(state)
+    user_text, turn_messages = _current_turn({**state, "draft": draft})
+    draft, brands_filled = fill_brands_from_user_message(draft, user_text)
+    draft, malls_filled = fill_mentioned_malls(draft, user_text, runtime.master)
+    draft_changed = list(doubt_unconfirmed)
+    draft_changed.extend(brands_filled)
+    if malls_filled:
+        draft_changed.append(FieldKey.MALLS.value)
     phase = compute_phase(draft).value
     cards_shown = list(state["cards_shown"])
     guard_retries = state["guard_retries"]
-    messages: list[HumanMessage] = []
-    retry_agent = False
+    note: str | None = None
 
     writer = get_stream_writer()
-    _emit_draft(state, runtime, [])
+
+    ai_text = _last_ai_text(state)
+    status_lookup = "get_inquiry_status" in _tools_called(turn_messages)
+    if guard_retries < 1:
+        if (
+            draft.reference is None
+            and not status_lookup
+            and ai_text
+            and _FALSE_SUBMIT_RE.search(ai_text)
+        ):
+            note = (
+                f"{GUARD_PREFIX} Do not tell the user the inquiry was submitted. "
+                "It is only submitted when a submitted reference ui_event arrives. "
+                "Reply again without that claim."
+            )
+        elif phase == "existing_account" and ai_text and not _SIGN_IN_RE.search(ai_text):
+            note = (
+                f"{GUARD_PREFIX} This user already has an account. "
+                "Reply again, kindly pointing them to Sign In on Tenant Central."
+            )
+        else:
+            note = (
+                _brand_reask_note({**state, "draft": draft}, ai_text)
+                or _incomplete_bulk_capture_note({**state, "draft": draft}, phase)
+                or _incomplete_contact_capture_note(
+                    {**state, "draft": draft},
+                    draft,
+                    user_text,
+                    phase,
+                )
+                or _missing_send_otp_note(
+                    state,
+                    draft,
+                    user_text,
+                    turn_messages,
+                    cards_shown,
+                )
+                or _missed_capture_note({**state, "draft": draft}, phase)
+            )
+
+    if note is not None:
+        # Take the rejected reply off the user's screen; the agent replies again.
+        if writer is not None:
+            writer({"type": "retract_reply", "data": {}})
+        return {
+            "draft": draft,
+            "phase": phase,
+            "cards_shown": cards_shown,
+            "guard_retries": guard_retries + 1,
+            "retry_agent": True,
+            "messages": [HumanMessage(content=note)],
+        }
+
+    _emit_draft({**state, "draft": draft}, runtime, draft_changed)
 
     if phase == "documents" and "documents" not in cards_shown:
         card = build_document_upload_card(
@@ -72,42 +404,13 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
         _emit_card(card, writer)
         cards_shown.append("review")
 
-    ai_text = _last_ai_text(state)
-    if draft.reference is None and ai_text and _FALSE_SUBMIT_RE.search(ai_text):
-        if guard_retries < 1:
-            retry_agent = True
-            guard_retries += 1
-            messages.append(
-                HumanMessage(
-                    content=(
-                        "[ui_event] guard: Do not tell the user the inquiry was submitted "
-                        "until a submitted reference ui_event arrives."
-                    )
-                )
-            )
-
-    if phase == "existing_account" and ai_text and not _SIGN_IN_RE.search(ai_text):
-        if guard_retries < 1 and not retry_agent:
-            retry_agent = True
-            guard_retries += 1
-            messages.append(
-                HumanMessage(
-                    content=(
-                        "[ui_event] guard: This user already has an account. "
-                        "Point them to Sign In on Tenant Central."
-                    )
-                )
-            )
-
-    update: dict[str, Any] = {
+    return {
+        "draft": draft,
         "phase": phase,
         "cards_shown": cards_shown,
         "guard_retries": guard_retries,
-        "retry_agent": retry_agent,
+        "retry_agent": False,
     }
-    if messages:
-        update["messages"] = messages
-    return update
 
 
 def after_guard(state: AgentState) -> str:

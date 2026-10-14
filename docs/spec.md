@@ -145,6 +145,7 @@ After the agent's final reply each turn:
 2. Attach the card for a phase the user just entered if it hasn't been shown: `documents` → `document_upload`, `review` → `review`. (`verifying` cards come from `send_otp`.)
 3. If the reply claims the inquiry was submitted (regex on "submitted|sent your inquiry|reference") while `reference` is None → add a system note and route back to `agent` once.
 4. If phase is `existing_account`, ensure the reply points to Sign In.
+5. When `malls` is empty and the user's message names one or more seed malls (same mention rules as `filter_mall_ids`), write those mall ids as `user` (see `fill_mentioned_malls` in `mall_match.py`). Also runs after `update_draft` when malls were omitted. Mall mention: the full normalised mall name (or optional `aliases` on a mall in master data) must appear as whole words in the user message (`\b` boundaries, optional leading “the”); city or country tokens alone do not match.
 
 ## 6. REST API (`/api`)
 
@@ -178,6 +179,7 @@ Each event is `event: <type>` + `data: <json>`.
 | `token` | `{message_id, text}` | Append to the assistant message `message_id` (create it if new) |
 | `ui_card` | `UiCard` | Insert after the current assistant message, or replace in place if `card_id` exists |
 | `draft` | `DraftSummary` | Replace draft state; flash and scroll to `changed_keys` |
+| `message_remove` | `{message_id}` | Remove the assistant bubble with that id (guard retracted a rejected reply) |
 | `done` | `{phase}` | Stop typing indicator, enable composer |
 | `error` | `{code, message}` | Show a friendly error bubble with Retry |
 
@@ -215,7 +217,7 @@ Groups in order: company, brand, space, contact. Area shows as one row (`area`),
 
 | Interface | Mock behaviour |
 | --- | --- |
-| `CrService.verify(cr) -> CrResult` | `1010123456` → new, company "Bean Street Trading Co.", address "King Fahd Road, Al Olaya, Riyadh" · `1010000000` → existing · any other valid number → new, no details |
+| `CrService.verify(cr) -> CrResult` | `1010123456` → new, company "Bean Street Trading Co.", address "King Fahd Road, Al Olaya, Riyadh" · `1010222222` → new, company "Fawaz Alhokair Trading Co.", address "King Fahd Road, Riyadh" · `1010000000` → existing · any other valid number → new, no details |
 | `OtpService.send(session, email, phone)` / `verify(session, code)` | Code = `OTP_MOCK_CODE`; logs "OTP sent" without the code |
 | `StorageService.save(session, doc_type, upload) -> DocumentRef` | Writes to `UPLOAD_DIR/<session>/<uuid><ext>`; never opens content |
 | `SubmitService.submit(draft) -> reference` | `GEO-{unit code}-{6 random digits}`; stores the payload in memory; logs it |
@@ -235,7 +237,9 @@ Unit codes: store `STR`, media `MED`, specialty `SPC`, office `OFF`.
     {"id": "riyadh-mall-a", "name": "Riyadh Mall A", "city": "riyadh"}, {"id": "riyadh-mall-b", "name": "Riyadh Mall B", "city": "riyadh"},
     {"id": "riyadh-mall-c", "name": "Riyadh Mall C", "city": "riyadh"}, {"id": "riyadh-mall-d", "name": "Riyadh Mall D", "city": "riyadh"},
     {"id": "jeddah-mall-a", "name": "Jeddah Mall A", "city": "jeddah"}, {"id": "jeddah-mall-b", "name": "Jeddah Mall B", "city": "jeddah"},
-    {"id": "dammam-mall-a", "name": "Dammam Mall A", "city": "dammam"}
+    {"id": "mall-of-arabia", "name": "Mall of Arabia", "city": "jeddah", "aliases": ["Arabia Mall"]},
+    {"id": "dammam-mall-a", "name": "Dammam Mall A", "city": "dammam"},
+    {"id": "mall-of-dhahran", "name": "Mall of Dhahran", "city": "dammam"}
   ],
   "lease_periods": [{"id": "1y", "label": "1 year"}, {"id": "2y", "label": "2 years"}, {"id": "3y", "label": "3 years"}, {"id": "5y", "label": "5 years"}],
   "rent_periods": [{"id": "monthly", "label": "Monthly"}, {"id": "yearly", "label": "Yearly"}]
@@ -251,6 +255,7 @@ process steps · review time · required documents · what a CR number is · wha
 | --- | --- |
 | `OPENAI_API_KEY` | — (required) |
 | `OPENAI_MODEL` | — (required; any OpenAI chat model with tool calling) |
+| `OPENAI_TEMPERATURE` | `0.6` |
 | `OTP_MOCK_CODE` | `1234` |
 | `MAX_UPLOAD_MB` | `5` |
 | `UPLOAD_DIR` | `./.uploads` |

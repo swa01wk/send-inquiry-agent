@@ -27,6 +27,7 @@ class Session:
     last_seen: datetime
     cards_shown: set[str] = field(default_factory=set)
     card_counter: int = 0
+    confirm_card_keys: dict[str, list[str]] = field(default_factory=dict)
 
 
 class SessionStore:

@@ -17,6 +17,7 @@ class Settings(BaseSettings):
 
     openai_api_key: str | None = Field(default=None, validation_alias="OPENAI_API_KEY")
     openai_model: str | None = Field(default=None, validation_alias="OPENAI_MODEL")
+    openai_temperature: float = Field(default=0.6, validation_alias="OPENAI_TEMPERATURE")
 
     otp_mock_code: str = Field(default="1234", validation_alias="OTP_MOCK_CODE")
     max_upload_mb: int = Field(default=5, validation_alias="MAX_UPLOAD_MB")

@@ -46,6 +46,7 @@ def log_chat_turn(
     latency_ms: float,
     streamed_token_chars: int,
     outcome: str,
+    retractions: int = 0,
 ) -> None:
     payload: dict[str, Any] = {
         "event": "chat_turn",
@@ -55,6 +56,7 @@ def log_chat_turn(
         "latency_ms": round(latency_ms, 1),
         "streamed_token_chars": streamed_token_chars,
         "assistant_text_chars": assistant_text_chars(messages),
+        "retractions": retractions,
         "outcome": outcome,
     }
     logger.info(json.dumps(payload, separators=(",", ":")))

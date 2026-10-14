@@ -32,6 +32,8 @@ export interface ChatState {
   draft: DraftSummary | null
   phase: Phase
   status: ChatStatus
+  /** True from the start of a turn until reply text starts streaming in. */
+  awaitingReply: boolean
   error?: { code: string; message: string }
   pendingRetry?: ChatRequest | null
 }
@@ -44,6 +46,7 @@ export const initialChatState: ChatState = {
   draft: null,
   phase: 'gate',
   status: 'idle',
+  awaitingReply: false,
   pendingRetry: null,
 }
 
@@ -68,6 +71,12 @@ function findLastAssistantMessageId(messages: ChatMessage[]): string | null {
   return null
 }
 
+/** Cards still in state but not linked to any message (e.g. after guard retracted a bubble). */
+function orphanCardIds(state: ChatState): string[] {
+  const attached = new Set(state.messages.flatMap((m) => m.cardIds))
+  return Object.keys(state.cards).filter((id) => !attached.has(id))
+}
+
 function attachCardToMessages(messages: ChatMessage[], card: UiCard): ChatMessage[] {
   const targetId = card.message_id ?? findLastAssistantMessageId(messages)
   if (!targetId) return messages
@@ -78,6 +87,10 @@ function attachCardToMessages(messages: ChatMessage[], card: UiCard): ChatMessag
   })
 }
 
+function cardAttachedToMessage(messages: ChatMessage[], cardId: string): boolean {
+  return messages.some((m) => m.cardIds.includes(cardId))
+}
+
 function applyUiCard(state: ChatState, card: UiCard): ChatState {
   if (card.card_type === 'quick_replies') {
     return {
@@ -86,16 +99,15 @@ function applyUiCard(state: ChatState, card: UiCard): ChatState {
     }
   }
 
-  if (state.cards[card.card_id]) {
-    return {
-      ...state,
-      cards: { ...state.cards, [card.card_id]: card },
-    }
+  const cards = { ...state.cards, [card.card_id]: card }
+
+  if (state.cards[card.card_id] && cardAttachedToMessage(state.messages, card.card_id)) {
+    return { ...state, cards }
   }
 
   return {
     ...state,
-    cards: { ...state.cards, [card.card_id]: card },
+    cards,
     messages: attachCardToMessages(state.messages, card),
   }
 }
@@ -109,18 +121,47 @@ function applySseEvent(state: ChatState, event: SseEvent): ChatState {
         const messages = [...state.messages]
         const msg = messages[idx]
         messages[idx] = { ...msg, text: msg.text + text }
-        return { ...state, messages }
+        return { ...state, messages, awaitingReply: false }
       }
       return {
         ...state,
+        awaitingReply: false,
         messages: [
           ...state.messages,
-          { id: message_id, role: 'assistant', text, cardIds: [] },
+          {
+            id: message_id,
+            role: 'assistant',
+            text,
+            cardIds: orphanCardIds(state),
+          },
         ],
       }
     }
     case 'ui_card':
       return applyUiCard(state, event.data)
+    case 'message_remove': {
+      const removed = state.messages.find((m) => m.id === event.data.message_id)
+      if (!removed) return state
+      // Keep cards (OTP, documents, etc.) — the reply bubble is retracted, not the user's task.
+      let messages = state.messages.filter((m) => m.id !== event.data.message_id)
+      const orphanIds = removed.cardIds.filter((id) => state.cards[id])
+      const anchorId = findLastAssistantMessageId(messages)
+      if (anchorId && orphanIds.length > 0) {
+        messages = messages.map((m) => {
+          if (m.id !== anchorId) return m
+          const cardIds = [...m.cardIds]
+          for (const id of orphanIds) {
+            if (!cardIds.includes(id)) cardIds.push(id)
+          }
+          return { ...m, cardIds }
+        })
+      }
+      return {
+        ...state,
+        messages,
+        awaitingReply: state.status === 'streaming',
+      }
+    }
     case 'draft':
       return {
         ...state,
@@ -131,12 +172,14 @@ function applySseEvent(state: ChatState, event: SseEvent): ChatState {
       return {
         ...state,
         status: 'idle',
+        awaitingReply: false,
         phase: event.data.phase,
       }
     case 'error':
       return {
         ...state,
         status: 'error',
+        awaitingReply: false,
         error: event.data,
       }
     default:
@@ -198,6 +241,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         ...state,
         quickReplies: [],
         status: 'streaming',
+        awaitingReply: true,
         error: undefined,
       }
     case 'sse':
@@ -206,6 +250,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return {
         ...state,
         status: 'error',
+        awaitingReply: false,
         error: action.error,
         pendingRetry: action.pendingRetry,
       }

@@ -16,9 +16,9 @@ async def test_parallel_tool_calls_merge_draft(agent_runtime, build_test_graph) 
                 "content": "",
                 "tool_calls": [
                     {
-                        "name": "verify_cr",
-                        "args": {"cr_number": "1010123456"},
-                        "id": "call_cr",
+                        "name": "get_master_data",
+                        "args": {"kind": "malls", "city": "riyadh"},
+                        "id": "call_malls",
                         "type": "tool_call",
                     },
                     {
@@ -26,6 +26,11 @@ async def test_parallel_tool_calls_merge_draft(agent_runtime, build_test_graph) 
                         "args": {
                             "fields": [
                                 {"key": "brand_name_en", "value": "Bean Street", "source": "user"},
+                                {
+                                    "key": "malls",
+                                    "value": ["riyadh-mall-a"],
+                                    "source": "user",
+                                },
                             ]
                         },
                         "id": "call_brand",
@@ -49,11 +54,13 @@ async def test_parallel_tool_calls_merge_draft(agent_runtime, build_test_graph) 
         async for event in run_turn(
             graph,
             session,
-            HumanMessage(content="Marhaba\nMy CR number is 1010123456\nBean Street"),
+            HumanMessage(
+                content="Marhaba\nMy CR number is 1010123456\nBean Street at Riyadh Mall A",
+            ),
             runtime=agent_runtime,
         )
     ]
 
     assert events[-1]["event"] == "done"
-    assert session.draft.fields[FieldKey.CR_NUMBER].value == "1010123456"
     assert session.draft.fields[FieldKey.BRAND_NAME_EN].value == "Bean Street"
+    assert session.draft.fields[FieldKey.MALLS].value == ["riyadh-mall-a"]
