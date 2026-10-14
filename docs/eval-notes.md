@@ -35,6 +35,7 @@ Requires `OPENAI_API_KEY` and `OPENAI_MODEL`. Target: all scenarios but at most 
 | 2026-10-14 | **17/17** + **17/17** (retractions: **1** / **1**) | `contact_infer`: parse name/email/phone lines in guard + `update_draft`; guard nudges `send_otp` on contact-only turns. **C condensation** passes both runs. |
 | 2026-10-14 | **18/18** + **18/18** (retractions: **1** / **1**) | Contact: detection-only parse (no guessed `source=user` in guard/tools); guard `_incomplete_contact_capture_note` retries once; three-part names; CR/VAT-aware phone match. **Three-part name** eval scenario. `brand_infer`: «اسم العلامة» → derived/unconfirmed. |
 | 2026-10-14 | **18/18** + **18/18** (retractions: **0** / **0**) | After demo-run UI bug fixes (B1–B8): dotted upload extensions, confirm-card lifecycle, bot formatting, Lumen Eyewear prompt examples, required-docs copy, CR focus chip, draft phone row. |
+| 2026-10-14 | **e2e scripted: 44/44** (desktop + mobile) | Playwright `@scripted` suite; `AGENT_MODE=scripted` + `?e2eScenario=` session scripts. Live `@live` not re-run in this pass. |
 
 ## Prompt changes (2026-10-14, fix/conversational-friendliness)
 

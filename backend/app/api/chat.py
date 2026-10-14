@@ -84,6 +84,7 @@ async def chat_stream(
                 session,
                 user_message,
                 runtime=runtime,
+                settings=settings,
             ):
                 yield _sse(item)
         finally:

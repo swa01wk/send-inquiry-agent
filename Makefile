@@ -1,4 +1,4 @@
-.PHONY: dev demo dev-backend dev-frontend test lint
+.PHONY: dev demo dev-backend dev-frontend test lint e2e e2e-live e2e-report
 
 dev:
 	docker compose up --build
@@ -19,3 +19,12 @@ test:
 lint:
 	cd backend && uv run ruff check app tests && uv run ruff format --check app tests && uv run mypy app
 	cd frontend && npm run lint && npx tsc -b --noEmit
+
+e2e:
+	cd e2e && npm ci && npx playwright install chromium webkit && npm run test:scripted
+
+e2e-live:
+	cd e2e && npm ci && npx playwright install chromium webkit && E2E_LIVE=1 npm run test:live
+
+e2e-report:
+	cd e2e && npx playwright show-report

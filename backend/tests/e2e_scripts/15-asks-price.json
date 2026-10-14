@@ -1,0 +1,19 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "get_master_data",
+        "args": {
+          "kind": "malls",
+          "city": "riyadh"
+        },
+        "id": "m1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "I can't quote rent here, but we can continue your inquiry."
+  }
+]

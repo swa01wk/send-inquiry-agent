@@ -9,9 +9,10 @@ from app.api.cards import (
     WELCOME_MESSAGE_2,
     build_welcome_quick_replies_card,
 )
-from app.api.deps import get_master_data, get_session_store
+from app.api.deps import get_master_data, get_session_store, get_settings
 from app.api.limiter import limiter
 from app.api.schemas import AssistantMessage, CreateSessionResponse
+from app.config import Settings
 from app.domain.master import MasterData
 from app.domain.summary import DraftSummary, build_draft_summary
 from app.sessions import SessionStore
@@ -28,8 +29,14 @@ async def create_session(
     request: Request,
     store: SessionStore = Depends(get_session_store),
     master: MasterData = Depends(get_master_data),
+    settings: Settings = Depends(get_settings),
 ) -> CreateSessionResponse:
     session = await store.create()
+    if settings.agent_mode == "scripted":
+        scenario = request.headers.get("X-Test-Scenario")
+        if scenario:
+            session.test_scenario = scenario.strip()
+            session.script_step = 0
     messages = [
         AssistantMessage(id=WELCOME_MSG_ID_1, text=WELCOME_MESSAGE_1),
         AssistantMessage(id=WELCOME_MSG_ID_2, text=WELCOME_MESSAGE_2),

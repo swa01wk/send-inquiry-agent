@@ -1,0 +1,16 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "request_documents",
+        "args": {},
+        "id": "l0",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Company Profile and Brand Profile are required to submit. Other documents are optional."
+  }
+]

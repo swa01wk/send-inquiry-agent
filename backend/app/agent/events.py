@@ -18,10 +18,14 @@ from typing import Any, Literal, TypedDict, cast
 from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
 
+from app.agent.e2e_scripts import scripted_model_for_session
+from app.agent.model import ScriptedChatModel
 from app.agent.runtime import AgentRuntime
 from app.agent.state import AgentState, initial_agent_state
+from app.agent.tools import TOOLS
 from app.api.cards import remember_confirm_card_keys
 from app.api.schemas import UiCard
+from app.config import Settings
 from app.domain.rules import compute_phase
 from app.observability.turn_log import TurnTimer, log_chat_turn
 from app.sessions import Session
@@ -38,13 +42,23 @@ class SseEvent(TypedDict):
     data: dict[str, Any]
 
 
-def _graph_config(session: Session, runtime: AgentRuntime) -> RunnableConfig:
-    return {
-        "configurable": {
-            "thread_id": session.id,
-            "runtime": runtime,
-        }
+def _graph_config(
+    session: Session,
+    runtime: AgentRuntime,
+    *,
+    settings: Settings | None = None,
+) -> RunnableConfig:
+    configurable: dict[str, object] = {
+        "thread_id": session.id,
+        "runtime": runtime,
     }
+    if settings and settings.agent_mode == "scripted" and session.test_scenario:
+        model = scripted_model_for_session(
+            scenario=session.test_scenario,
+            step_index=session.script_step,
+        )
+        configurable["bound_chat_model"] = model.bind_tools(TOOLS)
+    return {"configurable": configurable}
 
 
 def _new_message_id() -> str:
@@ -111,6 +125,7 @@ async def run_turn(
     user_input: HumanMessage,
     *,
     runtime: AgentRuntime,
+    settings: Settings | None = None,
 ) -> AsyncIterator[SseEvent]:
     phase = compute_phase(session.draft).value
     state: AgentState = initial_agent_state(
@@ -122,7 +137,8 @@ async def run_turn(
     state["cards_shown"] = list(session.cards_shown)
     state["confirm_card_keys"] = dict(session.confirm_card_keys)
 
-    config = _graph_config(session, runtime)
+    config = _graph_config(session, runtime, settings=settings)
+    bound = (config.get("configurable") or {}).get("bound_chat_model")
     replies = _ReplyTracker()
     pending_cards: list[SseEvent] = []
     timer = TurnTimer()
@@ -183,6 +199,8 @@ async def run_turn(
         session.draft = final["draft"]
         session.cards_shown = set(final.get("cards_shown", []))
         session.confirm_card_keys = dict(final.get("confirm_card_keys", session.confirm_card_keys))
+        if isinstance(bound, ScriptedChatModel):
+            session.script_step = bound._step_index
 
         if replies.last_text_id is None:
             # Nothing was streamed (e.g. a model without streaming); send the final reply.

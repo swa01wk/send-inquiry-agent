@@ -1,6 +1,7 @@
 """Application settings loaded from environment variables."""
 
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -30,6 +31,10 @@ class Settings(BaseSettings):
         validation_alias="CORS_ORIGINS",
     )
     log_level: str = Field(default="INFO", validation_alias="LOG_LEVEL")
+    agent_mode: Literal["openai", "scripted"] = Field(
+        default="openai",
+        validation_alias="AGENT_MODE",
+    )
 
     @property
     def cors_origin_list(self) -> list[str]:

@@ -1,5 +1,5 @@
 import { fetchEventSource } from '@microsoft/fetch-event-source'
-import { API_BASE, MOCK_MODE } from '../config'
+import { API_BASE, E2E_MODE, MOCK_MODE } from '../config'
 import { replayMockChat } from '../mocks/mockStream'
 import type { ChatRequest, SseEvent } from '../types/contracts'
 
@@ -71,6 +71,11 @@ export async function streamChat(
       const event = parseSseMessage(msg.event, msg.data)
       if (event) {
         if (event.event === 'error') sawError = true
+        if (E2E_MODE && typeof window !== 'undefined') {
+          const w = window as Window & { __e2eEvents?: unknown[] }
+          w.__e2eEvents = w.__e2eEvents ?? []
+          w.__e2eEvents.push(event)
+        }
         onEvent(event)
       }
     },

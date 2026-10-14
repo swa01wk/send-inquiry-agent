@@ -16,10 +16,19 @@ async function parseError(res: Response): Promise<{ code: string; message: strin
   return { code: 'request_failed', message: 'Request failed' }
 }
 
+function e2eScenarioFromUrl(): string | undefined {
+  if (typeof window === 'undefined') return undefined
+  return new URLSearchParams(window.location.search).get('e2eScenario') ?? undefined
+}
+
 export async function createSession(): Promise<CreateSessionResponse> {
   if (MOCK_MODE) return mockCreateSession()
 
-  const res = await fetch(`${API_BASE}/api/sessions`, { method: 'POST' })
+  const headers: Record<string, string> = {}
+  const scenario = e2eScenarioFromUrl()
+  if (scenario) headers['X-Test-Scenario'] = scenario
+
+  const res = await fetch(`${API_BASE}/api/sessions`, { method: 'POST', headers })
   if (!res.ok) {
     const err = await parseError(res)
     throw Object.assign(new Error(err.message), { code: err.code })

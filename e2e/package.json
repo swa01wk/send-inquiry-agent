@@ -1,0 +1,16 @@
+{
+  "name": "send-inquiry-agent-e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:scripted": "playwright test --grep @scripted",
+    "test:live": "playwright test --grep @live",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.10.1",
+    "@playwright/test": "^1.49.1",
+    "typescript": "~5.7.2"
+  }
+}

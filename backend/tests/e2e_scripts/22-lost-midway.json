@@ -1,0 +1,79 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "verify_cr",
+        "args": {
+          "cr_number": "1010123456"
+        },
+        "id": "r1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "brand_name_en",
+              "value": "Bean Street",
+              "source": "user"
+            },
+            {
+              "key": "brand_name_ar",
+              "value": "بين ستريت",
+              "source": "derived"
+            },
+            {
+              "key": "unit_type",
+              "value": "specialty",
+              "source": "derived"
+            },
+            {
+              "key": "sales_category",
+              "value": "fnb_cafe",
+              "source": "derived"
+            },
+            {
+              "key": "malls",
+              "value": [
+                "riyadh-mall-a"
+              ],
+              "source": "user"
+            }
+          ]
+        },
+        "id": "r2",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "You're on the brand step — check the summary card. What would you like to change?"
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "suggest_replies",
+        "args": {
+          "options": [
+            "Looks good",
+            "Change unit type",
+            "Start over"
+          ]
+        },
+        "id": "r3",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Next we'll add a contact person after you confirm the brand card."
+  }
+]

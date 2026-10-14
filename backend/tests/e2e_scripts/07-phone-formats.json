@@ -1,0 +1,91 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "verify_cr",
+        "args": {
+          "cr_number": "1010123456"
+        },
+        "id": "g1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "brand_name_en",
+              "value": "Bean Street",
+              "source": "user"
+            },
+            {
+              "key": "brand_name_ar",
+              "value": "بين ستريت",
+              "source": "derived"
+            },
+            {
+              "key": "unit_type",
+              "value": "specialty",
+              "source": "derived"
+            },
+            {
+              "key": "sales_category",
+              "value": "fnb_cafe",
+              "source": "derived"
+            },
+            {
+              "key": "malls",
+              "value": [
+                "riyadh-mall-a"
+              ],
+              "source": "user"
+            }
+          ]
+        },
+        "id": "g2",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "contact_number",
+              "value": "0501234567",
+              "source": "user"
+            }
+          ]
+        },
+        "id": "g3",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "send_otp",
+        "args": {
+          "resend": false
+        },
+        "id": "g4",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Verification code sent."
+  }
+]

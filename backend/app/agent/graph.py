@@ -26,10 +26,13 @@ def build_graph(
     model_factory: Callable[[], BaseChatModel] | None = None,
 ) -> CompiledStateGraph[AgentState, None, AgentState, AgentState]:
     factory = model_factory or get_chat_model
-    chat_model = factory().bind_tools(TOOLS)
 
     def agent_node(state: AgentState, config: RunnableConfig) -> dict[str, Any]:
         runtime = runtime_from_config(config)
+        configurable = config.get("configurable") or {}
+        chat_model = configurable.get("bound_chat_model")
+        if chat_model is None:
+            chat_model = factory().bind_tools(TOOLS)
         system = build_system_message(
             state["draft"],
             runtime.master,
