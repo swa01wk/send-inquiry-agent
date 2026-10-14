@@ -19,4 +19,7 @@ async def test_master_malls_filtered_by_city(client: AsyncClient) -> None:
     assert all(m["city"] == "riyadh" for m in malls)
 
     jeddah = await client.get("/api/master/malls", params={"city": "jeddah"})
-    assert len(jeddah.json()) == 2
+    assert len(jeddah.json()) == 3
+
+    dammam = await client.get("/api/master/malls", params={"city": "dammam"})
+    assert len(dammam.json()) == 2

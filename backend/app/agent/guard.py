@@ -15,12 +15,13 @@ from langgraph.config import get_stream_writer
 
 from app.agent.brand_infer import fill_missing_brand_name_en
 from app.agent.confirm_policy import keys_blocked_from_confirmation
-from app.agent.mall_match import unmatched_mall_phrases
+from app.agent.guard_shown import field_shown_in_reply
+from app.agent.mall_match import unknown_mall_phrases
 from app.agent.runtime import AgentRuntime
 from app.agent.state import AgentState
 from app.api.cards import build_document_upload_card, build_review_card
 from app.api.schemas import UiCard
-from app.domain.models import FieldKey, FieldValue, InquiryDraft, Source
+from app.domain.models import FieldKey, InquiryDraft
 from app.domain.rules import compute_phase
 from app.domain.summary import build_draft_summary
 
@@ -219,42 +220,45 @@ def _emit_card(card: UiCard, writer: Any) -> None:
     writer({"type": "ui_card", "data": card.model_dump()})
 
 
-def _clear_malls_for_unknown_name(
-    draft: InquiryDraft,
+def _unknown_mall_note(
     user_text: str,
     master: Any,
     turn_messages: list[BaseMessage],
-) -> tuple[InquiryDraft, str | None, bool]:
-    """Drop mall ids when the user named a mall that is not in seed data."""
-    unmatched = unmatched_mall_phrases(user_text, master)
-    if not unmatched:
-        return draft, None, False
+) -> str | None:
+    unknown = unknown_mall_phrases(user_text, master)
+    if not unknown:
+        return None
     if "show_mall_picker" in _tools_called(turn_messages):
-        return draft, None, False
-    malls_field = draft.fields[FieldKey.MALLS]
-    label = unmatched[0]
-    note = (
+        return None
+    label = unknown[0]
+    return (
         f"{GUARD_PREFIX} The user named «{label}», which is not in seeded mall data. "
         "Do not write a different mall id. Leave malls empty or call show_mall_picker "
         "for the city they mean, then reply."
     )
-    if malls_field.source == Source.USER and _field_has_value(draft, FieldKey.MALLS):
-        note = (
-            f"{GUARD_PREFIX} The user named «{label}», which is not in seeded mall data. "
-            "Do not write a different mall id. Leave malls as the user already selected "
-            "or call show_mall_picker for the city they mean, then reply."
-        )
-        return draft, note, False
-    if not _field_has_value(draft, FieldKey.MALLS):
-        return draft, None, False
-    cleared = draft.model_copy(deep=True)
-    cleared.fields[FieldKey.MALLS] = FieldValue(value=[], source=None, confirmed=False)
-    note = (
-        f"{GUARD_PREFIX} The user named «{label}», which is not in seeded mall data. "
-        "Do not write a different mall id. Leave malls empty or call show_mall_picker "
-        "for the city they mean, then reply."
-    )
-    return cleared, note, True
+
+
+def _sync_guard_not_shown(
+    state: AgentState,
+    draft: InquiryDraft,
+    ai_text: str,
+    brand_en_filled: bool,
+) -> list[str]:
+    hidden = list(state.get("guard_not_shown") or [])
+    if brand_en_filled:
+        key = FieldKey.BRAND_NAME_EN.value
+        if not field_shown_in_reply(FieldKey.BRAND_NAME_EN, draft, ai_text) and key not in hidden:
+            hidden.append(key)
+    still_hidden: list[str] = []
+    for key_str in hidden:
+        try:
+            key = FieldKey(key_str)
+        except ValueError:
+            continue
+        if field_shown_in_reply(key, draft, ai_text):
+            continue
+        still_hidden.append(key_str)
+    return still_hidden
 
 
 def _unconfirm_doubted_fields(state: AgentState) -> tuple[Any, list[str]]:
@@ -280,17 +284,9 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
     draft, doubt_unconfirmed = _unconfirm_doubted_fields(state)
     user_text, turn_messages = _current_turn({**state, "draft": draft})
     draft, brand_en_filled = fill_missing_brand_name_en(draft, user_text)
-    draft, unknown_mall_note, malls_cleared = _clear_malls_for_unknown_name(
-        draft,
-        user_text,
-        runtime.master,
-        turn_messages,
-    )
     draft_changed = list(doubt_unconfirmed)
     if brand_en_filled:
         draft_changed.append(FieldKey.BRAND_NAME_EN.value)
-    if malls_cleared:
-        draft_changed.append(FieldKey.MALLS.value)
     phase = compute_phase(draft).value
     cards_shown = list(state["cards_shown"])
     guard_retries = state["guard_retries"]
@@ -299,9 +295,8 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
     writer = get_stream_writer()
 
     ai_text = _last_ai_text(state)
+    guard_not_shown = _sync_guard_not_shown(state, draft, ai_text, brand_en_filled)
     status_lookup = "get_inquiry_status" in _tools_called(turn_messages)
-    if guard_retries >= 1:
-        unknown_mall_note = None
     if guard_retries < 1:
         if (
             draft.reference is None
@@ -321,8 +316,7 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
             )
         else:
             note = (
-                unknown_mall_note
-                or _brand_reask_note({**state, "draft": draft}, ai_text)
+                _brand_reask_note({**state, "draft": draft}, ai_text)
                 or _incomplete_bulk_capture_note({**state, "draft": draft}, phase)
                 or _missed_capture_note({**state, "draft": draft}, phase)
             )
@@ -336,6 +330,7 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
             "phase": phase,
             "cards_shown": cards_shown,
             "guard_retries": guard_retries + 1,
+            "guard_not_shown": guard_not_shown,
             "retry_agent": True,
             "messages": [HumanMessage(content=note)],
         }
@@ -361,6 +356,7 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
         "phase": phase,
         "cards_shown": cards_shown,
         "guard_retries": guard_retries,
+        "guard_not_shown": guard_not_shown,
         "retry_agent": False,
     }
 

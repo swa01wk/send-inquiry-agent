@@ -28,6 +28,7 @@ Requires `OPENAI_API_KEY` and `OPENAI_MODEL`. Target: all scenarios but at most 
 | 2026-10-14 | **14/14** (retractions: **2**) | Guard heuristics: no Arabic bulk-data hint; generic “the mall” ignored; brand re-ask only on explicit ask; user/picker malls not cleared. New eval: **Arabic user**, **Generic mall phrase after picking**. |
 | 2026-10-14 | **13/14** (retractions: **3**) | Same commit; **Arabic user** missed `brand_name_en` once (model kept Arabic-only brand). **Generic mall phrase after picking** passed both runs. |
 | 2026-10-14 | **14/14** + **14/14** (retractions: **0** / **0**) | `brand_infer`: derive `brand_name_en` from CR company prefix + Arabic «اسم العلامة» labels in guard/`update_draft`; prompt bilingual brand save. |
+| 2026-10-14 | **14/15** + **14/15** (retractions: **0** / **0**) | Brand: no company→EN inference; guard `guard_not_shown` blocks confirm until reply shows value; mall id verification via `filter_mall_ids` (no guard mall clearing). **CR company differs from brand (Zara Home)** failed both runs: model saved brand but not `mall-of-arabia` (asked for city instead). **Unknown mall** + new checks pass; retractions **0**. Seed: Mall of Arabia, Mall of Dhahran; CR `1010222222` → Fawaz Alhokair. |
 
 ## Prompt changes (2026-10-14, fix/conversational-friendliness)
 
@@ -41,6 +42,8 @@ Requires `OPENAI_API_KEY` and `OPENAI_MODEL`. Target: all scenarios but at most 
 | `confirm_policy` + guard unconfirm on doubt | Hesitation keeps `sales_category` unconfirmed |
 | Guard incomplete bulk capture + no “brand name” re-ask | Scenario 4 one-shot save |
 | `mall_match` unknown-name guard + tool reject | No guessed mall id for “Red Sea Mall” |
+| Drop company→brand EN; `guard_not_shown` + bundle hint | Company name ≠ brand; confirm-by-continuing only after user saw derived values |
+| `filter_mall_ids` in `update_draft`; no guard mall clearing | Accept ids only when user named mall or picker already selected |
 
 ## Failure excerpt (pre-fix run 1)
 

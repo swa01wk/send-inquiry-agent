@@ -1,4 +1,4 @@
-"""Infer missing brand_name_en from company name or user message (deterministic)."""
+"""Infer missing brand_name_en from user message (deterministic)."""
 
 from __future__ import annotations
 
@@ -15,11 +15,6 @@ _AR_BRAND_LABEL_RE = re.compile(
 _EN_BEFORE_AR_PAREN_RE = re.compile(
     r"\b([A-Za-z0-9][A-Za-z0-9' \-]{0,78}?)\s*\([\u0600-\u06FF]",
 )
-_COMPANY_BRAND_PREFIX_RE = re.compile(
-    r"^([A-Za-z0-9][A-Za-z0-9' \-]{0,60}?)\s+"
-    r"(?:Trading|LLC|Ltd|Co\.|Company|Group|Inc|Limited)\b",
-    re.IGNORECASE,
-)
 
 
 def _field_text(draft: InquiryDraft, key: FieldKey) -> str | None:
@@ -32,13 +27,6 @@ def _field_text(draft: InquiryDraft, key: FieldKey) -> str | None:
 def _valid_en(candidate: str) -> str | None:
     checked = v.validate_brand_name_en(candidate.strip())
     return checked if isinstance(checked, str) else None
-
-
-def brand_en_from_company_name(company_name: str) -> str | None:
-    match = _COMPANY_BRAND_PREFIX_RE.match(company_name.strip())
-    if not match:
-        return None
-    return _valid_en(match.group(1))
 
 
 def extract_arabic_brand_from_message(user_text: str) -> str | None:
@@ -65,25 +53,14 @@ def fill_missing_brand_name_en(
     draft: InquiryDraft,
     user_text: str,
 ) -> tuple[InquiryDraft, bool]:
-    """When brand_name_ar is set but EN is empty, infer EN from message or company."""
+    """When brand_name_ar is user-provided and EN is empty, infer EN from the message only."""
     if _field_text(draft, FieldKey.BRAND_NAME_EN):
         return draft, False
-    if not _field_text(draft, FieldKey.BRAND_NAME_AR):
-        label_ar = extract_arabic_brand_from_message(user_text)
-        if label_ar:
-            updated = draft.model_copy(deep=True)
-            ar_field = draft.fields[FieldKey.BRAND_NAME_AR]
-            updated.fields[FieldKey.BRAND_NAME_AR] = ar_field.model_copy(
-                update={"value": label_ar, "source": Source.USER, "confirmed": True},
-            )
-            draft = updated
+    ar_field = draft.fields[FieldKey.BRAND_NAME_AR]
+    if ar_field.source != Source.USER or not _field_text(draft, FieldKey.BRAND_NAME_AR):
+        return draft, False
 
     candidate = extract_latin_brand_from_message(user_text)
-    if not candidate:
-        company = _field_text(draft, FieldKey.COMPANY_NAME)
-        if company:
-            candidate = brand_en_from_company_name(company)
-
     if not candidate:
         return draft, False
 

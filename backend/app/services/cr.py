@@ -20,8 +20,11 @@ class CrService(Protocol):
 class MockCrService:
     _EXISTING = "1010000000"
     _NEW_WITH_DETAILS = "1010123456"
+    _NEW_FAWAZ = "1010222222"
     _COMPANY = "Bean Street Trading Co."
     _ADDRESS = "King Fahd Road, Al Olaya, Riyadh"
+    _FAWAZ_COMPANY = "Fawaz Alhokair Trading Co."
+    _FAWAZ_ADDRESS = "King Fahd Road, Riyadh"
 
     def verify(self, cr_number: str) -> CrResult:
         if cr_number == self._EXISTING:
@@ -31,5 +34,11 @@ class MockCrService:
                 exists=False,
                 company_name=self._COMPANY,
                 company_address=self._ADDRESS,
+            )
+        if cr_number == self._NEW_FAWAZ:
+            return CrResult(
+                exists=False,
+                company_name=self._FAWAZ_COMPANY,
+                company_address=self._FAWAZ_ADDRESS,
             )
         return CrResult(exists=False)

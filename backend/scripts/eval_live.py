@@ -300,9 +300,29 @@ def _check_unknown_mall(session, turns: list[TurnResult], _app=None) -> list[tup
     picker = any(_cards(t.events, "mall_picker") for t in turns)
     seed_mall_ids = {m.id for m in load_master_data().malls}
     invalid = [m for m in malls if m not in seed_mall_ids]
+    guessed_riyadh = malls == ["riyadh-mall-a"] and any(
+        "red sea mall" in t.user.lower() for t in turns
+    )
     return [
-        ("malls empty or picker shown", not malls or picker),
+        ("malls empty or picker shown", (not malls or picker) and not guessed_riyadh),
         ("no invalid mall id saved", not invalid),
+        ("no retractions", _retraction_count(turns) == 0),
+    ]
+
+
+def _check_cr_brand_differs_from_company(
+    session,
+    turns: list[TurnResult],
+    _app=None,
+) -> list[tuple[str, bool]]:
+    draft = session.draft
+    malls_raw = draft.fields[FieldKey.MALLS].value
+    malls = list(malls_raw) if isinstance(malls_raw, list) else []
+    return [
+        ("company from CR is Fawaz", draft.fields[FieldKey.COMPANY_NAME].value == "Fawaz Alhokair Trading Co."),
+        ("brand_name_en is Zara Home", draft.fields[FieldKey.BRAND_NAME_EN].value == "Zara Home"),
+        ("malls is Mall of Arabia", malls == ["mall-of-arabia"]),
+        ("no retractions", _retraction_count(turns) == 0),
     ]
 
 
@@ -467,6 +487,16 @@ SCENARIOS: list[LiveScenario] = [
             "Acme Trading LLC, King Abdullah Road. Bean Street kiosk at Red Sea Mall.",
         ],
         _check_unknown_mall,
+    ),
+    LiveScenario(
+        "CR company differs from brand (Zara Home)",
+        [
+            "My CR number is 1010222222.",
+            "Yes, company details are correct.",
+            "We're opening a Zara Home store at Mall of Arabia.",
+            "Sara Ali, sara@zarahome.example, 0501234567",
+        ],
+        _check_cr_brand_differs_from_company,
     ),
     LiveScenario(
         "Chat during OTP",

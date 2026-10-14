@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from app.agent.blockers import format_blockers
 from app.agent.brand_infer import fill_missing_brand_name_en
 from app.agent.confirm_policy import keys_blocked_from_confirmation
-from app.agent.mall_match import unmatched_mall_phrases
+from app.agent.mall_match import filter_mall_ids
 from app.agent.runtime import runtime_from_config
 from app.agent.state import AgentState
 from app.api.cards import (
@@ -231,8 +231,24 @@ def update_draft(
         if item.source not in ("user", "derived"):
             rejected.append(f"{item.key}: invalid source")
             continue
-        if item.key == FieldKey.MALLS.value and unmatched_mall_phrases(user_text, rt.master):
-            rejected.append(f"{item.key}: user_mall_not_in_seed_data")
+        if item.key == FieldKey.MALLS.value:
+            raw_ids = item.value if isinstance(item.value, list) else []
+            existing_raw = draft.fields[FieldKey.MALLS].value
+            existing_ids = list(existing_raw) if isinstance(existing_raw, list) else []
+            accepted, mall_rejected = filter_mall_ids(
+                [str(m) for m in raw_ids],
+                [str(m) for m in existing_ids],
+                user_text,
+                rt.master,
+            )
+            if mall_rejected:
+                rejected.append(
+                    f"{item.key}: mall_not_mentioned ({', '.join(mall_rejected)}); "
+                    "use show_mall_picker for the city",
+                )
+            if not accepted:
+                continue
+            entries.append((item.key, accepted, Source(item.source)))
             continue
         entries.append((item.key, item.value, Source(item.source)))
 
@@ -300,10 +316,14 @@ def confirm_fields(
     draft = state["draft"]
     cards_shown = list(state["cards_shown"])
     blocked = keys_blocked_from_confirmation(_last_user_text(state))
+    not_shown = frozenset(state.get("guard_not_shown") or [])
 
     confirmable: list[str] = []
     skipped: list[str] = []
     for key_str in keys:
+        if key_str in not_shown:
+            skipped.append(f"{key_str}: not_shown_in_reply")
+            continue
         if key_str in blocked:
             skipped.append(f"{key_str}: user_expressed_doubt")
             continue

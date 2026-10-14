@@ -75,9 +75,11 @@ def _askable(draft: InquiryDraft, bundle: Bundle) -> list[str]:
     return asks
 
 
-def _unconfirmed(draft: InquiryDraft) -> list[str]:
+def _unconfirmed(draft: InquiryDraft, *, exclude_keys: frozenset[str] = frozenset()) -> list[str]:
     labels: list[str] = []
     for key, field in draft.fields.items():
+        if key.value in exclude_keys:
+            continue
         if not _has_value(draft, key):
             continue
         if field.source in (Source.DERIVED, Source.VERIFIED) and not field.confirmed:
@@ -85,7 +87,11 @@ def _unconfirmed(draft: InquiryDraft) -> list[str]:
     return labels
 
 
-def next_bundle_hint(draft: InquiryDraft, cards_shown: list[str] | None = None) -> str:
+def next_bundle_hint(
+    draft: InquiryDraft,
+    cards_shown: list[str] | None = None,
+    guard_not_shown: list[str] | None = None,
+) -> str:
     """One or two lines telling the agent what to ask for next, as one question."""
     shown = cards_shown or []
     if draft.cr_status == "existing" or draft.reference:
@@ -97,7 +103,21 @@ def next_bundle_hint(draft: InquiryDraft, cards_shown: list[str] | None = None) 
         )
 
     lines: list[str] = []
-    pending = _unconfirmed(draft)
+    hidden_keys = frozenset(guard_not_shown or [])
+    if hidden_keys:
+        hidden_labels: list[str] = []
+        for key_str in hidden_keys:
+            try:
+                hidden_labels.append(_label(FieldKey(key_str)))
+            except ValueError:
+                continue
+        if hidden_labels:
+            lines.append(
+                "Not yet shown to the user (do not confirm until you mention them in a reply): "
+                + ", ".join(hidden_labels)
+                + "."
+            )
+    pending = _unconfirmed(draft, exclude_keys=hidden_keys)
     if pending:
         lines.append(
             "Shown but not yet accepted: "
@@ -126,6 +146,16 @@ def next_bundle_hint(draft: InquiryDraft, cards_shown: list[str] | None = None) 
                 "Size, budget and lease are optional: keep defaults unless offered; "
                 "mention once that they can add them."
             )
+            ar_field = draft.fields[FieldKey.BRAND_NAME_AR]
+            if (
+                ar_field.source == Source.USER
+                and _has_value(draft, FieldKey.BRAND_NAME_AR)
+                and not _has_value(draft, FieldKey.BRAND_NAME_EN)
+            ):
+                lines.append(
+                    "User gave the Arabic brand only: propose a Latin spelling in your reply "
+                    "and save it with update_draft (source derived) for confirmation."
+                )
         return "\n".join(lines)
 
     if not draft.otp_verified:

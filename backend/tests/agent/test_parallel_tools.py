@@ -54,7 +54,9 @@ async def test_parallel_tool_calls_merge_draft(agent_runtime, build_test_graph) 
         async for event in run_turn(
             graph,
             session,
-            HumanMessage(content="Marhaba\nMy CR number is 1010123456\nBean Street"),
+            HumanMessage(
+                content="Marhaba\nMy CR number is 1010123456\nBean Street at Riyadh Mall A",
+            ),
             runtime=agent_runtime,
         )
     ]

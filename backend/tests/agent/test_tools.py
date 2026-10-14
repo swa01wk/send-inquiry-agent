@@ -43,6 +43,18 @@ async def test_verify_cr_new_emits_confirm_card(agent_runtime, base_state, strea
     assert any(e.get("type") == "ui_card" for e in events)
 
 
+@pytest.mark.asyncio
+async def test_verify_cr_fawaz_does_not_fill_brand_en(agent_runtime, base_state, stream_events):
+    events, writer = stream_events
+    runtime = make_tool_runtime(state=base_state, agent_runtime=agent_runtime, writer=writer)
+    result = verify_cr.invoke(
+        {"cr_number": "1010222222", "state": base_state, "runtime": runtime},
+    )
+    draft = result.update["draft"]
+    assert draft.fields[FieldKey.COMPANY_NAME].value == "Fawaz Alhokair Trading Co."
+    assert draft.fields[FieldKey.BRAND_NAME_EN].value is None
+
+
 def test_skip_cr_after_unknown(agent_runtime, base_state, stream_events):
     events, writer = stream_events
     runtime = make_tool_runtime(state=base_state, agent_runtime=agent_runtime, writer=writer)

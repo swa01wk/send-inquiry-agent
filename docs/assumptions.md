@@ -4,7 +4,7 @@ Each open question has an assumption the POC builds on. Integrations sit behind 
 
 | Area | Assumption |
 | --- | --- |
-| CR verify | Mocked. `1010123456` → new account with sample company details; `1010000000` → existing account; other valid numbers → new, no details. CR format: 10 digits. |
+| CR verify | Mocked. `1010123456` → new account with sample company details; `1010222222` → new account with **Fawaz Alhokair Trading Co.**; `1010000000` → existing account; other valid numbers → new, no details. CR format: 10 digits. |
 | Existing account | The agent points the user to Sign In; no inquiry is created. |
 | CR optional | Skipping is allowed, as today. The agent recommends providing it once. |
 | Contact | One number: `+9665…` is mobile, anything else is a landline. Either satisfies the requirement. |

@@ -34,6 +34,7 @@ def build_graph(
             state["draft"],
             runtime.master,
             state["cards_shown"],
+            state.get("guard_not_shown"),
         )
         # No forced tool choice: questions like "which malls are in Riyadh?" must get an
         # answer, not a forced save. The guard catches the rare missed save instead.

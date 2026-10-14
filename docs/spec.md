@@ -216,7 +216,7 @@ Groups in order: company, brand, space, contact. Area shows as one row (`area`),
 
 | Interface | Mock behaviour |
 | --- | --- |
-| `CrService.verify(cr) -> CrResult` | `1010123456` → new, company "Bean Street Trading Co.", address "King Fahd Road, Al Olaya, Riyadh" · `1010000000` → existing · any other valid number → new, no details |
+| `CrService.verify(cr) -> CrResult` | `1010123456` → new, company "Bean Street Trading Co.", address "King Fahd Road, Al Olaya, Riyadh" · `1010222222` → new, company "Fawaz Alhokair Trading Co.", address "King Fahd Road, Riyadh" · `1010000000` → existing · any other valid number → new, no details |
 | `OtpService.send(session, email, phone)` / `verify(session, code)` | Code = `OTP_MOCK_CODE`; logs "OTP sent" without the code |
 | `StorageService.save(session, doc_type, upload) -> DocumentRef` | Writes to `UPLOAD_DIR/<session>/<uuid><ext>`; never opens content |
 | `SubmitService.submit(draft) -> reference` | `GEO-{unit code}-{6 random digits}`; stores the payload in memory; logs it |
@@ -236,7 +236,9 @@ Unit codes: store `STR`, media `MED`, specialty `SPC`, office `OFF`.
     {"id": "riyadh-mall-a", "name": "Riyadh Mall A", "city": "riyadh"}, {"id": "riyadh-mall-b", "name": "Riyadh Mall B", "city": "riyadh"},
     {"id": "riyadh-mall-c", "name": "Riyadh Mall C", "city": "riyadh"}, {"id": "riyadh-mall-d", "name": "Riyadh Mall D", "city": "riyadh"},
     {"id": "jeddah-mall-a", "name": "Jeddah Mall A", "city": "jeddah"}, {"id": "jeddah-mall-b", "name": "Jeddah Mall B", "city": "jeddah"},
-    {"id": "dammam-mall-a", "name": "Dammam Mall A", "city": "dammam"}
+    {"id": "mall-of-arabia", "name": "Mall of Arabia", "city": "jeddah"},
+    {"id": "dammam-mall-a", "name": "Dammam Mall A", "city": "dammam"},
+    {"id": "mall-of-dhahran", "name": "Mall of Dhahran", "city": "dammam"}
   ],
   "lease_periods": [{"id": "1y", "label": "1 year"}, {"id": "2y", "label": "2 years"}, {"id": "3y", "label": "3 years"}, {"id": "5y", "label": "5 years"}],
   "rent_periods": [{"id": "monthly", "label": "Monthly"}, {"id": "yearly", "label": "Yearly"}]
