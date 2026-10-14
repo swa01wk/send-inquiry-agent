@@ -15,6 +15,11 @@ from langgraph.config import get_stream_writer
 
 from app.agent.brand_infer import fill_brands_from_user_message, user_message_names_brand
 from app.agent.confirm_policy import keys_blocked_from_confirmation
+from app.agent.contact_infer import (
+    contact_fields_ready,
+    fill_contact_from_user_message,
+    message_has_contact_line,
+)
 from app.agent.mall_match import fill_mentioned_malls, unknown_mall_phrases
 from app.agent.runtime import AgentRuntime
 from app.agent.state import AgentState
@@ -153,6 +158,24 @@ def _is_bulk_inquiry_message(text: str) -> bool:
     )
 
 
+def _missing_send_otp_note(
+    state: AgentState,
+    draft: Any,
+    user_text: str,
+    turn_messages: list[BaseMessage],
+    cards_shown: list[str],
+) -> str | None:
+    if "otp" in cards_shown or draft.otp_verified:
+        return None
+    if _is_bulk_inquiry_message(user_text):
+        return None
+    if not message_has_contact_line(user_text) or not contact_fields_ready(draft):
+        return None
+    if "send_otp" in _tools_called(turn_messages):
+        return None
+    return f"{GUARD_PREFIX} The user sent name, email, and phone. Call send_otp before you reply."
+
+
 def _incomplete_bulk_capture_note(state: AgentState, phase: str) -> str | None:
     user_text, turn_messages = _current_turn(state)
     if phase not in ("gate", "collecting", "verifying") or not _is_bulk_inquiry_message(user_text):
@@ -273,8 +296,14 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
     user_text, turn_messages = _current_turn({**state, "draft": draft})
     draft, brands_filled = fill_brands_from_user_message(draft, user_text)
     draft, malls_filled = fill_mentioned_malls(draft, user_text, runtime.master)
+    draft, contact_filled = fill_contact_from_user_message(
+        draft,
+        user_text,
+        master=runtime.master,
+    )
     draft_changed = list(doubt_unconfirmed)
     draft_changed.extend(brands_filled)
+    draft_changed.extend(contact_filled)
     if malls_filled:
         draft_changed.append(FieldKey.MALLS.value)
     phase = compute_phase(draft).value
@@ -307,6 +336,13 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
             note = (
                 _brand_reask_note({**state, "draft": draft}, ai_text)
                 or _incomplete_bulk_capture_note({**state, "draft": draft}, phase)
+                or _missing_send_otp_note(
+                    state,
+                    draft,
+                    user_text,
+                    turn_messages,
+                    cards_shown,
+                )
                 or _missed_capture_note({**state, "draft": draft}, phase)
             )
 

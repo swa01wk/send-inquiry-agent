@@ -32,6 +32,7 @@ Requires `OPENAI_API_KEY` and `OPENAI_MODEL`. Target: all scenarios but at most 
 | 2026-10-14 | **15/15** + **15/15** (retractions: **0** / **0**) | `fill_mentioned_malls` in guard/`update_draft`: when `malls` is empty and the user message names a seed mall (e.g. Mall of Arabia → `mall-of-arabia`), write ids as user. **Zara Home** scenario passes both runs. |
 | 2026-10-14 | **16/17** + **17/17** (retractions: **1** / **0**) | Strict `mall_match` (full-name `\b` match, mall `aliases`); `brand_infer` paren EN as user/confirmed; removed `guard_not_shown`. New eval: **City only**, **Country mention** pass both runs. Run 1: **4 many fields** failed once (re-ask brand flake, 1 retraction). |
 | 2026-10-14 | **16/17** + **17/17** (retractions: **0** / **1**) | `brand_infer`: cap-word run (max 4) before Arabic paren → EN **derived**/unconfirmed; AR in parens **user**/confirmed; filler strip (Brand, Our, …). Run 1: **C** missed contact parse once; run 2 all pass. |
+| 2026-10-14 | **17/17** + **17/17** (retractions: **1** / **1**) | `contact_infer`: parse name/email/phone lines in guard + `update_draft`; guard nudges `send_otp` on contact-only turns. **C condensation** passes both runs. |
 
 ## Prompt changes (2026-10-14, fix/conversational-friendliness)
 
