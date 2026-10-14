@@ -13,6 +13,7 @@ from typing import Any
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langgraph.config import get_stream_writer
 
+from app.agent.brand_infer import fill_missing_brand_name_en
 from app.agent.confirm_policy import keys_blocked_from_confirmation
 from app.agent.mall_match import unmatched_mall_phrases
 from app.agent.runtime import AgentRuntime
@@ -278,6 +279,7 @@ def _unconfirm_doubted_fields(state: AgentState) -> tuple[Any, list[str]]:
 def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
     draft, doubt_unconfirmed = _unconfirm_doubted_fields(state)
     user_text, turn_messages = _current_turn({**state, "draft": draft})
+    draft, brand_en_filled = fill_missing_brand_name_en(draft, user_text)
     draft, unknown_mall_note, malls_cleared = _clear_malls_for_unknown_name(
         draft,
         user_text,
@@ -285,6 +287,8 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
         turn_messages,
     )
     draft_changed = list(doubt_unconfirmed)
+    if brand_en_filled:
+        draft_changed.append(FieldKey.BRAND_NAME_EN.value)
     if malls_cleared:
         draft_changed.append(FieldKey.MALLS.value)
     phase = compute_phase(draft).value
