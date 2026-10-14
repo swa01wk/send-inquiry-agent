@@ -118,6 +118,7 @@ Implement the protocols in `backend/app/services/` (`CrService`, `OtpService`, `
 | `frontend/` | Vite + React UI |
 | `backend/` | FastAPI, agent, domain, mocks |
 | `docs/` | Spec, design, demo script |
-| `prompts/` | Step-by-step build prompts (historical) |
+| `docs/specs/` | Fix specs (UI bugs, Playwright e2e) |
+| `prompts/` | Step-by-step build prompts; current: `13-ui-bugs-and-e2e.md` |
 
 Built with the Cursor prompt sequence in `prompts/`; step **11** covers polish, demo, and this README.
