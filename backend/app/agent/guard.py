@@ -26,7 +26,8 @@ GUARD_PREFIX = "[ui_event] guard:"
 # "I've sent your inquiry", "your reference number is GEO-…". Plain uses of the word
 # "reference" ("for your reference") do not match.
 _FALSE_SUBMIT_RE = re.compile(
-    r"\b(inquiry|enquiry|application|request)\b[^.!?\n]{0,40}?\b(has been|have been|was|is now|is)\s+"
+    r"\b(inquiry|enquiry|application|request)\b[^.!?\n]{0,40}?"
+    r"\b(has been|have been|was|is now|is)\s+"
     r"(submitted|sent|received)\b"
     r"|\bI(?:'ve| have)\s+(submitted|sent)\s+(your|the)\b"
     r"|\byour reference(?: number)? is\b",

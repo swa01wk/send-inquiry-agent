@@ -178,6 +178,7 @@ Each event is `event: <type>` + `data: <json>`.
 | `token` | `{message_id, text}` | Append to the assistant message `message_id` (create it if new) |
 | `ui_card` | `UiCard` | Insert after the current assistant message, or replace in place if `card_id` exists |
 | `draft` | `DraftSummary` | Replace draft state; flash and scroll to `changed_keys` |
+| `message_remove` | `{message_id}` | Remove the assistant bubble with that id (guard retracted a rejected reply) |
 | `done` | `{phase}` | Stop typing indicator, enable composer |
 | `error` | `{code, message}` | Show a friendly error bubble with Retry |
 
@@ -251,6 +252,7 @@ process steps · review time · required documents · what a CR number is · wha
 | --- | --- |
 | `OPENAI_API_KEY` | — (required) |
 | `OPENAI_MODEL` | — (required; any OpenAI chat model with tool calling) |
+| `OPENAI_TEMPERATURE` | `0.6` |
 | `OTP_MOCK_CODE` | `1234` |
 | `MAX_UPLOAD_MB` | `5` |
 | `UPLOAD_DIR` | `./.uploads` |

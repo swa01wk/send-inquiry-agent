@@ -38,6 +38,10 @@ def _apply_command(
                     new_messages.append(message)
         elif isinstance(item, ToolMessage):
             new_messages.append(item)
+        elif isinstance(item, dict):
+            for message in item.get("messages", []):
+                if isinstance(message, ToolMessage):
+                    new_messages.append(message)
 
     return {
         **state,
