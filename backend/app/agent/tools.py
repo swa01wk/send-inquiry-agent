@@ -327,14 +327,10 @@ def confirm_fields(
     draft = state["draft"]
     cards_shown = list(state["cards_shown"])
     blocked = keys_blocked_from_confirmation(_last_user_text(state))
-    not_shown = frozenset(state.get("guard_not_shown") or [])
 
     confirmable: list[str] = []
     skipped: list[str] = []
     for key_str in keys:
-        if key_str in not_shown:
-            skipped.append(f"{key_str}: not_shown_in_reply")
-            continue
         if key_str in blocked:
             skipped.append(f"{key_str}: user_expressed_doubt")
             continue

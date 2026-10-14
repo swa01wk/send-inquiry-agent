@@ -15,13 +15,12 @@ from langgraph.config import get_stream_writer
 
 from app.agent.brand_infer import fill_missing_brand_name_en
 from app.agent.confirm_policy import keys_blocked_from_confirmation
-from app.agent.guard_shown import field_shown_in_reply
 from app.agent.mall_match import fill_mentioned_malls, unknown_mall_phrases
 from app.agent.runtime import AgentRuntime
 from app.agent.state import AgentState
 from app.api.cards import build_document_upload_card, build_review_card
 from app.api.schemas import UiCard
-from app.domain.models import FieldKey, InquiryDraft
+from app.domain.models import FieldKey
 from app.domain.rules import compute_phase
 from app.domain.summary import build_draft_summary
 
@@ -238,29 +237,6 @@ def _unknown_mall_note(
     )
 
 
-def _sync_guard_not_shown(
-    state: AgentState,
-    draft: InquiryDraft,
-    ai_text: str,
-    brand_en_filled: bool,
-) -> list[str]:
-    hidden = list(state.get("guard_not_shown") or [])
-    if brand_en_filled:
-        key = FieldKey.BRAND_NAME_EN.value
-        if not field_shown_in_reply(FieldKey.BRAND_NAME_EN, draft, ai_text) and key not in hidden:
-            hidden.append(key)
-    still_hidden: list[str] = []
-    for key_str in hidden:
-        try:
-            key = FieldKey(key_str)
-        except ValueError:
-            continue
-        if field_shown_in_reply(key, draft, ai_text):
-            continue
-        still_hidden.append(key_str)
-    return still_hidden
-
-
 def _unconfirm_doubted_fields(state: AgentState) -> tuple[Any, list[str]]:
     user_text, _ = _current_turn(state)
     blocked = keys_blocked_from_confirmation(user_text)
@@ -298,7 +274,6 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
     writer = get_stream_writer()
 
     ai_text = _last_ai_text(state)
-    guard_not_shown = _sync_guard_not_shown(state, draft, ai_text, brand_en_filled)
     status_lookup = "get_inquiry_status" in _tools_called(turn_messages)
     if guard_retries < 1:
         if (
@@ -333,7 +308,6 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
             "phase": phase,
             "cards_shown": cards_shown,
             "guard_retries": guard_retries + 1,
-            "guard_not_shown": guard_not_shown,
             "retry_agent": True,
             "messages": [HumanMessage(content=note)],
         }
@@ -359,7 +333,6 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
         "phase": phase,
         "cards_shown": cards_shown,
         "guard_retries": guard_retries,
-        "guard_not_shown": guard_not_shown,
         "retry_agent": False,
     }
 

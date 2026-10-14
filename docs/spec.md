@@ -145,7 +145,7 @@ After the agent's final reply each turn:
 2. Attach the card for a phase the user just entered if it hasn't been shown: `documents` → `document_upload`, `review` → `review`. (`verifying` cards come from `send_otp`.)
 3. If the reply claims the inquiry was submitted (regex on "submitted|sent your inquiry|reference") while `reference` is None → add a system note and route back to `agent` once.
 4. If phase is `existing_account`, ensure the reply points to Sign In.
-5. When `malls` is empty and the user's message names one or more seed malls (same mention rules as `filter_mall_ids`), write those mall ids as `user` (see `fill_mentioned_malls` in `mall_match.py`). Also runs after `update_draft` when malls were omitted.
+5. When `malls` is empty and the user's message names one or more seed malls (same mention rules as `filter_mall_ids`), write those mall ids as `user` (see `fill_mentioned_malls` in `mall_match.py`). Also runs after `update_draft` when malls were omitted. Mall mention: the full normalised mall name (or optional `aliases` on a mall in master data) must appear as whole words in the user message (`\b` boundaries, optional leading “the”); city or country tokens alone do not match.
 
 ## 6. REST API (`/api`)
 
@@ -237,7 +237,7 @@ Unit codes: store `STR`, media `MED`, specialty `SPC`, office `OFF`.
     {"id": "riyadh-mall-a", "name": "Riyadh Mall A", "city": "riyadh"}, {"id": "riyadh-mall-b", "name": "Riyadh Mall B", "city": "riyadh"},
     {"id": "riyadh-mall-c", "name": "Riyadh Mall C", "city": "riyadh"}, {"id": "riyadh-mall-d", "name": "Riyadh Mall D", "city": "riyadh"},
     {"id": "jeddah-mall-a", "name": "Jeddah Mall A", "city": "jeddah"}, {"id": "jeddah-mall-b", "name": "Jeddah Mall B", "city": "jeddah"},
-    {"id": "mall-of-arabia", "name": "Mall of Arabia", "city": "jeddah"},
+    {"id": "mall-of-arabia", "name": "Mall of Arabia", "city": "jeddah", "aliases": ["Arabia Mall"]},
     {"id": "dammam-mall-a", "name": "Dammam Mall A", "city": "dammam"},
     {"id": "mall-of-dhahran", "name": "Mall of Dhahran", "city": "dammam"}
   ],

@@ -29,7 +29,8 @@ def test_fill_brand_en_when_ar_user_and_paren_in_message() -> None:
     updated, filled = fill_missing_brand_name_en(draft, user_text)
     assert filled is True
     assert updated.fields[FieldKey.BRAND_NAME_EN].value == "Bean Street"
-    assert updated.fields[FieldKey.BRAND_NAME_EN].source == Source.DERIVED
+    assert updated.fields[FieldKey.BRAND_NAME_EN].source == Source.USER
+    assert updated.fields[FieldKey.BRAND_NAME_EN].confirmed is True
 
 
 def test_fill_skips_when_ar_not_user_sourced() -> None:

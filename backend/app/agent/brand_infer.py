@@ -66,6 +66,6 @@ def fill_missing_brand_name_en(
 
     updated = draft.model_copy(deep=True)
     updated.fields[FieldKey.BRAND_NAME_EN] = draft.fields[FieldKey.BRAND_NAME_EN].model_copy(
-        update={"value": candidate, "source": Source.DERIVED, "confirmed": False},
+        update={"value": candidate, "source": Source.USER, "confirmed": True},
     )
     return updated, True

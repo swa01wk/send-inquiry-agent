@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 from app.domain import draft_ops
-from app.domain.master import MasterData
+from app.domain.master import Mall, MasterData
 from app.domain.models import FieldKey, InquiryDraft, Source
 
 # "at Red Sea Mall", "in Riyadh Mall A", "at Mall of Arabia"
@@ -45,12 +45,30 @@ _GENERIC_MALL_LEADERS = frozenset(
     }
 )
 
-_MALL_NAME_STOPWORDS = frozenset({"mall", "of", "the", "a", "an"})
+
+def _collapse_spaces(text: str) -> str:
+    return re.sub(r"\s+", " ", text.strip().lower())
 
 
 def _normalize_phrase(text: str) -> str:
     lowered = re.sub(r"\s+", " ", text.strip().lower())
     return re.sub(r"\bthe\b", " ", lowered).strip()
+
+
+def _whole_name_pattern(normalised_name: str) -> re.Pattern[str] | None:
+    words = _collapse_spaces(normalised_name).split()
+    if not words:
+        return None
+    inner = r"\s+".join(re.escape(word) for word in words)
+    return re.compile(rf"\b(?:the\s+)?{inner}\b", re.IGNORECASE)
+
+
+def _message_mentions_whole_name(user_text: str, name: str) -> bool:
+    pattern = _whole_name_pattern(name)
+    if pattern is None:
+        return False
+    msg = _collapse_spaces(user_text)
+    return bool(pattern.search(msg))
 
 
 def _is_plausible_mall_name(phrase: str) -> bool:
@@ -86,6 +104,10 @@ def phrase_matches_seed_mall(phrase: str, master: MasterData) -> bool:
         seed = _normalize_phrase(mall.name)
         if normalized == seed or normalized in seed or seed in normalized:
             return True
+        for alias in mall.aliases:
+            alias_norm = _normalize_phrase(alias)
+            if normalized == alias_norm or normalized in alias_norm or alias_norm in normalized:
+                return True
     return False
 
 
@@ -95,21 +117,20 @@ def unknown_mall_phrases(user_text: str, master: MasterData) -> list[str]:
     return [p for p in extract_mall_phrases(user_text) if not phrase_matches_seed_mall(p, master)]
 
 
-def _distinctive_tokens(normalized_name: str) -> list[str]:
-    return [w for w in normalized_name.split() if w not in _MALL_NAME_STOPWORDS]
+def user_message_mentions_mall(
+    user_text: str,
+    mall_name: str,
+    *,
+    aliases: list[str] | None = None,
+) -> bool:
+    for candidate in (mall_name, *(aliases or [])):
+        if _message_mentions_whole_name(user_text, candidate):
+            return True
+    return False
 
 
-def user_message_mentions_mall(user_text: str, mall_name: str) -> bool:
-    msg = _normalize_phrase(user_text)
-    name = _normalize_phrase(mall_name)
-    if not name:
-        return False
-    if name in msg:
-        return True
-    tokens = _distinctive_tokens(name)
-    if not tokens:
-        return name in msg
-    return all(token in msg for token in tokens)
+def _mall_mentioned(user_text: str, mall: Mall) -> bool:
+    return user_message_mentions_mall(user_text, mall.name, aliases=mall.aliases)
 
 
 def mentioned_seed_mall_ids(user_text: str, master: MasterData) -> list[str]:
@@ -121,7 +142,7 @@ def mentioned_seed_mall_ids(user_text: str, master: MasterData) -> list[str]:
     for mall in master.malls:
         if mall.id in seen:
             continue
-        if user_message_mentions_mall(user_text, mall.name):
+        if _mall_mentioned(user_text, mall):
             seen.add(mall.id)
             ids.append(mall.id)
     return ids
@@ -172,7 +193,7 @@ def filter_mall_ids(
             accepted.append(mall_id)
             continue
         mall = next(m for m in master.malls if m.id == mall_id)
-        if user_message_mentions_mall(user_text, mall.name):
+        if _mall_mentioned(user_text, mall):
             accepted.append(mall_id)
         else:
             rejected.append(mall_id)

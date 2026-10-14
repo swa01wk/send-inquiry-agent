@@ -292,6 +292,24 @@ def _check_hesitation(session, _turns: list[TurnResult], _app=None) -> list[tupl
     ]
 
 
+def _check_city_only(session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
+    malls_raw = session.draft.fields[FieldKey.MALLS].value
+    malls = list(malls_raw) if isinstance(malls_raw, list) else []
+    picker = any(_cards(t.events, "mall_picker") for t in turns)
+    return [
+        ("malls empty or picker shown", (not malls or picker)),
+        ("no mall ids saved without picker", not malls or picker),
+    ]
+
+
+def _check_country_mention(session, _turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
+    malls_raw = session.draft.fields[FieldKey.MALLS].value
+    malls = list(malls_raw) if isinstance(malls_raw, list) else []
+    return [
+        ("malls is Riyadh Mall A only", malls == ["riyadh-mall-a"]),
+    ]
+
+
 def _check_unknown_mall(session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
     from app.domain.master import load_master_data
 
@@ -487,6 +505,25 @@ SCENARIOS: list[LiveScenario] = [
             "Acme Trading LLC, King Abdullah Road. Bean Street kiosk at Red Sea Mall.",
         ],
         _check_unknown_mall,
+    ),
+    LiveScenario(
+        "City only",
+        [
+            "My CR number is 1010123456.",
+            "Yes, that's correct.",
+            "We sell sneakers, looking for a store somewhere in Riyadh",
+        ],
+        _check_city_only,
+    ),
+    LiveScenario(
+        "Country mention",
+        [
+            "Skip CR please.",
+            "Acme Trading LLC, King Abdullah Road.",
+            "We're a Saudi Arabia based coffee brand, kiosk at Riyadh Mall A. "
+            "Sara Ali, sara@coffee.example, 0501234567.",
+        ],
+        _check_country_mention,
     ),
     LiveScenario(
         "CR company differs from brand (Zara Home)",

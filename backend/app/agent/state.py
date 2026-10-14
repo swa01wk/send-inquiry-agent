@@ -17,7 +17,6 @@ class AgentState(TypedDict):
     phase: str
     cards_shown: list[str]
     guard_retries: int
-    guard_not_shown: NotRequired[list[str]]
     retry_agent: NotRequired[bool]
 
 
@@ -29,5 +28,4 @@ def initial_agent_state(*, session_id: str, draft: InquiryDraft, phase: str) -> 
         phase=phase,
         cards_shown=[],
         guard_retries=0,
-        guard_not_shown=[],
     )

@@ -90,7 +90,6 @@ def _unconfirmed(draft: InquiryDraft, *, exclude_keys: frozenset[str] = frozense
 def next_bundle_hint(
     draft: InquiryDraft,
     cards_shown: list[str] | None = None,
-    guard_not_shown: list[str] | None = None,
 ) -> str:
     """One or two lines telling the agent what to ask for next, as one question."""
     shown = cards_shown or []
@@ -103,21 +102,7 @@ def next_bundle_hint(
         )
 
     lines: list[str] = []
-    hidden_keys = frozenset(guard_not_shown or [])
-    if hidden_keys:
-        hidden_labels: list[str] = []
-        for key_str in hidden_keys:
-            try:
-                hidden_labels.append(_label(FieldKey(key_str)))
-            except ValueError:
-                continue
-        if hidden_labels:
-            lines.append(
-                "Not yet shown to the user (do not confirm until you mention them in a reply): "
-                + ", ".join(hidden_labels)
-                + "."
-            )
-    pending = _unconfirmed(draft, exclude_keys=hidden_keys)
+    pending = _unconfirmed(draft, exclude_keys=frozenset())
     if pending:
         lines.append(
             "Shown but not yet accepted: "

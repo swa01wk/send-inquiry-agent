@@ -94,3 +94,45 @@ def test_riyadh_mall_a_among_generic_phrases() -> None:
     phrases = extract_mall_phrases(text)
     assert "Riyadh Mall A" in phrases
     assert not unknown_mall_phrases(text, master)
+
+
+def test_city_only_riyadh_does_not_match_malls() -> None:
+    master = load_master_data()
+    text = "somewhere in Riyadh"
+    assert mentioned_seed_mall_ids(text, master) == []
+
+
+def test_at_riyadh_mall_a_only_that_mall() -> None:
+    master = load_master_data()
+    text = "at Riyadh Mall A"
+    assert mentioned_seed_mall_ids(text, master) == ["riyadh-mall-a"]
+
+
+def test_saudi_arabia_brand_does_not_match_mall_of_arabia() -> None:
+    master = load_master_data()
+    text = "Saudi Arabia based brand"
+    assert mentioned_seed_mall_ids(text, master) == []
+
+
+def test_jeddah_office_riyadh_want_matches_no_malls() -> None:
+    master = load_master_data()
+    text = "office in Jeddah but we want Riyadh"
+    assert mentioned_seed_mall_ids(text, master) == []
+
+
+def test_mall_of_arabia_with_optional_the() -> None:
+    master = load_master_data()
+    for text in ("at Mall of Arabia", "at the Mall of Arabia"):
+        assert mentioned_seed_mall_ids(text, master) == ["mall-of-arabia"]
+
+
+def test_riyadh_only_rejects_riyadh_mall_b() -> None:
+    master = load_master_data()
+    accepted, rejected = filter_mall_ids(
+        ["riyadh-mall-b"],
+        [],
+        "We want a store in Riyadh",
+        master,
+    )
+    assert accepted == []
+    assert rejected == ["riyadh-mall-b"]
