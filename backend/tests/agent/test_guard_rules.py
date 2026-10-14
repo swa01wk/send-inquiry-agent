@@ -54,6 +54,10 @@ def test_questions_and_chat_not_treated_as_data(text: str) -> None:
     assert not message_likely_has_inquiry_data(text)
 
 
+def test_arabic_text_detected_as_data() -> None:
+    assert message_likely_has_inquiry_data("اسم الشركة بين ستريت للتجارة")
+
+
 def test_cr_pattern_ignores_local_mobile_numbers() -> None:
     from app.agent.guard import _CR_NUMBER_RE
 

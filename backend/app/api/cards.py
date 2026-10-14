@@ -149,6 +149,20 @@ def last_confirm_card_id(cards_shown: list[str]) -> str | None:
     return confirm_ids[-1] if confirm_ids else None
 
 
+def remember_confirm_card_keys(session: Session, card: UiCard) -> None:
+    """Track which draft keys each confirm card showed (for confirm_card UI action)."""
+    if card.card_type != "confirm_fields":
+        return
+    fields = card.payload.get("fields") or []
+    keys: list[str] = []
+    for row in fields:
+        if isinstance(row, dict):
+            key = row.get("key")
+            if isinstance(key, str):
+                keys.append(key)
+    session.confirm_card_keys[card.card_id] = keys
+
+
 def build_confirm_fields_card(
     draft: InquiryDraft,
     master: MasterData,

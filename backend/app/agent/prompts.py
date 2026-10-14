@@ -25,8 +25,12 @@ def clear_prompt_cache() -> None:
     _static_prompt.cache_clear()
 
 
-def build_system_message(draft: InquiryDraft, master: MasterData) -> SystemMessage:
+def build_system_message(
+    draft: InquiryDraft,
+    master: MasterData,
+    cards_shown: list[str] | None = None,
+) -> SystemMessage:
     dynamic = prompt_summary(draft, master)
-    hint = next_bundle_hint(draft)
+    hint = next_bundle_hint(draft, cards_shown)
     content = f"{_static_prompt()}\n\n## Current state\n{dynamic}\n{hint}"
     return SystemMessage(content=content)

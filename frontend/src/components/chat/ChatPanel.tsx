@@ -27,6 +27,7 @@ export function ChatPanel({ draftPanelVisible, onToggleDraftPanel }: ChatPanelPr
     awaitingReply,
     sendMessage,
     sendAction,
+    editReviewField,
     uploadDocument,
     removeDocument,
     retry,
@@ -38,11 +39,12 @@ export function ChatPanel({ draftPanelVisible, onToggleDraftPanel }: ChatPanelPr
   const cardActions = useMemo(
     () => ({
       sendAction,
+      editReviewField,
       uploadDocument,
       removeDocument,
       mallsConfirmed,
     }),
-    [sendAction, uploadDocument, removeDocument, mallsConfirmed],
+    [sendAction, editReviewField, uploadDocument, removeDocument, mallsConfirmed],
   )
 
   const errorMessage = error?.message ?? GENERIC_ERROR

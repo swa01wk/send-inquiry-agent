@@ -87,6 +87,10 @@ function attachCardToMessages(messages: ChatMessage[], card: UiCard): ChatMessag
   })
 }
 
+function cardAttachedToMessage(messages: ChatMessage[], cardId: string): boolean {
+  return messages.some((m) => m.cardIds.includes(cardId))
+}
+
 function applyUiCard(state: ChatState, card: UiCard): ChatState {
   if (card.card_type === 'quick_replies') {
     return {
@@ -95,17 +99,15 @@ function applyUiCard(state: ChatState, card: UiCard): ChatState {
     }
   }
 
-  if (state.cards[card.card_id]) {
-    return {
-      ...state,
-      cards: { ...state.cards, [card.card_id]: card },
-      messages: attachCardToMessages(state.messages, card),
-    }
+  const cards = { ...state.cards, [card.card_id]: card }
+
+  if (state.cards[card.card_id] && cardAttachedToMessage(state.messages, card.card_id)) {
+    return { ...state, cards }
   }
 
   return {
     ...state,
-    cards: { ...state.cards, [card.card_id]: card },
+    cards,
     messages: attachCardToMessages(state.messages, card),
   }
 }

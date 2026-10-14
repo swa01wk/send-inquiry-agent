@@ -18,10 +18,15 @@ class MockOtpService:
     def __init__(self, mock_code: str) -> None:
         self._mock_code = mock_code
         self._active_sessions: set[str] = set()
+        self._send_count: dict[str, int] = {}
+
+    def send_count(self, session_id: str) -> int:
+        return self._send_count.get(session_id, 0)
 
     async def send(self, session_id: str, email: str, phone: str) -> None:
         del email, phone
         self._active_sessions.add(session_id)
+        self._send_count[session_id] = self._send_count.get(session_id, 0) + 1
         logger.info("OTP sent for session %s", session_id)
 
     async def verify(self, session_id: str, code: str) -> bool:

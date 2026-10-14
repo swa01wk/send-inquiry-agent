@@ -128,4 +128,57 @@ describe('streaming and retraction', () => {
     })
     expect(state).toBe(initialChatState)
   })
+
+  it('keeps an updated card on its original message when message_id changes', () => {
+    let state: ChatState = {
+      ...initialChatState,
+      messages: [
+        { id: 'm1', role: 'assistant', text: 'First', cardIds: ['confirm-1'] },
+        { id: 'm2', role: 'assistant', text: 'Second', cardIds: [] },
+      ],
+      cards: {
+        'confirm-1': {
+          ...confirmFieldsCardExample,
+          card_id: 'confirm-1',
+          message_id: 'm1',
+        },
+      },
+    }
+    state = reduceSse(state, {
+      event: 'ui_card',
+      data: {
+        card_id: 'confirm-1',
+        card_type: 'confirm_fields',
+        message_id: 'm2',
+        payload: {
+          title: 'Updated on wrong message',
+          fields: [],
+          all_confirmed: false,
+        },
+      },
+    })
+    expect(state.messages.find((m) => m.id === 'm1')?.cardIds).toEqual(['confirm-1'])
+    expect(state.messages.find((m) => m.id === 'm2')?.cardIds).toEqual([])
+  })
+
+  it('reattaches an orphaned card to the next assistant message', () => {
+    let state: ChatState = {
+      ...initialChatState,
+      status: 'streaming',
+      messages: [
+        { id: 'keep', role: 'assistant', text: 'Earlier', cardIds: [] },
+        { id: 'bad', role: 'assistant', text: 'Retracted', cardIds: ['otp-1'] },
+      ],
+      cards: { 'otp-1': { ...otpCardExample, card_id: 'otp-1', message_id: 'bad' } },
+    }
+    state = reduceSse(state, { event: 'message_remove', data: { message_id: 'bad' } })
+    expect(state.messages.find((m) => m.id === 'keep')?.cardIds).toEqual(['otp-1'])
+
+    state = reduceSse(state, {
+      event: 'ui_card',
+      data: { ...otpCardExample, card_id: 'otp-1', message_id: 'bad' },
+    })
+    expect(state.messages.find((m) => m.id === 'keep')?.cardIds).toEqual(['otp-1'])
+    expect(state.messages.filter((m) => m.cardIds.includes('otp-1'))).toHaveLength(1)
+  })
 })

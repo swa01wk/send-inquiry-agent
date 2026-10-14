@@ -13,10 +13,13 @@ from typing import Any
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langgraph.config import get_stream_writer
 
+from app.agent.confirm_policy import keys_blocked_from_confirmation
+from app.agent.mall_match import unmatched_mall_phrases
 from app.agent.runtime import AgentRuntime
 from app.agent.state import AgentState
 from app.api.cards import build_document_upload_card, build_review_card
 from app.api.schemas import UiCard
+from app.domain.models import FieldKey, FieldValue, InquiryDraft
 from app.domain.rules import compute_phase
 from app.domain.summary import build_draft_summary
 
@@ -40,6 +43,7 @@ _SIGN_IN_RE = re.compile(r"sign\s*in", re.IGNORECASE)
 _CR_NUMBER_RE = re.compile(r"\b(?!05)\d{10}\b")
 _DATA_HINT_RE = re.compile(
     r"(@[\w-]+\.|\+?966|\b05\d{8}\b|\b\d{10}\b|\b(LLC|Ltd|Trading|Co\.)\b|"
+    r"[\u0600-\u06FF]{3,}|"
     r"\bmall\s+[a-z]\b|\b(kiosk|boutique|restaurant|caf[eé]|coffee|store|shop)\b|"
     r"\b\d+\s*(sqm|sq\.?\s*m|square)\b|\b\d+\s*(k|,000)\b)",
     re.IGNORECASE,
@@ -49,6 +53,11 @@ _QUESTION_START_RE = re.compile(
     re.IGNORECASE,
 )
 _CAPTURE_TOOLS = {"update_draft", "verify_cr"}
+_REASK_BRAND_RE = re.compile(r"\bbrand name\b", re.IGNORECASE)
+_BULK_INQUIRY_RE = re.compile(
+    r"@.*?(?:\+?966|\b05\d{8}\b)|(?:\+?966|\b05\d{8}\b).*?@",
+    re.IGNORECASE | re.DOTALL,
+)
 
 
 def _content_text(message: BaseMessage) -> str:
@@ -98,6 +107,62 @@ def message_likely_has_inquiry_data(text: str) -> bool:
     return _DATA_HINT_RE.search(stripped) is not None
 
 
+def _field_has_value(draft: Any, key: FieldKey) -> bool:
+    value = draft.fields[key].value
+    if value is None:
+        return False
+    if isinstance(value, str) and not value.strip():
+        return False
+    if isinstance(value, list) and not value:
+        return False
+    return True
+
+
+def _is_bulk_inquiry_message(text: str) -> bool:
+    if "@" not in text or not _BULK_INQUIRY_RE.search(text):
+        return False
+    return bool(
+        re.search(
+            r"\b(LLC|Ltd|Trading|caf[eé]|kiosk|restaurant|mall|street)\b",
+            text,
+            re.IGNORECASE,
+        )
+    )
+
+
+def _incomplete_bulk_capture_note(state: AgentState, phase: str) -> str | None:
+    user_text, turn_messages = _current_turn(state)
+    if phase not in ("gate", "collecting", "verifying") or not _is_bulk_inquiry_message(user_text):
+        return None
+    if "update_draft" not in _tools_called(turn_messages):
+        return None
+    draft = state["draft"]
+    missing: list[str] = []
+    for key in (FieldKey.BRAND_NAME_EN, FieldKey.UNIT_TYPE, FieldKey.EMAIL):
+        if not _field_has_value(draft, key):
+            missing.append(key.value)
+    if not (_field_has_value(draft, FieldKey.MOBILE) or _field_has_value(draft, FieldKey.LANDLINE)):
+        missing.append("contact_number")
+    if not missing:
+        return None
+    return (
+        f"{GUARD_PREFIX} The user's message combined company, brand, and contact details, "
+        f"but these draft fields are still empty: {', '.join(missing)}. "
+        "Call update_draft with every field you can extract from their message before replying."
+    )
+
+
+def _brand_reask_note(state: AgentState, ai_text: str) -> str | None:
+    if not _REASK_BRAND_RE.search(ai_text):
+        return None
+    if not _field_has_value(state["draft"], FieldKey.BRAND_NAME_EN):
+        return None
+    return (
+        f"{GUARD_PREFIX} The user already provided a brand name. "
+        "Do not ask for 'brand name' again in your reply."
+    )
+
+
 def _missed_capture_note(state: AgentState, phase: str) -> str | None:
     user_text, turn_messages = _current_turn(state)
     if not user_text or user_text.startswith("[ui_event]"):
@@ -135,8 +200,60 @@ def _emit_card(card: UiCard, writer: Any) -> None:
     writer({"type": "ui_card", "data": card.model_dump()})
 
 
+def _clear_malls_for_unknown_name(
+    draft: InquiryDraft,
+    user_text: str,
+    master: Any,
+    turn_messages: list[BaseMessage],
+) -> tuple[InquiryDraft, str | None, bool]:
+    """Drop mall ids when the user named a mall that is not in seed data."""
+    unmatched = unmatched_mall_phrases(user_text, master)
+    if not unmatched or not _field_has_value(draft, FieldKey.MALLS):
+        return draft, None, False
+    if "show_mall_picker" in _tools_called(turn_messages):
+        return draft, None, False
+    cleared = draft.model_copy(deep=True)
+    cleared.fields[FieldKey.MALLS] = FieldValue(value=[], source=None, confirmed=False)
+    label = unmatched[0]
+    note = (
+        f"{GUARD_PREFIX} The user named «{label}», which is not in seeded mall data. "
+        "Do not write a different mall id. Leave malls empty or call show_mall_picker "
+        "for the city they mean, then reply."
+    )
+    return cleared, note, True
+
+
+def _unconfirm_doubted_fields(state: AgentState) -> tuple[Any, list[str]]:
+    user_text, _ = _current_turn(state)
+    blocked = keys_blocked_from_confirmation(user_text)
+    if not blocked:
+        return state["draft"], []
+    draft = state["draft"].model_copy(deep=True)
+    changed: list[str] = []
+    for key_str in blocked:
+        try:
+            key = FieldKey(key_str)
+        except ValueError:
+            continue
+        field = draft.fields[key]
+        if field.confirmed:
+            draft.fields[key] = field.model_copy(update={"confirmed": False})
+            changed.append(key_str)
+    return draft, changed
+
+
 def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
-    draft = state["draft"]
+    draft, doubt_unconfirmed = _unconfirm_doubted_fields(state)
+    user_text, turn_messages = _current_turn({**state, "draft": draft})
+    draft, unknown_mall_note, malls_cleared = _clear_malls_for_unknown_name(
+        draft,
+        user_text,
+        runtime.master,
+        turn_messages,
+    )
+    draft_changed = list(doubt_unconfirmed)
+    if malls_cleared:
+        draft_changed.append(FieldKey.MALLS.value)
     phase = compute_phase(draft).value
     cards_shown = list(state["cards_shown"])
     guard_retries = state["guard_retries"]
@@ -145,8 +262,9 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
     writer = get_stream_writer()
 
     ai_text = _last_ai_text(state)
-    _user_text, turn_messages = _current_turn(state)
     status_lookup = "get_inquiry_status" in _tools_called(turn_messages)
+    if guard_retries >= 1:
+        unknown_mall_note = None
     if guard_retries < 1:
         if (
             draft.reference is None
@@ -165,13 +283,19 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
                 "Reply again, kindly pointing them to Sign In on Tenant Central."
             )
         else:
-            note = _missed_capture_note(state, phase)
+            note = (
+                unknown_mall_note
+                or _brand_reask_note({**state, "draft": draft}, ai_text)
+                or _incomplete_bulk_capture_note({**state, "draft": draft}, phase)
+                or _missed_capture_note({**state, "draft": draft}, phase)
+            )
 
     if note is not None:
         # Take the rejected reply off the user's screen; the agent replies again.
         if writer is not None:
             writer({"type": "retract_reply", "data": {}})
         return {
+            "draft": draft,
             "phase": phase,
             "cards_shown": cards_shown,
             "guard_retries": guard_retries + 1,
@@ -179,7 +303,7 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
             "messages": [HumanMessage(content=note)],
         }
 
-    _emit_draft(state, runtime, [])
+    _emit_draft({**state, "draft": draft}, runtime, draft_changed)
 
     if phase == "documents" and "documents" not in cards_shown:
         card = build_document_upload_card(
@@ -196,6 +320,7 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
         cards_shown.append("review")
 
     return {
+        "draft": draft,
         "phase": phase,
         "cards_shown": cards_shown,
         "guard_retries": guard_retries,

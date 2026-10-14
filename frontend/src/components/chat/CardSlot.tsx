@@ -63,7 +63,7 @@ export function CardSlot({ card, actions, focusOnMount = false }: CardSlotProps)
       {card.card_type === 'review' ? (
         <ReviewCard
           payload={card.payload}
-          onEditField={(key, value) => actions.sendAction('edit_field', { key, value })}
+          onEditField={(key, value) => actions.editReviewField(key, value)}
           onSubmit={() => actions.sendAction('accept_and_submit', { terms_accepted: true })}
         />
       ) : null}

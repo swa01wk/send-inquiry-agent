@@ -85,8 +85,9 @@ def _unconfirmed(draft: InquiryDraft) -> list[str]:
     return labels
 
 
-def next_bundle_hint(draft: InquiryDraft) -> str:
+def next_bundle_hint(draft: InquiryDraft, cards_shown: list[str] | None = None) -> str:
     """One or two lines telling the agent what to ask for next, as one question."""
+    shown = cards_shown or []
     if draft.cr_status == "existing" or draft.reference:
         return "Next question: none (no more collection needed)."
     if draft.cr_status == "unknown":
@@ -101,7 +102,9 @@ def next_bundle_hint(draft: InquiryDraft) -> str:
         lines.append(
             "Shown but not yet accepted: "
             + ", ".join(pending)
-            + ". If the user carries on without objecting, confirm them this turn."
+            + ". If the user carries on without objecting, confirm them this turn. "
+            "If they express doubt or hesitation about a specific value "
+            '(e.g. "not sure about the category"), do not confirm that field.'
         )
 
     for bundle in (COMPANY, BRAND_AND_SPACE, CONTACT):
@@ -126,7 +129,13 @@ def next_bundle_hint(draft: InquiryDraft) -> str:
         return "\n".join(lines)
 
     if not draft.otp_verified:
-        lines.append("Next: send the verification code (send_otp) if not sent yet.")
+        if "otp" in shown:
+            lines.append(
+                "Verification code already sent; wait for the user to enter it in the box. "
+                "Only resend if they ask."
+            )
+        else:
+            lines.append("Next: send the verification code (send_otp) if not sent yet.")
     else:
         lines.append("Next: documents card, then the review card.")
     return "\n".join(lines)

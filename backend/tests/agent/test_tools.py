@@ -9,8 +9,9 @@ from app.agent.tools import (
     verify_cr,
 )
 from app.domain.draft_ops import new_inquiry_draft, write_fields
-from app.domain.models import FieldKey, Source
+from app.domain.models import FieldKey, FieldValue, Source
 from app.domain.rules import compute_phase
+from langchain_core.messages import HumanMessage
 from langgraph.types import Command
 from tests.agent.conftest import make_tool_runtime
 
@@ -101,3 +102,21 @@ def test_confirm_fields_already_confirmed(agent_runtime, stream_events):
         {"keys": [FieldKey.COMPANY_NAME.value], "state": state, "runtime": runtime},
     )
     assert "No fields confirmed" in result.update["messages"][0].content
+
+
+def test_confirm_fields_skips_category_when_user_doubts(agent_runtime, stream_events):
+    draft = new_inquiry_draft()
+    draft.fields[FieldKey.SALES_CATEGORY] = FieldValue(
+        value="fnb_cafe",
+        source=Source.DERIVED,
+        confirmed=False,
+    )
+    state = _state_with_draft(draft)
+    state["messages"] = [HumanMessage(content="Hmm, not sure about the category")]
+    events, writer = stream_events
+    runtime = make_tool_runtime(state=state, agent_runtime=agent_runtime, writer=writer)
+    result = confirm_fields.invoke(
+        {"keys": [FieldKey.SALES_CATEGORY.value], "state": state, "runtime": runtime},
+    )
+    assert "No fields confirmed" in result.update["messages"][0].content
+    assert result.update["draft"].fields[FieldKey.SALES_CATEGORY].confirmed is False

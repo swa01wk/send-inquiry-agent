@@ -15,6 +15,7 @@ from app.api.cards import (
     build_review_card,
     build_success_card,
     last_confirm_card_id,
+    remember_confirm_card_keys,
 )
 from app.api.schemas import UiCard
 from app.domain import draft_ops
@@ -38,7 +39,8 @@ def _draft_event(draft: InquiryDraft, runtime: AgentRuntime, changed_keys: list[
     return SseEvent(event="draft", data=summary.model_dump())
 
 
-def _card_event(card: UiCard) -> SseEvent:
+def _card_event(session: Session, card: UiCard) -> SseEvent:
+    remember_confirm_card_keys(session, card)
     return SseEvent(event="ui_card", data=card.model_dump())
 
 
@@ -106,7 +108,7 @@ async def _submit_otp(
         draft.otp_verified = True
         session.draft = draft
         card = build_otp_input_card(draft)
-        events.append(_card_event(card))
+        events.append(_card_event(session, card))
         events.append(_draft_event(draft, runtime, ["otp_verified"]))
         return ActionResult(
             note=HumanMessage(content="[ui_event] otp_verified"),
@@ -123,7 +125,9 @@ async def _submit_otp(
         draft.otp_attempts_left = 3
         session.draft = draft
         card = build_otp_input_card(draft)
-        events.extend([_card_event(card), _draft_event(draft, runtime, ["otp_attempts_left"])])
+        events.extend(
+            [_card_event(session, card), _draft_event(draft, runtime, ["otp_attempts_left"])],
+        )
         return ActionResult(
             note=HumanMessage(content="[ui_event] otp_resent"),
             events=events,
@@ -132,7 +136,7 @@ async def _submit_otp(
 
     session.draft = draft
     card = build_otp_input_card(draft)
-    events.extend([_card_event(card), _draft_event(draft, runtime, ["otp_attempts_left"])])
+    events.extend([_card_event(session, card), _draft_event(draft, runtime, ["otp_attempts_left"])])
     return ActionResult(
         note=HumanMessage(
             content=f"[ui_event] otp_failed attempts_left={draft.otp_attempts_left}",
@@ -161,7 +165,7 @@ async def _resend_otp(
     card = build_otp_input_card(draft)
     return ActionResult(
         note=HumanMessage(content="[ui_event] otp_resent"),
-        events=[_card_event(card), _draft_event(draft, runtime, ["otp_attempts_left"])],
+        events=[_card_event(session, card), _draft_event(draft, runtime, ["otp_attempts_left"])],
         changed_keys=["otp_attempts_left"],
     )
 
@@ -198,13 +202,20 @@ async def _confirm_card(
     card_id = payload.get("card_id")
     if not isinstance(card_id, str):
         return ActionResult(note=HumanMessage(content="[ui_event] confirm_failed"))
+    listed = session.confirm_card_keys.get(card_id)
+    if not listed:
+        return ActionResult(note=HumanMessage(content="[ui_event] confirm_failed"))
     keys: list[str] = []
-    for field_key in FieldKey:
+    for key_str in listed:
+        try:
+            field_key = FieldKey(key_str)
+        except ValueError:
+            continue
         field = session.draft.fields[field_key]
         if field.value is None:
             continue
         if field.source in (Source.DERIVED, Source.VERIFIED) and not field.confirmed:
-            keys.append(field_key.value)
+            keys.append(key_str)
     if not keys:
         return ActionResult(note=HumanMessage(content="[ui_event] confirm_failed"))
     draft = draft_ops.confirm(session.draft, keys)
@@ -212,7 +223,7 @@ async def _confirm_card(
     events: list[SseEvent] = [_draft_event(draft, runtime, keys)]
     confirm_id = last_confirm_card_id(list(session.cards_shown)) or card_id
     card = build_confirm_fields_card(draft, runtime.master, keys, card_id=confirm_id)
-    events.append(_card_event(card))
+    events.append(_card_event(session, card))
     return ActionResult(
         note=HumanMessage(content=f"[ui_event] fields_confirmed {' '.join(keys)}"),
         events=events,
@@ -240,7 +251,7 @@ async def _accept_and_submit(
         tokens = " ".join(b.token for b in blockers)
         return ActionResult(
             note=HumanMessage(content=f"[ui_event] submit_blocked {tokens}"),
-            events=[_card_event(card), _draft_event(draft, runtime, ["terms_accepted"])],
+            events=[_card_event(session, card), _draft_event(draft, runtime, ["terms_accepted"])],
             changed_keys=["terms_accepted"],
         )
 
@@ -252,7 +263,7 @@ async def _accept_and_submit(
     return ActionResult(
         note=HumanMessage(content=f"[ui_event] submitted reference={reference}"),
         events=[
-            _card_event(success),
+            _card_event(session, success),
             _draft_event(draft, runtime, ["reference", "terms_accepted"]),
         ],
         changed_keys=["reference", "terms_accepted"],

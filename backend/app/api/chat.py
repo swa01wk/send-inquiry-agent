@@ -13,9 +13,10 @@ from sse_starlette.sse import EventSourceResponse
 from app.agent.actions import handle_ui_action
 from app.agent.events import SseEvent, run_turn
 from app.agent.runtime import AgentRuntime
+from app.api.cards import remember_confirm_card_keys
 from app.api.deps import get_services, get_session_store, get_settings
 from app.api.limiter import limiter
-from app.api.schemas import ChatRequestAction, ChatRequestMessage
+from app.api.schemas import ChatRequestAction, ChatRequestMessage, UiCard
 from app.config import Settings
 from app.domain.master import load_master_data
 from app.services.container import ServiceContainer
@@ -75,6 +76,8 @@ async def chat_stream(
     async def event_generator() -> AsyncIterator[dict[str, str]]:
         try:
             for item in action_events:
+                if item["event"] == "ui_card":
+                    remember_confirm_card_keys(session, UiCard.model_validate(item["data"]))
                 yield _sse(item)
             async for item in run_turn(
                 graph,

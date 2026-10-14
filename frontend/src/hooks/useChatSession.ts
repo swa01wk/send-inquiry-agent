@@ -4,7 +4,7 @@ import { StreamAbortError, streamChat } from '../api/stream'
 import { MOCK_MODE } from '../config'
 import { resetMockSessionState } from '../mocks/mockSession'
 import { useChatStore } from '../state/chatStore'
-import type { ChatRequest } from '../types/contracts'
+import type { ChatRequest, SseEvent } from '../types/contracts'
 
 const GENERIC_ERROR = 'Sorry, something went wrong on our side. Please try again.'
 const RATE_LIMIT_MESSAGE = "You're sending messages a little fast. Give it a moment and try again."
@@ -119,6 +119,41 @@ export function useChatSession() {
     [runStream, state.status],
   )
 
+  const editReviewField = useCallback(
+    async (key: string, value: string) => {
+      if (!state.sessionId || state.status === 'streaming') return false
+
+      dispatch({ type: 'turnStarted' })
+      abortRef.current?.abort()
+      const controller = new AbortController()
+      abortRef.current = controller
+
+      let saved = false
+      try {
+        const outcome = await streamChat(
+          state.sessionId,
+          { type: 'action', action: 'edit_field', payload: { key, value } },
+          (event: SseEvent) => {
+            dispatch({ type: 'sse', event })
+            if (
+              event.event === 'draft' &&
+              Array.isArray(event.data.changed_keys) &&
+              event.data.changed_keys.includes(key)
+            ) {
+              saved = true
+            }
+          },
+          controller.signal,
+        )
+        if (outcome === 'error') return false
+        return saved
+      } catch {
+        return false
+      }
+    },
+    [dispatch, state.sessionId, state.status],
+  )
+
   const uploadDocumentForType = useCallback(
     async (docType: string, file: File) => {
       if (!state.sessionId) return
@@ -170,6 +205,7 @@ export function useChatSession() {
     ...state,
     sendMessage,
     sendAction,
+    editReviewField,
     uploadDocument: uploadDocumentForType,
     removeDocument: removeDocumentForType,
     retry,

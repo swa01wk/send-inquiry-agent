@@ -30,7 +30,11 @@ def build_graph(
 
     def agent_node(state: AgentState, config: RunnableConfig) -> dict[str, Any]:
         runtime = runtime_from_config(config)
-        system = build_system_message(state["draft"], runtime.master)
+        system = build_system_message(
+            state["draft"],
+            runtime.master,
+            state["cards_shown"],
+        )
         # No forced tool choice: questions like "which malls are in Riyadh?" must get an
         # answer, not a forced save. The guard catches the rare missed save instead.
         response = chat_model.invoke([system, *state["messages"]], config=config)

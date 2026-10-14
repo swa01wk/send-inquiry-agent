@@ -5,13 +5,15 @@ from __future__ import annotations
 import json
 from typing import Annotated, Any, Literal
 
-from langchain_core.messages import ToolMessage
+from langchain_core.messages import HumanMessage, ToolMessage
 from langchain_core.tools import tool
 from langgraph.prebuilt.tool_node import InjectedState, ToolRuntime
 from langgraph.types import Command
 from pydantic import BaseModel
 
 from app.agent.blockers import format_blockers
+from app.agent.confirm_policy import keys_blocked_from_confirmation
+from app.agent.mall_match import unmatched_mall_phrases
 from app.agent.runtime import runtime_from_config
 from app.agent.state import AgentState
 from app.api.cards import (
@@ -220,12 +222,16 @@ def update_draft(
     entries: list[tuple[str, object, Source]] = []
     rejected: list[str] = []
 
+    user_text = _last_user_text(state)
     for item in fields:
         if item.key in PROTECTED_WRITE_KEYS:
             rejected.append(f"{item.key}: protected")
             continue
         if item.source not in ("user", "derived"):
             rejected.append(f"{item.key}: invalid source")
+            continue
+        if item.key == FieldKey.MALLS.value and unmatched_mall_phrases(user_text, rt.master):
+            rejected.append(f"{item.key}: user_mall_not_in_seed_data")
             continue
         entries.append((item.key, item.value, Source(item.source)))
 
@@ -267,6 +273,18 @@ def update_draft(
     )
 
 
+def _last_user_text(state: AgentState) -> str:
+    for message in reversed(state["messages"]):
+        if not isinstance(message, HumanMessage):
+            continue
+        content = message.content
+        text = content if isinstance(content, str) else str(content)
+        if text.startswith("[ui_event]"):
+            continue
+        return text
+    return ""
+
+
 @tool
 def confirm_fields(
     keys: list[str],
@@ -277,10 +295,14 @@ def confirm_fields(
     rt = runtime_from_config(runtime.config)
     draft = state["draft"]
     cards_shown = list(state["cards_shown"])
+    blocked = keys_blocked_from_confirmation(_last_user_text(state))
 
     confirmable: list[str] = []
     skipped: list[str] = []
     for key_str in keys:
+        if key_str in blocked:
+            skipped.append(f"{key_str}: user_expressed_doubt")
+            continue
         try:
             key = FieldKey(key_str)
         except ValueError:

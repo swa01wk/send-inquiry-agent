@@ -20,6 +20,8 @@ from langchain_core.runnables import RunnableConfig
 
 from app.agent.runtime import AgentRuntime
 from app.agent.state import AgentState, initial_agent_state
+from app.api.cards import remember_confirm_card_keys
+from app.api.schemas import UiCard
 from app.domain.rules import compute_phase
 from app.observability.turn_log import TurnTimer, log_chat_turn
 from app.sessions import Session
@@ -124,6 +126,7 @@ async def run_turn(
     pending_cards: list[SseEvent] = []
     timer = TurnTimer()
     streamed_token_chars = 0
+    retractions = 0
     final_messages: list[BaseMessage] = []
 
     try:
@@ -144,6 +147,7 @@ async def run_turn(
                 elif event_type == "retract_reply":
                     removed = replies.retract_latest()
                     if removed is not None:
+                        retractions += 1
                         yield SseEvent(event="message_remove", data={"message_id": removed})
                 continue
 
@@ -193,6 +197,8 @@ async def run_turn(
         for card_event in pending_cards:
             if card_event["data"].get("message_id") is None and replies.last_text_id:
                 card_event["data"]["message_id"] = replies.last_text_id
+            card = UiCard.model_validate(card_event["data"])
+            remember_confirm_card_keys(session, card)
             yield card_event
 
         done_phase = str(final.get("phase", phase))
@@ -202,6 +208,7 @@ async def run_turn(
             messages=final_messages,
             latency_ms=timer.elapsed_ms(),
             streamed_token_chars=streamed_token_chars,
+            retractions=retractions,
             outcome="done",
         )
         yield SseEvent(event="done", data={"phase": done_phase})
@@ -214,6 +221,7 @@ async def run_turn(
             messages=final_messages,
             latency_ms=timer.elapsed_ms(),
             streamed_token_chars=streamed_token_chars,
+            retractions=retractions,
             outcome="error",
         )
         yield SseEvent(
