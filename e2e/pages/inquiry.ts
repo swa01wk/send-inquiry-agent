@@ -157,15 +157,20 @@ export class InquiryPage {
     await this.waitForTurnDone(doneBefore)
   }
 
-  async lastReply(): Promise<string> {
+  /** Waits until the newest bot bubble shows text; WebKit can read empty right after a turn. */
+  private async settledBubbles(): Promise<Locator> {
     const bubbles = this.page.getByTestId('bot-bubble-text')
-    const n = await bubbles.count()
-    expect(n).toBeGreaterThan(0)
-    return (await bubbles.nth(n - 1).innerText()).trim()
+    await expect(bubbles.last()).toHaveText(/\S/, { timeout: 10_000 })
+    return bubbles
+  }
+
+  async lastReply(): Promise<string> {
+    const bubbles = await this.settledBubbles()
+    return (await bubbles.last().innerText()).trim()
   }
 
   async allReplies(): Promise<string[]> {
-    const bubbles = this.page.getByTestId('bot-bubble-text')
+    const bubbles = await this.settledBubbles()
     const n = await bubbles.count()
     const out: string[] = []
     for (let i = 0; i < n; i++) out.push((await bubbles.nth(i).innerText()).trim())
