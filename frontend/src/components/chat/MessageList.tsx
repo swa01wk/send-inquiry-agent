@@ -84,7 +84,8 @@ export function MessageList({
 
         return (
           <div key={message.id} className={styles.block}>
-            {message.text ? <BotBubble text={message.text} showAvatar={showAvatar} /> : null}
+            {/* Whitespace-only text (a newline before a tool call) gets no bubble. */}
+            {message.text.trim() ? <BotBubble text={message.text} showAvatar={showAvatar} /> : null}
             {cardIds.length > 0 ? (
               <div className={styles.cards}>
                 {cardIds.map((cardId) => (

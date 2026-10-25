@@ -26,4 +26,24 @@ describe('MessageList', () => {
     expect(screen.getByText('Hello')).toBeInTheDocument()
     expect(screen.getAllByTestId('bot-bubble-text').map((el) => el.textContent)).toContain('More')
   })
+
+  it('renders no bubble for a whitespace-only assistant message', () => {
+    const messages: ChatMessage[] = [
+      { id: 'b1', role: 'assistant', text: 'Hello', cardIds: [] },
+      { id: 'u1', role: 'user', text: 'Can I talk to someone?', cardIds: [] },
+      { id: 'b2', role: 'assistant', text: '\n\n', cardIds: [] },
+    ]
+    const cardActions = {
+      sendAction: () => undefined,
+      editReviewField: async () => true,
+      uploadDocument: async () => undefined,
+      removeDocument: async () => undefined,
+      mallsConfirmed: false,
+    }
+    render(
+      <MessageList messages={messages} cards={{}} isStreaming={false} cardActions={cardActions} />,
+    )
+
+    expect(screen.getAllByTestId('bot-bubble-text')).toHaveLength(1)
+  })
 })

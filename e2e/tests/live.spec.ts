@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { InquiryPage } from '../pages/inquiry'
 import { draftFields, fieldDisplay } from '../support/draft'
-import { countRetractions } from '../support/events'
+import { countRetractions, readCapturedEvents } from '../support/events'
 import { appendLiveResult, type LiveScenarioResult } from '../support/liveResults'
 import { afterTurnChecks } from '../support/turnChecks'
 
@@ -18,8 +18,15 @@ test.describe('Live OpenAI personas @live', () => {
     }
   })
 
-  test.afterEach(async ({}, testInfo) => {
+  test.afterEach(async ({ page }, testInfo) => {
     if (!process.env.OPENAI_API_KEY) return
+    if (testInfo.status !== testInfo.expectedStatus) {
+      // The raw SSE stream explains live failures (empty replies, retractions, errors).
+      await testInfo.attach('sse-events.json', {
+        body: JSON.stringify(await readCapturedEvents(page), null, 2),
+        contentType: 'application/json',
+      })
+    }
     const result: LiveScenarioResult = {
       scenario: testInfo.title,
       pass: testInfo.status === 'passed',
@@ -124,9 +131,11 @@ test.describe('Live OpenAI personas @live', () => {
   test('14 wants person @live', async ({ page }) => {
     const inquiry = new InquiryPage(page)
     await inquiry.open()
+    const before = (await inquiry.allReplies()).length
     await trackTurns(inquiry, 'can i talk to someone?')
-    const reply = await inquiry.lastReply()
-    expect(reply.length).toBeGreaterThan(5)
+    const replies = await inquiry.allReplies()
+    expect(replies.length, 'a new bot reply after the request').toBeGreaterThan(before)
+    expect(replies[replies.length - 1].length).toBeGreaterThan(5)
   })
 
   test('15 asks price @live', async ({ page }) => {
