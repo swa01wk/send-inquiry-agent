@@ -14,7 +14,7 @@ backend/app/
   api/               # routers: sessions, chat, documents, master, inquiries
   agent/             # LangGraph: state, prompts, tools, guard, graph, streaming
   domain/            # models.py (InquiryDraft etc.), validation.py, summary.py
-  services/          # interfaces + mock implementations (cr, otp, storage, submit, status)
+  services/          # interfaces + mock implementations (cr, email_verification, otp, storage, submit, status)
   data/              # master_data.json, faq.json
 backend/tests/       # pytest; mirrors app/
 ```

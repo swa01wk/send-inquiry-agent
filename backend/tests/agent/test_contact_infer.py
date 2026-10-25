@@ -51,3 +51,11 @@ def test_parse_contact_after_bulk_preamble() -> None:
 def test_message_has_contact_line() -> None:
     assert message_has_contact_line("Sara Ali, sara@beanstreet.example, 0501234567")
     assert not message_has_contact_line("Just asking about malls")
+
+
+def test_parse_contact_with_international_number() -> None:
+    parsed = parse_contact_from_message("Omar Haddad, omar@brand.ae, +971 50 123 4567")
+    assert parsed is not None
+    first, last, email, phone = parsed
+    assert (first, last, email) == ("Omar", "Haddad", "omar@brand.ae")
+    assert phone.replace(" ", "") == "+971501234567"

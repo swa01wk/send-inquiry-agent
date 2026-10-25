@@ -12,8 +12,6 @@ from app.api.schemas import (
     MallPickerCity,
     MallPickerMall,
     MallPickerPayload,
-    OtpInputPayload,
-    OtpSentTo,
     QuickRepliesPayload,
     QuickReplyOption,
     ReviewGroup,
@@ -22,11 +20,14 @@ from app.api.schemas import (
     SuccessPayload,
     SuccessStep,
     UiCard,
+    VerificationEmail,
+    VerificationMobile,
+    VerificationPayload,
 )
 from app.domain.fields import FIELD_BY_KEY, GROUP_ORDER, FieldGroup
 from app.domain.master import MasterData
 from app.domain.models import DocType, FieldKey, InquiryDraft
-from app.domain.rules import can_submit
+from app.domain.rules import can_submit, contact_verified
 from app.domain.summary import build_draft_summary
 from app.domain.validation import ALLOWED_EXTENSIONS
 from app.sessions import Session
@@ -215,8 +216,9 @@ def build_mall_picker_card(
     payload = MallPickerPayload(
         city=MallPickerCity(id=city_id, label=city_label),
         malls=[MallPickerMall(id=m.id, name=m.name) for m in malls],
-        selected=selected,
+        selected=selected[:1],
         min_select=1,
+        max_select=1,
     )
     return UiCard(
         card_id="malls",
@@ -226,24 +228,44 @@ def build_mall_picker_card(
     )
 
 
-def build_otp_input_card(
+VERIFICATION_CARD_ID = "verification"
+
+
+def build_verification_card(
     draft: InquiryDraft,
     *,
+    demo_token: str | None = None,
     message_id: str | None = None,
 ) -> UiCard:
-    mobile = draft.fields[FieldKey.MOBILE].value
+    """Email link status plus, when a mobile was given, the mobile OTP box."""
     email = draft.fields[FieldKey.EMAIL].value
-    payload = OtpInputPayload(
-        sent_to=OtpSentTo(
-            mobile_masked=_mask_mobile(str(mobile) if mobile else None),
-            email_masked=_mask_email(str(email) if email else None),
-        ),
-        attempts_left=draft.otp_attempts_left,
-        verified=draft.otp_verified,
+    mobile = draft.fields[FieldKey.MOBILE].value
+    email_text = str(email) if email else None
+    mobile_text = str(mobile) if mobile else None
+    email_section = VerificationEmail(
+        masked=_mask_email(email_text),
+        link_sent=draft.email_link_sent_to is not None and draft.email_link_sent_to == email_text,
+        verified=draft.email_verified,
+        demo_token=None if draft.email_verified else demo_token,
+    )
+    mobile_section = (
+        VerificationMobile(
+            masked=_mask_mobile(mobile_text),
+            code_sent=draft.otp_sent_to is not None and draft.otp_sent_to == mobile_text,
+            verified=draft.mobile_verified,
+            attempts_left=draft.otp_attempts_left,
+        )
+        if mobile_text
+        else None
+    )
+    payload = VerificationPayload(
+        email=email_section,
+        mobile=mobile_section,
+        all_verified=contact_verified(draft),
     )
     return UiCard(
-        card_id="otp",
-        card_type="otp_input",
+        card_id=VERIFICATION_CARD_ID,
+        card_type="verification",
         message_id=message_id,
         payload=payload.model_dump(),
     )

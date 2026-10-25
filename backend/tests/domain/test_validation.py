@@ -55,6 +55,23 @@ def test_area_and_rent_rules():
 def test_malls_and_documents(master):
     assert v.validate_malls(["riyadh-mall-a"], master) == ["riyadh-mall-a"]
     assert v.validate_malls([], master).code == "invalid_malls"
+    two = v.validate_malls(["riyadh-mall-a", "riyadh-mall-b"], master)
+    assert two.code == "one_mall_per_inquiry"
+    assert v.validate_malls(["riyadh-mall-a", "riyadh-mall-a"], master) == ["riyadh-mall-a"]
     assert v.validate_document_extension("file.pdf") is None
     assert v.validate_document_extension("file.exe").code == "invalid_extension"
     assert v.validate_document_size(6 * 1024 * 1024, 5 * 1024 * 1024).code == "too_large"
+
+
+def test_international_numbers():
+    # Non-Saudi numbers need a country code and default to mobile.
+    assert v.classify_contact_number("+971 50 123 4567") == ("mobile", "+971501234567")
+    assert v.classify_contact_number("0044 20 7946 0958") == ("mobile", "+442079460958")
+    assert v.normalise_landline("+44 20 7946 0958") == "+442079460958"
+    assert v.normalise_mobile("+971501234567") == "+971501234567"
+    # +966 keeps the Saudi rules.
+    assert v.classify_contact_number("+966 50 123 4567") == ("mobile", "+966501234567")
+    assert v.normalise_mobile("+966112345678").code == "invalid_mobile"
+    # Too short or too long for E.164.
+    assert v.classify_contact_number("+971 123").code == "invalid_phone"
+    assert v.classify_contact_number("+1234567890123456").code == "invalid_phone"

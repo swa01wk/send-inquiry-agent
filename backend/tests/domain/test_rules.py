@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 from app.domain.draft_ops import add_document, new_inquiry_draft, write_fields
 from app.domain.models import Blocker, DocType, FieldKey, Phase, Source
-from app.domain.rules import can_submit, compute_phase
+from app.domain.rules import can_submit, compute_phase, contact_verified, verification_blockers
 from tests.domain.conftest import fill_minimal_collectible
 
 
@@ -36,7 +36,8 @@ def test_can_submit_unconfirmed_derived(master):
 
 def test_can_submit_complete_draft(master):
     draft = fill_minimal_collectible(new_inquiry_draft(), master)
-    draft.otp_verified = True
+    draft.email_verified = True
+    draft.mobile_verified = True
     draft.terms_accepted = True
     max_bytes = 5 * 1024 * 1024
     ts = datetime(2026, 1, 1, tzinfo=UTC)
@@ -74,7 +75,8 @@ def test_compute_phase_per_state(master):
 
     draft = fill_minimal_collectible(new_inquiry_draft(), master)
 
-    draft.otp_verified = False
+    draft.email_verified = False
+    draft.mobile_verified = False
     draft.fields[FieldKey.COMPANY_NAME].confirmed = True
     for key in FieldKey:
         field = draft.fields[key]
@@ -82,7 +84,10 @@ def test_compute_phase_per_state(master):
             field.confirmed = True
     assert compute_phase(draft) == Phase.VERIFYING
 
-    draft.otp_verified = True
+    draft.email_verified = True
+    assert compute_phase(draft) == Phase.VERIFYING  # mobile still pending
+
+    draft.mobile_verified = True
     assert compute_phase(draft) == Phase.DOCUMENTS
 
     max_bytes = 5 * 1024 * 1024
@@ -109,3 +114,26 @@ def test_compute_phase_per_state(master):
 
     draft.reference = "GEO-STR-123456"
     assert compute_phase(draft) == Phase.SUBMITTED
+
+
+def test_verification_blockers_email_and_mobile(master):
+    draft = fill_minimal_collectible(new_inquiry_draft(), master)
+    tokens = [b.token for b in verification_blockers(draft)]
+    assert tokens == ["email_not_verified", "mobile_not_verified"]
+    draft.email_verified = True
+    assert [b.token for b in verification_blockers(draft)] == ["mobile_not_verified"]
+    draft.mobile_verified = True
+    assert contact_verified(draft)
+
+
+def test_landline_only_is_verified_by_email_alone(master):
+    draft = fill_minimal_collectible(new_inquiry_draft(), master)
+    draft, _, errors = write_fields(
+        draft,
+        [("mobile", None, Source.USER), ("landline", "011234567", Source.USER)],
+        master=master,
+    )
+    assert not errors
+    assert [b.token for b in verification_blockers(draft)] == ["email_not_verified"]
+    draft.email_verified = True
+    assert contact_verified(draft)

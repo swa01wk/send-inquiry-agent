@@ -8,7 +8,7 @@ from app.services.otp import MockOtpService
 async def test_otp_verify_success_and_failure(caplog):
     service = MockOtpService("1234")
     with caplog.at_level(logging.INFO):
-        await service.send("sess-1", "user@example.com", "+966501234567")
+        await service.send("sess-1", "+966501234567")
 
     assert await service.verify("sess-1", "1234") is True
     assert await service.verify("sess-1", "0000") is False

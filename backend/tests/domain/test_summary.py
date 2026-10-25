@@ -36,4 +36,5 @@ def test_prompt_summary_contains_dynamic_lines(master):
     text = prompt_summary(draft, master)
     assert text.startswith("Current phase: gate")
     assert "Missing required:" in text
-    assert "OTP verified: no" in text
+    assert "Email verified: no" in text
+    assert "Mobile verified: not needed (no mobile)" in text

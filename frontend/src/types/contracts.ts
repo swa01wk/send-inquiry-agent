@@ -12,7 +12,7 @@ export type Phase =
 export type CardType =
   | 'confirm_fields'
   | 'mall_picker'
-  | 'otp_input'
+  | 'verification'
   | 'document_upload'
   | 'review'
   | 'success'
@@ -49,18 +49,31 @@ export interface MallPickerPayload {
   malls: MallPickerMall[]
   selected: string[]
   min_select: number
+  /** One mall per inquiry: 1 makes the picker a single choice. */
+  max_select: number
 }
 
-export interface OtpSentTo {
-  mobile_masked: string | null
-  email_masked: string | null
-}
-
-export interface OtpInputPayload {
-  sent_to: OtpSentTo
-  attempts_left: number
+export interface VerificationEmail {
+  masked: string | null
+  link_sent: boolean
   verified: boolean
+  /** Demo only: stands in for clicking the emailed link. */
+  demo_token: string | null
+}
+
+export interface VerificationMobile {
+  masked: string | null
+  code_sent: boolean
+  verified: boolean
+  attempts_left: number
   code_length: number
+}
+
+export interface VerificationPayload {
+  email: VerificationEmail
+  /** null when only a landline was given: email alone verifies the applicant. */
+  mobile: VerificationMobile | null
+  all_verified: boolean
 }
 
 export interface DraftDocumentRow {
@@ -98,7 +111,10 @@ export interface DraftChecks {
   required_filled: number
   required_total: number
   unconfirmed: number
-  otp_verified: boolean
+  email_verified: boolean
+  mobile_verified: boolean
+  /** Every channel that needs it is verified (email always, mobile when given). */
+  contact_verified: boolean
   required_docs_uploaded: number
   required_docs_total: number
   terms_accepted: boolean
@@ -149,9 +165,9 @@ export type UiCard =
     }
   | {
       card_id: string
-      card_type: 'otp_input'
+      card_type: 'verification'
       message_id: string | null
-      payload: OtpInputPayload
+      payload: VerificationPayload
     }
   | {
       card_id: string

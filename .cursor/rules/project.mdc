@@ -7,7 +7,7 @@ alwaysApply: true
 
 We are replacing the "Send Inquiry" form on the Cenomi Tenant Central sign-in page with a friendly chat agent.
 The agent collects the same data as the form, derives what it can from conversation, confirms derived values
-with the user, verifies the user with an OTP, checks that the mandatory documents were uploaded, and submits
+with the user, verifies the user (email link, plus an SMS OTP for a mobile), checks that the mandatory documents were uploaded, and submits
 the same inquiry payload. Target: about 5 user turns instead of ~25 form inputs.
 
 ## Stack
@@ -27,7 +27,7 @@ the same inquiry payload. Target: about 5 user turns instead of ~25 form inputs.
 3. Submit rules are enforced in code (`can_submit`, the guard node and the `submit_inquiry` tool), never trusted to the LLM.
 4. Consent (`terms_accepted`) can only be set by a UI action from the review card, never by the LLM.
 5. Documents: only check presence, extension and size (5 MB). Never read or analyse file content.
-6. All external systems (CR verify, OTP, storage, submit, status) are mocks behind interfaces in `backend/app/services/`.
+6. All external systems (CR verify, email link, OTP, storage, submit, status) are mocks behind interfaces in `backend/app/services/`.
 7. Mall, unit-type and FAQ answers come only from seeded data in `backend/app/data/`. Never invent facts.
 8. Never log OTP codes, uploaded file contents or full contact details at INFO level.
 

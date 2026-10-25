@@ -28,10 +28,14 @@ from app.agent.contact_infer import (
 from app.agent.mall_match import fill_mentioned_malls, unknown_mall_phrases
 from app.agent.runtime import AgentRuntime
 from app.agent.state import AgentState
-from app.api.cards import build_document_upload_card, build_review_card
+from app.api.cards import (
+    VERIFICATION_CARD_ID,
+    build_document_upload_card,
+    build_review_card,
+)
 from app.api.schemas import UiCard
 from app.domain.models import FieldKey
-from app.domain.rules import compute_phase
+from app.domain.rules import compute_phase, contact_verified
 from app.domain.summary import build_draft_summary
 
 GUARD_PREFIX = "[ui_event] guard:"
@@ -53,7 +57,7 @@ _SIGN_IN_RE = re.compile(r"sign\s*in", re.IGNORECASE)
 # 10 digits, but not a local mobile number (05XXXXXXXX).
 _CR_NUMBER_RE = re.compile(r"\b(?!05)\d{10}\b")
 _DATA_HINT_RE = re.compile(
-    r"(@[\w-]+\.|\+?966|\b05\d{8}\b|\b\d{10}\b|\b(LLC|Ltd|Trading|Co\.)\b|"
+    r"(@[\w-]+\.|\+?966|\+[1-9](?:[\s-]?\d){7,14}\b|\b05\d{8}\b|\b\d{10}\b|\b(LLC|Ltd|Trading|Co\.)\b|"
     r"\bmall\s+[a-z]\b|\b(kiosk|boutique|restaurant|caf[eé]|coffee|store|shop)\b|"
     r"\b\d+\s*(sqm|sq\.?\s*m|square)\b|\b\d+\s*(k|,000)\b)",
     re.IGNORECASE,
@@ -76,7 +80,8 @@ _BRAND_NAME_QUESTION_RE = re.compile(
     re.IGNORECASE,
 )
 _BULK_INQUIRY_RE = re.compile(
-    r"@.*?(?:\+?966|\b05\d{8}\b)|(?:\+?966|\b05\d{8}\b).*?@",
+    r"@.*?(?:\+?966|\+[1-9](?:[\s-]?\d){7,14}\b|\b05\d{8}\b)"
+    r"|(?:\+?966|\+[1-9](?:[\s-]?\d){7,14}\b|\b05\d{8}\b).*?@",
     re.IGNORECASE | re.DOTALL,
 )
 
@@ -163,22 +168,25 @@ def _is_bulk_inquiry_message(text: str) -> bool:
     )
 
 
-def _missing_send_otp_note(
+def _missing_send_verification_note(
     state: AgentState,
     draft: Any,
     user_text: str,
     turn_messages: list[BaseMessage],
     cards_shown: list[str],
 ) -> str | None:
-    if "otp" in cards_shown or draft.otp_verified:
+    if VERIFICATION_CARD_ID in cards_shown or contact_verified(draft):
         return None
     if _is_bulk_inquiry_message(user_text):
         return None
     if not message_has_contact_line(user_text) or not contact_fields_ready(draft):
         return None
-    if "send_otp" in _tools_called(turn_messages):
+    if "send_verification" in _tools_called(turn_messages):
         return None
-    return f"{GUARD_PREFIX} The user sent name, email, and phone. Call send_otp before you reply."
+    return (
+        f"{GUARD_PREFIX} The user sent name, email, and phone. "
+        "Call send_verification before you reply."
+    )
 
 
 def _incomplete_contact_capture_note(
@@ -201,7 +209,7 @@ def _incomplete_contact_capture_note(
     return (
         f"{GUARD_PREFIX} The user gave contact details; save first_name, last_name, email "
         "and contact_number with update_draft (split the full name: first word = first name, "
-        f"rest = last name){example}, then call send_otp."
+        f"rest = last name){example}, then call send_verification."
     )
 
 
@@ -365,7 +373,7 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
                     user_text,
                     phase,
                 )
-                or _missing_send_otp_note(
+                or _missing_send_verification_note(
                     state,
                     draft,
                     user_text,

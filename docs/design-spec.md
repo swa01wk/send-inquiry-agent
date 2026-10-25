@@ -120,13 +120,15 @@ Common: white, 1px border-card, radius 14, padding 16 (row cards: 4px 16px).
 Rows: label (13, secondary, 130px) · value (15/600) · SourceBadge. Row padding 12px 0, divider between. The confirmation itself happens in chat (the agent suggests "Yes, that's correct"); an optional "Looks right" text button sends `confirm_card`.
 
 ### 5.2 MallPickerCard
-- Title "Malls in {city}" (14/600) + right-aligned count: "Select one or more" / "N selected".
+- Title "Malls in {city}" (14/600) + right-aligned count: "Select one" / "1 selected". Single choice (`max_select: 1`): picking another mall replaces the current one.
 - 2-column grid, gap 10. Mall tile = `<button aria-pressed>`: min-height 64, padding 10px 12px, radius 12, name (15/600) on the left, 26px circle mark on the right ("+" outlined / "✓" accent fill).
   - Unselected: white, 1.5px border-card. Selected: accent-tint background, 1.5px accent border.
 - "Done" button (primary, full width on mobile) sends `select_malls`. Disabled until ≥ 1 selected.
 
-### 5.3 OtpCard
-- Pending: label "Verification code", input (48px tall, 20px, letter-spacing 6px, numeric, max 4, `autocomplete="one-time-code"`) + "Verify" primary button; caption "Sent to {mobile_masked} and {email_masked}"; "Resend code" text button.
+### 5.3 VerificationCard
+- Email section: caption "We sent a verification link to {email.masked}. Open it to confirm your email."; in demo mode an "Open verification link (demo)" secondary button; "Resend link" text button. Verified: green check "Email verified".
+- Mobile section (only when a mobile was given): label "Verification code", input (48px tall, 20px, letter-spacing 6px, numeric, max 4, `autocomplete="one-time-code"`) + "Verify" primary button; caption "Sent by SMS to {mobile.masked}"; "Resend code" text button.
+- All verified: one line, "Email and mobile verified" (or "Email verified" for a landline-only applicant).
 - Error: caption "That code didn't match. {n} attempts left." in pending-fg.
 - Verified: check icon + "Phone and email verified" (success-fg, 15/600).
 

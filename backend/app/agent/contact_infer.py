@@ -14,7 +14,10 @@ _EMAIL_RE = re.compile(
 _CR_IN_TEXT_RE = re.compile(r"(?<!\d)(?!05)\d{10}(?!\d)")
 _VAT_IN_TEXT_RE = re.compile(r"(?<!\d)3\d{13}3(?!\d)")
 _PHONE_CANDIDATE_RE = re.compile(
-    r"(?<!\d)(?:\+966|966|0)?5\d{8}(?!\d)|(?<!\d)(?:\+966|966|0)?[1-49]\d{7}(?!\d)",
+    # International form for any country but Saudi (+971 50 123 4567, 0044…)
+    r"(?<![\w+])(?:\+|00)(?!966)[1-9](?:[\s-]?\d){7,14}(?!\d)"
+    # Saudi mobiles and landlines, local or +966 form
+    r"|(?<!\d)(?:\+966|966|0)?5\d{8}(?!\d)|(?<!\d)(?:\+966|966|0)?[1-49]\d{7}(?!\d)",
 )
 _NAME_WORD_RE = re.compile(r"^[\u0600-\u06FFA-Za-z][\u0600-\u06FFA-Za-z'-]*$")
 _NAME_FILLER = frozenset(

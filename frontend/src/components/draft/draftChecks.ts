@@ -18,8 +18,8 @@ export function draftCheckRows(checks: DraftChecks): DraftCheckRow[] {
           : 'All suggested values confirmed',
     },
     {
-      ok: checks.otp_verified,
-      label: checks.otp_verified ? 'Phone and email verified' : 'Phone and email not verified yet',
+      ok: checks.contact_verified,
+      label: checks.contact_verified ? 'Contact verified' : 'Contact not verified yet',
     },
     {
       ok: checks.required_docs_uploaded >= checks.required_docs_total,

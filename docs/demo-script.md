@@ -1,6 +1,6 @@
 # Demo script — Send Inquiry Agent
 
-Use with `make demo` (OTP code **1234**). Allow ~5 minutes for the happy path.
+Use with `make demo` (SMS code **1234**; the email link is a demo button). Allow ~5 minutes for the happy path.
 
 **Full user story & journey:** [demo-queries.md](./demo-queries.md).
 
@@ -12,7 +12,7 @@ Use with `make demo` (OTP code **1234**). Allow ~5 minutes for the happy path.
 4. One natural message, e.g.  
    `Bean Street specialty coffee kiosk at Riyadh Mall A — Sara Ali, sara@beanstreet.example, +966501234567`
 5. Confirm any derived fields (Arabic name, unit type, category).
-6. Enter OTP **1234** in the card.
+6. In the verification card, click **Open verification link (demo)**, then enter the SMS code **1234**.
 7. Upload **Company Profile** and **Brand Profile** (any small PDF).
 8. Review card → accept terms → **Submit** → note the **GEO-…** reference.
 

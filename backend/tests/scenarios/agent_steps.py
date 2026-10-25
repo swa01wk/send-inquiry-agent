@@ -46,8 +46,8 @@ HAPPY_PATH_CR_STEPS: list[dict[str, Any]] = [
     say("Tell me about the brand and format you want to open."),
     tool_step("update_draft", {"fields": COLLECT_FIELDS}, "s2"),
     say("Please confirm the details I filled in for you."),
-    tool_step("send_otp", {"resend": False}, "s3"),
-    say("Enter the verification code in the box when you receive it."),
+    tool_step("send_verification", {"resend": False}, "s3"),
+    say("Click the link in your email and enter the SMS code in the box."),
     say("When you're ready, upload Company Profile and Brand Profile in the checklist."),
 ]
 
@@ -60,8 +60,8 @@ SKIP_CR_STEPS: list[dict[str, Any]] = [
         "s2",
     ),
     say("Please confirm the derived brand details."),
-    tool_step("send_otp", {"resend": False}, "s3"),
-    say("Enter the verification code in the box."),
+    tool_step("send_verification", {"resend": False}, "s3"),
+    say("Click the email link and enter the SMS code in the box."),
     say("Upload the required documents when you're ready."),
 ]
 

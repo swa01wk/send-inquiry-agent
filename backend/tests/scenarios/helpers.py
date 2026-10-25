@@ -168,7 +168,8 @@ def ready_to_submit_draft(app, *, cr_skipped: bool = True) -> InquiryDraft:
     master = load_master_data()
     draft = fill_minimal_collectible(new_inquiry_draft(), master)
     draft.cr_status = "skipped" if cr_skipped else "new"
-    draft.otp_verified = True
+    draft.email_verified = True
+    draft.mobile_verified = True
     max_bytes = app.state.settings.max_upload_mb * 1024 * 1024
     ts = datetime(2026, 1, 1, tzinfo=UTC)
     for doc_type, file_id, name in (
@@ -188,3 +189,11 @@ def ready_to_submit_draft(app, *, cr_skipped: bool = True) -> InquiryDraft:
 
 
 _REFERENCE_RE = re.compile(r"^GEO-(STR|MED|SPC|OFF)-\d{6}$")
+
+
+async def verify_contact(client: AsyncClient, app, session_id: str) -> list[tuple[str, dict]]:
+    """Follow the (mock) email link, then enter the mobile code. Returns the OTP turn's events."""
+    token = app.state.services.email_verification.demo_token(session_id)
+    assert token, "send_verification should have emailed a link"
+    await chat_action(client, session_id, "verify_email", {"token": token})
+    return await chat_action(client, session_id, "submit_otp", {"code": "1234"})

@@ -12,7 +12,7 @@ from app.domain.summary import DraftChecks, DraftDocumentRow, DraftSummary
 CardType = Literal[
     "confirm_fields",
     "mall_picker",
-    "otp_input",
+    "verification",
     "document_upload",
     "review",
     "success",
@@ -74,18 +74,31 @@ class MallPickerPayload(BaseModel):
     malls: list[MallPickerMall]
     selected: list[str]
     min_select: int = 1
+    # One mall per inquiry: the picker behaves as a single choice.
+    max_select: int = 1
 
 
-class OtpSentTo(BaseModel):
-    mobile_masked: str | None
-    email_masked: str | None
-
-
-class OtpInputPayload(BaseModel):
-    sent_to: OtpSentTo
-    attempts_left: int
+class VerificationEmail(BaseModel):
+    masked: str | None
+    link_sent: bool
     verified: bool
+    # Demo only (EMAIL_LINK_DEMO): stands in for clicking the emailed link.
+    demo_token: str | None = None
+
+
+class VerificationMobile(BaseModel):
+    masked: str | None
+    code_sent: bool
+    verified: bool
+    attempts_left: int
     code_length: int = 4
+
+
+class VerificationPayload(BaseModel):
+    email: VerificationEmail
+    # None when the applicant gave only a landline: email alone verifies them.
+    mobile: VerificationMobile | None
+    all_verified: bool
 
 
 class DocumentUploadPayload(BaseModel):

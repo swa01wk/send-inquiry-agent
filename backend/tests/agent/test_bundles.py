@@ -31,7 +31,7 @@ def test_brand_bundle_asks_once_and_skips_inferable_fields() -> None:
     assert "optional" in hint
 
 
-def test_otp_already_sent_hint() -> None:
+def _ready_for_verification():
     draft = new_inquiry_draft()
     draft.cr_status = "new"
     _set(draft, FieldKey.COMPANY_NAME, "Bean Street Trading Co.")
@@ -44,11 +44,39 @@ def test_otp_already_sent_hint() -> None:
     _set(draft, FieldKey.FIRST_NAME, "Sara")
     _set(draft, FieldKey.LAST_NAME, "Ali")
     _set(draft, FieldKey.EMAIL, "sara@example.com")
-    _set(draft, FieldKey.MOBILE, "0501234567")
-    draft.otp_verified = False
-    hint = next_bundle_hint(draft, cards_shown=["otp"])
-    assert "Verification code already sent" in hint
-    assert "send_otp" not in hint
+    _set(draft, FieldKey.MOBILE, "+966501234567")
+    return draft
+
+
+def test_verification_not_sent_hint() -> None:
+    hint = next_bundle_hint(_ready_for_verification())
+    assert "send_verification" in hint
+
+
+def test_verification_already_sent_hint() -> None:
+    draft = _ready_for_verification()
+    draft.email_link_sent_to = "sara@example.com"
+    draft.otp_sent_to = "+966501234567"
+    hint = next_bundle_hint(draft)
+    assert "Verification already sent" in hint
+    assert "send_verification" not in hint
+
+
+def test_verification_resend_hint_after_email_change() -> None:
+    draft = _ready_for_verification()
+    draft.email_link_sent_to = "old@example.com"
+    draft.otp_sent_to = "+966501234567"
+    hint = next_bundle_hint(draft)
+    assert "send_verification" in hint
+
+
+def test_landline_only_needs_only_the_email_link() -> None:
+    draft = _ready_for_verification()
+    _set(draft, FieldKey.MOBILE, None, source=None, confirmed=False)
+    _set(draft, FieldKey.LANDLINE, "+96611234567")
+    draft.email_link_sent_to = "sara@example.com"
+    hint = next_bundle_hint(draft)
+    assert "Verification already sent" in hint
 
 
 def test_contact_bundle_after_brand() -> None:

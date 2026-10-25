@@ -3,9 +3,9 @@ import type { ChatCardActions } from '../cards/cardActions'
 import { ConfirmFieldsCard } from '../cards/ConfirmFieldsCard'
 import { DocumentChecklistCard } from '../cards/DocumentChecklistCard'
 import { MallPickerCard } from '../cards/MallPickerCard'
-import { OtpCard } from '../cards/OtpCard'
 import { ReviewCard } from '../cards/ReviewCard'
 import { SuccessCard } from '../cards/SuccessCard'
+import { VerificationCard } from '../cards/VerificationCard'
 import type { UiCard } from '../../types/contracts'
 import styles from './CardSlot.module.css'
 
@@ -46,11 +46,13 @@ export function CardSlot({ card, actions, focusOnMount = false }: CardSlotProps)
           onDone={(mallIds) => actions.sendAction('select_malls', { mall_ids: mallIds })}
         />
       ) : null}
-      {card.card_type === 'otp_input' ? (
-        <OtpCard
+      {card.card_type === 'verification' ? (
+        <VerificationCard
           payload={card.payload}
-          onVerify={(code) => actions.sendAction('submit_otp', { code })}
-          onResend={() => actions.sendAction('resend_otp', {})}
+          onVerifyEmail={(token) => actions.sendAction('verify_email', { token })}
+          onResendEmailLink={() => actions.sendAction('resend_email_link', {})}
+          onVerifyCode={(code) => actions.sendAction('submit_otp', { code })}
+          onResendCode={() => actions.sendAction('resend_otp', {})}
         />
       ) : null}
       {card.card_type === 'document_upload' ? (

@@ -1,6 +1,6 @@
 # Demo queries — one user story & journey
 
-Use with `make demo` (OTP **`1234`**). Allow ~8–10 minutes for the full story below, or stop after **Submit** (~5 minutes). Use **Restart** in the chat header between appendix demos.
+Use with `make demo` (SMS code **`1234`**; the email link is a demo button). Allow ~8–10 minutes for the full story below, or stop after **Submit** (~5 minutes). Use **Restart** in the chat header between appendix demos.
 
 See also [demo-script.md](./demo-script.md) for presenter notes.
 
@@ -8,7 +8,7 @@ See also [demo-script.md](./demo-script.md) for presenter notes.
 
 ## User story
 
-**Sara Ali**, brand manager for **Bean Street**, a specialty coffee concept, wants to lease a unit in a Cenomi mall. On Tenant Central she chooses **Send us an inquiry** instead of the long form. She has her company CR handy, speaks naturally (including a short Arabic greeting), and packs brand, location, space, budget, and contact into as few messages as possible. She confirms what the registry and the assistant infer, fixes one detail (unit type), asks what to upload, tries to jump to submit too early, verifies by OTP, uploads two PDFs, tweaks the English brand name on review, submits, and checks her reference status—all in one sitting.
+**Sara Ali**, brand manager for **Bean Street**, a specialty coffee concept, wants to lease a unit in a Cenomi mall. On Tenant Central she chooses **Send us an inquiry** instead of the long form. She has her company CR handy, speaks naturally (including a short Arabic greeting), and packs brand, location, space, budget, and contact into as few messages as possible. She confirms what the registry and the assistant infer, fixes one detail (unit type), asks what to upload, tries to jump to submit too early, verifies her email by link and her mobile by SMS code, uploads two PDFs, tweaks the English brand name on review, submits, and checks her reference status—all in one sitting.
 
 **Outcome:** A submitted inquiry with a **GEO-…** reference; the draft panel shows sources (user, verified, derived) throughout.
 
@@ -27,7 +27,7 @@ Open **http://localhost:5173**. Keep the **draft panel** visible.
 | 5 | Confirm inferred | Agrees to derived Arabic, unit type, category, area/rent | `Yes, all correct` | Single confirm for multiple derived fields |
 | 6 | Correct | Fixes unit type | `Actually we want a full store unit, not specialty or kiosk.` | User override without restarting the form |
 | 7 | Process FAQ | Before documents | `What documents do I need to upload?` | FAQ from seeded answers |
-| 8 | Verify | OTP card only | Enter **`1234`** (optional: `0000` twice, then **`1234`**) | OTP gate; do not type code in chat |
+| 8 | Verify | Verification card only | **Open verification link (demo)**, then SMS code **`1234`** (optional: `0000` twice first) | Email link + mobile OTP as two checks (§7.1.1); never type the code in chat |
 | 9 | Early submit | Tries to skip ahead | `Can I review and submit now?` | Guard: missing docs / consent stays on cards |
 | 10 | Documents | Uploads required PDFs | **Company Profile** + **Brand Profile** (any small PDF, ≤ 5 MB) | Same required docs as legacy form |
 | 11 | Review | Edits one field | On review card: change e.g. brand to **Bean Street Roasters** | Card edit; source stays user |
@@ -67,7 +67,7 @@ What documents do I need to upload?
 Can I review and submit now?
 ```
 
-Then: OTP **`1234`** → upload both required documents → edit brand on review (optional) → terms + **Submit** → status query with your reference:
+Then: email link (demo button) + SMS code **`1234`** → upload both required documents → edit brand on review (optional) → terms + **Submit** → status query with your reference:
 
 ```text
 What's the status of GEO-SPC-123456?
@@ -82,7 +82,7 @@ What's the status of GEO-SPC-123456?
 | When | Action |
 | --- | --- |
 | After step 3 | **Confirm** on confirm-fields card (if not using chat confirm) |
-| Step 8 | **`1234`** in OTP card — never in the composer |
+| Step 8 | Email link button, then **`1234`** in the verification card — never in the composer |
 | Step 10 | Upload **Company Profile** and **Brand Profile** |
 | Step 12 | Terms checkbox + **Submit** on review card |
 
@@ -95,7 +95,7 @@ What's the status of GEO-SPC-123456?
 | Input | Effect in Sara’s journey |
 | --- | --- |
 | CR `1010123456` | New account; **Bean Street Trading Co.**, **King Fahd Road, Al Olaya, Riyadh** |
-| OTP | **`1234`** in card |
+| Verification | Email link button + SMS **`1234`** in card |
 | Reference | `GEO-{STR\|MED\|SPC\|OFF}-{6 digits}` → status **under review** |
 
 ---
@@ -123,4 +123,4 @@ Bean Street specialty coffee kiosk at Riyadh Mall A — Sara Ali, sara@beanstree
 Yes, all correct
 ```
 
-Then OTP, documents, review, submit.
+Then verification, documents, review, submit.

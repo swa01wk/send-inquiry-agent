@@ -56,3 +56,39 @@ def test_add_document_validation():
     )
     assert err is None
     assert DocType.COMPANY_PROFILE in updated.documents
+
+
+def test_changing_email_or_mobile_clears_its_verification(master):
+    draft = new_inquiry_draft()
+    draft, _, _ = write_fields(
+        draft,
+        [
+            ("email", "sara@beanstreet.example", Source.USER),
+            ("contact_number", "0501234567", Source.USER),
+        ],
+        master=master,
+    )
+    draft.email_verified = True
+    draft.mobile_verified = True
+    draft.email_link_sent_to = "sara@beanstreet.example"
+    draft.otp_sent_to = "+966501234567"
+
+    # Re-writing the same values keeps verification.
+    same, _, _ = write_fields(
+        draft, [("email", "sara@beanstreet.example", Source.USER)], master=master
+    )
+    assert same.email_verified
+
+    changed, _, _ = write_fields(
+        draft, [("email", "sara@other.example", Source.USER)], master=master
+    )
+    assert not changed.email_verified
+    assert changed.email_link_sent_to is None
+    assert changed.mobile_verified
+
+    changed, _, _ = write_fields(
+        draft, [("contact_number", "0559876543", Source.USER)], master=master
+    )
+    assert not changed.mobile_verified
+    assert changed.otp_sent_to is None
+    assert changed.email_verified
