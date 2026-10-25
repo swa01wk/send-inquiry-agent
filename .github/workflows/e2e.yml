@@ -32,7 +32,23 @@ jobs:
   playwright-live:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      # Accept the model as a repository variable (preferred) or a secret.
+      OPENAI_MODEL: ${{ vars.OPENAI_MODEL || secrets.OPENAI_MODEL }}
     steps:
+      - name: Check OpenAI settings
+        run: |
+          missing=0
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "::error::OPENAI_API_KEY is empty. Add it as a repository secret (Settings > Secrets and variables > Actions > Secrets)."
+            missing=1
+          fi
+          if [ -z "$OPENAI_MODEL" ]; then
+            echo "::error::OPENAI_MODEL is empty. Add it as a repository variable (Settings > Secrets and variables > Actions > Variables)."
+            missing=1
+          fi
+          exit $missing
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - uses: actions/setup-node@v4
@@ -44,9 +60,6 @@ jobs:
           (cd frontend && npm ci)
           (cd e2e && npm ci && npx playwright install --with-deps chromium webkit)
       - name: Run live e2e
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
         run: make e2e-live
       - uses: actions/upload-artifact@v4
         if: always()
