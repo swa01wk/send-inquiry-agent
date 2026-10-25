@@ -1,5 +1,5 @@
 import pytest
-from app.agent.guard import _FALSE_SUBMIT_RE, message_likely_has_inquiry_data
+from app.agent.guard import _FALSE_SUBMIT_RE, claims_submission, message_likely_has_inquiry_data
 
 
 @pytest.mark.parametrize(
@@ -13,6 +13,26 @@ from app.agent.guard import _FALSE_SUBMIT_RE, message_likely_has_inquiry_data
 )
 def test_false_submit_claims_match(text: str) -> None:
     assert _FALSE_SUBMIT_RE.search(text)
+    assert claims_submission(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # Live test 14: the guard retracted these, so the reply flickered.
+        "Our leasing team contacts every applicant once the inquiry is sent, so we can keep going.",
+        "Our leasing team will contact applicants after the inquiry is sent.",
+        "When your application is received, the team reviews it.",
+        "As soon as the request is submitted you'll get a reference.",
+    ],
+)
+def test_conditional_mentions_are_not_claims(text: str) -> None:
+    assert not claims_submission(text)
+
+
+def test_claim_after_a_conditional_mention_still_counts() -> None:
+    text = "Once the inquiry is sent we review it. Good news: your inquiry has been submitted."
+    assert claims_submission(text)
 
 
 @pytest.mark.parametrize(

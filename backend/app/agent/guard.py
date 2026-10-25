@@ -51,7 +51,23 @@ _FALSE_SUBMIT_RE = re.compile(
     r"|\byour reference(?: number)? is\b",
     re.IGNORECASE,
 )
+# "once / after / when the inquiry is sent" describes what happens later, not a claim.
+_CONDITIONAL_BEFORE_RE = re.compile(
+    r"\b(once|after|when|whenever|until|before|as soon as|if)\s+(?:(?:the|your)\s+)?$",
+    re.IGNORECASE,
+)
 _SIGN_IN_RE = re.compile(r"sign\s*in", re.IGNORECASE)
+
+
+def claims_submission(text: str) -> bool:
+    """True if the text says the inquiry was submitted, ignoring conditional mentions."""
+    for match in _FALSE_SUBMIT_RE.finditer(text):
+        before = text[max(0, match.start() - 24) : match.start()]
+        if _CONDITIONAL_BEFORE_RE.search(before):
+            continue
+        return True
+    return False
+
 
 # Signals that a user message carries inquiry data the agent should have saved.
 # 10 digits, but not a local mobile number (05XXXXXXXX).
@@ -347,12 +363,7 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
     ai_text = _last_ai_text(state)
     status_lookup = "get_inquiry_status" in _tools_called(turn_messages)
     if guard_retries < 1:
-        if (
-            draft.reference is None
-            and not status_lookup
-            and ai_text
-            and _FALSE_SUBMIT_RE.search(ai_text)
-        ):
+        if draft.reference is None and not status_lookup and ai_text and claims_submission(ai_text):
             note = (
                 f"{GUARD_PREFIX} Do not tell the user the inquiry was submitted. "
                 "It is only submitted when a submitted reference ui_event arrives. "

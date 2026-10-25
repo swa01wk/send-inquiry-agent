@@ -150,7 +150,7 @@ There is no submit tool and no verify tool: both happen through UI actions, so t
 After the agent's final reply each turn:
 1. Recompute `phase`; emit a `draft` event.
 2. Attach the card for a phase the user just entered if it hasn't been shown: `documents` → `document_upload`, `review` → `review`. (`verifying` cards come from `send_verification`.)
-3. If the reply claims the inquiry was submitted (regex on "submitted|sent your inquiry|reference") while `reference` is None → add a system note and route back to `agent` once.
+3. If the reply claims the inquiry was submitted (`claims_submission` in `guard.py`: "has been submitted", "I've sent your inquiry", "your reference is …"; conditional mentions such as "once the inquiry is sent" don't count) while `reference` is None → add a system note and route back to `agent` once.
 4. If phase is `existing_account`, ensure the reply points to Sign In.
 5. When `malls` is empty and the user's message names exactly one seed mall (same mention rules as `filter_mall_ids`), write that mall id as `user` (naming two or more writes nothing, so the agent asks which one) (see `fill_mentioned_malls` in `mall_match.py`). Also runs after `update_draft` when malls were omitted. Mall mention: the full normalised mall name (or optional `aliases` on a mall in master data) must appear as whole words in the user message (`\b` boundaries, optional leading “the”); city or country tokens alone do not match.
 
