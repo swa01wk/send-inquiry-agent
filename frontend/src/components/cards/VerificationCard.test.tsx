@@ -74,6 +74,6 @@ describe('VerificationCard', () => {
       />,
     )
     expect(screen.queryByLabelText(/verification code/i)).not.toBeInTheDocument()
-    expect(screen.getByText(/verification link/i)).toBeInTheDocument()
+    expect(screen.getByText(/we sent a verification link/i)).toBeInTheDocument()
   })
 })

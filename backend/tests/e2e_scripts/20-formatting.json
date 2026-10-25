@@ -1,0 +1,20 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "suggest_replies",
+        "args": {
+          "options": [
+            "Got it"
+          ]
+        },
+        "id": "z0",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Here is a short list:\n\n- First point\n- Second point"
+  }
+]

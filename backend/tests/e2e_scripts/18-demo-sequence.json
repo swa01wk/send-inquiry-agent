@@ -1,0 +1,210 @@
+[
+  {
+    "content": "Marhaba — send your CR number when you're ready."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "verify_cr",
+        "args": {
+          "cr_number": "1010123456"
+        },
+        "id": "p1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Your company details are in the card below."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "confirm_fields",
+        "args": {
+          "keys": [
+            "company_name",
+            "company_address"
+          ]
+        },
+        "id": "p2",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Thanks — company details confirmed."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "brand_name_en",
+              "value": "Bean Street",
+              "source": "user"
+            },
+            {
+              "key": "brand_name_ar",
+              "value": "بين ستريت",
+              "source": "derived"
+            },
+            {
+              "key": "unit_type",
+              "value": "specialty",
+              "source": "derived"
+            },
+            {
+              "key": "sales_category",
+              "value": "fnb_cafe",
+              "source": "derived"
+            },
+            {
+              "key": "malls",
+              "value": [
+                "riyadh-mall-a"
+              ],
+              "source": "user"
+            },
+            {
+              "key": "first_name",
+              "value": "Sara",
+              "source": "user"
+            },
+            {
+              "key": "last_name",
+              "value": "Ali",
+              "source": "user"
+            },
+            {
+              "key": "email",
+              "value": "sara@beanstreet.example",
+              "source": "user"
+            },
+            {
+              "key": "contact_number",
+              "value": "0501234567",
+              "source": "user"
+            },
+            {
+              "key": "area_min",
+              "value": 30,
+              "source": "user"
+            },
+            {
+              "key": "rent_max",
+              "value": 250000,
+              "source": "user"
+            },
+            {
+              "key": "lease_period",
+              "value": "3 years",
+              "source": "user"
+            }
+          ]
+        },
+        "id": "p3",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Saved — check the brand summary card."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "confirm_fields",
+        "args": {
+          "keys": [
+            "brand_name_en",
+            "brand_name_ar",
+            "unit_type",
+            "sales_category",
+            "malls"
+          ]
+        },
+        "id": "p4",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "send_verification",
+        "args": {
+          "resend": false
+        },
+        "id": "p5",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Open the link we emailed you and enter the SMS code in the box."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "unit_type",
+              "value": "store",
+              "source": "user"
+            }
+          ]
+        },
+        "id": "p6",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Updated to a full store — see the card."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "request_documents",
+        "args": {},
+        "id": "p7",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Company Profile and Brand Profile are required. CR, VAT, ID, address and articles are optional."
+  },
+  {
+    "content": "After you verify your email and phone, upload both required PDFs — then we can review."
+  },
+  {
+    "content": "Email confirmed — now enter the SMS code in the box."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "show_review",
+        "args": {},
+        "id": "p8",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "When you're ready, tick consent on the review card and submit."
+  }
+]

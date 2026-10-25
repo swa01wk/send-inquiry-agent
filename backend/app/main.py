@@ -11,7 +11,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from slowapi.middleware import SlowAPIMiddleware
 
 from app.agent.graph import build_graph
-from app.agent.model import get_chat_model
+from app.agent.model import ScriptedChatModel, get_chat_model
 from app.api.chat import router as chat_router
 from app.api.documents import router as documents_router
 from app.api.errors import register_exception_handlers
@@ -28,8 +28,15 @@ def create_app(
     settings: Settings | None = None,
     model_factory: Callable[[], BaseChatModel] | None = None,
 ) -> FastAPI:
+    get_settings.cache_clear()
     cfg = settings or get_settings()
-    chat_model_factory = model_factory or get_chat_model
+
+    def default_model_factory() -> BaseChatModel:
+        if cfg.agent_mode == "scripted":
+            return ScriptedChatModel(steps=[])
+        return get_chat_model()
+
+    chat_model_factory = model_factory or default_model_factory
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:

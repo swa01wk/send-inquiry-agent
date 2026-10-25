@@ -4,6 +4,24 @@ from app.domain.draft_ops import add_document, confirm, new_inquiry_draft, write
 from app.domain.models import DocType, FieldKey, Source
 
 
+def test_write_same_value_keeps_verified_source(master):
+    draft = new_inquiry_draft()
+    draft, _, _ = write_fields(
+        draft,
+        [(FieldKey.COMPANY_NAME.value, "Bean Street Trading Co.", Source.VERIFIED)],
+        master=master,
+    )
+    draft, written, errors = write_fields(
+        draft,
+        [(FieldKey.COMPANY_NAME.value, "Bean Street Trading Co.", Source.DERIVED)],
+        master=master,
+    )
+    assert not errors
+    assert written == []
+    assert draft.fields[FieldKey.COMPANY_NAME].source == Source.VERIFIED
+    assert draft.fields[FieldKey.COMPANY_NAME].confirmed is False
+
+
 def test_write_fields_provenance_and_contact(master):
     draft = new_inquiry_draft()
     draft, written, errors = write_fields(

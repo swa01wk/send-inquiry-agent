@@ -1,0 +1,46 @@
+[
+  {
+    "content": "A CR number is the 10-digit ID on your commercial registration certificate."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "skip_cr",
+        "args": {},
+        "id": "c1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "No problem — tell me your company name and address."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "company_name",
+              "value": "Acme Trading LLC",
+              "source": "user"
+            },
+            {
+              "key": "company_address",
+              "value": "King Abdullah Road, Riyadh",
+              "source": "user"
+            }
+          ]
+        },
+        "id": "c2",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Saved — tell me about your brand and where you'd like to open."
+  }
+]

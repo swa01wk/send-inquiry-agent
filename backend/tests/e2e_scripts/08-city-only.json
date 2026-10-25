@@ -1,0 +1,18 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "show_mall_picker",
+        "args": {
+          "city": "jeddah"
+        },
+        "id": "h1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Pick a mall in Jeddah from the card."
+  }
+]

@@ -27,11 +27,11 @@ def test_can_submit_unconfirmed_derived(master):
     draft = fill_minimal_collectible(new_inquiry_draft(), master)
     draft, _, _ = write_fields(
         draft,
-        [("company_name", "Bean Street Trading Co.", Source.DERIVED)],
+        [("sales_category", "fashion", Source.DERIVED)],
         master=master,
     )
     tokens = [b.token for b in can_submit(draft)]
-    assert "unconfirmed_field:company_name" in tokens
+    assert "unconfirmed_field:sales_category" in tokens
 
 
 def test_can_submit_complete_draft(master):

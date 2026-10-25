@@ -1,0 +1,50 @@
+[
+  {
+    "content": "Got it."
+  },
+  {
+    "content": "Do you have your company's CR number? It's on your commercial registration certificate."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "suggest_replies",
+        "args": {
+          "options": [
+            "I have my CR number",
+            "I don't have it",
+            "What is a CR?"
+          ]
+        },
+        "id": "q1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Share your CR number, or say if you don't have it handy."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "suggest_replies",
+        "args": {
+          "options": [
+            "Skip CR for now",
+            "What do I need?"
+          ]
+        },
+        "id": "q2",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Tell me about your shop idea in a few words, or share your CR to start."
+  },
+  {
+    "content": "Start with your CR number, or say you don't have it yet."
+  }
+]

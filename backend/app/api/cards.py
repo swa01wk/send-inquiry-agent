@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable
+from typing import Literal
 
 from app.api.schemas import (
     ConfirmFieldRow,
@@ -39,11 +40,21 @@ WELCOME_MESSAGE_2 = (
     "I'll check whether you already have an account with us."
 )
 
-WELCOME_QUICK_REPLIES: list[tuple[str, str]] = [
-    ("I have my CR number", "I have my CR number"),
-    ("I don't have it handy", "I don't have it handy"),
-    ("What do I need to get started?", "What do I need to get started?"),
+WELCOME_QUICK_REPLIES: list[tuple[str, str, str | None, str | None]] = [
+    (
+        "I have my CR number",
+        "I have my CR number",
+        "focus_input",
+        "Type your 10-digit CR number",
+    ),
+    ("I don't have it handy", "I don't have it handy", None, None),
+    ("What do I need to get started?", "What do I need to get started?", None, None),
 ]
+
+
+def dotted_allowed_extensions() -> list[str]:
+    return sorted(f".{ext}" for ext in ALLOWED_EXTENSIONS)
+
 
 GROUP_TITLES: dict[FieldGroup, str] = {
     FieldGroup.COMPANY: "Company",
@@ -94,7 +105,7 @@ def document_upload_payload(
         docs=summary.documents,
         required_uploaded=summary.checks.required_docs_uploaded,
         required_total=summary.checks.required_docs_total,
-        allowed_extensions=sorted(ALLOWED_EXTENSIONS),
+        allowed_extensions=dotted_allowed_extensions(),
         max_mb=max_mb,
     )
 
@@ -115,13 +126,27 @@ def build_document_upload_card(
     )
 
 
+def _chip_action(action: str | None) -> Literal["send", "focus_input"]:
+    if action == "focus_input":
+        return "focus_input"
+    return "send"
+
+
 def build_quick_replies_card(
-    options: list[tuple[str, str]],
+    options: list[tuple[str, str, str | None, str | None]],
     *,
     message_id: str | None = None,
 ) -> UiCard:
     payload = QuickRepliesPayload(
-        options=[QuickReplyOption(label=label, text=text) for label, text in options]
+        options=[
+            QuickReplyOption(
+                label=label,
+                text=text,
+                action=_chip_action(action),
+                placeholder=placeholder,
+            )
+            for label, text, action, placeholder in options
+        ]
     )
     return UiCard(
         card_id="quick-replies",
@@ -148,6 +173,21 @@ def allocate_confirm_card_id(cards_shown: list[str]) -> str:
 def last_confirm_card_id(cards_shown: list[str]) -> str | None:
     confirm_ids = [card_id for card_id in cards_shown if card_id.startswith("confirm-")]
     return confirm_ids[-1] if confirm_ids else None
+
+
+def confirm_card_id_for_keys(
+    cards_shown: list[str],
+    confirm_card_keys: dict[str, list[str]],
+    keys: list[str],
+) -> str | None:
+    wanted = set(keys)
+    for card_id in reversed(cards_shown):
+        if not card_id.startswith("confirm-"):
+            continue
+        listed = confirm_card_keys.get(card_id, [])
+        if wanted.intersection(listed):
+            return card_id
+    return None
 
 
 def remember_confirm_card_keys(session: Session, card: UiCard) -> None:

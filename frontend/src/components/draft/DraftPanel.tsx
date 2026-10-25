@@ -81,8 +81,9 @@ export function DraftPanelView({ draft }: DraftPanelViewProps) {
         {DRAFT_GROUP_ORDER.map((groupId) => (
           <DraftGroup
             key={groupId}
+            groupId={groupId}
             title={draftGroupTitle(groupId)}
-            fields={draft?.fields.filter((f) => f.group === groupId) ?? []}
+            fields={draft?.fields ?? []}
             flashKeys={flashKeys}
           />
         ))}
