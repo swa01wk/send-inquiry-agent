@@ -16,7 +16,7 @@ Chat replacement for the Cenomi Tenant Central **Send Inquiry** form: React + Fa
    ```bash
    make demo
    ```
-4. Open **http://localhost:5173**. OTP mock code is **1234** (`OTP_MOCK_CODE`).
+4. Open **http://localhost:5173**. The SMS code is **1234** (`OTP_MOCK_CODE`); the email link is a demo button in the verification card (`EMAIL_LINK_DEMO`).
 5. Follow [docs/demo-script.md](docs/demo-script.md).
 
 **Without Docker:**
@@ -53,6 +53,7 @@ Live prompt check (not CI): `cd backend && uv run python scripts/eval_live.py`
 | `OPENAI_MODEL` | backend | Chat model name |
 | `OPENAI_TEMPERATURE` | backend | Default `0.6` (warmer, more varied replies) |
 | `OTP_MOCK_CODE` | backend | Default `1234` |
+| `EMAIL_LINK_DEMO` | backend | Default `true`: show the email-link demo button |
 | `MAX_UPLOAD_MB` | backend | Default `5` |
 | `UPLOAD_DIR` | backend | Local upload storage |
 | `SESSION_TTL_MINUTES` | backend | Default `120` |
@@ -80,7 +81,7 @@ flowchart LR
   end
   subgraph Data
     Domain[domain rules + validation]
-    Mocks[Mock CR / OTP / storage / submit / status]
+    Mocks[Mock CR / email link / OTP / storage / submit / status]
     Master[(master_data.json + faq.json)]
   end
   OpenAI[(OpenAI chat)]
@@ -101,7 +102,7 @@ flowchart LR
 
 ## Swapping mocks for real Cenomi APIs
 
-Implement the protocols in `backend/app/services/` (`CrService`, `OtpService`, `StorageService`, `SubmitService`, `StatusService`) and wire implementations in `backend/app/services/container.py`. Routers and LangGraph tools depend on interfaces only — no agent changes required.
+Implement the protocols in `backend/app/services/` (`CrService`, `EmailVerificationService`, `OtpService`, `StorageService`, `SubmitService`, `StatusService`) and wire implementations in `backend/app/services/container.py`. Routers and LangGraph tools depend on interfaces only — no agent changes required.
 
 ## Known limitations (POC)
 

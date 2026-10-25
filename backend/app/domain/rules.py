@@ -32,6 +32,20 @@ def _is_unconfirmed(draft: InquiryDraft, key: FieldKey) -> bool:
     return field.source in (Source.DERIVED, Source.VERIFIED) and not field.confirmed
 
 
+def verification_blockers(draft: InquiryDraft) -> list[Blocker]:
+    """Contact verification still pending: email always, mobile only when one is given."""
+    blockers: list[Blocker] = []
+    if not draft.email_verified:
+        blockers.append(Blocker.email_not_verified())
+    if _has_value(draft, FieldKey.MOBILE) and not draft.mobile_verified:
+        blockers.append(Blocker.mobile_not_verified())
+    return blockers
+
+
+def contact_verified(draft: InquiryDraft) -> bool:
+    return not verification_blockers(draft)
+
+
 def can_submit(draft: InquiryDraft) -> list[Blocker]:
     blockers: list[Blocker] = []
 
@@ -58,8 +72,7 @@ def can_submit(draft: InquiryDraft) -> list[Blocker]:
         if _is_unconfirmed(draft, definition.key):
             blockers.append(Blocker.unconfirmed_field(definition.key.value))
 
-    if not draft.otp_verified:
-        blockers.append(Blocker.otp_not_verified())
+    blockers.extend(verification_blockers(draft))
 
     for doc_type, _label, required in DOCUMENT_DEFINITIONS:
         if required and doc_type not in draft.documents:
@@ -88,7 +101,7 @@ def compute_phase(draft: InquiryDraft) -> Phase:
     if collecting_tokens:
         return Phase.COLLECTING
 
-    if not draft.otp_verified:
+    if not contact_verified(draft):
         return Phase.VERIFYING
 
     doc_blockers = [b for b in blockers if b.token.startswith("missing_document:")]

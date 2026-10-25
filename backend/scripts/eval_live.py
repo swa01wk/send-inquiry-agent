@@ -141,7 +141,7 @@ async def _auto_cards(
     user_text: str,
     submit_otp: bool = True,
 ) -> list[tuple[str, dict[str, Any]]]:
-    """Confirm fields / OTP when the UI would."""
+    """Confirm fields / verify the contact when the UI would."""
     extra: list[tuple[str, dict[str, Any]]] = []
     if _user_confirms(user_text):
         for card in _cards(events, "confirm_fields"):
@@ -150,8 +150,16 @@ async def _auto_cards(
                 extra.extend(
                     await _action(client, session_id, "confirm_card", {"card_id": card_id}),
                 )
-    if submit_otp and _cards(events, "otp_input"):
-        extra.extend(await _action(client, session_id, "submit_otp", {"code": "1234"}))
+    if submit_otp:
+        for card in _cards(events, "verification"):
+            payload = card.get("payload") or {}
+            email = payload.get("email") or {}
+            mobile = payload.get("mobile") or {}
+            token = email.get("demo_token")
+            if token and not email.get("verified"):
+                extra.extend(await _action(client, session_id, "verify_email", {"token": token}))
+            if mobile.get("code_sent") and not mobile.get("verified"):
+                extra.extend(await _action(client, session_id, "submit_otp", {"code": "1234"}))
     return extra
 
 
@@ -266,7 +274,7 @@ def _check_condensed(session, turns: list[TurnResult], _app=None) -> list[tuple[
     ]
     missing = [k.value for k in required if not draft.fields[k].value]
     has_phone = bool(draft.fields[FieldKey.MOBILE].value or draft.fields[FieldKey.LANDLINE].value)
-    otp_shown = any(_cards(t.events, "otp_input") for t in turns)
+    otp_shown = any(_cards(t.events, "verification") for t in turns)
     # Each reply should ask at most one question (bundled), not a list of them.
     max_questions = max((t.assistant.count("?") for t in turns), default=0)
     return [
@@ -347,10 +355,13 @@ def _check_cr_brand_differs_from_company(
 
 def _check_otp_chat_during_faq(session, turns: list[TurnResult], app) -> list[tuple[str, bool]]:
     otp = app.state.services.otp
-    send_count = otp.send_count(session.id) if hasattr(otp, "send_count") else 0
+    links = app.state.services.email_verification
+    code_count = otp.send_count(session.id) if hasattr(otp, "send_count") else 0
+    link_count = links.send_count(session.id) if hasattr(links, "send_count") else 0
     return [
-        ("otp card was shown", any(_cards(t.events, "otp_input") for t in turns)),
-        ("send_otp not called again", send_count <= 1),
+        ("verification card was shown", any(_cards(t.events, "verification") for t in turns)),
+        ("code not sent again", code_count <= 1),
+        ("email link not sent again", link_count <= 1),
     ]
 
 
@@ -381,22 +392,22 @@ def _check_arabic_user(session, turns: list[TurnResult], _app=None) -> list[tupl
     has_phone = bool(draft.fields[FieldKey.MOBILE].value or draft.fields[FieldKey.LANDLINE].value)
     replies_arabic = all(_has_arabic_letters(t.assistant) for t in turns if t.assistant.strip())
     no_retractions = _retraction_count(turns) == 0
-    otp_shown = any(_cards(t.events, "otp_input") for t in turns)
+    otp_shown = any(_cards(t.events, "verification") for t in turns)
     return [
         ("replies contain Arabic letters", replies_arabic),
         ("no message_remove events", no_retractions),
         (f"required fields filled (missing: {missing or 'none'})", not missing and has_phone),
-        ("OTP card shown", otp_shown),
+        ("verification card shown", otp_shown),
     ]
 
 
 def _check_three_part_name(session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
     draft = session.draft
-    otp_shown = any(_cards(t.events, "otp_input") for t in turns)
+    otp_shown = any(_cards(t.events, "verification") for t in turns)
     return [
         ("first_name is Abdullah", draft.fields[FieldKey.FIRST_NAME].value == "Abdullah"),
         ("last_name is Al Harbi", draft.fields[FieldKey.LAST_NAME].value == "Al Harbi"),
-        ("OTP card shown", otp_shown),
+        ("verification card shown", otp_shown),
     ]
 
 
@@ -582,7 +593,43 @@ SCENARIOS: list[LiveScenario] = [
         ],
         _check_three_part_name,
     ),
+    LiveScenario(
+        "Two malls named",
+        [
+            "Skip CR please.",
+            "Acme Trading LLC, King Abdullah Road. Bean Street café kiosks at Riyadh Mall A "
+            "and Mall of Arabia.",
+        ],
+        _check_two_malls,
+    ),
+    LiveScenario(
+        "International mobile",
+        [
+            "Skip CR please.",
+            "Acme Trading LLC, King Abdullah Road. Bean Street café at Riyadh Mall A.",
+            "Omar Haddad, omar@beanstreet.example, +971 50 123 4567",
+        ],
+        _check_international_number,
+    ),
 ]
+
+
+def _check_two_malls(session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
+    malls_raw = session.draft.fields[FieldKey.MALLS].value
+    malls = list(malls_raw) if isinstance(malls_raw, list) else []
+    last = turns[-1].assistant.lower() if turns else ""
+    return [
+        ("at most one mall saved", len(malls) <= 1),
+        ("asks which mall to start with", "which" in last),
+    ]
+
+
+def _check_international_number(session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
+    draft = session.draft
+    return [
+        ("mobile saved in international form", draft.fields[FieldKey.MOBILE].value == "+971501234567"),
+        ("verification card shown", any(_cards(t.events, "verification") for t in turns)),
+    ]
 
 
 async def run_scenario(client: AsyncClient, app, scenario: LiveScenario) -> ScenarioResult:

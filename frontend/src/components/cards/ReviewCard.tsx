@@ -39,8 +39,8 @@ function checkRows(checks: DraftChecks, consent: boolean) {
           : 'All suggested values confirmed',
     },
     {
-      ok: checks.otp_verified,
-      label: checks.otp_verified ? 'Phone and email verified' : 'Phone and email not verified yet',
+      ok: checks.contact_verified,
+      label: checks.contact_verified ? 'Contact verified' : 'Contact not verified yet',
     },
     {
       ok: checks.required_docs_uploaded >= checks.required_docs_total,
@@ -173,7 +173,7 @@ export function ReviewCard({ payload, onEditField, onSubmit }: ReviewCardProps) 
                   </span>
                   <SourceBadge source={row.source} confirmed={row.confirmed} />
                   {isMallsRow(row.key) ? (
-                    <span className={styles.mallHint}>Change malls in the chat</span>
+                    <span className={styles.mallHint}>Change the mall in the chat</span>
                   ) : (
                     <button
                       type="button"

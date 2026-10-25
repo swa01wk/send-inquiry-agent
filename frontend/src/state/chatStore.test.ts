@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   confirmFieldsCardExample,
-  otpCardExample,
+  verificationCardExample,
   quickRepliesCardExample,
 } from '../mocks/fixtures'
 import type { UiCard } from '../types/contracts'
@@ -113,7 +113,7 @@ describe('streaming and retraction', () => {
         { id: 'keep', role: 'assistant', text: 'Earlier', cardIds: [] },
         { id: 'bad', role: 'assistant', text: 'Wrong claim', cardIds: ['otp-1'] },
       ],
-      cards: { 'otp-1': { ...otpCardExample, card_id: 'otp-1', message_id: 'bad' } },
+      cards: { 'otp-1': { ...verificationCardExample, card_id: 'otp-1', message_id: 'bad' } },
     }
     state = reduceSse(state, { event: 'message_remove', data: { message_id: 'bad' } })
     expect(state.cards['otp-1']).toBeDefined()
@@ -169,14 +169,14 @@ describe('streaming and retraction', () => {
         { id: 'keep', role: 'assistant', text: 'Earlier', cardIds: [] },
         { id: 'bad', role: 'assistant', text: 'Retracted', cardIds: ['otp-1'] },
       ],
-      cards: { 'otp-1': { ...otpCardExample, card_id: 'otp-1', message_id: 'bad' } },
+      cards: { 'otp-1': { ...verificationCardExample, card_id: 'otp-1', message_id: 'bad' } },
     }
     state = reduceSse(state, { event: 'message_remove', data: { message_id: 'bad' } })
     expect(state.messages.find((m) => m.id === 'keep')?.cardIds).toEqual(['otp-1'])
 
     state = reduceSse(state, {
       event: 'ui_card',
-      data: { ...otpCardExample, card_id: 'otp-1', message_id: 'bad' },
+      data: { ...verificationCardExample, card_id: 'otp-1', message_id: 'bad' },
     })
     expect(state.messages.find((m) => m.id === 'keep')?.cardIds).toEqual(['otp-1'])
     expect(state.messages.filter((m) => m.cardIds.includes('otp-1'))).toHaveLength(1)

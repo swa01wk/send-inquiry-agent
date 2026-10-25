@@ -92,7 +92,9 @@ def _apply_field(
                 message=f"{definition.label} is required.",
             )
         else:
+            previous = draft.fields[key].value
             draft.fields[key] = FieldValue(value=None, source=None, confirmed=False)
+            _reset_verification_if_changed(draft, key, previous, None)
             written_keys.append(key.value)
         return
 
@@ -106,8 +108,28 @@ def _apply_field(
         return
 
     confirmed = source in (Source.USER, Source.DEFAULT)
+    previous = draft.fields[key].value
     draft.fields[key] = FieldValue(value=validated, source=source, confirmed=confirmed)
+    _reset_verification_if_changed(draft, key, previous, validated)
     written_keys.append(key.value)
+
+
+def _reset_verification_if_changed(
+    draft: InquiryDraft,
+    key: FieldKey,
+    previous: Any,
+    current: Any,
+) -> None:
+    """A verified email or mobile no longer counts once it changes."""
+    if previous == current:
+        return
+    if key == FieldKey.EMAIL:
+        draft.email_verified = False
+        draft.email_link_sent_to = None
+    elif key == FieldKey.MOBILE:
+        draft.mobile_verified = False
+        draft.otp_sent_to = None
+        draft.otp_attempts_left = 3
 
 
 def _cross_validate(draft: InquiryDraft, master: MasterData) -> dict[str, v.ValidationError]:

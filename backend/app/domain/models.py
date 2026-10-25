@@ -106,8 +106,12 @@ class Blocker(BaseModel):
         return cls(token=f"unconfirmed_field:{key}")
 
     @classmethod
-    def otp_not_verified(cls) -> Blocker:
-        return cls(token="otp_not_verified")
+    def email_not_verified(cls) -> Blocker:
+        return cls(token="email_not_verified")
+
+    @classmethod
+    def mobile_not_verified(cls) -> Blocker:
+        return cls(token="mobile_not_verified")
 
     @classmethod
     def missing_document(cls, doc_type: DocType) -> Blocker:
@@ -122,7 +126,13 @@ class InquiryDraft(BaseModel):
     fields: dict[FieldKey, FieldValue]
     cr_status: CrStatus = "unknown"
     documents: dict[DocType, DocumentRef] = Field(default_factory=dict)
-    otp_verified: bool = False
+    # Email is verified by a one-time link; the mobile (when given) by an OTP code.
+    # A landline-only applicant is verified by email alone. Changing the email or
+    # mobile clears that channel's verification (see draft_ops.write_fields).
+    email_verified: bool = False
+    mobile_verified: bool = False
+    email_link_sent_to: str | None = None
+    otp_sent_to: str | None = None
     otp_attempts_left: int = 3
     terms_accepted: bool = False
     reference: str | None = None

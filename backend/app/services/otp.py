@@ -1,4 +1,8 @@
-"""One-time password mock service."""
+"""Mobile one-time password mock service.
+
+The OTP verifies the mobile number only (requirements §7.1.1). Email is verified
+separately by link (see email_verification.py); a landline never receives an OTP.
+"""
 
 from __future__ import annotations
 
@@ -9,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class OtpService(Protocol):
-    async def send(self, session_id: str, email: str, phone: str) -> None: ...
+    async def send(self, session_id: str, mobile: str) -> None: ...
 
     async def verify(self, session_id: str, code: str) -> bool: ...
 
@@ -23,8 +27,8 @@ class MockOtpService:
     def send_count(self, session_id: str) -> int:
         return self._send_count.get(session_id, 0)
 
-    async def send(self, session_id: str, email: str, phone: str) -> None:
-        del email, phone
+    async def send(self, session_id: str, mobile: str) -> None:
+        del mobile
         self._active_sessions.add(session_id)
         self._send_count[session_id] = self._send_count.get(session_id, 0) + 1
         logger.info("OTP sent for session %s", session_id)

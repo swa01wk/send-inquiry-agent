@@ -2,7 +2,7 @@ import pytest
 from app.agent.state import initial_agent_state
 from app.agent.tools import (
     confirm_fields,
-    send_otp,
+    send_verification,
     show_review,
     skip_cr,
     update_draft,
@@ -73,11 +73,80 @@ def test_skip_cr_rejects_when_not_unknown(agent_runtime, base_state, stream_even
 
 
 @pytest.mark.asyncio
-async def test_send_otp_requires_email(agent_runtime, base_state, stream_events):
+async def test_send_verification_requires_email(agent_runtime, base_state, stream_events):
     events, writer = stream_events
     runtime = make_tool_runtime(state=base_state, agent_runtime=agent_runtime, writer=writer)
-    result = await send_otp.ainvoke({"state": base_state, "runtime": runtime, "resend": False})
+    result = await send_verification.ainvoke(
+        {"state": base_state, "runtime": runtime, "resend": False}
+    )
     assert "Need email" in result.update["messages"][0].content
+
+
+def _contact_draft(agent_runtime, *, number: str, key: str = "contact_number"):
+    draft = new_inquiry_draft()
+    draft, _, errors = write_fields(
+        draft,
+        [("email", "sara@beanstreet.example", Source.USER), (key, number, Source.USER)],
+        master=agent_runtime.master,
+    )
+    assert not errors
+    return draft
+
+
+@pytest.mark.asyncio
+async def test_send_verification_mobile_gets_link_and_code(agent_runtime, stream_events):
+    state = _state_with_draft(_contact_draft(agent_runtime, number="0501234567"))
+    events, writer = stream_events
+    runtime = make_tool_runtime(state=state, agent_runtime=agent_runtime, writer=writer)
+    result = await send_verification.ainvoke({"state": state, "runtime": runtime})
+    draft = result.update["draft"]
+    assert draft.email_link_sent_to == "sara@beanstreet.example"
+    assert draft.otp_sent_to == "+966501234567"
+    card = next(e["data"] for e in events if e["type"] == "ui_card")
+    assert card["card_type"] == "verification"
+    assert card["payload"]["mobile"]["code_sent"] is True
+    assert card["payload"]["email"]["link_sent"] is True
+    assert agent_runtime.services.otp.send_count("sess-1") == 1
+
+    # A second call without resend sends nothing new.
+    state2 = {**state, "draft": draft}
+    runtime2 = make_tool_runtime(state=state2, agent_runtime=agent_runtime, writer=writer)
+    result2 = await send_verification.ainvoke({"state": state2, "runtime": runtime2})
+    assert "already sent" in result2.update["messages"][0].content
+    assert agent_runtime.services.otp.send_count("sess-1") == 1
+
+
+@pytest.mark.asyncio
+async def test_send_verification_landline_only_sends_no_code(agent_runtime, stream_events):
+    draft = _contact_draft(agent_runtime, number="011234567")
+    assert draft.fields[FieldKey.LANDLINE].value == "+96611234567"
+    state = _state_with_draft(draft)
+    events, writer = stream_events
+    runtime = make_tool_runtime(state=state, agent_runtime=agent_runtime, writer=writer)
+    result = await send_verification.ainvoke({"state": state, "runtime": runtime})
+    assert result.update["draft"].otp_sent_to is None
+    assert "email link alone" in result.update["messages"][0].content
+    card = next(e["data"] for e in events if e["type"] == "ui_card")
+    assert card["payload"]["mobile"] is None
+    assert agent_runtime.services.otp.send_count("sess-1") == 0
+
+
+def test_update_draft_rejects_two_malls(agent_runtime, stream_events):
+    state = initial_agent_state(session_id="sess-1", draft=new_inquiry_draft(), phase="collecting")
+    state["messages"] = [HumanMessage(content="Riyadh Mall A or Mall of Arabia")]
+    events, writer = stream_events
+    runtime = make_tool_runtime(state=state, agent_runtime=agent_runtime, writer=writer)
+    result = update_draft.invoke(
+        {
+            "fields": [
+                {"key": "malls", "value": ["riyadh-mall-a", "mall-of-arabia"], "source": "user"}
+            ],
+            "state": state,
+            "runtime": runtime,
+        }
+    )
+    assert "one_mall_per_inquiry" in result.update["messages"][0].content
+    assert result.update["draft"].fields[FieldKey.MALLS].value is None
 
 
 def test_show_review_blocked(agent_runtime, base_state, stream_events):

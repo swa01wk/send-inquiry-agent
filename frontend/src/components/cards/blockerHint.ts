@@ -11,7 +11,8 @@ export function submitBlockerHint(blockers: string[], consentChecked: boolean): 
   if (first === 'terms_not_accepted' && !consentChecked) {
     return 'Accept the terms to submit.'
   }
-  if (first === 'otp_not_verified') return 'Verify your phone and email to submit.'
+  if (first === 'email_not_verified') return 'Verify your email with the link we sent to submit.'
+  if (first === 'mobile_not_verified') return 'Verify your mobile with the SMS code to submit.'
   if (first.startsWith('unconfirmed_field:')) return 'Confirm suggested values to submit.'
   if (first.startsWith('missing_document:')) return 'Upload required documents to submit.'
   if (first === 'cr_existing') return 'This CR number already has an account.'

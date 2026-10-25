@@ -18,13 +18,14 @@ from app.agent.mall_match import fill_mentioned_malls, filter_mall_ids
 from app.agent.runtime import runtime_from_config
 from app.agent.state import AgentState
 from app.api.cards import (
+    VERIFICATION_CARD_ID,
     allocate_confirm_card_id,
     build_confirm_fields_card,
     build_document_upload_card,
     build_mall_picker_card,
-    build_otp_input_card,
     build_quick_replies_card,
     build_review_card,
+    build_verification_card,
     last_confirm_card_id,
 )
 from app.api.schemas import UiCard
@@ -32,7 +33,7 @@ from app.domain import draft_ops
 from app.domain import validation as v
 from app.domain.faq import search_faq as faq_search
 from app.domain.models import FieldKey, InquiryDraft, Source
-from app.domain.rules import can_submit
+from app.domain.rules import can_submit, contact_verified
 from app.domain.summary import build_draft_summary
 from app.domain.validation import validate_cr_number
 from app.services.errors import ReferenceNotFoundError
@@ -40,7 +41,8 @@ from app.services.errors import ReferenceNotFoundError
 PROTECTED_WRITE_KEYS = frozenset(
     {
         "terms_accepted",
-        "otp_verified",
+        "email_verified",
+        "mobile_verified",
         "reference",
         "documents",
         "cr_status",
@@ -246,6 +248,13 @@ def update_draft(
                     f"{item.key}: mall_not_mentioned ({', '.join(mall_rejected)}); "
                     "use show_mall_picker for the city",
                 )
+            if len(accepted) > 1:
+                rejected.append(
+                    f"{item.key}: one_mall_per_inquiry ({', '.join(accepted)}); "
+                    "ask which mall to start with and say they can raise another "
+                    "inquiry for the other",
+                )
+                continue
             if not accepted:
                 continue
             entries.append((item.key, accepted, Source(item.source)))
@@ -410,40 +419,66 @@ def show_mall_picker(
 
 
 @tool
-async def send_otp(
+async def send_verification(
     state: Annotated[AgentState, InjectedState],
     runtime: ToolRuntime,
     resend: bool = False,
 ) -> Command[Any]:
-    """Send OTP to email and contact number."""
+    """Verify the contact: email a one-time link, and text a code if a mobile was given.
+
+    A landline-only applicant is verified by email alone. Set resend=True only when
+    the user asks for a new link or code.
+    """
     rt = runtime_from_config(runtime.config)
     draft = state["draft"]
+    session_id = state["session_id"]
     email = draft.fields[FieldKey.EMAIL].value
     mobile = draft.fields[FieldKey.MOBILE].value
     landline = draft.fields[FieldKey.LANDLINE].value
-    phone = mobile or landline
-    if not email or not phone:
+    if not email or not (mobile or landline):
         return _tool_result(
             runtime,
             draft=draft,
-            content="Need email and a contact number before sending OTP.",
+            content="Need email and a contact number before verification.",
         )
 
     updated = draft.model_copy(deep=True)
-    if resend:
+    sent: list[str] = []
+    email_text = str(email)
+    if not updated.email_verified and (resend or updated.email_link_sent_to != email_text):
+        await rt.services.email_verification.send_link(session_id, email_text)
+        updated.email_link_sent_to = email_text
+        sent.append("email verification link")
+    mobile_text = str(mobile) if mobile else None
+    if (
+        mobile_text
+        and not updated.mobile_verified
+        and (resend or updated.otp_sent_to != mobile_text)
+    ):
+        await rt.services.otp.send(session_id, mobile_text)
+        updated.otp_sent_to = mobile_text
         updated.otp_attempts_left = 3
-    await rt.services.otp.send(state["session_id"], str(email), str(phone))
+        sent.append("mobile code")
 
-    card = build_otp_input_card(updated)
+    card = build_verification_card(updated, demo_token=rt.email_demo_token(session_id))
     cards_shown = list(state["cards_shown"])
-    if "otp" not in cards_shown:
-        cards_shown.append("otp")
+    if VERIFICATION_CARD_ID not in cards_shown:
+        cards_shown.append(VERIFICATION_CARD_ID)
     _emit_card(card, runtime)
+
+    if contact_verified(updated):
+        content = "Contact already verified."
+    elif sent:
+        content = f"Sent: {' and '.join(sent)}."
+        if not mobile_text:
+            content += " No mobile given, so the email link alone verifies this applicant."
+    else:
+        content = "Verification already sent; waiting for the user to complete it in the card."
     return _tool_result(
         runtime,
         draft=updated,
-        content="OTP sent." if not resend else "OTP resent.",
-        changed_keys=["otp_attempts_left"] if resend else [],
+        content=content,
+        changed_keys=["otp_attempts_left"] if "mobile code" in sent else None,
         cards_shown=cards_shown,
     )
 
@@ -566,7 +601,7 @@ TOOLS = [
     confirm_fields,
     get_missing_fields,
     show_mall_picker,
-    send_otp,
+    send_verification,
     request_documents,
     show_review,
     suggest_replies,

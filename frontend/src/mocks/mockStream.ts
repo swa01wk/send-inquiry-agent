@@ -4,7 +4,7 @@ import {
   draftComplete,
   draftMidway,
   mallPickerCardExample,
-  otpCardExample,
+  verificationCardExample,
   reviewCardExample,
   successCardExample,
 } from './fixtures'
@@ -110,13 +110,34 @@ export async function replayMockChat(
     return
   }
 
+  if (request.type === 'action' && request.action === 'verify_email') {
+    await streamBotReply(mid, ['Email confirmed. Now the SMS code, please.'], onEvent, signal)
+    if (verificationCardExample.card_type === 'verification') {
+      const payload = verificationCardExample.payload
+      onEvent({
+        event: 'ui_card',
+        data: {
+          ...verificationCardExample,
+          payload: { ...payload, email: { ...payload.email, verified: true, demo_token: null } },
+        },
+      })
+    }
+    onEvent({ event: 'done', data: { phase: mockDraft.phase } })
+    return
+  }
+
   if (request.type === 'action' && request.action === 'submit_otp') {
     const code = String(request.payload.code ?? '')
     if (code === '1234') {
       const draft: DraftSummary = {
         ...mockDraft,
         phase: 'documents',
-        checks: { ...mockDraft.checks, otp_verified: true },
+        checks: {
+          ...mockDraft.checks,
+          email_verified: true,
+          mobile_verified: true,
+          contact_verified: true,
+        },
         changed_keys: [],
       }
       await streamBotReply(mid, ["You're verified, thank you!"], onEvent, signal)
@@ -151,12 +172,16 @@ export async function replayMockChat(
         onEvent,
         signal,
       )
-      if (otpCardExample.card_type === 'otp_input') {
+      if (verificationCardExample.card_type === 'verification') {
+        const payload = verificationCardExample.payload
         onEvent({
           event: 'ui_card',
           data: {
-            ...otpCardExample,
-            payload: { ...otpCardExample.payload, attempts_left: 2 },
+            ...verificationCardExample,
+            payload: {
+              ...payload,
+              mobile: payload.mobile && { ...payload.mobile, attempts_left: 2 },
+            },
           },
         })
       }
@@ -365,8 +390,13 @@ export async function replayMockChat(
       signal,
     )
     const m2 = nextMessageId()
-    await streamBotReply(m2, ["I've sent a 4-digit code to your phone and email. Enter it here:"], onEvent, signal)
-    onEvent({ event: 'ui_card', data: { ...otpCardExample, message_id: m2 } })
+    await streamBotReply(
+      m2,
+      ["I've emailed you a verification link and texted a 4-digit code to your mobile:"],
+      onEvent,
+      signal,
+    )
+    onEvent({ event: 'ui_card', data: { ...verificationCardExample, message_id: m2 } })
     onEvent(withDraft(draft))
     onEvent({ event: 'done', data: { phase: draft.phase } })
     return

@@ -19,6 +19,7 @@ from tests.scenarios.helpers import (
     token_text,
     ui_cards,
     upload_document,
+    verify_contact,
 )
 
 
@@ -80,7 +81,7 @@ async def test_scenario_01_happy_path_with_cr(settings) -> None:
         if ui_cards(events, "confirm_fields"):
             await _confirm_latest(client, session_id, events)
 
-        events = await chat_action(client, session_id, "submit_otp", {"code": "1234"})
+        events = await verify_contact(client, app, session_id)
         assert "verified" in token_text(events).lower() or ui_cards(events, "document_upload")
 
         reference = await _finish_happy_path(client, app, session_id)
@@ -106,7 +107,7 @@ async def test_scenario_02_skip_cr_submit_succeeds(settings) -> None:
 
         if ui_cards(events, "confirm_fields"):
             await _confirm_latest(client, session_id, events)
-        await chat_action(client, session_id, "submit_otp", {"code": "1234"})
+        await verify_contact(client, app, session_id)
         reference = await _finish_happy_path(client, app, session_id)
         assert _REFERENCE_RE.match(reference)
 
@@ -205,12 +206,9 @@ async def test_scenario_07_wrong_otp_three_times_resend(settings) -> None:
         session_id = await new_session(client)
         session = await app.state.session_store.get(session_id)
         session.draft = ready_to_submit_draft(app)
-        session.draft.otp_verified = False
-        await app.state.services.otp.send(
-            session_id,
-            "sara@beanstreet.example",
-            "+966501234567",
-        )
+        session.draft.mobile_verified = False
+        session.draft.otp_sent_to = "+966501234567"
+        await app.state.services.otp.send(session_id, "+966501234567")
 
         for _ in range(3):
             events = await chat_action(
@@ -223,7 +221,7 @@ async def test_scenario_07_wrong_otp_three_times_resend(settings) -> None:
             assert "sorry" in text or "didn't" in text or "try" in text or "attempt" in text
 
         session = await app.state.session_store.get(session_id)
-        assert session.draft.otp_verified is False
+        assert session.draft.mobile_verified is False
         assert session.draft.otp_attempts_left == 3
         assert session.draft.reference is None
 

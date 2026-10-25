@@ -12,8 +12,10 @@ def blocker_message(blocker: Blocker) -> str:
         return "This CR number already has a Tenant Central account."
     if token == "cr_pending":
         return "CR verification is still pending (verify or skip)."
-    if token == "otp_not_verified":
-        return "Phone and email OTP verification is required."
+    if token == "email_not_verified":
+        return "Email must be verified with the emailed link."
+    if token == "mobile_not_verified":
+        return "Mobile must be verified with the code sent by SMS."
     if token == "terms_not_accepted":
         return "Terms and conditions must be accepted on the review card."
     if token.startswith("missing_field:"):

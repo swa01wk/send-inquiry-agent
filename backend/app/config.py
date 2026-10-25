@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     openai_temperature: float = Field(default=0.6, validation_alias="OPENAI_TEMPERATURE")
 
     otp_mock_code: str = Field(default="1234", validation_alias="OTP_MOCK_CODE")
+    # Mock inbox: the verification card carries the link token so a demo button can
+    # stand in for clicking the emailed link. Turn off once real email is wired.
+    email_link_demo: bool = Field(default=True, validation_alias="EMAIL_LINK_DEMO")
     max_upload_mb: int = Field(default=5, validation_alias="MAX_UPLOAD_MB")
     upload_dir: str = Field(default="./.uploads", validation_alias="UPLOAD_DIR")
     session_ttl_minutes: int = Field(default=120, validation_alias="SESSION_TTL_MINUTES")

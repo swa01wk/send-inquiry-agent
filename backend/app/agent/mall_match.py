@@ -153,12 +153,16 @@ def fill_mentioned_malls(
     user_text: str,
     master: MasterData,
 ) -> tuple[InquiryDraft, bool]:
-    """When malls is empty and the user named seed mall(s), write matching ids as user."""
+    """When malls is empty and the user named exactly one seed mall, write it as user.
+
+    One mall per inquiry: if the message names several, nothing is written and the
+    agent asks which one to start with.
+    """
     raw = draft.fields[FieldKey.MALLS].value
     if isinstance(raw, list) and raw:
         return draft, False
     ids = mentioned_seed_mall_ids(user_text, master)
-    if not ids:
+    if len(ids) != 1:
         return draft, False
     updated, written, errors = draft_ops.write_fields(
         draft,

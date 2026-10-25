@@ -6,8 +6,8 @@ Everything Cursor builds must match this file. If a contract here is missing or 
 
 1. User opens the chat from "Send us an inquiry" on the sign-in page. A session is created and the agent greets them.
 2. **Gate**: the agent asks for the CR number. `verify_cr` → existing account: point to Sign In, stop. New: prefill company details as `verified` (unconfirmed). The user may skip.
-3. **Collect**: brand, unit type, sales category, malls, space and budget, contact. The agent derives what it can and asks the user to confirm.
-4. **Verify**: OTP to mobile and email (mock code from `OTP_MOCK_CODE`).
+3. **Collect**: brand, unit type, sales category, one mall, space and budget, contact. The agent derives what it can and asks the user to confirm.
+4. **Verify**: a one-time link to the email (mocked; a demo button stands in for the click) and, when a mobile was given, an SMS code (mock code from `OTP_MOCK_CODE`). A landline-only applicant is verified by email alone.
 5. **Documents**: Company Profile and Brand Profile are required; others optional. Presence, type and size only.
 6. **Review**: review card with every field and its source, edit, consent checkbox, Submit.
 7. **Submit**: deterministic, from the review card. Returns a reference `GEO-{UNIT}-{6 digits}` and a success card.
@@ -37,7 +37,10 @@ class InquiryDraft(BaseModel):
     fields: dict[FieldKey, FieldValue]      # every FieldKey present; empty FieldValue when unknown
     cr_status: Literal["unknown", "new", "existing", "skipped"] = "unknown"
     documents: dict[DocType, DocumentRef] = {}
-    otp_verified: bool = False
+    email_verified: bool = False            # one-time link
+    mobile_verified: bool = False           # SMS code; only needed when a mobile is given
+    email_link_sent_to: str | None = None   # address the live link went to
+    otp_sent_to: str | None = None          # mobile the live code went to
     otp_attempts_left: int = 3
     terms_accepted: bool = False
     reference: str | None = None
@@ -54,7 +57,7 @@ class InquiryDraft(BaseModel):
 | `brand_name_ar` | Brand name (AR) | brand | str | yes | 1–80 chars, contains Arabic script |
 | `unit_type` | Unit type | brand | enum id | yes | master `unit_types` |
 | `sales_category` | Sales category | brand | enum id | yes | master `sales_categories` |
-| `malls` | Malls | space | list[mall id] | yes | ≥ 1, all in master `malls` |
+| `malls` | Mall | space | list[mall id] | yes | exactly 1 (one mall per inquiry), in master `malls` |
 | `area_min` | Area min (sqm) | space | int | no | default 10, source default |
 | `area_max` | Area max (sqm) | space | int | no | default 25000, source default; 10 ≤ min ≤ max ≤ 25000 |
 | `rent_period` | Rent period | space | enum id | no | master `rent_periods`; required if rent given |
@@ -64,15 +67,17 @@ class InquiryDraft(BaseModel):
 | `first_name` | First name | contact | str | yes | 1–50 chars |
 | `last_name` | Last name | contact | str | yes | 1–50 chars |
 | `email` | Email | contact | str | yes | valid email |
-| `mobile` | Mobile | contact | str | one of | `+9665XXXXXXXX` (normalised) |
-| `landline` | Office landline | contact | str | one of | `+966` + 8 digits, not starting with 5 |
+| `mobile` | Mobile | contact | str | one of | `+9665XXXXXXXX`, or any non-Saudi number in E.164 (`+` + 8–15 digits) |
+| `landline` | Office landline | contact | str | one of | `+966` + 8 digits, not starting with 5, or any non-Saudi number in E.164 |
 | `vat_number` | VAT number | documents | str | no | 15 digits, starts and ends with 3 |
 | `national_id_number` | National ID / Iqama | documents | str | no | 10 digits starting with 1 or 2 |
 | `national_address` | National address | documents | str | no | 5–250 chars |
 
-"Required" for contact means `mobile` or `landline`. The pseudo key `contact_number` is accepted by `update_draft`: it is normalised and written to `mobile` or `landline` by prefix.
+"Required" for contact means `mobile` or `landline`. The pseudo key `contact_number` is accepted by `update_draft`: it is normalised and written to `mobile` or `landline` by prefix. Saudi numbers are classified by prefix; a non-Saudi number defaults to `mobile` (no numbering-plan library in the POC), so a foreign landline must be written to `landline` explicitly.
 
-Display values: enum ids render as labels; `malls` as comma-joined names; area as `"25 – 35 sqm"`; rent as `"Up to SAR 250,000 / year"` or `"SAR 100,000 – 250,000 / year"`.
+Changing `email` clears `email_verified` and `email_link_sent_to`; changing `mobile` clears `mobile_verified`, `otp_sent_to` and resets `otp_attempts_left`.
+
+Display values: enum ids render as labels; `malls` as the mall name; area as `"25 – 35 sqm"`; rent as `"Up to SAR 250,000 / year"` or `"SAR 100,000 – 250,000 / year"`.
 
 ### Document types
 
@@ -95,13 +100,13 @@ Blockers, in this order:
 2. `cr_pending`: `cr_status == "unknown"` (neither verified as new nor skipped).
 3. `missing_field:<key>`: each required field without a value (contact counts once as `missing_field:contact`).
 4. `unconfirmed_field:<key>`: each required or provided field whose source is derived/verified and `confirmed` is false.
-5. `otp_not_verified`.
+5. `email_not_verified`, then `mobile_not_verified` (only when a mobile is given).
 6. `missing_document:<doc_type>`: each required document not uploaded.
 7. `terms_not_accepted`.
 
 ### Phase (`domain/summary.py: compute_phase`)
 
-`existing_account` if cr existing → `submitted` if reference → `gate` if cr unknown → `collecting` if any blocker 3–4 → `verifying` if otp not verified → `documents` if blocker 6 → `review`.
+`existing_account` if cr existing → `submitted` if reference → `gate` if cr unknown → `collecting` if any blocker 3–4 → `verifying` if any blocker 5 → `documents` if blocker 6 → `review`.
 
 ## 3. Agent tools (`backend/app/agent/tools.py`)
 
@@ -112,26 +117,28 @@ All tools return a short factual string for the LLM. Tools that change state ret
 | `verify_cr` | `cr_number: str` | Validate format; call `CrService.verify`. Existing → `cr_status="existing"`. New → `cr_status="new"`, write `cr_number` (user) and any returned `company_name`/`company_address` as `verified`, unconfirmed; emit a `confirm_fields` card for them. |
 | `skip_cr` | — | Only after the user agreed to skip. `cr_status="skipped"`. |
 | `get_master_data` | `kind: str, city: str \| None` | Read-only lookup: `unit_types`, `sales_categories`, `cities`, `malls`, `lease_periods`, `rent_periods`. |
-| `update_draft` | `fields: list[{key, value, source: "user" \| "derived"}]` | Validate each; write valid ones (user → confirmed, derived → unconfirmed); return per-field errors. Emit a `confirm_fields` card listing newly written derived values. The LLM can't write `verified`, `default`, `otp_verified`, `terms_accepted`, `documents` or `reference`. |
+| `update_draft` | `fields: list[{key, value, source: "user" \| "derived"}]` | Validate each; write valid ones (user → confirmed, derived → unconfirmed); return per-field errors. Emit a `confirm_fields` card listing newly written derived values. The LLM can't write `verified`, `default`, `email_verified`, `mobile_verified`, `terms_accepted`, `documents` or `reference`. |
 | `confirm_fields` | `keys: list[str]` | Mark those unconfirmed fields confirmed (only after the user agreed). Updates the existing confirm card. |
 | `get_missing_fields` | — | Returns blockers from `can_submit` in plain words. |
 | `show_mall_picker` | `city: str` | Emits a `mall_picker` card with that city's malls and the current selection. |
-| `send_otp` | `resend: bool = False` | Requires `email` and a contact number. Calls `OtpService.send`, resets attempts on resend, emits `otp_input` card. |
+| `send_verification` | `resend: bool = False` | Requires `email` and a contact number. Emails a link via `EmailVerificationService.send_link` unless one already went to the current address; texts a code via `OtpService.send` when a mobile is given and no code went to it yet (`resend` forces both). Emits the `verification` card. |
 | `request_documents` | — | Emits the `document_upload` card. |
 | `show_review` | — | Only when the only remaining blocker is `terms_not_accepted`; emits the `review` card. Otherwise returns the blockers. |
 | `suggest_replies` | `options: list[str]` (1–3, ≤ 60 chars each) | Emits a `quick_replies` card for this turn. |
 | `search_faq` | `query: str` | Top 2 matches from `faq.json` (keyword score). The agent answers only from these. |
 | `get_inquiry_status` | `reference: str` | Calls `StatusService.get`. |
 
-There is no submit tool and no OTP-verify tool: both happen through UI actions, so the OTP code and consent never pass through the LLM.
+There is no submit tool and no verify tool: both happen through UI actions, so the link token, the SMS code and consent never pass through the LLM.
 
 ## 4. UI actions (handled in the chat endpoint before the graph runs)
 
 | Action | Payload | Backend does, then runs the graph with a `[ui_event]` note |
 | --- | --- | --- |
-| `select_malls` | `{mall_ids: list[str]}` | Validate; write `malls` as user, confirmed. Note: `malls_selected: <names>` |
-| `submit_otp` | `{code: str}` | `OtpService.verify`; on success `otp_verified=True`; on failure decrement attempts (0 → auto resend, reset to 3). Note: `otp_verified` or `otp_failed attempts_left=N` or `otp_resent`. The code is never added to messages. |
-| `resend_otp` | `{}` | Resend, reset attempts. Note: `otp_resent` |
+| `select_malls` | `{mall_ids: list[str]}` | Validate (exactly one mall); write `malls` as user, confirmed. Note: `malls_selected: <name>` or `malls_invalid <code>` |
+| `verify_email` | `{token: str}` | `EmailVerificationService.verify`; valid only for the link sent to the current email. Sets `email_verified`. Note: `email_verified` (+ ` verification_complete` when nothing else is pending) or `email_link_invalid`. The token is never added to messages. |
+| `resend_email_link` | `{}` | New link to the current email (the old one stops working). Note: `email_link_resent` |
+| `submit_otp` | `{code: str}` | Only for the code sent to the current mobile. `OtpService.verify`; on success `mobile_verified=True`; on failure decrement attempts (0 → auto resend, reset to 3). Note: `mobile_verified` (+ ` verification_complete`), `otp_failed attempts_left=N`, `otp_resent` or `otp_not_sent`. The code is never added to messages. |
+| `resend_otp` | `{}` | Resend to the mobile, reset attempts. Note: `otp_resent` or `otp_send_blocked no_mobile` |
 | `edit_field` | `{key, value}` | Validate; write as user, confirmed. Note: `field_edited <key>` |
 | `confirm_card` | `{card_id}` | Confirm all fields on that confirm card. Note: `fields_confirmed <keys>` |
 | `accept_and_submit` | `{terms_accepted: true}` | Set `terms_accepted`; run `can_submit`; if clear, `SubmitService.submit` → set `reference`, emit `success` card. Note: `submitted reference=<ref>` or `submit_blocked <blockers>` |
@@ -142,10 +149,10 @@ There is no submit tool and no OTP-verify tool: both happen through UI actions, 
 
 After the agent's final reply each turn:
 1. Recompute `phase`; emit a `draft` event.
-2. Attach the card for a phase the user just entered if it hasn't been shown: `documents` → `document_upload`, `review` → `review`. (`verifying` cards come from `send_otp`.)
+2. Attach the card for a phase the user just entered if it hasn't been shown: `documents` → `document_upload`, `review` → `review`. (`verifying` cards come from `send_verification`.)
 3. If the reply claims the inquiry was submitted (regex on "submitted|sent your inquiry|reference") while `reference` is None → add a system note and route back to `agent` once.
 4. If phase is `existing_account`, ensure the reply points to Sign In.
-5. When `malls` is empty and the user's message names one or more seed malls (same mention rules as `filter_mall_ids`), write those mall ids as `user` (see `fill_mentioned_malls` in `mall_match.py`). Also runs after `update_draft` when malls were omitted. Mall mention: the full normalised mall name (or optional `aliases` on a mall in master data) must appear as whole words in the user message (`\b` boundaries, optional leading “the”); city or country tokens alone do not match.
+5. When `malls` is empty and the user's message names exactly one seed mall (same mention rules as `filter_mall_ids`), write that mall id as `user` (naming two or more writes nothing, so the agent asks which one) (see `fill_mentioned_malls` in `mall_match.py`). Also runs after `update_draft` when malls were omitted. Mall mention: the full normalised mall name (or optional `aliases` on a mall in master data) must appear as whole words in the user message (`\b` boundaries, optional leading “the”); city or country tokens alone do not match.
 
 ## 6. REST API (`/api`)
 
@@ -193,8 +200,8 @@ At the start of each turn the frontend clears the previous `quick_replies` chips
 | `card_type` | `payload` |
 | --- | --- |
 | `confirm_fields` | `{title, fields:[{key, label, display, source, confirmed}], all_confirmed}` |
-| `mall_picker` | `{city:{id,label}, malls:[{id,name}], selected:[id], min_select:1}` |
-| `otp_input` | `{sent_to:{mobile_masked, email_masked}, attempts_left, verified, code_length:4}` |
+| `mall_picker` | `{city:{id,label}, malls:[{id,name}], selected:[id], min_select:1, max_select:1}` |
+| `verification` | `{email:{masked, link_sent, verified, demo_token}, mobile:{masked, code_sent, verified, attempts_left, code_length:4} \| null, all_verified}` (`mobile` is null for a landline-only applicant; `demo_token` only when `EMAIL_LINK_DEMO`) |
 | `document_upload` | `{docs:[{doc_type,label,required,uploaded,file_name,size_bytes}], required_uploaded, required_total, allowed_extensions, max_mb}` |
 | `review` | `{groups:[{title, rows:[{key,label,display,source,confirmed,required}]}], documents:[...], checks:Checks, can_submit, terms_accepted, blockers:[str]}` |
 | `success` | `{reference, tracking_url, steps:[{label, detail, state}]}` |
@@ -206,7 +213,7 @@ At the start of each turn the frontend clears the previous `quick_replies` chips
   "phase": "collecting",
   "fields": [{"key": "company_name", "label": "Company name", "group": "company", "display": "Bean Street Trading Co.", "source": "verified", "confirmed": false, "required": true}],
   "documents": [{"doc_type": "company_profile", "label": "Company Profile", "required": true, "uploaded": false, "file_name": null, "size_bytes": null}],
-  "checks": {"required_filled": 7, "required_total": 11, "unconfirmed": 2, "otp_verified": false, "required_docs_uploaded": 0, "required_docs_total": 2, "terms_accepted": false},
+  "checks": {"required_filled": 7, "required_total": 11, "unconfirmed": 2, "email_verified": false, "mobile_verified": false, "contact_verified": false, "required_docs_uploaded": 0, "required_docs_total": 2, "terms_accepted": false},
   "can_submit": false,
   "changed_keys": ["company_name", "company_address"]
 }
@@ -218,7 +225,8 @@ Groups in order: company, brand, space, contact. Area shows as one row (`area`),
 | Interface | Mock behaviour |
 | --- | --- |
 | `CrService.verify(cr) -> CrResult` | `1010123456` → new, company "Bean Street Trading Co.", address "King Fahd Road, Al Olaya, Riyadh" · `1010222222` → new, company "Fawaz Alhokair Trading Co.", address "King Fahd Road, Riyadh" · `1010000000` → existing · any other valid number → new, no details |
-| `OtpService.send(session, email, phone)` / `verify(session, code)` | Code = `OTP_MOCK_CODE`; logs "OTP sent" without the code |
+| `EmailVerificationService.send_link(session, email)` / `verify(session, token)` / `demo_token(session)` | One live single-use token per session; logs "Email verification link sent" without the token |
+| `OtpService.send(session, mobile)` / `verify(session, code)` | Mobile only. Code = `OTP_MOCK_CODE`; logs "OTP sent" without the code |
 | `StorageService.save(session, doc_type, upload) -> DocumentRef` | Writes to `UPLOAD_DIR/<session>/<uuid><ext>`; never opens content |
 | `SubmitService.submit(draft) -> reference` | `GEO-{unit code}-{6 random digits}`; stores the payload in memory; logs it |
 | `StatusService.get(reference)` | Known reference → `under_review`; else 404 |
@@ -257,6 +265,7 @@ process steps · review time · required documents · what a CR number is · wha
 | `OPENAI_MODEL` | — (required; any OpenAI chat model with tool calling) |
 | `OPENAI_TEMPERATURE` | `0.6` |
 | `OTP_MOCK_CODE` | `1234` |
+| `EMAIL_LINK_DEMO` | `true` (the verification card carries the link token for a demo button) |
 | `MAX_UPLOAD_MB` | `5` |
 | `UPLOAD_DIR` | `./.uploads` |
 | `SESSION_TTL_MINUTES` | `120` |
@@ -272,3 +281,4 @@ Frontend: `VITE_API_BASE` (default `http://localhost:8000`), `VITE_MOCK` (`1` = 
 - Submit and OTP verification moved from agent tools to UI actions, so the OTP code and consent never pass through the LLM.
 - Added `show_mall_picker`, `suggest_replies` and the `confirm_card` / `edit_field` actions.
 - `DraftSummary.changed_keys` drives the draft panel's highlight and auto-scroll.
+- POC assumptions (Oct 2026, requirements §7.1.1): email verified by link and mobile by OTP as separate checks (`send_otp` → `send_verification`, `otp_input` card → `verification`, `otp_verified` → `email_verified` + `mobile_verified`); one mall per inquiry; international phone numbers accepted, OTP to mobile only.

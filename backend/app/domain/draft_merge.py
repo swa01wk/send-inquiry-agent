@@ -62,7 +62,10 @@ def merge_inquiry_drafts(left: InquiryDraft, right: InquiryDraft) -> InquiryDraf
         merged.cr_status = right.cr_status
 
     merged.documents = {**left.documents, **right.documents}
-    merged.otp_verified = left.otp_verified or right.otp_verified
+    merged.email_verified = left.email_verified or right.email_verified
+    merged.mobile_verified = left.mobile_verified or right.mobile_verified
+    merged.email_link_sent_to = right.email_link_sent_to or left.email_link_sent_to
+    merged.otp_sent_to = right.otp_sent_to or left.otp_sent_to
     merged.otp_attempts_left = min(left.otp_attempts_left, right.otp_attempts_left)
     merged.terms_accepted = left.terms_accepted or right.terms_accepted
     if right.reference:

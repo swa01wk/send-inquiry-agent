@@ -136,3 +136,12 @@ def test_riyadh_only_rejects_riyadh_mall_b() -> None:
     )
     assert accepted == []
     assert rejected == ["riyadh-mall-b"]
+
+
+def test_two_malls_named_fills_nothing() -> None:
+    """One mall per inquiry: naming two leaves malls empty so the agent asks which."""
+    master = load_master_data()
+    draft = new_inquiry_draft()
+    updated, filled = fill_mentioned_malls(draft, "Riyadh Mall A or Mall of Arabia", master)
+    assert not filled
+    assert updated.fields[FieldKey.MALLS].value is None

@@ -119,7 +119,7 @@ FIELD_DEFINITIONS: list[FieldDefinition] = [
     ),
     FieldDefinition(
         FieldKey.MALLS,
-        "Malls",
+        "Mall",
         FieldGroup.SPACE,
         True,
         lambda raw, master: v.validate_malls(raw, master),
@@ -214,7 +214,7 @@ FIELD_DEFINITIONS: list[FieldDefinition] = [
         "Mobile",
         FieldGroup.CONTACT,
         False,
-        lambda raw, _m: v.normalise_saudi_mobile(str(raw)),
+        lambda raw, _m: v.normalise_mobile(str(raw)),
         lambda d, _m: _display_str(d, FieldKey.MOBILE),
     ),
     FieldDefinition(
@@ -222,7 +222,7 @@ FIELD_DEFINITIONS: list[FieldDefinition] = [
         "Office landline",
         FieldGroup.CONTACT,
         False,
-        lambda raw, _m: v.normalise_saudi_landline(str(raw)),
+        lambda raw, _m: v.normalise_landline(str(raw)),
         lambda d, _m: _display_str(d, FieldKey.LANDLINE),
     ),
     FieldDefinition(

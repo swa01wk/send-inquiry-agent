@@ -15,7 +15,7 @@ from app.domain.fields import (
 )
 from app.domain.master import MasterData
 from app.domain.models import FieldKey, InquiryDraft, Source
-from app.domain.rules import can_submit, compute_phase
+from app.domain.rules import can_submit, compute_phase, contact_verified
 
 
 class DraftFieldRow(BaseModel):
@@ -41,7 +41,10 @@ class DraftChecks(BaseModel):
     required_filled: int
     required_total: int = 11
     unconfirmed: int
-    otp_verified: bool
+    email_verified: bool
+    mobile_verified: bool
+    # True when every channel that needs it is verified (email always, mobile if given).
+    contact_verified: bool
     required_docs_uploaded: int
     required_docs_total: int = 2
     terms_accepted: bool
@@ -242,7 +245,9 @@ def build_draft_summary(
     checks = DraftChecks(
         required_filled=_count_required_filled(draft),
         unconfirmed=_count_unconfirmed(draft),
-        otp_verified=draft.otp_verified,
+        email_verified=draft.email_verified,
+        mobile_verified=draft.mobile_verified,
+        contact_verified=contact_verified(draft),
         required_docs_uploaded=required_docs_uploaded,
         terms_accepted=draft.terms_accepted,
     )
@@ -286,7 +291,11 @@ def prompt_summary(draft: InquiryDraft, master: MasterData) -> str:
     collected = ", ".join(collected_parts) if collected_parts else "none"
     missing = ", ".join(missing_labels) if missing_labels else "none"
     confirm = ", ".join(needs_confirmation) if needs_confirmation else "none"
-    otp = "yes" if draft.otp_verified else "no"
+    email_ok = "yes" if draft.email_verified else "no"
+    if _has_field_value(draft, FieldKey.MOBILE):
+        mobile_ok = "yes" if draft.mobile_verified else "no"
+    else:
+        mobile_ok = "not needed (no mobile)"
     terms = "yes" if draft.terms_accepted else "no"
     docs = f"{summary.checks.required_docs_uploaded}/{summary.checks.required_docs_total}"
 
@@ -295,5 +304,6 @@ def prompt_summary(draft: InquiryDraft, master: MasterData) -> str:
         f"Collected: {collected}\n"
         f"Missing required: {missing}\n"
         f"Needs confirmation: {confirm}\n"
-        f"OTP verified: {otp} · Required documents: {docs} · Terms accepted: {terms}"
+        f"Email verified: {email_ok} · Mobile verified: {mobile_ok} · "
+        f"Required documents: {docs} · Terms accepted: {terms}"
     )

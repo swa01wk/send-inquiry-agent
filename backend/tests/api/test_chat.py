@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 import pytest
 from app.agent.model import ScriptedChatModel
 from app.domain.draft_ops import add_document, new_inquiry_draft
-from app.domain.models import DocType
+from app.domain.models import DocType, FieldKey, Source
 from app.services.otp import MockOtpService
 from httpx import AsyncClient
 from tests.domain.conftest import fill_minimal_collectible
@@ -89,8 +89,9 @@ async def test_submit_otp_wrong_codes_resend_and_no_code_in_history(
     draft = fill_minimal_collectible(new_inquiry_draft(), master_data)
     draft.cr_status = "skipped"
     session.draft = draft
+    draft.otp_sent_to = "+966501234567"
     otp: MockOtpService = app.state.services.otp
-    await otp.send(session.id, "sara@beanstreet.example", "+966501234567")
+    await otp.send(session.id, "+966501234567")
 
     secret = "9999"
     for _ in range(3):
@@ -138,7 +139,8 @@ async def test_accept_and_submit_success_reference(client: AsyncClient, app) -> 
     master = load_master_data()
     draft = fill_minimal_collectible(new_inquiry_draft(), master)
     draft.cr_status = "skipped"
-    draft.otp_verified = True
+    draft.email_verified = True
+    draft.mobile_verified = True
     max_bytes = 5 * 1024 * 1024
     ts = datetime(2026, 1, 1, tzinfo=UTC)
     draft, _ = add_document(
@@ -188,3 +190,78 @@ async def test_concurrent_chat_returns_409(client: AsyncClient, app) -> None:
         assert response.json()["error"]["code"] == "turn_in_progress"
     finally:
         await store.end_turn(session.id)
+
+
+@pytest.mark.asyncio
+async def test_verify_email_action_with_link_token(client: AsyncClient, app) -> None:
+    from app.domain.master import load_master_data
+
+    store = app.state.session_store
+    session = await store.create()
+    draft = fill_minimal_collectible(new_inquiry_draft(), load_master_data())
+    draft.cr_status = "skipped"
+    draft.email_link_sent_to = "sara@beanstreet.example"
+    session.draft = draft
+    links = app.state.services.email_verification
+    await links.send_link(session.id, "sara@beanstreet.example")
+
+    events = await _chat(
+        client,
+        session.id,
+        {"type": "action", "action": "verify_email", "payload": {"token": "not-the-token"}},
+    )
+    assert session.draft.email_verified is False
+    assert any(name == "ui_card" and data["card_type"] == "verification" for name, data in events)
+
+    token = links.demo_token(session.id)
+    await _chat(
+        client,
+        session.id,
+        {"type": "action", "action": "verify_email", "payload": {"token": token}},
+    )
+    assert session.draft.email_verified is True
+    # The mobile still needs its code, so the phase stays at verification.
+    assert session.draft.mobile_verified is False
+
+
+@pytest.mark.asyncio
+async def test_verify_email_rejected_after_email_changed(client: AsyncClient, app) -> None:
+    from app.domain.draft_ops import write_fields
+    from app.domain.master import load_master_data
+
+    master = load_master_data()
+    store = app.state.session_store
+    session = await store.create()
+    draft = fill_minimal_collectible(new_inquiry_draft(), master)
+    draft.cr_status = "skipped"
+    links = app.state.services.email_verification
+    await links.send_link(session.id, "sara@beanstreet.example")
+    draft, _, _ = write_fields(draft, [("email", "sara@other.example", Source.USER)], master=master)
+    session.draft = draft
+
+    await _chat(
+        client,
+        session.id,
+        {
+            "type": "action",
+            "action": "verify_email",
+            "payload": {"token": links.demo_token(session.id)},
+        },
+    )
+    assert session.draft.email_verified is False
+
+
+@pytest.mark.asyncio
+async def test_select_two_malls_rejected(client: AsyncClient, app) -> None:
+    store = app.state.session_store
+    session = await store.create()
+    await _chat(
+        client,
+        session.id,
+        {
+            "type": "action",
+            "action": "select_malls",
+            "payload": {"mall_ids": ["riyadh-mall-a", "riyadh-mall-b"]},
+        },
+    )
+    assert session.draft.fields[FieldKey.MALLS].value is None

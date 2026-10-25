@@ -44,7 +44,7 @@ async def test_guard_retries_when_contact_omitted(agent_runtime: AgentRuntime) -
             },
             "s2",
         ),
-        tool_step("send_otp", {"resend": False}, "s3"),
+        tool_step("send_verification", {"resend": False}, "s3"),
         {"content": "Enter the verification code when it arrives."},
     ]
     model = ScriptedChatModel(steps=steps)

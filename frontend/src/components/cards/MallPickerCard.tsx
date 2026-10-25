@@ -16,12 +16,21 @@ export function MallPickerCard({ payload, locked, onDone }: MallPickerCardProps)
     setSelected(payload.selected)
   }, [payload.selected])
 
+  const single = payload.max_select === 1
   const countLabel =
-    selected.length === 0 ? 'Select one or more' : `${selected.length} selected`
+    selected.length === 0
+      ? single
+        ? 'Select one'
+        : 'Select one or more'
+      : `${selected.length} selected`
 
   const toggle = (id: string) => {
     if (locked) return
-    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+    setSelected((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id)
+      // One mall per inquiry: picking another replaces the current choice.
+      return single ? [id] : [...prev, id]
+    })
   }
 
   return (

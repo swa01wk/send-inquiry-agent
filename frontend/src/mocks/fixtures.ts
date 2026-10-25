@@ -5,11 +5,11 @@ import type {
   DraftFieldRow,
   DraftSummary,
   MallPickerPayload,
-  OtpInputPayload,
   QuickRepliesPayload,
   ReviewPayload,
   SuccessPayload,
   UiCard,
+  VerificationPayload,
 } from '../types/contracts'
 
 const DOCUMENT_ROWS: DraftDocumentRow[] = [
@@ -99,7 +99,9 @@ export const draftEmpty: DraftSummary = {
     required_filled: 0,
     required_total: 11,
     unconfirmed: 0,
-    otp_verified: false,
+    email_verified: false,
+    mobile_verified: false,
+    contact_verified: false,
     required_docs_uploaded: 0,
     required_docs_total: 2,
     terms_accepted: false,
@@ -149,7 +151,9 @@ export const draftMidway: DraftSummary = {
     required_filled: 4,
     required_total: 11,
     unconfirmed: 5,
-    otp_verified: false,
+    email_verified: false,
+    mobile_verified: false,
+    contact_verified: false,
     required_docs_uploaded: 0,
     required_docs_total: 2,
     terms_accepted: false,
@@ -212,7 +216,9 @@ export const draftComplete: DraftSummary = {
     required_filled: 11,
     required_total: 11,
     unconfirmed: 0,
-    otp_verified: true,
+    email_verified: true,
+    mobile_verified: true,
+    contact_verified: true,
     required_docs_uploaded: 2,
     required_docs_total: 2,
     terms_accepted: true,
@@ -266,24 +272,32 @@ export const mallPickerCardExample: UiCard = {
       { id: 'riyadh-mall-c', name: 'Riyadh Mall C' },
       { id: 'riyadh-mall-d', name: 'Riyadh Mall D' },
     ],
-    selected: ['riyadh-mall-a', 'riyadh-mall-b'],
+    selected: ['riyadh-mall-a'],
     min_select: 1,
+    max_select: 1,
   } satisfies MallPickerPayload,
 }
 
-export const otpCardExample: UiCard = {
-  card_id: 'otp',
-  card_type: 'otp_input',
+export const verificationCardExample: UiCard = {
+  card_id: 'verification',
+  card_type: 'verification',
   message_id: 'm_22',
   payload: {
-    sent_to: {
-      mobile_masked: '+96655****4567',
-      email_masked: 'a***@beanstreet.sa',
+    email: {
+      masked: 'a***@beanstreet.sa',
+      link_sent: true,
+      verified: false,
+      demo_token: 'demo-token',
     },
-    attempts_left: 3,
-    verified: false,
-    code_length: 4,
-  } satisfies OtpInputPayload,
+    mobile: {
+      masked: '+96655****4567',
+      code_sent: true,
+      verified: false,
+      attempts_left: 3,
+      code_length: 4,
+    },
+    all_verified: false,
+  } satisfies VerificationPayload,
 }
 
 export const documentUploadCardExample: UiCard = {

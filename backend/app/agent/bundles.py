@@ -12,6 +12,7 @@ from dataclasses import dataclass
 
 from app.domain.fields import FIELD_BY_KEY
 from app.domain.models import FieldKey, InquiryDraft, Source
+from app.domain.rules import contact_verified
 
 
 @dataclass(frozen=True)
@@ -75,6 +76,17 @@ def _askable(draft: InquiryDraft, bundle: Bundle) -> list[str]:
     return asks
 
 
+def _verification_sent(draft: InquiryDraft) -> bool:
+    """A link (and code, when a mobile was given) went to the current addresses."""
+    email = draft.fields[FieldKey.EMAIL].value
+    mobile = draft.fields[FieldKey.MOBILE].value
+    email_ok = draft.email_verified or (
+        email is not None and draft.email_link_sent_to == str(email)
+    )
+    mobile_ok = mobile is None or draft.mobile_verified or draft.otp_sent_to == str(mobile)
+    return email_ok and mobile_ok
+
+
 def _unconfirmed(draft: InquiryDraft, *, exclude_keys: frozenset[str] = frozenset()) -> list[str]:
     labels: list[str] = []
     for key, field in draft.fields.items():
@@ -92,7 +104,7 @@ def next_bundle_hint(
     cards_shown: list[str] | None = None,
 ) -> str:
     """One or two lines telling the agent what to ask for next, as one question."""
-    shown = cards_shown or []
+    del cards_shown  # verification progress now lives on the draft
     if draft.cr_status == "existing" or draft.reference:
         return "Next question: none (no more collection needed)."
     if draft.cr_status == "unknown":
@@ -143,14 +155,18 @@ def next_bundle_hint(
                 )
         return "\n".join(lines)
 
-    if not draft.otp_verified:
-        if "otp" in shown:
+    if not contact_verified(draft):
+        if _verification_sent(draft):
             lines.append(
-                "Verification code already sent; wait for the user to enter it in the box. "
+                "Verification already sent; wait for the user to click the email link "
+                "and, if they gave a mobile, enter the SMS code in the card. "
                 "Only resend if they ask."
             )
         else:
-            lines.append("Next: send the verification code (send_otp) if not sent yet.")
+            lines.append(
+                "Next: start verification (send_verification): an email link, plus an SMS "
+                "code if they gave a mobile."
+            )
     else:
         lines.append("Next: documents card, then the review card.")
     return "\n".join(lines)
