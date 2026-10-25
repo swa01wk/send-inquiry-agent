@@ -86,9 +86,7 @@ export async function replayMockChat(
       mallPickerCardExample.card_type === 'mall_picker'
         ? mallPickerCardExample.payload
         : { malls: [] as { id: string; name: string }[] }
-    const names = mallPayload.malls
-      .filter((m) => ids.includes(m.id))
-      .map((m) => m.name)
+    const names = mallPayload.malls.filter((m) => ids.includes(m.id)).map((m) => m.name)
     const draft: DraftSummary = {
       ...mockDraft,
       phase: 'collecting',
@@ -233,11 +231,7 @@ export async function replayMockChat(
       event: 'ui_card',
       data: { ...confirmFieldsCardExample, message_id: m2 },
     })
-    onEvent(
-      qrEvent(m2, [
-        ["Yes, that's correct", "Yes, that's correct"],
-      ]),
-    )
+    onEvent(qrEvent(m2, [["Yes, that's correct", "Yes, that's correct"]]))
     onEvent(withDraft(draft))
     onEvent({ event: 'done', data: { phase: draft.phase } })
     return
@@ -248,9 +242,7 @@ export async function replayMockChat(
       ...mockDraft,
       phase: 'collecting',
       fields: mockDraft.fields.map((f) =>
-        f.key === 'company_name' || f.key === 'company_address'
-          ? { ...f, confirmed: true }
-          : f,
+        f.key === 'company_name' || f.key === 'company_address' ? { ...f, confirmed: true } : f,
       ),
       checks: { ...mockDraft.checks, unconfirmed: Math.max(0, mockDraft.checks.unconfirmed - 2) },
       changed_keys: ['company_name', 'company_address'],
@@ -271,9 +263,12 @@ export async function replayMockChat(
       ...mockDraft,
       phase: 'collecting',
       fields: mockDraft.fields.map((f) => {
-        if (f.key === 'brand_name_en') return { ...f, display: 'Bean Street', source: 'user', confirmed: true }
-        if (f.key === 'brand_name_ar') return { ...f, display: 'بين ستريت', source: 'derived', confirmed: false }
-        if (f.key === 'unit_type') return { ...f, display: 'Specialty', source: 'derived', confirmed: false }
+        if (f.key === 'brand_name_en')
+          return { ...f, display: 'Bean Street', source: 'user', confirmed: true }
+        if (f.key === 'brand_name_ar')
+          return { ...f, display: 'بين ستريت', source: 'derived', confirmed: false }
+        if (f.key === 'unit_type')
+          return { ...f, display: 'Specialty', source: 'derived', confirmed: false }
         if (f.key === 'sales_category')
           return { ...f, display: 'Food & Beverage · Café', source: 'derived', confirmed: false }
         return f
@@ -281,7 +276,12 @@ export async function replayMockChat(
       checks: { ...mockDraft.checks, required_filled: mockDraft.checks.required_filled + 4 },
       changed_keys: ['brand_name_en', 'brand_name_ar', 'unit_type', 'sales_category'],
     }
-    await streamBotReply(mid, ['Specialty coffee, lovely. That works well in busy mall walkways.'], onEvent, signal)
+    await streamBotReply(
+      mid,
+      ['Specialty coffee, lovely. That works well in busy mall walkways.'],
+      onEvent,
+      signal,
+    )
     const m2 = nextMessageId()
     await streamBotReply(m2, ["Here's what I picked up. Anything to change?"], onEvent, signal)
     onEvent({
@@ -325,7 +325,9 @@ export async function replayMockChat(
     }
     await streamBotReply(
       mid,
-      ['Great. Where would you like to open, and roughly how much space and budget do you have in mind?'],
+      [
+        'Great. Where would you like to open, and roughly how much space and budget do you have in mind?',
+      ],
       onEvent,
       signal,
     )
@@ -338,8 +340,10 @@ export async function replayMockChat(
     const draft: DraftSummary = {
       ...mockDraft,
       fields: mockDraft.fields.map((f) => {
-        if (f.key === 'area') return { ...f, display: '25 – 35 sqm', source: 'derived', confirmed: false }
-        if (f.key === 'rent') return { ...f, display: 'Up to SAR 250,000 / year', source: 'user', confirmed: true }
+        if (f.key === 'area')
+          return { ...f, display: '25 – 35 sqm', source: 'derived', confirmed: false }
+        if (f.key === 'rent')
+          return { ...f, display: 'Up to SAR 250,000 / year', source: 'user', confirmed: true }
         if (f.key === 'lease') return { ...f, display: '3 years', source: 'user', confirmed: true }
         return f
       }),
@@ -354,7 +358,12 @@ export async function replayMockChat(
       signal,
     )
     const m2 = nextMessageId()
-    await streamBotReply(m2, ['Here are our malls in Riyadh. Pick as many as you like:'], onEvent, signal)
+    await streamBotReply(
+      m2,
+      ['Here are our malls in Riyadh. Pick as many as you like:'],
+      onEvent,
+      signal,
+    )
     if (mallPickerCardExample.card_type === 'mall_picker') {
       onEvent({
         event: 'ui_card',
@@ -375,10 +384,14 @@ export async function replayMockChat(
       ...mockDraft,
       phase: 'verifying',
       fields: mockDraft.fields.map((f) => {
-        if (f.key === 'first_name') return { ...f, display: 'Ahmed', source: 'user', confirmed: true }
-        if (f.key === 'last_name') return { ...f, display: 'Al-Harbi', source: 'user', confirmed: true }
-        if (f.key === 'email') return { ...f, display: 'ahmed@beanstreet.sa', source: 'user', confirmed: true }
-        if (f.key === 'mobile') return { ...f, display: '+966 55 123 4567', source: 'user', confirmed: true }
+        if (f.key === 'first_name')
+          return { ...f, display: 'Ahmed', source: 'user', confirmed: true }
+        if (f.key === 'last_name')
+          return { ...f, display: 'Al-Harbi', source: 'user', confirmed: true }
+        if (f.key === 'email')
+          return { ...f, display: 'ahmed@beanstreet.sa', source: 'user', confirmed: true }
+        if (f.key === 'mobile')
+          return { ...f, display: '+966 55 123 4567', source: 'user', confirmed: true }
         return f
       }),
       changed_keys: ['first_name', 'last_name', 'email', 'mobile'],
@@ -418,7 +431,9 @@ export async function replayMockChat(
   if (lower.includes("don't have it handy") || lower.includes('dont have it handy')) {
     await streamBotReply(
       mid,
-      ["No problem. When you have your CR number, share it here and I'll look up your company details."],
+      [
+        "No problem. When you have your CR number, share it here and I'll look up your company details.",
+      ],
       onEvent,
       signal,
     )
@@ -431,7 +446,9 @@ export async function replayMockChat(
     if (missing.length) {
       await streamBotReply(
         mid,
-        [`Almost there. I still need your ${missing.map((d) => d.label).join(' and ')} before we can submit.`],
+        [
+          `Almost there. I still need your ${missing.map((d) => d.label).join(' and ')} before we can submit.`,
+        ],
         onEvent,
         signal,
       )
@@ -441,7 +458,9 @@ export async function replayMockChat(
     const draft: DraftSummary = { ...draftComplete, phase: 'review', changed_keys: [] }
     await streamBotReply(
       mid,
-      ["Here's everything in one place. Check the details, accept the terms, and submit when you're ready."],
+      [
+        "Here's everything in one place. Check the details, accept the terms, and submit when you're ready.",
+      ],
       onEvent,
       signal,
     )
@@ -454,7 +473,9 @@ export async function replayMockChat(
   // Default friendly reply
   await streamBotReply(
     mid,
-    ["Thanks for your message. Share your CR number when you're ready, or pick one of the suggestions below."],
+    [
+      "Thanks for your message. Share your CR number when you're ready, or pick one of the suggestions below.",
+    ],
     onEvent,
     signal,
   )

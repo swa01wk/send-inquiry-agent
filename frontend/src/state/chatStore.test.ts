@@ -106,9 +106,7 @@ describe('chatReducer', () => {
     let state = initialChatState
     state = reduceSse(state, { event: 'ui_card', data: quickRepliesCardExample })
     expect(
-      quickRepliesCardExample.card_type === 'quick_replies'
-        ? state.quickReplies.length
-        : 0,
+      quickRepliesCardExample.card_type === 'quick_replies' ? state.quickReplies.length : 0,
     ).toBe(3)
     expect(state.messages).toHaveLength(0)
   })

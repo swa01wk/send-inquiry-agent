@@ -24,12 +24,7 @@ export function ProgressStages({ phase, draft }: ProgressStagesProps) {
       {PROGRESS_STAGE_KEYS.map((key) => {
         const visual = stageVisualState(key, phase, draft)
         return (
-          <span
-            key={key}
-            className={styles.pill}
-            data-state={visual}
-            data-testid={`stage-${key}`}
-          >
+          <span key={key} className={styles.pill} data-state={visual} data-testid={`stage-${key}`}>
             {stageText(key, visual)}
           </span>
         )

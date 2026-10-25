@@ -27,11 +27,7 @@ describe('DraftPanelView', () => {
   })
 
   it('flashes changed rows then clears after 1.8s', () => {
-    render(
-      <DraftPanelView
-        draft={{ ...draftMidway, changed_keys: ['company_name'] }}
-      />,
-    )
+    render(<DraftPanelView draft={{ ...draftMidway, changed_keys: ['company_name'] }} />)
     const row = screen.getByTestId('draft-row-company_name')
     expect(row.className).toContain(styles.flash)
     act(() => {
@@ -48,9 +44,7 @@ describe('DraftPanelView', () => {
     const row = document.getElementById('draft-company_name') as HTMLElement
     Object.defineProperty(row, 'offsetTop', { value: 200, configurable: true })
 
-    rerender(
-      <DraftPanelView draft={{ ...draftMidway, changed_keys: ['company_name'] }} />,
-    )
+    rerender(<DraftPanelView draft={{ ...draftMidway, changed_keys: ['company_name'] }} />)
 
     expect(scrollTo).toHaveBeenCalledWith({ top: 188, behavior: 'smooth' })
   })

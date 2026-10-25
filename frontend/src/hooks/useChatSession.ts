@@ -32,15 +32,20 @@ export function useChatSession() {
 
       try {
         let streamError = { code: 'agent_error', message: GENERIC_ERROR }
-        const outcome = await streamChat(state.sessionId, body, (event) => {
-          dispatch({ type: 'sse', event })
-          if (event.event === 'error') {
-            streamError = {
-              code: String(event.data.code ?? 'agent_error'),
-              message: String(event.data.message ?? GENERIC_ERROR),
+        const outcome = await streamChat(
+          state.sessionId,
+          body,
+          (event) => {
+            dispatch({ type: 'sse', event })
+            if (event.event === 'error') {
+              streamError = {
+                code: String(event.data.code ?? 'agent_error'),
+                message: String(event.data.message ?? GENERIC_ERROR),
+              }
             }
-          }
-        }, controller.signal)
+          },
+          controller.signal,
+        )
         if (outcome === 'error') {
           dispatch({
             type: 'streamFailed',
@@ -49,11 +54,16 @@ export function useChatSession() {
           })
         }
       } catch (err) {
-        if (err instanceof StreamAbortError || (err instanceof DOMException && err.name === 'AbortError')) {
+        if (
+          err instanceof StreamAbortError ||
+          (err instanceof DOMException && err.name === 'AbortError')
+        ) {
           return
         }
         const code =
-          err && typeof err === 'object' && 'code' in err ? String((err as { code: string }).code) : 'stream_failed'
+          err && typeof err === 'object' && 'code' in err
+            ? String((err as { code: string }).code)
+            : 'stream_failed'
         const message = err instanceof Error ? err.message : GENERIC_ERROR
         dispatch({
           type: 'streamFailed',

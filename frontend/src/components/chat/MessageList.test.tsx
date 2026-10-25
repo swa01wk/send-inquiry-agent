@@ -19,12 +19,7 @@ describe('MessageList', () => {
       mallsConfirmed: false,
     }
     render(
-      <MessageList
-        messages={messages}
-        cards={{}}
-        isStreaming={false}
-        cardActions={cardActions}
-      />,
+      <MessageList messages={messages} cards={{}} isStreaming={false} cardActions={cardActions} />,
     )
 
     expect(screen.getAllByTestId('bot-avatar')).toHaveLength(1)

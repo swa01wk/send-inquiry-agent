@@ -27,11 +27,7 @@ export function CardSlot({ card, actions, focusOnMount = false }: CardSlotProps)
   }, [focusOnMount, card.card_id])
 
   return (
-    <div
-      ref={rootRef}
-      className={styles.slot}
-      data-testid={`card-slot-${card.card_id}`}
-    >
+    <div ref={rootRef} className={styles.slot} data-testid={`card-slot-${card.card_id}`}>
       {card.card_type === 'confirm_fields' ? (
         <ConfirmFieldsCard
           cardId={card.card_id}
@@ -69,9 +65,7 @@ export function CardSlot({ card, actions, focusOnMount = false }: CardSlotProps)
           onSubmit={() => actions.sendAction('accept_and_submit', { terms_accepted: true })}
         />
       ) : null}
-      {card.card_type === 'success' ? (
-        <SuccessCard payload={card.payload} />
-      ) : null}
+      {card.card_type === 'success' ? <SuccessCard payload={card.payload} /> : null}
       {card.card_type === 'quick_replies' ? null : null}
     </div>
   )
