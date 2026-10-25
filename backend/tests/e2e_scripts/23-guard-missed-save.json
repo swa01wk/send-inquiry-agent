@@ -1,0 +1,21 @@
+[
+  {
+    "content": "Got it."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "verify_cr",
+        "args": {
+          "cr_number": "1010123456"
+        },
+        "id": "g23a",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Thanks — your company details are in the card below."
+  }
+]

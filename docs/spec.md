@@ -175,6 +175,8 @@ Errors: `{"error": {"code": str, "message": str}}` with 4xx/5xx.
 {"type": "action", "action": "select_malls", "payload": {"mall_ids": ["riyadh-mall-a"]}}
 ```
 
+Test hook: when `AGENT_MODE=scripted`, `POST /api/sessions` accepts an `X-Test-Scenario` header naming a script in `backend/tests/e2e_scripts/`; the session then replays that script. The header is ignored in `openai` mode and for unknown names.
+
 Unknown session → 404 `session_not_found`. Sessions expire after 2 hours idle. Rate limits: 30 chat requests/min per session, 60/min per IP → 429 `rate_limited`.
 
 ## 7. SSE events
@@ -202,10 +204,10 @@ At the start of each turn the frontend clears the previous `quick_replies` chips
 | `confirm_fields` | `{title, fields:[{key, label, display, source, confirmed}], all_confirmed}` |
 | `mall_picker` | `{city:{id,label}, malls:[{id,name}], selected:[id], min_select:1, max_select:1}` |
 | `verification` | `{email:{masked, link_sent, verified, demo_token}, mobile:{masked, code_sent, verified, attempts_left, code_length:4} \| null, all_verified}` (`mobile` is null for a landline-only applicant; `demo_token` only when `EMAIL_LINK_DEMO`) |
-| `document_upload` | `{docs:[{doc_type,label,required,uploaded,file_name,size_bytes}], required_uploaded, required_total, allowed_extensions, max_mb}` |
+| `document_upload` | `{docs:[{doc_type,label,required,uploaded,file_name,size_bytes}], required_uploaded, required_total, allowed_extensions (dotted, e.g. `.pdf`), max_mb}` |
 | `review` | `{groups:[{title, rows:[{key,label,display,source,confirmed,required}]}], documents:[...], checks:Checks, can_submit, terms_accepted, blockers:[str]}` |
 | `success` | `{reference, tracking_url, steps:[{label, detail, state}]}` |
-| `quick_replies` | `{options:[{label, text}]}` |
+| `quick_replies` | `{options:[{label, text, action?: "send" \| "focus_input", placeholder?: string}]}` — default `action` is `send` |
 
 ### `DraftSummary`
 ```json
@@ -273,8 +275,9 @@ process steps · review time · required documents · what a CR number is · wha
 | `RATE_LIMIT_IP` | `60/minute` |
 | `CORS_ORIGINS` | `http://localhost:5173` |
 | `LOG_LEVEL` | `INFO` |
+| `AGENT_MODE` | `openai`; `scripted` runs `ScriptedChatModel` for the Playwright e2e suite (never set in a deployed environment) |
 
-Frontend: `VITE_API_BASE` (default `http://localhost:8000`), `VITE_MOCK` (`1` = run on fixtures).
+Frontend: `VITE_API_BASE` (default `http://localhost:8000`), `VITE_MOCK` (`1` = run on fixtures), `VITE_E2E` (`1` = send the `X-Test-Scenario` header; e2e only).
 
 ## 11. Changes from the POC plan doc
 

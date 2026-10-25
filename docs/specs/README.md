@@ -9,6 +9,8 @@ These specs take the Send Inquiry agent from the v1 POC (solid L2, partial L3) t
 | [m0-modular-core.md](m0-modular-core.md) | B0 + M0 | No data lost on restart; a repeat submit returns the same reference; every case has an audit trail; parity suite green | `prompts/12`–`16` |
 | [l3-reliable-intake.md](l3-reliable-intake.md) | L3 | Correct routing, validated inputs, resume after interruption, one unambiguous submission, full audit, measured KPIs | `prompts/17`–`22` |
 
+Done before M0 (kept for reference): [ui-bugs.md](ui-bugs.md) (demo-run fixes) and [e2e-playwright.md](e2e-playwright.md) (Playwright `@scripted` and `@live` suites, `make e2e` / `make e2e-live`), from `prompts/11b-ui-bugs-and-e2e.md`.
+
 Later specs, written once these land: L4 outcome assistance (case assistant, reviewer assistant) and L5 governed proactivity.
 
 ## Assumptions these specs build on

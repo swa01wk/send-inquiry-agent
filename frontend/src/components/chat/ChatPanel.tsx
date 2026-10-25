@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useChatSession } from '../../hooks/useChatSession'
 import { ChatHeader } from './ChatHeader'
 import styles from './ChatPanel.module.css'
@@ -33,6 +33,14 @@ export function ChatPanel({ draftPanelVisible, onToggleDraftPanel }: ChatPanelPr
     retry,
     restart,
   } = useChatSession()
+
+  const [composerPlaceholder, setComposerPlaceholder] = useState<string | undefined>()
+  const [composerFocusNonce, setComposerFocusNonce] = useState(0)
+
+  const focusComposer = useCallback((placeholder: string) => {
+    setComposerPlaceholder(placeholder)
+    setComposerFocusNonce((n) => n + 1)
+  }, [])
 
   const mallsConfirmed = draft?.fields.find((f) => f.key === 'malls')?.confirmed ?? false
 
@@ -79,9 +87,15 @@ export function ChatPanel({ draftPanelVisible, onToggleDraftPanel }: ChatPanelPr
         <SuggestionChips
           options={quickReplies}
           onSelect={sendMessage}
+          onFocusInput={focusComposer}
           hidden={isStreaming}
         />
-        <Composer disabled={isStreaming || status === 'error'} onSend={sendMessage} />
+        <Composer
+          disabled={isStreaming || status === 'error'}
+          onSend={sendMessage}
+          inputPlaceholder={composerPlaceholder}
+          focusNonce={composerFocusNonce}
+        />
       </div>
     </section>
   )

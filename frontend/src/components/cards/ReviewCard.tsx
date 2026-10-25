@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { fetchMasterKind, type MasterListItem } from '../../api/client'
 import type { DraftChecks, ReviewPayload } from '../../types/contracts'
 import { SourceBadge } from '../draft/SourceBadge'
+import { contactReviewRows } from '../draft/draftGroups'
 import { canSubmitWithConsent, submitBlockerHint } from './blockerHint'
 import shared from './cards.module.css'
 import styles from './ReviewCard.module.css'
@@ -120,10 +121,12 @@ export function ReviewCard({ payload, onEditField, onSubmit }: ReviewCardProps) 
   return (
     <div className={`${shared.shellPad} ${styles.layout}`} data-testid="review-card">
       <h2 className={styles.title}>Review your inquiry</h2>
-      {payload.groups.map((group) => (
+      {payload.groups.map((group) => {
+        const rows = group.title === 'Contact' ? contactReviewRows(group.rows) : group.rows
+        return (
         <div key={group.title} className={styles.group}>
           <span className={styles.groupTitle}>{group.title}</span>
-          {group.rows.map((row) => (
+          {rows.map((row) => (
             <div key={row.key} className={styles.row}>
               <span className={styles.rowLabel}>{row.label}</span>
               {editingKey === row.key ? (
@@ -188,7 +191,8 @@ export function ReviewCard({ payload, onEditField, onSubmit }: ReviewCardProps) 
             </div>
           ))}
         </div>
-      ))}
+        )
+      })}
       <div className={styles.checks}>
         <span className={styles.groupTitle}>Documents and checks</span>
         {checkRows(payload.checks, consent).map((c) => (

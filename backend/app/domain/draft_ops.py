@@ -107,6 +107,10 @@ def _apply_field(
         written_keys.append(key.value)
         return
 
+    current = draft.fields[key]
+    if current.value is not None and validated == current.value:
+        return
+
     confirmed = source in (Source.USER, Source.DEFAULT)
     previous = draft.fields[key].value
     draft.fields[key] = FieldValue(value=validated, source=source, confirmed=confirmed)

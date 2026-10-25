@@ -19,3 +19,10 @@ dist/
 # OS / editors
 .DS_Store
 .idea/
+
+# Playwright
+e2e/node_modules/
+e2e/playwright-report/
+e2e/test-results/
+e2e/results/*.json
+e2e/fixtures/files/too_big.pdf

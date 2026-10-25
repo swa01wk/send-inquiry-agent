@@ -91,6 +91,41 @@ function cardAttachedToMessage(messages: ChatMessage[], cardId: string): boolean
   return messages.some((m) => m.cardIds.includes(cardId))
 }
 
+function confirmFieldKeys(card: UiCard): string[] {
+  if (card.card_type !== 'confirm_fields') return []
+  return card.payload.fields.map((f) => f.key)
+}
+
+function mergeOverlappingConfirmCard(state: ChatState, card: UiCard): UiCard {
+  if (card.card_type !== 'confirm_fields') return card
+  const incomingKeys = new Set(confirmFieldKeys(card))
+  if (incomingKeys.size === 0) return card
+
+  for (const existing of Object.values(state.cards)) {
+    if (existing.card_type !== 'confirm_fields') continue
+    const overlap = existing.payload.fields.some((f) => incomingKeys.has(f.key))
+    if (!overlap) continue
+
+    const byKey = new Map(existing.payload.fields.map((f) => [f.key, f]))
+    for (const row of card.payload.fields) {
+      byKey.set(row.key, row)
+    }
+    const mergedFields = [...byKey.values()]
+    const allConfirmed = mergedFields.every((f) => f.confirmed)
+    return {
+      ...card,
+      card_id: existing.card_id,
+      message_id: existing.message_id ?? card.message_id,
+      payload: {
+        ...card.payload,
+        fields: mergedFields,
+        all_confirmed: allConfirmed,
+      },
+    }
+  }
+  return card
+}
+
 function applyUiCard(state: ChatState, card: UiCard): ChatState {
   if (card.card_type === 'quick_replies') {
     return {
@@ -99,16 +134,17 @@ function applyUiCard(state: ChatState, card: UiCard): ChatState {
     }
   }
 
-  const cards = { ...state.cards, [card.card_id]: card }
+  const resolved = mergeOverlappingConfirmCard(state, card)
+  const cards = { ...state.cards, [resolved.card_id]: resolved }
 
-  if (state.cards[card.card_id] && cardAttachedToMessage(state.messages, card.card_id)) {
+  if (state.cards[resolved.card_id] && cardAttachedToMessage(state.messages, resolved.card_id)) {
     return { ...state, cards }
   }
 
   return {
     ...state,
     cards,
-    messages: attachCardToMessages(state.messages, card),
+    messages: attachCardToMessages(state.messages, resolved),
   }
 }
 

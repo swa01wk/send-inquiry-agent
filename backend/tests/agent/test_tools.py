@@ -201,3 +201,102 @@ def test_confirm_fields_skips_category_when_user_doubts(agent_runtime, stream_ev
     )
     assert "No fields confirmed" in result.update["messages"][0].content
     assert result.update["draft"].fields[FieldKey.SALES_CATEGORY].confirmed is False
+
+
+@pytest.mark.asyncio
+async def test_verify_cr_then_same_update_draft_keeps_verified(
+    agent_runtime, base_state, stream_events
+):
+    events, writer = stream_events
+    runtime = make_tool_runtime(state=base_state, agent_runtime=agent_runtime, writer=writer)
+    verified = verify_cr.invoke(
+        {"cr_number": "1010123456", "state": base_state, "runtime": runtime},
+    )
+    draft = verified.update["draft"]
+    cards_shown = verified.update["cards_shown"]
+    confirm_card_keys = verified.update["confirm_card_keys"]
+    state = _state_with_draft(draft)
+    state["cards_shown"] = cards_shown
+    state["confirm_card_keys"] = confirm_card_keys
+    events.clear()
+    runtime = make_tool_runtime(state=state, agent_runtime=agent_runtime, writer=writer)
+    company = draft.fields[FieldKey.COMPANY_NAME].value
+    result = update_draft.invoke(
+        {
+            "fields": [
+                {"key": FieldKey.COMPANY_NAME.value, "value": company, "source": "derived"},
+            ],
+            "state": state,
+            "runtime": runtime,
+        },
+    )
+    assert result.update["draft"].fields[FieldKey.COMPANY_NAME].source == Source.VERIFIED
+    assert "Unchanged: company_name" in result.update["messages"][0].content
+    assert not any(e.get("type") == "ui_card" for e in events)
+
+
+@pytest.mark.asyncio
+async def test_confirm_fields_updates_existing_confirm_card(agent_runtime, stream_events):
+    draft = new_inquiry_draft()
+    draft, _, _ = write_fields(
+        draft,
+        [
+            (FieldKey.COMPANY_NAME.value, "Acme Co", Source.VERIFIED),
+            (FieldKey.COMPANY_ADDRESS.value, "Main St", Source.VERIFIED),
+        ],
+        master=agent_runtime.master,
+    )
+    state = _state_with_draft(draft)
+    state["cards_shown"] = ["confirm-1"]
+    state["confirm_card_keys"] = {
+        "confirm-1": [FieldKey.COMPANY_NAME.value, FieldKey.COMPANY_ADDRESS.value],
+    }
+    events, writer = stream_events
+    runtime = make_tool_runtime(state=state, agent_runtime=agent_runtime, writer=writer)
+    result = confirm_fields.invoke(
+        {
+            "keys": [FieldKey.COMPANY_NAME.value, FieldKey.COMPANY_ADDRESS.value],
+            "state": state,
+            "runtime": runtime,
+        },
+    )
+    assert "Confirmed:" in result.update["messages"][0].content
+    card_events = [e for e in events if e.get("type") == "ui_card"]
+    assert len(card_events) == 1
+    card = card_events[0]["data"]
+    assert card["card_id"] == "confirm-1"
+    assert card["payload"]["all_confirmed"] is True
+
+
+@pytest.mark.asyncio
+async def test_update_draft_user_change_refreshes_confirm_card(agent_runtime, stream_events):
+    draft = new_inquiry_draft()
+    draft, _, _ = write_fields(
+        draft,
+        [
+            (FieldKey.BRAND_NAME_EN.value, "Bean Street", Source.USER),
+            (FieldKey.UNIT_TYPE.value, "specialty", Source.DERIVED),
+        ],
+        master=agent_runtime.master,
+    )
+    state = _state_with_draft(draft)
+    state["cards_shown"] = ["confirm-1"]
+    state["confirm_card_keys"] = {
+        "confirm-1": [FieldKey.BRAND_NAME_EN.value, FieldKey.UNIT_TYPE.value],
+    }
+    events, writer = stream_events
+    runtime = make_tool_runtime(state=state, agent_runtime=agent_runtime, writer=writer)
+    result = update_draft.invoke(
+        {
+            "fields": [{"key": FieldKey.UNIT_TYPE.value, "value": "store", "source": "user"}],
+            "state": state,
+            "runtime": runtime,
+        },
+    )
+    assert result.update["draft"].fields[FieldKey.UNIT_TYPE].value == "store"
+    card_events = [e for e in events if e.get("type") == "ui_card"]
+    assert len(card_events) == 1
+    fields = card_events[0]["data"]["payload"]["fields"]
+    unit_row = next(f for f in fields if f["key"] == FieldKey.UNIT_TYPE.value)
+    assert unit_row["display"] == "Store"
+    assert unit_row["source"] == "user"

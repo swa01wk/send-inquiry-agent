@@ -1,3 +1,4 @@
+import { BotMessageContent } from './botMessageContent'
 import styles from './BotBubble.module.css'
 
 interface BotBubbleProps {
@@ -16,7 +17,7 @@ export function BotBubble({ text, showAvatar }: BotBubbleProps) {
         <div className={styles.avatarSpacer} aria-hidden="true" />
       )}
       <div className={styles.bubble} data-testid="bot-bubble-text">
-        {text}
+        <BotMessageContent text={text} />
       </div>
     </div>
   )

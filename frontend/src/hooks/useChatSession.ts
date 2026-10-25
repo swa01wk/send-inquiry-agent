@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { createSession, removeDocument, uploadDocument } from '../api/client'
 import { StreamAbortError, streamChat } from '../api/stream'
-import { MOCK_MODE } from '../config'
+import { E2E_MODE, MOCK_MODE } from '../config'
 import { resetMockSessionState } from '../mocks/mockSession'
 import { useChatStore } from '../state/chatStore'
 import type { ChatRequest, SseEvent } from '../types/contracts'
@@ -78,6 +78,10 @@ export function useChatSession() {
           cards: session.cards,
           draft: session.draft,
         })
+        if (E2E_MODE && typeof window !== 'undefined') {
+          const w = window as Window & { __e2eSessionId?: string }
+          w.__e2eSessionId = session.session_id
+        }
       } catch {
         if (cancelled) return
         dispatch({
