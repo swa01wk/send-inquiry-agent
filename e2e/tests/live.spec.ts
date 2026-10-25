@@ -6,7 +6,17 @@ import { appendLiveResult, type LiveScenarioResult } from '../support/liveResult
 import { afterTurnChecks } from '../support/turnChecks'
 
 test.describe('Live OpenAI personas @live', () => {
-  test.skip(!process.env.OPENAI_API_KEY, 'OPENAI_API_KEY required')
+  test.skip(!process.env.OPENAI_API_KEY && !process.env.E2E_LIVE, 'OPENAI_API_KEY required')
+
+  test.beforeAll(() => {
+    // `make e2e-live` sets E2E_LIVE; a missing key there is a setup error, not a skip.
+    if (process.env.E2E_LIVE && !process.env.OPENAI_API_KEY) {
+      throw new Error(
+        'OPENAI_API_KEY is not set in this shell. backend/.env is read only by the backend; ' +
+          'export the key (and OPENAI_MODEL) before running make e2e-live.',
+      )
+    }
+  })
 
   test.afterEach(async ({}, testInfo) => {
     if (!process.env.OPENAI_API_KEY) return
