@@ -6,7 +6,10 @@ interface SourceBadgeProps {
   confirmed: boolean
 }
 
-function badgeMeta(source: Source, confirmed: boolean): { text: string; variant: keyof typeof styles } {
+function badgeMeta(
+  source: Source,
+  confirmed: boolean,
+): { text: string; variant: keyof typeof styles } {
   if (source === 'user') return { text: 'You said', variant: 'neutral' }
   if (source === 'verified') {
     return confirmed

@@ -46,7 +46,10 @@ function contactFieldsForPanel(fields: DraftFieldRow[]): PanelFieldRow[] {
   return [...rest, phone]
 }
 
-export function fieldsForDraftGroup(groupId: DraftGroupId, fields: DraftFieldRow[]): PanelFieldRow[] {
+export function fieldsForDraftGroup(
+  groupId: DraftGroupId,
+  fields: DraftFieldRow[],
+): PanelFieldRow[] {
   const inGroup = fields.filter((f) => f.group === groupId)
   if (groupId !== 'contact') return inGroup
   return contactFieldsForPanel(inGroup)

@@ -124,73 +124,73 @@ export function ReviewCard({ payload, onEditField, onSubmit }: ReviewCardProps) 
       {payload.groups.map((group) => {
         const rows = group.title === 'Contact' ? contactReviewRows(group.rows) : group.rows
         return (
-        <div key={group.title} className={styles.group}>
-          <span className={styles.groupTitle}>{group.title}</span>
-          {rows.map((row) => (
-            <div key={row.key} className={styles.row}>
-              <span className={styles.rowLabel}>{row.label}</span>
-              {editingKey === row.key ? (
-                <div className={styles.editRow}>
-                  {usesSelect(row.key) ? (
-                    <select
-                      className={styles.editInput}
-                      value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      disabled={saving || masterOptions.length === 0}
-                    >
-                      <option value="">Select…</option>
-                      {masterOptions.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {optionLabel(item)}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      className={styles.editInput}
-                      value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') void saveEdit()
-                        if (e.key === 'Escape') cancelEdit()
-                      }}
-                    />
-                  )}
-                  <button
-                    type="button"
-                    className={shared.primaryBtn}
-                    onClick={() => void saveEdit()}
-                    disabled={saving}
-                  >
-                    Save
-                  </button>
-                  <button type="button" className={shared.secondaryBtn} onClick={cancelEdit}>
-                    Cancel
-                  </button>
-                  {editError ? <p className={styles.hint}>{editError}</p> : null}
-                </div>
-              ) : (
-                <>
-                  <span className={row.display ? styles.rowValue : styles.rowValueEmpty}>
-                    {row.display ?? 'Not yet collected'}
-                  </span>
-                  <SourceBadge source={row.source} confirmed={row.confirmed} />
-                  {isMallsRow(row.key) ? (
-                    <span className={styles.mallHint}>Change the mall in the chat</span>
-                  ) : (
+          <div key={group.title} className={styles.group}>
+            <span className={styles.groupTitle}>{group.title}</span>
+            {rows.map((row) => (
+              <div key={row.key} className={styles.row}>
+                <span className={styles.rowLabel}>{row.label}</span>
+                {editingKey === row.key ? (
+                  <div className={styles.editRow}>
+                    {usesSelect(row.key) ? (
+                      <select
+                        className={styles.editInput}
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        disabled={saving || masterOptions.length === 0}
+                      >
+                        <option value="">Select…</option>
+                        {masterOptions.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {optionLabel(item)}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        className={styles.editInput}
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') void saveEdit()
+                          if (e.key === 'Escape') cancelEdit()
+                        }}
+                      />
+                    )}
                     <button
                       type="button"
-                      className={shared.textLink}
-                      onClick={() => startEdit(row.key, row.display)}
+                      className={shared.primaryBtn}
+                      onClick={() => void saveEdit()}
+                      disabled={saving}
                     >
-                      Edit
+                      Save
                     </button>
-                  )}
-                </>
-              )}
-            </div>
-          ))}
-        </div>
+                    <button type="button" className={shared.secondaryBtn} onClick={cancelEdit}>
+                      Cancel
+                    </button>
+                    {editError ? <p className={styles.hint}>{editError}</p> : null}
+                  </div>
+                ) : (
+                  <>
+                    <span className={row.display ? styles.rowValue : styles.rowValueEmpty}>
+                      {row.display ?? 'Not yet collected'}
+                    </span>
+                    <SourceBadge source={row.source} confirmed={row.confirmed} />
+                    {isMallsRow(row.key) ? (
+                      <span className={styles.mallHint}>Change the mall in the chat</span>
+                    ) : (
+                      <button
+                        type="button"
+                        className={shared.textLink}
+                        onClick={() => startEdit(row.key, row.display)}
+                      >
+                        Edit
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
         )
       })}
       <div className={styles.checks}>
@@ -203,14 +203,9 @@ export function ReviewCard({ payload, onEditField, onSubmit }: ReviewCardProps) 
         ))}
       </div>
       <label className={styles.consent}>
-        <input
-          type="checkbox"
-          checked={consent}
-          onChange={(e) => setConsent(e.target.checked)}
-        />
+        <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
         <span>
-          I agree to the <a href="#">terms &amp; conditions</a> and{' '}
-          <a href="#">privacy policy</a>.
+          I agree to the <a href="#">terms &amp; conditions</a> and <a href="#">privacy policy</a>.
         </span>
       </label>
       <button

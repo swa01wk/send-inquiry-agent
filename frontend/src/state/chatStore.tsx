@@ -1,10 +1,4 @@
-import {
-  createContext,
-  useContext,
-  useReducer,
-  type Dispatch,
-  type ReactNode,
-} from 'react'
+import { createContext, useContext, useReducer, type Dispatch, type ReactNode } from 'react'
 import { draftEmpty } from '../mocks/fixtures'
 import type {
   ChatRequest,
@@ -62,7 +56,11 @@ export type ChatAction =
   | { type: 'userMessage'; text: string; id?: string }
   | { type: 'turnStarted' }
   | { type: 'sse'; event: SseEvent }
-  | { type: 'streamFailed'; error: { code: string; message: string }; pendingRetry: ChatRequest | null }
+  | {
+      type: 'streamFailed'
+      error: { code: string; message: string }
+      pendingRetry: ChatRequest | null
+    }
 
 function findLastAssistantMessageId(messages: ChatMessage[]): string | null {
   for (let i = messages.length - 1; i >= 0; i -= 1) {
@@ -309,9 +307,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     phase: draftEmpty.phase,
   })
 
-  return (
-    <ChatContext.Provider value={{ state, dispatch }}>{children}</ChatContext.Provider>
-  )
+  return <ChatContext.Provider value={{ state, dispatch }}>{children}</ChatContext.Provider>
 }
 
 export function useChatStore(): ChatContextValue {

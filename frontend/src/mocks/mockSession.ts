@@ -2,8 +2,7 @@ import { documentUploadCardExample, quickRepliesCardExample } from './fixtures'
 import { mockDraft, patchMockDraft, resetMockDraft } from './mockStreamState'
 import type { CreateSessionResponse, DraftSummary, UiCard } from '../types/contracts'
 
-const WELCOME_1 =
-  "Marhaba, and welcome to Cenomi Tenant Central! I'm your leasing assistant."
+const WELCOME_1 = "Marhaba, and welcome to Cenomi Tenant Central! I'm your leasing assistant."
 const WELCOME_2 =
   "I'll help you send a leasing inquiry in a few minutes, no long form. To start, do you have your company's CR number? I'll check whether you already have an account with us."
 
@@ -47,7 +46,9 @@ export async function mockUploadDocument(
   docType: string,
   file: File,
 ): Promise<{ card: UiCard; draft: DraftSummary }> {
-  const ext = file.name.includes('.') ? file.name.slice(file.name.lastIndexOf('.')).toLowerCase() : ''
+  const ext = file.name.includes('.')
+    ? file.name.slice(file.name.lastIndexOf('.')).toLowerCase()
+    : ''
   const uploadPayload =
     documentUploadCardExample.card_type === 'document_upload'
       ? documentUploadCardExample.payload

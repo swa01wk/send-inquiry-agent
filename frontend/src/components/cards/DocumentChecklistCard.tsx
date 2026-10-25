@@ -101,7 +101,11 @@ export function DocumentChecklistCard({ payload, onUpload, onRemove }: DocumentC
                   Remove
                 </button>
               ) : (
-                <button type="button" className={shared.brandBtn} onClick={() => openPicker(doc.doc_type)}>
+                <button
+                  type="button"
+                  className={shared.brandBtn}
+                  onClick={() => openPicker(doc.doc_type)}
+                >
                   Upload
                 </button>
               )}

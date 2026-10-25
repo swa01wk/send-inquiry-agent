@@ -15,7 +15,8 @@ function renderInline(text: string): ReactNode[] {
 function renderParagraph(text: string, key: string): ReactNode {
   const lines = text.split('\n')
   const bulletLines = lines.filter((line) => line.trim().startsWith('- '))
-  const allBullets = bulletLines.length > 0 && bulletLines.length === lines.filter((l) => l.trim()).length
+  const allBullets =
+    bulletLines.length > 0 && bulletLines.length === lines.filter((l) => l.trim()).length
 
   if (allBullets) {
     return (
