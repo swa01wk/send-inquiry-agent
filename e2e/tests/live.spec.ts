@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test'
 import { InquiryPage } from '../pages/inquiry'
 import { draftFields, fieldDisplay } from '../support/draft'
-import { countRetractions, readCapturedEvents } from '../support/events'
+import { countDoneEvents, countRetractions, readCapturedEvents } from '../support/events'
 import { appendLiveResult, type LiveScenarioResult } from '../support/liveResults'
+import { countSentences } from '../support/plainLanguage'
 import { afterTurnChecks } from '../support/turnChecks'
 
 test.describe('Live OpenAI personas @live', () => {
@@ -20,18 +21,19 @@ test.describe('Live OpenAI personas @live', () => {
 
   test.afterEach(async ({ page }, testInfo) => {
     if (!process.env.OPENAI_API_KEY) return
+    const events = await readCapturedEvents(page)
     if (testInfo.status !== testInfo.expectedStatus) {
       // The raw SSE stream explains live failures (empty replies, retractions, errors).
       await testInfo.attach('sse-events.json', {
-        body: JSON.stringify(await readCapturedEvents(page), null, 2),
+        body: JSON.stringify(events, null, 2),
         contentType: 'application/json',
       })
     }
     const result: LiveScenarioResult = {
       scenario: testInfo.title,
       pass: testInfo.status === 'passed',
-      turns: 0,
-      retractions: 0,
+      turns: countDoneEvents(events),
+      retractions: countRetractions(events),
       durationMs: testInfo.duration,
       error: testInfo.error?.message,
     }
@@ -180,7 +182,7 @@ test.describe('Live OpenAI personas @live', () => {
     await inquiry.open()
     for (const t of ['i want shop', '?', 'idk']) await trackTurns(inquiry, t)
     const reply = await inquiry.lastReply()
-    expect(reply.split(/[.!?]+/).filter((s) => s.trim()).length).toBeLessThanOrEqual(3)
+    expect(countSentences(reply)).toBeLessThanOrEqual(3)
   })
 
   test('22 lost mid-way @live', async ({ page }) => {

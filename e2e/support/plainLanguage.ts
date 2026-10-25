@@ -16,14 +16,21 @@ const BANNED = [
 
 const SNAKE = /\b[a-z]+_[a-z0-9_]+\b/
 
+/**
+ * Sentences end at . ! or ? followed by whitespace or the end of the text (closing quotes
+ * allowed), so emails, decimals and quoted examples don't count as extra sentences.
+ */
+export function countSentences(text: string): number {
+  return text.split(/[.!?]+(?=["'”’)]*(?:\s|$))/).filter((s) => /\p{L}/u.test(s)).length
+}
+
 export function assertPlainLanguageReply(text: string, userSoFar: string) {
   const lower = text.toLowerCase()
   for (const word of BANNED) {
     expect(lower, `reply must not contain "${word}"`).not.toContain(word)
   }
   expect(text, 'no snake_case jargon').not.toMatch(SNAKE)
-  const sentences = text.split(/[.!?]+/).filter((s) => s.trim().length > 0)
-  expect(sentences.length, 'at most 4 sentences').toBeLessThanOrEqual(4)
+  expect(countSentences(text), 'at most 4 sentences').toBeLessThanOrEqual(4)
   const questions = (text.match(/\?/g) ?? []).length
   expect(questions, 'at most 2 questions').toBeLessThanOrEqual(2)
 
