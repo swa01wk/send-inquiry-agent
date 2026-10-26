@@ -1,5 +1,7 @@
 # Requirements §7.1 traceability: every workflow step against the POC
 
+**Status:** locked (PRD v1.0, `docs/PRD.md`)
+
 **Source:** Cenomi Requirements Document v2.1.7.1, §7.1 Registration and Login (p. 10), §7.1.1 Prospective Tenant – Inquiry to Lead Qualification (pp. 10–15, flow diagram and process flow), §7.1.2 Existing Tenant – Inquiry to Lead Qualification (pp. 15–16, flow diagram and process flow). **Reviewed:** 26 Oct 2026.
 
 Each row is one statement in the requirements. **Where** names the spec section that defines the behaviour; **When** is when the POC first shows it (Built = on `main` today; Day N = the 5-day plan; S1/S2/Closing = the sprints in `docs/DELIVERY-PLAN.md`). Rows marked **Gap → fixed** were missing from the plan before this review and have been added.
