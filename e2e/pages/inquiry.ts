@@ -165,16 +165,24 @@ export class InquiryPage {
   }
 
   async lastReply(): Promise<string> {
-    const bubbles = await this.settledBubbles()
-    return (await bubbles.last().innerText()).trim()
+    const replies = await this.allReplies()
+    return replies[replies.length - 1]
   }
 
+  /**
+   * Reply text from the DOM, not layout: innerText came back "" for the newest bubble in CI's
+   * Linux WebKit (mobile) even though the text was there. Paragraphs and list items are joined
+   * with newlines so sentence checks still see the breaks.
+   */
   async allReplies(): Promise<string[]> {
     const bubbles = await this.settledBubbles()
-    const n = await bubbles.count()
-    const out: string[] = []
-    for (let i = 0; i < n; i++) out.push((await bubbles.nth(i).innerText()).trim())
-    return out
+    return bubbles.evaluateAll((els) =>
+      els.map((el) => {
+        const blocks = Array.from(el.querySelectorAll('p, li'))
+        const parts = blocks.length ? blocks.map((b) => b.textContent ?? '') : [el.textContent ?? '']
+        return parts.join('\n').trim()
+      }),
+    )
   }
 
   userContext() {
