@@ -1,17 +1,24 @@
 # Improvement specs
 
-These specs take the Send Inquiry agent from the v1 POC (solid L2, partial L3) to reliable L3 intake, following the Agent Capability Maturity Framework (L1–L5) and the Cenomi requirements document v2.1.7.1 (§7.1).
+These specs take the Send Inquiry agent from the v1 POC (solid L2, partial L3) through the whole inquiry process in requirements v2.1.7.1 §7.1 — from "Send us an inquiry" to a Yardi-ready lead — following the Agent Capability Maturity Framework (L1–L5).
 
 `docs/spec.md` stays the source of truth for the contracts that exist **today**. Each spec here describes a change. When a step lands, fold its contract changes into `docs/spec.md` in the same PR, as `.cursor/rules/project.mdc` requires.
 
+**Progress is tracked in [`docs/STATUS.md`](../STATUS.md):** steps, gates, business-flow coverage, agentic-capability coverage and known issues.
+
 | Spec | Framework stage | Gate | Cursor steps |
 | --- | --- | --- | --- |
+| [pre-baseline-fixes.md](pre-baseline-fixes.md) | Before B0 | Confirm only what was shown; a turn when documents are complete; no Office product line | `prompts/11c` |
 | [m0-modular-core.md](m0-modular-core.md) | B0 + M0 | No data lost on restart; a repeat submit returns the same reference; every case has an audit trail; parity suite green | `prompts/12`–`16` |
-| [l3-reliable-intake.md](l3-reliable-intake.md) | L3 | Correct routing, validated inputs, resume after interruption, one unambiguous submission, full audit, measured KPIs | `prompts/17`–`22` |
+| [l3-reliable-intake.md](l3-reliable-intake.md) | L3 | Correct routing, validated inputs, resume after interruption, one unambiguous submission, full audit, Arabic parity, acceptance stories, measured KPIs — all against a simulated Cenomi | `prompts/17`–`22` (with `21b`) |
+| [l4-outcome-assistance.md](l4-outcome-assistance.md) | L4 | The whole §7.1.1 b–c lifecycle runs end to end; reviewers keep every decision; no re-asking; grounded case briefs | `prompts/23`–`28` |
+| [l5-governed-proactivity.md](l5-governed-proactivity.md) | L5 | Triggers fire on time and once; every message passes the notification policy; no proactive status change; value measured | `prompts/29`–`31` |
 
 Done before M0 (kept for reference): [ui-bugs.md](ui-bugs.md) (demo-run fixes) and [e2e-playwright.md](e2e-playwright.md) (Playwright `@scripted` and `@live` suites, `make e2e` / `make e2e-live`), from `prompts/11b-ui-bugs-and-e2e.md`.
 
-Later specs, written once these land: L4 outcome assistance (case assistant, reviewer assistant) and L5 governed proactivity.
+## Mock-first
+
+Every external Cenomi system — CR registry, email, SMS, the Tenant Admin Platform, Azure AD, Yardi, master data — is simulated behind the same interface its real adapter will implement (L3 §3.1, L4 §3.2). Mocks keep state, return realistic outcomes and fail on demand (`MOCK_FAULTS`). A dev inbox shows every email and SMS, and a reviewer console stands in for the Tenant Admin Platform. A real adapter replaces its mock by configuration once it passes the same contract tests.
 
 ## Assumptions these specs build on
 
@@ -24,9 +31,11 @@ The POC assumptions agreed on 25 Oct 2026 (implemented in PR #1):
 - No document-content checks.
 - External systems sit behind mock adapters until Cenomi provides access.
 
-Each open question for Cenomi is listed at the end of the spec it affects.
+Each spec ends with the assumptions it adds; `docs/STATUS.md` §5 lists them all.
 
 ## Conventions
 - **Priorities.** **Must** blocks the gate; **Should** is expected for the gate but can slip with a stated reason; **Could** is optional.
 - **Decisions.** Every new dependency, table or endpoint states why it exists.
 - **Testability.** Every acceptance criterion names the test that proves it. "Demo works" is never an acceptance criterion.
+- **Stories.** Each level ends with acceptance stories run as Playwright `@scripted` tests (L3 §3.13, L4 §3.10, L5 §3.6), so "agentic" is checked by behaviour, not by impression.
+- **Tracking.** Every implementation PR updates its row in `docs/STATUS.md`.

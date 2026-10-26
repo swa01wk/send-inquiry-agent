@@ -17,6 +17,7 @@ Turn the single graph into supervisor → domain agents, so routing (L3) and pos
 4. `app/agents/registry.py`: register both agents.
 5. `app/agents/graph.py`: `START → supervisor → {intake | status} → END`. The supervisor is deterministic: `status` when `inquiry.status != draft`, else `intake`. Each agent is a subgraph (agent ⇄ tools → guard) built from its spec.
 6. Update `.cursor/rules/agent.mdc` with the new layout.
+7. CI: add `.github/workflows/ci.yml` running `make test` and `make lint` on every PR, as a matrix over `STATE_BACKEND=memory` and `STATE_BACKEND=postgres` (a `postgres:16` service container). Bring `backend/scripts/` under `make lint` and fix its existing ruff issues (including the E501 lines in `generate_e2e_scripts.py`).
 
 ## Tests
 - The supervisor routes by inquiry status.
@@ -26,7 +27,8 @@ Turn the single graph into supervisor → domain agents, so routing (L3) and pos
 ## Acceptance criteria
 - Parity suite green (intake behaviour unchanged).
 - Gate G7 passes.
-- The M0 gate (G1–G7) is complete; record it in `docs/specs/README.md`.
+- The M0 gate (G1–G7) is complete; record the result in `docs/STATUS.md` §1.
+- `docs/STATUS.md` updated (row 16).
 
 ## Verify
 ```

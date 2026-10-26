@@ -29,10 +29,12 @@ Each message reaches the right handler, and the user can always reach a person w
 ## Tests
 - **Routing:** accuracy of at least 95% on the fixture set with a scripted classifier. The same set is also run against the real model as a live eval scenario.
 - **Handoff:** each trigger produces exactly one card, one case and one audit event.
+- **Playwright:** stories S7 and S8 (spec §3.13).
 
 ## Acceptance criteria
 - Gate E1 passes.
 - Handoff covered for every trigger.
+- `docs/spec.md` and `docs/STATUS.md` (row 21) updated.
 
 ## Verify
 ```

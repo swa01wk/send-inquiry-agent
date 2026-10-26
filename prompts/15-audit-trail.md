@@ -26,6 +26,7 @@ Every case has an ordered, redacted record of what happened and why, ready for r
 ## Acceptance criteria
 - Gate G4 passes.
 - Parity suite green.
+- `docs/STATUS.md` updated (row 15).
 
 ## Verify
 ```

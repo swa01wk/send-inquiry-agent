@@ -41,6 +41,7 @@ Make an inquiry survive restarts and multiple workers, without changing any API 
 - The parity suite (step 12) is green with both backends.
 - Gate G2 passes.
 - No router or frontend change was needed.
+- `docs/STATUS.md` updated (row 13).
 
 ## Verify
 ```

@@ -1,19 +1,20 @@
-# Step 17 — Business rules as policy configuration
+# Step 17 — Business rules as policy configuration, and generated master data
 
-Read first: @docs/specs/l3-reliable-intake.md (sections 3.7, 3.8) @backend/app/domain/validation.py @backend/app/domain/rules.py @backend/app/agent/system_prompt.md
+Read first: @docs/specs/l3-reliable-intake.md (sections 3.7, 3.8) @backend/app/domain/validation.py @backend/app/domain/rules.py @backend/app/domain/master.py @backend/app/agent/system_prompt.md
 
 ## Goal
-Every Cenomi rule the agent enforces lives in one validated policy file, so a rule change is a config edit and the prompt can never contradict the code.
+Every Cenomi rule the agent enforces lives in one validated policy file, so a rule change is a config edit and the prompt can never contradict the code. Master data is rich enough (regions, Arabic names) for routing, Arabic and the L4 review queues.
 
 ## Build
 1. `app/policy/policy.yaml` and `app/policy/config.py`: a `PolicyConfig` (Pydantic) loaded once at start-up from `POLICY_PATH`. A bad file stops the app with a clear error. It holds:
-   - product lines (Store, Media, Specialty; Office removed);
+   - product lines (Store, Media, Specialty);
    - `existing_tenant_policy` (`sign_in` | `allow_inquiry`);
    - `max_malls_per_inquiry`;
    - allowed phone countries;
    - verification channels;
    - resend cooldown and hourly cap;
-   - required and optional documents.
+   - required and optional documents;
+   - `duplicate_policy` (`warn` | `block`) and `follow_on_reuse_hours` (read in step 21b).
 2. Read the policy instead of constants in:
    - `validate_malls`;
    - `classify_contact_number`;
@@ -21,22 +22,29 @@ Every Cenomi rule the agent enforces lives in one validated policy file, so a ru
    - `verify_cr` (existing-tenant policy);
    - the mall picker's `max_select`;
    - the document card.
-3. Remove `office` from `master_data.json` and the `OFF` unit code; keep the reference format for the remaining codes.
-4. `prompts.py` renders a short "Rules in force" block from the policy into the system prompt. Delete rule statements from `system_prompt.md` that the block now covers (one mall, phone countries, verification channels).
-5. `app/domain/master.py`: a `MasterDataSource` interface with `SeedMasterDataSource` (today's JSON) and a stub `CenomiMasterDataSource`, cached with a daily refresh and a last-good fallback. Add Arabic mall aliases to the seed data.
+3. `prompts.py` renders a short "Rules in force" block from the policy into the system prompt. Delete rule statements from `system_prompt.md` (and `docs/agent-system-prompt.md`) that the block now covers: one mall, phone countries, verification channels, required documents.
+4. `backend/scripts/generate_master_data.py` (fixed seed) writes `app/data/master_data.json` per spec §3.8:
+   - regions with cities; about 20 synthetic malls with English and Arabic names and aliases, city and region;
+   - product lines with codes; sales categories with Arabic labels; lease and rent periods.
 
-## Tests (`tests/policy/`)
+   Keep every existing mall id and category id so goldens and e2e scripts don't move.
+5. `app/domain/master.py`: a `MasterDataSource` interface with `SeedMasterDataSource` (the JSON) and a stub `CenomiMasterDataSource`, cached with a daily refresh and a last-good fallback. `mall_match` uses Arabic names and aliases.
+6. Update `docs/spec.md` §9 (seed data shape) and `docs/STATUS.md` (row 17).
+
+## Tests (`tests/policy/`, `tests/domain/`)
 For each policy value, flip it in a test policy and assert the behaviour changes without code changes:
 - `max_malls_per_inquiry: 2` accepts two malls;
 - `existing_tenant_policy: allow_inquiry` lets an existing CR continue;
 - a phone country list rejects other countries;
 - removing a required document clears its blocker.
 
+Also: the generator is deterministic (two runs, identical output); every mall has an Arabic name and a region; an Arabic mall name in a message matches its id.
+
 ## Acceptance criteria
 - No business rule constant remains in the validators, rules or prompt that the policy covers (grep check in a test).
-- The parity suite passes with the default policy, after updating goldens for the Office removal.
+- The parity suite passes with the default policy and the generated data.
 
 ## Verify
 ```
-cd backend && OPENAI_API_KEY= uv run pytest tests/policy tests/domain tests/parity -q
+cd backend && uv run python scripts/generate_master_data.py --check && OPENAI_API_KEY= uv run pytest tests/policy tests/domain tests/parity -q
 ```
