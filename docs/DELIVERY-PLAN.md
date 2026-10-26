@@ -244,7 +244,7 @@ These don't block anything (each has an assumption), but they'd make the POC mat
 | Parallel tracks touch the same contracts | Merge conflicts, broken builds | Backend PR merges first each day; contracts come from the specs; frontend rebases |
 | Claude's PRs are tested only in CI | Slower feedback | `ci.yml` lands first on Day 1; small PRs |
 | Live-model behaviour (Arabic, assisted mode, case assistant) needs prompt tuning | Days or sprint items slip | Live runs on Days 3 and 5; tuning time in each sprint |
-| Sprint 1 is over capacity (about 28 days of work for 20 track-days) | L3 Should items slip | The slip order in §B1, recorded as waivers |
+| Sprint 1 is over capacity (about 27 days of work for 20 track-days) | L3 Should items slip | The slip order in §B1, recorded as waivers |
 | The flow diagrams can't be read at their embedded resolution | A step only shown in a diagram is missed | Structure checked against the text ([traceability](specs/workflows-7-1.md)); ask Cenomi for the source diagrams |
 | Demos after the 5 days are taken as production-ready | Wrong expectations with Cenomi | Present them as demo depth; the gates in Part B are the quality bar |
 | Cenomi answers change an assumption | Rework | Assumptions live in the policy file and mocks; a change is configuration |
