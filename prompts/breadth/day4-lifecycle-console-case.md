@@ -9,7 +9,7 @@ After submission, a reviewer can act on the case, and the applicant answers each
 - `app/workflow/machine.py`: the pure `transition()` with every row of M0 §6 and the reviewer-queue actor check.
 - Case data (L4 §3.1) on the inquiry, held in the in-memory store; `DocType.sales_data`.
 - Policy: `review_routing`, `second_level_contacts`, `rejection_categories`, `after_rejection`, `require_contacts_before_approval`.
-- Mocks: `ReviewerDirectory` (`data/mock_world/reviewers.json`, including `customer_care` executives for Day 5), `IdentityService` (Azure AD: invite, accept link in the outbox, `has_account`), `YardiService` (`data/mock_world/yardi.json`).
+- Mocks: `ReviewerDirectory` (`data/mock_world/reviewers.json`, including `customer_care` executives for Day 5), `IdentityService` (Azure AD: invite with the tenant role it assigns, accept link in the outbox, `has_account`), `YardiService` (`data/mock_world/yardi.json`).
 - Effects run inline after each transition, keyed by `(inquiry_id, event_seq, effect)`; templates for every row of L4 §3.4; `submitted` routes the case to a queue; `approved_first` invites the primary contact unless they have an account and **opens a contacts request automatically** (requirements §7.1.1 b).
 - Review API (L4 §3.3) with `X-Reviewer-Id`, only when `REVIEWER_CONSOLE=true` and `INTEGRATIONS=mock`.
 - `domain/case_brief.py` (deterministic brief, L4 §3.6).

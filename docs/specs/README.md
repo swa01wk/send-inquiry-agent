@@ -4,6 +4,8 @@ These specs take the Send Inquiry agent from the v1 POC (solid L2, partial L3) t
 
 `docs/spec.md` stays the source of truth for the contracts that exist **today**. Each spec here describes a change. When a step lands, fold its contract changes into `docs/spec.md` in the same PR, as `.cursor/rules/project.mdc` requires.
 
+**The whole lifecycle, with diagrams and its verification against the agent, L1–L5 and these specs, is in [`docs/POC-LIFECYCLE.md`](../POC-LIFECYCLE.md).**
+
 **Progress is tracked in [`docs/STATUS.md`](../STATUS.md):** steps, gates, business-flow coverage, agentic-capability coverage and known issues.
 
 **Delivery order is in [`docs/DELIVERY-PLAN.md`](../DELIVERY-PLAN.md):** Part A, the 5-day plan at demo depth (`prompts/breadth/`); Part B, the full implementation: Sprint 1 (M0 and L3 gates), Sprint 2 (L4 gate), then a closing phase (L5 gate). The step prompts stay the reference for what each piece must finally do; §B0 maps what the 5 days build against each one.

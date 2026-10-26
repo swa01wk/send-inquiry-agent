@@ -18,7 +18,8 @@ Someone can play the reviewer: see their queue, open a case with a grounded brie
 2. `/review/cases/:id`: the brief, fields with `SourceBadge`, documents (download), request history, audit timeline, and an actions panel with only the legal actions and their forms (documents picker, remarks, reason category, Yardi pickers).
 3. Same tokens and components as the chat; accessible and responsive (rules in `.cursor/rules/frontend.mdc`).
 4. Show the inquiry channel ("Started by the call centre", "Existing tenant") on the queue and case page; for existing tenants, a **Remove** button on prefilled contacts (`remove_contact`, intake-channels §3.7).
-5. Update `docs/spec.md` and `docs/STATUS.md` (row 24).
+5. Funnel (Should, spec §3.3): lease requests, leads, approved, sent to Yardi, rejected, and pending approvals per queue, for a chosen period (requirements §7.14).
+6. Update `docs/spec.md` and `docs/STATUS.md` (row 24).
 
 ## Tests
 **Layers** (`docs/specs/testing-strategy.md`): BE, FE (queue and case page suites), INT (stories T8, T3 reviewer half).

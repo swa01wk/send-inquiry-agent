@@ -8,7 +8,7 @@ Read first: @docs/specs/m0-modular-core.md (sections 6, 7) @backend/app/agent/ac
 One reference per inquiry, no matter how often or how concurrently Submit is pressed. Every external call has a timeout and a typed failure.
 
 ## Build
-1. `app/workflow/machine.py`: `transition(inquiry, event, actor)`, a pure function implementing the table in spec §6. It raises `IllegalTransition`. Define the L4 states and events now (the amended rows in §6, including the reviewer-queue check on the actor); leave them untriggered.
+1. `app/workflow/machine.py`: `transition(inquiry, event, actor)`, a pure function implementing the table in spec §6. It raises `IllegalTransition`. Define the L4 states and events now (the amended rows in §6, including the reviewer-queue check on the actor); leave them untriggered. Implement the `redirected_to_sign_in` row too (the breadth Day 5 code sets it in memory).
 2. `app/gateway/`:
    - `Gateway.call(name, fn, *, idempotent, timeout_s, audit_args)`;
    - `GatewayError(kind)` with kinds `timeout`, `unavailable`, `rejected`, `invalid`;

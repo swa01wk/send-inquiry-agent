@@ -30,7 +30,7 @@ All rows are Must. These are the framework's L3 exit criteria, made concrete.
 | E4 | One unambiguous submission: a single reference, and the user is never told "submitted" without a confirmed reference (M0 G3 holds against the simulated admin platform with faults on) | `tests/workflow/`, `tests/contract/` |
 | E5 | Audit evidence for every case, including simulated adapter calls, notifications and handoffs | `tests/audit/` |
 | E6 | KPIs instrumented and reported (§6) | `scripts/kpi_report.py` on the eval runs |
-| E7 | Recovery: a timeout or outage at any step leaves the inquiry resumable, and the user is told what happens next | `tests/gateway/test_failures.py` with mock faults (§3.1) |
+| E7 | Recovery: a timeout or outage at any step — including the model itself (§3.14) — leaves the inquiry resumable, and the user is told what happens next | `tests/gateway/test_failures.py` with mock faults (§3.1) |
 | E8 | Arabic: routing, doubt detection, contact and mall capture work for Arabic and mixed messages, including Arabic-Indic digits | `tests/arabic/`, the Arabic golden transcript, live eval "Arabic" scenario |
 | E9 | The acceptance stories in §3.13 pass as Playwright `@scripted` tests | `make e2e` |
 | E10 | Every intake channel in requirements §7.1 works end to end: call-centre assisted (§7.1.1 a2, §7.1.2 a2) and existing tenant (§7.1.2 a1, §7.1) — gate rows C1–C4 and C6 of [intake channels](intake-channels.md) | Stories S9–S12 |
@@ -250,6 +250,18 @@ Each story is a Playwright `@scripted` test with its scripts in `backend/tests/e
 | S6 | The same brand and mall are submitted twice by two contacts; the second sees the duplicate warning and continues | Duplicate check (§3.12) |
 | S7 | "Can I speak to someone?" mid-intake → handoff card; the call-centre case is in the dev inbox; the inquiry resumes afterwards | Handoff (§3.6) |
 | S8 | "We already lease two stores" → existing-tenant redirect; "how long does review take?" mid-flow stays in intake | Routing (E1) |
+| S13 | With the model forced down (`X-Mock-Faults: llm:unavailable`), the user finishes the inquiry in form mode from the cards and submits; when the model returns, the chat continues | Form mode (§3.14, E7) |
+
+### 3.14 Form mode when the model is unavailable (Must; framework L1 baseline)
+
+The framework's first question is whether the task can be completed through a reliable digital form. Today, if the model is down, the chat shows an error with Retry and nothing else. Every rule already lives in code and every input already has a card, so the inquiry can be finished without the model.
+
+- **Trigger.** Two consecutive model failures in one turn (gateway `timeout` or `unavailable` on the model call), or `FORM_MODE=true` for testing. The session switches to form mode; audit event `form_mode_entered`.
+- **What the user sees.** A `form_mode` card: "Our assistant isn't available right now. You can finish your inquiry here, or ask us to call you." The draft panel's fields become editable (the existing `edit_field` action), and the next missing items are shown as cards in order: CR check (with skip), the mall picker, contact, verification, documents, review.
+- **Actions without the model.** In form mode, UI actions apply their change and emit their cards and notes, but don't run an agent turn. The phase (`compute_phase`) decides which card comes next.
+- **Derived values.** Nothing is derived in form mode; the user types everything, so all values are `user`. Values derived earlier still need confirming on their cards.
+- **Handoff.** The card offers **Ask us to call you** (L3 §3.6).
+- **Recovery.** On the next turn, if the model answers, the session returns to chat with a one-line note; nothing entered in form mode is lost.
 
 ## 4. Contract changes to fold into `docs/spec.md`
 
@@ -257,12 +269,12 @@ Each story is a Playwright `@scripted` test with its scripts in `backend/tests/e
 | --- | --- |
 | REST | `POST /api/verifications/email`, `POST /api/sessions/resume`, `GET /api/inquiries/{reference}?t=` (token required); dev only: `GET`/`DELETE /api/dev/outbox` |
 | Actions | `verification_refreshed`, `continue_later` (sends a resume link), `request_handoff`, `start_follow_on {mall_id?}` |
-| Cards | `verification` gains `resend_available_at`; new `handoff` card `{phone, email, hours, short_ref}`; `success.tracking_url` is the tokenised page URL; `confirm_fields` gains optional `evidence` per field and a `title` for follow-on prefill |
-| Notes | `resend_throttled <s>`, `email_verified` via refresh, `handoff_created <reason>`, `duplicate_own reference=<ref>`, `duplicate_other`, `follow_on_started from=<ref>` |
+| Cards | `form_mode` card; `verification` gains `resend_available_at`; new `handoff` card `{phone, email, hours, short_ref}`; `success.tracking_url` is the tokenised page URL; `confirm_fields` gains optional `evidence` per field and a `title` for follow-on prefill |
+| Notes | `form_mode_entered`, `form_mode_left`, `resend_throttled <s>`, `email_verified` via refresh, `handoff_created <reason>`, `duplicate_own reference=<ref>`, `duplicate_other`, `follow_on_started from=<ref>` |
 | Tools | `update_draft` entry gains optional `evidence`; new `start_follow_on` |
 | Services | `NotificationService.send(template, to, context)`; `CallCentreService.create_case`; `InquiryIndex.find_open`; mock scenario data under `data/mock_world/` |
 | Data | `Inquiry.follow_on_of`, `Inquiry.possible_duplicate_of` |
-| Config | `INTEGRATIONS`, `DEV_TOOLS`, `MOCK_FAULTS`, `MOCK_LATENCY_MS`, `PUBLIC_BASE_URL`, `RESUME_TOKEN_SECRET`, `EMAIL_LINK_TTL_HOURS`, `RESUME_TTL_DAYS`, `RESEND_COOLDOWN_SECONDS`, `MAX_SENDS_PER_HOUR`, `ROUTER_MODEL`, `ROUTER_MIN_CONFIDENCE`, `CALL_CENTRE_*`, `POLICY_PATH` |
+| Config | `FORM_MODE`, `INTEGRATIONS`, `DEV_TOOLS`, `MOCK_FAULTS`, `MOCK_LATENCY_MS`, `PUBLIC_BASE_URL`, `RESUME_TOKEN_SECRET`, `EMAIL_LINK_TTL_HOURS`, `RESUME_TTL_DAYS`, `RESEND_COOLDOWN_SECONDS`, `MAX_SENDS_PER_HOUR`, `ROUTER_MODEL`, `ROUTER_MIN_CONFIDENCE`, `CALL_CENTRE_*`, `POLICY_PATH` |
 | Test hooks | `X-Mock-Faults` header on `POST /api/sessions` (scripted mode only) |
 | Frontend routes | `/inquiry/verify`, `/inquiry/status/:reference`, `/dev/inbox` (dev only) |
 
@@ -272,7 +284,7 @@ Each story is a Playwright `@scripted` test with its scripts in `backend/tests/e
 2. **Simulated Cenomi (§3.1)** and the notification outbox (§3.4 templates and dev inbox) — step 18.
 3. **Email-link verification, resume and resend limits (§3.2, §3.3)** — step 19.
 4. **Submission notifications and status page (§3.4)** — step 20.
-5. **Routing and handoff (§3.5, §3.6)** — step 21.
+5. **Routing, handoff and form mode (§3.5, §3.6, §3.14)** — step 21.
 6. **Arabic, follow-on and duplicate check (§3.10–§3.12)** — step 21b.
 7. **Evidence (§3.9), acceptance stories (§3.13), the KPI report**, then the exit-gate run — step 22.
 

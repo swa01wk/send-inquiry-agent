@@ -19,7 +19,12 @@ Every workflow in requirements §7.1 runs end to end: the lifecycle reaches Yard
 - Existing-tenant mode: `/api/tenant/me`, `opportunities`, `inquiries` (list and create from an opportunity); prefill and preselected property; `signed_in_skips_verification`.
 - Public page: `sign_in_prompt` card for `existing_tenant_policy: sign_in`; prefill and `basic_info_review` for `allow_inquiry`.
 - Lifecycle for existing tenants: contacts prefilled at second review; `remove_contact` console action.
-- `/api/callcentre/*` and `/api/tenant/*` behind `CALLCENTRE_CONSOLE` and `TENANT_PORTAL` (mock only).
+- `/api/callcentre/*` and `/api/tenant/*` behind `CALLCENTRE_CONSOLE` and `TENANT_PORTAL` (mock only); staff roles `customer_care` and `guest_service` (the mall service desk can add inquiries too).
+- "Ask them to sign in" and the public-page sign-in path set the inquiry to `redirected` (M0 §6).
+
+**Demo operability**
+- `POST /api/dev/reset` clears sessions, cases, outbox and invitations and reloads the mock world (dev tools only).
+- `make demo` turns on `DEV_TOOLS`, `REVIEWER_CONSOLE`, `CALLCENTRE_CONSOLE` and `TENANT_PORTAL`.
 - Unit tests for the `staff` rule, Proceed, prefill, `has_account` and access.
 
 ## Your track (Cursor)
@@ -36,9 +41,10 @@ Every workflow in requirements §7.1 runs end to end: the lifecycle reaches Yard
 7. **Existing-tenant prompt**: greet by name; one confirm card for the prefilled details; ask only which brand (if several) and optional space; offer the documents on file.
 8. **Cards**: `basic_info_review` (Edit per field, **Proceed**), `sign_in_prompt`; the "From the call centre" source badge.
 9. Status page and case agent: "Approved — your details are with the leasing team for a proposal" only after `sent_to_yardi`.
-10. Playwright `@scripted` story **T1** (the full lifecycle to Yardi). Stories S9–S12 come in Sprint 1.
-11. **Demo script:** extend `docs/demo-script.md` with the walkthrough in §A3 of the delivery plan (all five intake paths and both review levels).
-12. Live: `scripts/eval_live.py` once; one `@live` run; try assisted mode with a dictated caller by hand.
+10. **`/dev` landing page** (dev tools only): one link per persona — applicant chat, call centre, guest service, tenant portal (each mock tenant), reviewer console (each queue), dev inbox — plus **Reset demo**.
+11. Playwright `@scripted` story **T1** (the full lifecycle to Yardi). Stories S9–S12 come in Sprint 1.
+12. **Demo script:** extend `docs/demo-script.md` with the walkthrough in §A3 of the delivery plan (all five intake paths and both review levels).
+13. Live: `scripts/eval_live.py` once; one `@live` run; try assisted mode with a dictated caller by hand.
 
 ## End-of-day demo check (5 days done)
 - [ ] **§7.1.1 a1:** the self-service walkthrough runs without a restart.
@@ -47,5 +53,6 @@ Every workflow in requirements §7.1 runs end to end: the lifecycle reaches Yard
 - [ ] **§7.1.2 a1:** a signed-in tenant raises an inquiry from Leasing Opportunities with everything prefilled, no email link or OTP, and sees it in My inquiries.
 - [ ] **§7.1:** on the public chat, CR `1010000000` shows a Sign in button that lands on Leasing Opportunities.
 - [ ] **Review:** first-level approval opens a contacts request automatically; an existing tenant's contacts are prefilled and a reviewer can remove one; final approval invites only people without an account; the lead reaches Yardi; the status page shows "Lead — second review" and "Waiting for you".
+- [ ] From `/dev`, every persona opens in one click, and **Reset demo** starts the walkthrough clean.
 - [ ] The reviewer assistant suggests a Yardi match for Bean Street Trading Co.; **Use** fills the re-link pickers; it drafts re-upload remarks.
 - [ ] `docs/STATUS.md` §0: 5-day plan ✅; rows 21c, 24–28 🟡. Write down what slipped, for Sprint 1 planning.

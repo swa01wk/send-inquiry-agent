@@ -13,7 +13,7 @@ Every way into an inquiry in requirements §7.1 works: a call-centre executive c
 2. `Inquiry.channel`, `created_by`, `tenant_id` (spec §3.8); show the channel in the case brief and queue.
 3. `TenantDirectory` and `OpportunityCatalogue` mocks from `data/mock_world/tenants.json` and `opportunities.json` (spec §3.4, §3.5). `1010000000` maps to a tenant; add a second tenant with two brands.
 4. `prefill_from_tenant(draft, tenant, brand_id?)` (spec §3.4), used by every channel.
-5. Assisted mode (spec §3.2): a prompt variant and tool allowlist for the intake agent; `staff` writes; `existing_cr_choice` card and action; `send_application_link` tool and action; `complete` token; `complete_application` template; handoff cases listed for executives.
+5. Assisted mode (spec §3.2), for staff with role `customer_care` or `guest_service`: a prompt variant and tool allowlist for the intake agent; `staff` writes; `existing_cr_choice` card and action; `send_application_link` tool and action; `complete` token; `complete_application` template; handoff cases listed for executives.
 6. Completing from the link (spec §3.3): `/inquiry/verify` with purpose `complete` verifies the email and resumes; `basic_info_review` card; `proceed_basic_info` action confirms `staff` and `verified` values.
 7. Existing-tenant mode (spec §3.5): `/api/tenant/*`; raising from an opportunity prefills and preselects; `signed_in_skips_verification`; My inquiries.
 8. Public page with an existing CR (spec §3.6): `sign_in_prompt` card for `sign_in`; prefill and `basic_info_review` for `allow_inquiry`.
