@@ -4,6 +4,8 @@ The single place to see what's built, what's next and how the agent maps to the 
 
 **Objective.** Align the Send Inquiry Agent with the inquiry business process in requirements v2.1.7.1 §7.1 — from "Send us an inquiry" to a Yardi-ready lead — and make it genuinely agentic per the Agent Capability Maturity Framework (L3 → L4 → L5). Every external Cenomi system is simulated until Cenomi gives access.
 
+**Scope:** locked in [`docs/PRD.md`](PRD.md) v1.0 (tag `poc-prd-v1.0`); changes follow PRD §11.
+
 **Lifecycle:** the whole process with diagrams, verified against the agent, the framework (L1–L5) and the specs: [`docs/POC-LIFECYCLE.md`](POC-LIFECYCLE.md).
 
 **Testing:** every step follows [`docs/specs/testing-strategy.md`](specs/testing-strategy.md); §7 below shows the state of each layer.

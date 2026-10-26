@@ -1,6 +1,6 @@
 # Testing strategy
 
-**Status:** proposed · **Applies to:** every step from `prompts/11c` on · **Cursor step:** `prompts/11d-test-harness.md` builds the harness
+**Status:** locked (PRD v1.0, `docs/PRD.md`) · **Applies to:** every step from `prompts/11c` on · **Cursor step:** `prompts/11d-test-harness.md` builds the harness
 
 ## 1. Why
 

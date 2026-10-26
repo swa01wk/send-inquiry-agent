@@ -1,6 +1,6 @@
 # L4 — Outcome assistance (inquiry to Yardi-ready lead)
 
-**Status:** proposed · **Depends on:** [L3 reliable intake](l3-reliable-intake.md) · **Cursor steps:** `prompts/23`–`28`
+**Status:** locked (PRD v1.0, `docs/PRD.md`) · **Depends on:** [L3 reliable intake](l3-reliable-intake.md) · **Cursor steps:** `prompts/23`–`28`
 
 ## 1. Why
 

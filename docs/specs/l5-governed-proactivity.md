@@ -1,6 +1,6 @@
 # L5 — Governed proactivity
 
-**Status:** proposed · **Depends on:** [L4 outcome assistance](l4-outcome-assistance.md) · **Cursor steps:** `prompts/29`–`31`
+**Status:** locked (PRD v1.0, `docs/PRD.md`) · **Depends on:** [L4 outcome assistance](l4-outcome-assistance.md) · **Cursor steps:** `prompts/29`–`31`
 
 ## 1. Why
 
