@@ -11,13 +11,13 @@ Make inferred values visibly grounded, prove the whole intake flow with the acce
    - the confirm card shows "from: '…'";
    - the evidence is stored in the `field_written` audit event;
    - the prompt asks for evidence on every derived value.
-2. Acceptance stories S1–S8 (spec §3.13): make sure each exists as a Playwright `@scripted` test (earlier steps added most of them) and add any missing ones. Group them in `e2e/tests/stories/`.
+2. Acceptance stories S1–S8 (spec §3.13) and S9–S12 (`docs/specs/intake-channels.md` §4): make sure each exists as a Playwright `@scripted` test (earlier steps added most of them) and add any missing ones. Group them in `e2e/tests/stories/`.
 3. `scripts/kpi_report.py`:
    - computes the spec §6 KPIs from audit events for a set of inquiries (an eval run, or a time window);
    - outputs a Markdown table, segmented by scenario and language.
 4. Add the KPI report to the end of `eval_live.py` runs.
 5. Run the exit gate:
-   - every E1–E9 criterion;
+   - every E1–E10 criterion (E10 = intake channels C1–C4 and C6, stories S9–S12);
    - two live eval runs;
    - the KPI report.
 

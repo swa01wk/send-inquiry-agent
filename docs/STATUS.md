@@ -20,18 +20,19 @@ The single place to see what's built, what's next and how the agent maps to the 
 | Day 2 | Wed 28 Oct | Simulated Cenomi, verification by link, resume, submit once, tracking | | | ⬜ | |
 | Day 3 | Thu 29 Oct | Routing, handoff, Arabic, follow-on — L3 at demo depth | | | ⬜ | |
 | Day 4 | Fri 30 Oct | Review lifecycle, reviewer console, case assistant | | | ⬜ | |
-| Day 5 | Mon 2 Nov | Yardi handover, reviewer assistant, thin L5, demo | | | ⬜ | |
-| Sprint 1 | 3–16 Nov | M0 and L3 gates; full test harness | | | ⬜ | |
-| Sprint 2 | 17–30 Nov | L4 gate; L5 governance (Y2, Y3) | | | ⬜ | |
-| Closing | 1 Dec – ~9 Dec | L5 gate; production readiness | | | ⬜ | |
+| Day 5 | Mon 2 Nov | Yardi handover, reviewer assistant, intake channels (call centre, existing tenant), demo | | | ⬜ | |
+| Sprint 1 | 3–16 Nov | M0 and L3 gates (incl. E10, intake channels); full test harness | | | ⬜ | |
+| Sprint 2 | 17–30 Nov | L4 gate; channels row C5 | | | ⬜ | |
+| Closing | 1 Dec – ~16 Dec | All of L5 and its gate; production readiness | | | ⬜ | |
 
 ## 1. Gates
 
 | Gate | Spec | Rows | Status | Result |
 | --- | --- | --- | --- | --- |
-| Pre-baseline | [pre-baseline-fixes.md](specs/pre-baseline-fixes.md) §2 | P1–P4 | ⬜ | — |
+| Pre-baseline | [pre-baseline-fixes.md](specs/pre-baseline-fixes.md) §2 | P1–P5 | ⬜ | — |
 | M0 modular core | [m0-modular-core.md](specs/m0-modular-core.md) §2 | G1–G7 | ⬜ | — |
 | L3 reliable intake | [l3-reliable-intake.md](specs/l3-reliable-intake.md) §2 | E1–E9 | ⬜ | — |
+| Intake channels | [intake-channels.md](specs/intake-channels.md) §2 | C1–C6 (C1–C4, C6 with L3 as E10; C5 with L4) | ⬜ | — |
 | L4 outcome assistance | [l4-outcome-assistance.md](specs/l4-outcome-assistance.md) §2 | X1–X9 | ⬜ | — |
 | L5 governed proactivity | [l5-governed-proactivity.md](specs/l5-governed-proactivity.md) §2 | Y1–Y6 | ⬜ | — |
 
@@ -42,7 +43,7 @@ Each step is one Cursor prompt in `prompts/` and normally one PR.
 | Step | Prompt | Delivers | Gate rows | Status | PR | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | 00–11, 11b | `00`–`11b` | v1 POC, POC assumptions, UI fixes, Playwright suites | — | ✅ | #1–#13 | Live e2e: desktop 14/14; mobile test 14 fix in #13, needs a live run to confirm |
-| 11c | `11c-pre-baseline-fixes.md` | Confirm only what was shown; turn on documents complete; Office removed; landline and `written_keys` fixes | P1–P4 | ⬜ | | Must land before step 12 |
+| 11c | `11c-pre-baseline-fixes.md` | Confirm only what was shown; turn on documents complete; Office removed; document numbers on the documents card; landline and `written_keys` fixes | P1–P5 | ⬜ | | Must land before step 12 |
 | 11d | `11d-test-harness.md` | Six test layers with one command each, frontend Playwright, eval repeats and invariants, scenario catalogue, `ci.yml`, PR template | — | ⬜ | | See §7; runs after 11c, before 12 |
 | 12 | `12-baseline-parity.md` | Golden transcripts, `make golden`, frontend fixtures from goldens, live-eval baseline | G1 | ⬜ | | |
 | 13 | `13-durable-state.md` | Inquiry store (memory, Postgres), turn lease, checkpointer, bounded history, retention | G2 | ⬜ | | Register `Source`, `InquiryDraft`, `DocType` for checkpoint deserialisation |
@@ -55,6 +56,7 @@ Each step is one Cursor prompt in `prompts/` and normally one PR.
 | 20 | `20-status-page-notifications.md` | Submission email and SMS, tokenised status page | E4, E5 | ⬜ | | |
 | 21 | `21-routing-handoff.md` | Intent router, redirect agent, human handoff | E1 | ⬜ | | |
 | 21b | `21b-arabic-follow-on-duplicates.md` | Arabic safety nets; follow-on inquiries; duplicate check | E8 | ⬜ | | |
+| 21c | `21c-intake-channels.md` | Call-centre assisted intake (§7.1.1 a2, §7.1.2 a2); existing tenants via Leasing Opportunities (§7.1.2 a1); public-page sign-in path (§7.1); `staff` source; contacts prefill and remove | E10, C1–C6 | ⬜ | | Added after the §7.1 review |
 | 22 | `22-l3-gate.md` | Evidence for derived values, stories S1–S8, KPI report | E1–E9 | ⬜ | | Closes the L3 gate |
 | 23 | `23-lifecycle-core.md` | Case data, live L4 transitions, review routing, effects, Azure AD and Yardi mocks | X1, X2, X5, X7 | ⬜ | | |
 | 24 | `24-reviewer-console.md` | Review API, mock sign-in, queue and case pages, case brief | X4, X6 | ⬜ | | |
@@ -68,29 +70,26 @@ Each step is one Cursor prompt in `prompts/` and normally one PR.
 
 ## 3. Business flow coverage (requirements §7.1)
 
-| Requirement | Where it's built | Status |
-| --- | --- | --- |
-| "Send us an inquiry" on the sign-in page, for one product line at a property (§7.1.1 a1) | v1 intake | ✅ |
-| CR check, optional and skippable; existing CR → Sign In (§7.1.1 a1, a2) | v1; policy flag in 17 | ✅ / ⬜ flag |
-| Basic info, 12 fields; mobile and landline mutually exclusive, with country codes | v1, PR #1; landline fix in 11c | ✅ |
-| Product lines Store, Media, Specialty only (§1) | 11c | ⬜ |
-| Email verified by link; mobile by OTP; resend after a set time | v1 (in chat); real link and resume in 19; cooldown in 19 | 🟡 |
-| Complete the application from the emailed link (external page) | 19 (resume on any device) | ⬜ |
-| Documents: Brand Profile and Company Profile required; CR, VAT, National ID, National Address optional | v1; turn on completion in 11c | ✅ |
-| Alphanumeric reference on screen, shared by email or SMS with a tracking link | v1 reference; notifications and tracking page in 20 | 🟡 |
-| Call-centre path (§7.1.1 a2): the executive continues the same inquiry | Handoff case in 21 | ⬜ |
-| Routing to RLM-Store / RPLM-Media / RPLM-Specialty by unit type and region (§7.1.1 b) | 23 | ⬜ |
-| First-level review: re-upload request by email link, reject with remarks, approve (§7.1.1 b) | 23–25 | ⬜ |
-| Approval → Azure AD account and invitation (§7.1.1 b) | 23 (mock) | ⬜ |
-| Second level: additional contacts (Authorized Signatory and Billing Contact required) (§7.1.1 c) | 26 | ⬜ |
-| Second level: estimated sales data; reviewer notified on upload (§7.1.1 c) | 26 | ⬜ |
-| Second level: re-link company and brand from Yardi matches (§7.1.1 c) | 24, 27 | ⬜ |
-| Final approval → invitations for contacts, acceptance email, data sent to Yardi (§7.1.1 c) | 28 | ⬜ |
-| Notifications: information vs action required (§7.15) | Templates in 18, 23 | ⬜ |
-| Audit log of actions by customers and staff (§7.10) | 15, extended in 23 | ⬜ |
-| Existing tenants raise inquiries via Leasing Opportunities after sign-in (§7.1.2) | Out of scope; router redirects (21) | ⬜ |
-| General Inquiries are a separate service request after sign-in (§7.8.1.1) | Out of scope; router redirects (21) | ⬜ |
-| Review SLAs (Phase 2) | Demo thresholds in 29–30 | ⬜ |
+Summary by workflow. Line-by-line coverage of every statement in §7.1, §7.1.1 and §7.1.2 (rows R1–R81) is in [`docs/specs/workflows-7-1.md`](specs/workflows-7-1.md).
+
+| Workflow | Where it's built | 5-day plan | Status |
+| --- | --- | --- | --- |
+| §7.1.1 a1 — prospective, self-service: CR check or skip, 12 basic-info fields, one product line and mall, email link and mobile OTP with resend after a set time, documents with their numbers, submit, reference and tracking link | v1; 11c; 17–20 | Days 1–3 | 🟡 (v1 built; link, tracking and document numbers to come) |
+| §7.1.1 a2 — prospective, via the call centre: executive raises it; applicant completes from the emailed link (email auto-verified, review basic info, Proceed, OTP, documents, submit) | 21c | Day 5 | ⬜ |
+| §7.1.2 a1 — existing tenant via Leasing Opportunities: prefilled details and documents, property preselected, verify and edit, submit, My inquiries | 21c | Day 5 | ⬜ |
+| §7.1.2 a2 — existing tenant via the call centre: CR exists → ask to sign in, or continue with the record prefilled | 21c | Day 5 | ⬜ |
+| §7.1 — existing tenant on the public page (`existing_tenant_policy`) | 17, 21c | Days 1, 5 | ⬜ |
+| b — routing to RLM-Store / RPLM-Media / RPLM-Specialty by unit type and region | 23 | Day 4 | ⬜ |
+| b — first-level review: re-upload by email link, reject with remarks, approve with Azure AD invitation (only if no account) | 23–25 | Day 4 | ⬜ |
+| b — automatic contacts request "on contact creation"; qualified as a lead | 23, 25 | Days 4, 5 | ⬜ |
+| c — additional contacts (prefilled for existing tenants; reviewer can remove), estimated sales data with notifications both ways | 26, 21c | Days 4, 5 | ⬜ |
+| c — re-link company and brand from Yardi matches | 24, 27 | Day 5 | ⬜ |
+| c — approve (invitations for new contacts, acceptance email, data to Yardi) or reject with email | 28 | Days 4, 5 | ⬜ |
+| Tracking link: stage, owner and what's waiting on the applicant | 20, 25 | Days 2, 5 | ⬜ |
+| Notifications: information vs action required (§7.15) | 18, 23 | Days 2, 4 | ⬜ |
+| Audit log of actions by customers and staff (§7.10) | 15, 23 | Sprint 1 | ⬜ |
+| Review SLAs (Phase 2) | Demo thresholds in 29–30 | Closing | ⬜ |
+| **Out of scope:** Super Admin onboarding of existing tenants (§7.1, user management); profile completion after sign-in; General Inquiries (§7.8.1.1, router redirects); Proposal stage (§7.2); document-content checks | — | — | ➖ |
 
 ## 4. Agentic capability coverage (framework §5–§7)
 
@@ -108,10 +107,10 @@ Each step is one Cursor prompt in `prompts/` and normally one PR.
 | L3 | 10 Audit and recovery | 15, 18, 21 | ⬜ |
 | L4 | 1 Outcome framing | 25 | ⬜ |
 | L4 | 2 Structured context assembly | 24 (case brief) | ⬜ |
-| L4 | 3 Grounded derivation and prefill | 22 (evidence), 26 (reuse primary contact) | ⬜ |
+| L4 | 3 Grounded derivation and prefill | 22 (evidence), 26 (reuse primary contact), 21c (tenant-record prefill) | ⬜ |
 | L4 | 4 Adaptive dialogue | 25, 26 | ⬜ |
 | L4 | 5 Bounded read-and-reason tools | 25, 27 | ⬜ |
-| L4 | 6 Cross-step continuity | 23, 25 | ⬜ |
+| L4 | 6 Cross-step continuity | 23, 25; 21c (executive → applicant handover) | ⬜ |
 | L4 | 7 Reviewer assistance | 24, 27 | ⬜ |
 | L4 | 8 Exception and rework reduction | 25, 26, 21b (duplicates) | ⬜ |
 | L4 | 9 Human collaboration (reviewers decide) | 23 (actor checks), 27 | ⬜ |
@@ -134,7 +133,8 @@ Nothing is blocked: each item has a working assumption implemented in a mock or 
 | POC assumptions (25 Oct) | `docs/assumptions.md`; handoff doc §4 |
 | M0 | Postgres hosting, retention, payload shape (M0 §13) |
 | L3 | Q1–Q8 as assumptions (L3 §7) |
-| L4 | A1–A9 (L4 §6) |
+| L4 | A1–A10 (L4 §6) |
+| Intake channels | D1–D8 ([intake-channels.md](specs/intake-channels.md) §6), including the `staff` source and signed-in tenants skipping verification |
 | L5 | B1–B6 (L5 §6). **B6 extends POC assumption 9** (resume link for an abandoned draft sent without approval) |
 
 ## 6. Known issues
@@ -149,6 +149,8 @@ Nothing is blocked: each item has a working assumption implemented in a mock or 
 | `OFF` (Office) unit code and `office` in seed data and FAQ | 11c | ⬜ |
 | Golden rules mention a `submit_inquiry` tool that doesn't exist | 11c | ⬜ |
 | `confirm_fields` can confirm values the user never saw | 11c | ⬜ |
+| Documents card has no inputs for VAT ID, National ID, National Address; CR ID not shown | 11c | ⬜ |
+| §7.1 flow diagrams are embedded at 96 ppi and can't be read; ask Cenomi for the source files | — | ⬜ |
 | LangGraph warns about deserialising unregistered types from checkpoints | 13 | ⬜ |
 | CI runs only `e2e.yml`; no test and lint workflow | 11d | ⬜ |
 | `scripts/` not covered by `make lint` (7 E501 lines in `generate_e2e_scripts.py`) | 11d | ⬜ |
