@@ -48,7 +48,11 @@ jobs:
         run: cd frontend && npx tsc -b --noEmit
       - name: Prettier
         if: success() || failure()
-        run: cd frontend && npx prettier --check . 2>&1 | tee prettier.log; exit ${PIPESTATUS[0]}
+        run: |
+          cd frontend
+          files=$(npx prettier --list-different . || true)
+          for f in $files; do echo "::error file=frontend/$f::Not formatted by Prettier (run: cd frontend && npm run format:write)"; done
+          npx prettier --check .
       - name: Tests (Vitest)
         run: make test-fe
 
