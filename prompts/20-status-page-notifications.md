@@ -19,6 +19,7 @@ After submitting, the applicant receives the reference and a private tracking li
 6. Update `docs/spec.md` (REST, success card) and `docs/STATUS.md` (row 20).
 
 ## Tests
+**Layers** (`docs/specs/testing-strategy.md`): BE, FE (status page suite), INT (story S1).
 - **Token rules:** missing, wrong reference, and tampered token all return 404.
 - **Notifications:** submit puts exactly one message per channel in the outbox; a failed send is retried and audited.
 - **Frontend:** the status page renders each stage state.
@@ -30,5 +31,5 @@ After submitting, the applicant receives the reference and a private tracking li
 
 ## Verify
 ```
-make test && make lint && make e2e
+make ci
 ```

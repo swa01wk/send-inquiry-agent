@@ -20,6 +20,7 @@ Someone can play the reviewer: see their queue, open a case with a grounded brie
 4. Update `docs/spec.md` and `docs/STATUS.md` (row 24).
 
 ## Tests
+**Layers** (`docs/specs/testing-strategy.md`): BE, FE (queue and case page suites), INT (stories T8, T3 reviewer half).
 - API: each action happy path and each error; a reviewer can't see another queue's case.
 - `tests/case_brief/`: every brief line traces to a field, document or audit event; a derived value shows its evidence; a skipped CR shows as skipped.
 - Frontend: queue and case pages render; actions panel shows only legal actions per status.
@@ -31,5 +32,5 @@ Someone can play the reviewer: see their queue, open a case with a grounded brie
 
 ## Verify
 ```
-make test && make lint && make e2e
+make ci
 ```

@@ -32,6 +32,7 @@ Every Cenomi rule the agent enforces lives in one validated policy file, so a ru
 6. Update `docs/spec.md` §9 (seed data shape) and `docs/STATUS.md` (row 17).
 
 ## Tests (`tests/policy/`, `tests/domain/`)
+**Layers** (`docs/specs/testing-strategy.md`): BE, AGENT-DET (prompt snapshot changes with the "Rules in force" block), FE (mall picker), INT. Prompt changes, so AGENT-LIVE (intake) and an E2E-LIVE smoke run.
 For each policy value, flip it in a test policy and assert the behaviour changes without code changes:
 - `max_malls_per_inquiry: 2` accepts two malls;
 - `existing_tenant_policy: allow_inquiry` lets an existing CR continue;

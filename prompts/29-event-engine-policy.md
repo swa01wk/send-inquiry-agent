@@ -16,6 +16,7 @@ The foundation for proactivity: time and events the system can reason over, and 
 6. Migration for `proactive_items` and the cursor. Update `docs/spec.md` and `docs/STATUS.md` (row 29).
 
 ## Tests (`tests/proactive/`)
+**Layers** (`docs/specs/testing-strategy.md`): BE (policy, engine, clock). No agent or UI change.
 - `test_policy.py`: each tier; quiet hours across midnight; the per-case throttle; opt-out blocks proactive but not transactional.
 - Engine idempotence: repeated ticks and a restart don't duplicate items.
 - Simulated clock: advancing fires due triggers and nothing else.

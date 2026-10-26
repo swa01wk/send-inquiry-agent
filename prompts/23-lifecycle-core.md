@@ -21,6 +21,7 @@ A submitted inquiry moves through the whole §7.1.1 b–c lifecycle under the st
 8. Fold the data, workflow, service and config changes into `docs/spec.md`; update `docs/STATUS.md` (row 23).
 
 ## Tests (`tests/lifecycle/`)
+**Layers** (`docs/specs/testing-strategy.md`): BE (lifecycle, effects, authority). No agent or UI change.
 - Every path in spec §1 driven by direct events: approve → approve → `sent_to_yardi`; reject at each level; re-upload loop; contacts and sales-data requests; withdraw; re-link.
 - `test_authority.py`: a reviewer from another queue or region, the applicant, or the system can't fire reviewer events; illegal transitions are rejected and audited.
 - `test_effects.py`: each event's messages land in the outbox exactly once, even when the worker retries; an effect failure leaves the transition in place.

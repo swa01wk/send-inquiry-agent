@@ -26,6 +26,7 @@ Close four gaps that change what the user sees: unconfirmable-until-shown derive
 6. Fold spec §4 into `docs/spec.md`. Update `docs/STATUS.md` (row 11c).
 
 ## Tests
+**Layers** (`docs/specs/testing-strategy.md`): BE, FE (Vitest), INT, AGENT-DET. The prompt changes, so also AGENT-LIVE (`scripts/eval_live.py` twice; the 11d harness doesn't exist yet) and an E2E-LIVE smoke run.
 - `tests/agent/test_confirm_shown.py`: the five cases in spec §3.1.
 - `tests/api/test_documents_complete.py`: complete → review card in the same turn; premature → `documents_pending`.
 - Frontend: the hook sends `documents_updated` exactly once, and not for optional documents.

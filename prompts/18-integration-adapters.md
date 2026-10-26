@@ -32,6 +32,7 @@ Every external Cenomi system behaves like the real one — state, realistic outc
 9. Update `docs/spec.md` (§8 services, §10 config, test hooks) and `docs/STATUS.md` (row 18).
 
 ## Tests
+**Layers** (`docs/specs/testing-strategy.md`): BE (contract tests), FE (dev inbox suite), INT (faults, outbox).
 - Contract tests for every mock.
 - A failure-path test for each step of the flow with the mock forced to fail: the inquiry stays resumable and the user gets a clear next step (E7).
 - The outbox never appears in logs; `/api/dev/*` returns 404 when `DEV_TOOLS` is off.
@@ -43,5 +44,5 @@ Every external Cenomi system behaves like the real one — state, realistic outc
 
 ## Verify
 ```
-cd backend && OPENAI_API_KEY= uv run pytest tests/gateway tests/contract -q -m "not sandbox" && cd .. && make test && make lint
+cd backend && OPENAI_API_KEY= uv run pytest tests/gateway tests/contract -q -m "not sandbox" && cd .. && make ci
 ```

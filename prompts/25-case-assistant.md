@@ -22,6 +22,7 @@ Every link the applicant gets after submitting opens the same case in chat, wher
 9. Update `docs/spec.md` and `docs/STATUS.md` (row 25).
 
 ## Tests
+**Layers** (`docs/specs/testing-strategy.md`): BE, AGENT-DET (case agent allowlist, guard), FE (case status card, re-upload mode, case page), INT (stories T2, T3). New agent, so AGENT-LIVE (new `case` group) and E2E-LIVE (T2 live).
 - Case-mode resume with each token purpose; an expired or closed-request link explains and offers the tracking page.
 - The case agent can't call any intake write tool (allowlist).
 - Re-upload: only requested types accepted; resubmit blocked until all are replaced; the case returns to `first_review`.
@@ -35,5 +36,5 @@ Every link the applicant gets after submitting opens the same case in chat, wher
 
 ## Verify
 ```
-make test && make lint && make e2e
+make ci
 ```

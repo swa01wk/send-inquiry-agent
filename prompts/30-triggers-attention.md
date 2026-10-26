@@ -18,6 +18,7 @@ Stuck cases surface to the right owner with the next step prepared, and applican
 6. Update `docs/spec.md` and `docs/STATUS.md` (row 30).
 
 ## Tests
+**Layers** (`docs/specs/testing-strategy.md`): BE, AGENT-DET (draft checks), FE ("Needs attention" suite), INT (stories P1–P6). AGENT-LIVE (new `proactive` group) and E2E-LIVE (P2 live).
 - `test_triggers.py`: each trigger fires at the threshold, not before; once per period; not after the condition clears.
 - `test_drafts.py`: every check, including fallback.
 - `test_authority.py`: no proactive code path can call the state machine.
@@ -29,5 +30,5 @@ Stuck cases surface to the right owner with the next step prepared, and applican
 
 ## Verify
 ```
-make test && make lint && make e2e
+make ci
 ```

@@ -17,6 +17,7 @@ Reviewers get a grounded assistant beside each case: it explains the case, sugge
 7. Update `docs/spec.md` and `docs/STATUS.md` (row 27).
 
 ## Tests
+**Layers** (`docs/specs/testing-strategy.md`): BE, AGENT-DET (reviewer allowlist, Yardi rule), FE (assistant panel, suggestion cards), INT (T5, T6). AGENT-LIVE (new `reviewer` group) and E2E-LIVE (T6 live).
 - Yardi suggestions follow the first-word rule and only active companies; brands only for the chosen company.
 - The reviewer agent has no tool that can change a case (allowlist test).
 - Drafted notes land in the form unsent; suggestion use is audited.
@@ -29,5 +30,5 @@ Reviewers get a grounded assistant beside each case: it explains the case, sugge
 
 ## Verify
 ```
-make test && make lint && make e2e
+make ci
 ```

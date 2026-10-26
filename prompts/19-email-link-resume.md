@@ -44,11 +44,11 @@ The emailed link really verifies the email and brings the user back to the same 
 3. On load with a resume response, the chat store hydrates messages, cards and draft.
 
 ## Tests
+**Layers** (`docs/specs/testing-strategy.md`): BE, FE (verify page, verification card countdown and polling), INT (story S2). New notes, so AGENT-LIVE (intake) and an E2E-LIVE smoke run.
 - **Tokens:** single use; expired; wrong purpose; email changed after sending.
 - **Resume:** a second session on the same inquiry sees the same draft and cards, and its next turn continues the history.
 - **Throttling:** a resend inside the cooldown is refused and the card shows the wait.
 - **Frontend:** polling stops on verify, timeout and unmount; the verify page handles each error code.
-
 - **Playwright:** story S2 (spec §3.13): close the tab at the verification card, open the resume link from `/dev/inbox` in a new browser context, finish the inquiry.
 
 ## Acceptance criteria
@@ -58,5 +58,5 @@ The emailed link really verifies the email and brings the user back to the same 
 
 ## Verify
 ```
-make test && make lint
+make ci
 ```

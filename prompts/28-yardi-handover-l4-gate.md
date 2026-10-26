@@ -14,6 +14,7 @@ A final approval invites the extra contacts, tells the applicant, and hands the 
 6. Fold remaining L4 contract changes into `docs/spec.md`; add the L4 assumptions (spec §6) to `docs/assumptions.md`.
 
 ## Tests
+**Layers** (`docs/specs/testing-strategy.md`): Gate step: all six layers; AGENT-LIVE and E2E-LIVE twice each.
 - `send_lead` is idempotent under retries and concurrent effects; a repeat approval can't send twice.
 - **Playwright:** stories T1 and T7.
 
@@ -23,5 +24,5 @@ A final approval invites the extra contacts, tells the applicant, and hands the 
 
 ## Verify
 ```
-make test && make lint && make e2e && cd backend && uv run python scripts/eval_live.py && uv run python scripts/kpi_report.py --last-run
+make gate && cd backend && uv run python scripts/kpi_report.py --last-run
 ```

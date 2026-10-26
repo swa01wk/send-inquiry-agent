@@ -22,7 +22,7 @@ Each fix closes a gap between the agent and either a golden rule or the business
 | P1 | The agent can't confirm a key that wasn't on a confirm card shown before the current user message | `tests/agent/test_confirm_shown.py` |
 | P2 | Completing the required documents runs one agent turn and shows the review card without a typed message | `tests/api/test_documents_complete.py`, Playwright `@scripted` happy path |
 | P3 | No `office` unit type anywhere in seed data, FAQ, unit codes or prompts | `tests/domain/test_master_data.py` grep check |
-| P4 | `make test`, `make lint`, `make e2e` green | CI and local run |
+| P4 | `make test`, `make lint`, `make e2e` green; because the prompt changes, `scripts/eval_live.py` run twice with no lower score and an `@live` smoke run (testing strategy §4) | CI and local run; results in the PR |
 
 ## 3. Work items
 

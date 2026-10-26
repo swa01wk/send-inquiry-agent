@@ -37,18 +37,22 @@ Freeze today's behaviour before M0 restructures the backend, so every later step
 
    On mismatch, print a readable diff.
 4. `make golden` regenerates the files; regeneration needs a deliberate commit.
+5. `backend/scripts/export_fe_fixtures.py` turns each golden into a frontend mock scenario in `frontend/src/mocks/scenarios/<name>.json` (testing spec §2.2, §7). `make golden` runs it too, so a golden and its fixture always change together. Add an `@fe` Playwright test that replays each exported scenario.
 
 ## Scope
 Don't change any `app/` code.
 
 ## Also
-- Run `scripts/eval_live.py` twice and record both scores in `docs/eval-notes.md` as the M0 baseline.
+- Run `make eval-live` twice (all groups, `EVAL_REPEATS=3`) and record both scores in `docs/eval-notes.md` as the M0 baseline.
 - Update `docs/STATUS.md` (row 12).
+
+## Tests
+**Layers** (`docs/specs/testing-strategy.md`): AGENT-DET (parity goldens), BE. AGENT-LIVE: record the baseline (`make eval-live`, ×2).
 
 ## Acceptance criteria
 - `OPENAI_API_KEY= uv run pytest tests/parity -q` passes twice in a row.
 - Changing one card payload field in `api/cards.py` makes it fail with a diff naming that field (then revert).
-- `make test`, `make lint` and `make e2e` are green.
+- `make ci` is green, including the exported fixtures in `make e2e-fe`.
 
 ## Verify
 ```

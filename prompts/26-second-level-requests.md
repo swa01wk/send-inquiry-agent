@@ -19,6 +19,7 @@ When a reviewer asks for contacts or sales data, the applicant answers in one or
 6. Update `docs/spec.md` and `docs/STATUS.md` (row 26).
 
 ## Tests
+**Layers** (`docs/specs/testing-strategy.md`): BE, AGENT-DET, FE (contacts and sales-data cards), INT (T1 contacts part, T4). AGENT-LIVE (new `contacts` group) and E2E-LIVE (T1 applicant side live).
 - `tests/contacts/`: required roles enforced from the policy; "that's me" copies the primary contact and needs confirmation; invalid email or phone returns a field error; Arabic digits work.
 - Sales data: one file; replace; submit fires the event once; the reviewer gets `sales_data_received`.
 - **Playwright:** the contacts part of T1 and story T4.
@@ -30,5 +31,5 @@ When a reviewer asks for contacts or sales data, the applicant answers in one or
 
 ## Verify
 ```
-make test && make lint && make e2e
+make ci
 ```

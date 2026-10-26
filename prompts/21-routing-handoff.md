@@ -27,6 +27,7 @@ Each message reaches the right handler, and the user can always reach a person w
 5. `tests/routing/fixtures.jsonl`: at least 60 labelled messages across all intents, including Arabic and mixed-language ones.
 
 ## Tests
+**Layers** (`docs/specs/testing-strategy.md`): BE, AGENT-DET (routing rules, scripted classifier, allowlists), FE (handoff card), INT (stories S7, S8). New flow, so AGENT-LIVE (new `routing` group) and E2E-LIVE (S8 live).
 - **Routing:** accuracy of at least 95% on the fixture set with a scripted classifier. The same set is also run against the real model as a live eval scenario.
 - **Handoff:** each trigger produces exactly one card, one case and one audit event.
 - **Playwright:** stories S7 and S8 (spec §3.13).

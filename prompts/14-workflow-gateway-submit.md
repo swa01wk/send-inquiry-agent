@@ -25,6 +25,7 @@ One reference per inquiry, no matter how often or how concurrently Submit is pre
 6. New `[ui_event]` notes: `submit_pending`, `submit_failed <reason>`, `submitted reference=… (repeat)`. Teach them in the system prompt. Extend the guard so a reply never claims success on `submit_pending`.
 
 ## Tests
+**Layers** (`docs/specs/testing-strategy.md`): BE, AGENT-DET, INT (repeat Submit in the browser). New `[ui_event]` notes in the prompt, so AGENT-LIVE (intake) and an E2E-LIVE smoke run.
 - `tests/workflow/test_machine.py`: every legal transition, and a sample of illegal ones.
 - `tests/workflow/test_idempotent_submit.py`:
   - two concurrent `accept_and_submit` calls → one reference;

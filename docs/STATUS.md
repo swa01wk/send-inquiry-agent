@@ -4,6 +4,8 @@ The single place to see what's built, what's next and how the agent maps to the 
 
 **Objective.** Align the Send Inquiry Agent with the inquiry business process in requirements v2.1.7.1 §7.1 — from "Send us an inquiry" to a Yardi-ready lead — and make it genuinely agentic per the Agent Capability Maturity Framework (L3 → L4 → L5). Every external Cenomi system is simulated until Cenomi gives access.
 
+**Testing:** every step follows [`docs/specs/testing-strategy.md`](specs/testing-strategy.md); §7 below shows the state of each layer.
+
 **Status values:** ✅ Done · 🟡 In progress · ⬜ Not started · ⛔ Blocked · ➖ Waived (with reason)
 
 **Last updated:** 26 Oct 2026 · `main` at `afa0ddd` (PR #13)
@@ -26,11 +28,12 @@ Each step is one Cursor prompt in `prompts/` and normally one PR.
 | --- | --- | --- | --- | --- | --- | --- |
 | 00–11, 11b | `00`–`11b` | v1 POC, POC assumptions, UI fixes, Playwright suites | — | ✅ | #1–#13 | Live e2e: desktop 14/14; mobile test 14 fix in #13, needs a live run to confirm |
 | 11c | `11c-pre-baseline-fixes.md` | Confirm only what was shown; turn on documents complete; Office removed; landline and `written_keys` fixes | P1–P4 | ⬜ | | Must land before step 12 |
-| 12 | `12-baseline-parity.md` | Golden transcripts, `make golden`, live-eval baseline | G1 | ⬜ | | |
+| 11d | `11d-test-harness.md` | Six test layers with one command each, frontend Playwright, eval repeats and invariants, scenario catalogue, `ci.yml`, PR template | — | ⬜ | | See §7; runs after 11c, before 12 |
+| 12 | `12-baseline-parity.md` | Golden transcripts, `make golden`, frontend fixtures from goldens, live-eval baseline | G1 | ⬜ | | |
 | 13 | `13-durable-state.md` | Inquiry store (memory, Postgres), turn lease, checkpointer, bounded history, retention | G2 | ⬜ | | Register `Source`, `InquiryDraft`, `DocType` for checkpoint deserialisation |
 | 14 | `14-workflow-gateway-submit.md` | State machine (L4 rows defined), tool gateway, idempotent submit | G3, G5, G6 | ⬜ | | |
 | 15 | `15-audit-trail.md` | Redacted, append-only audit trail | G4 | ⬜ | | |
-| 16 | `16-supervisor-registry.md` | Supervisor, agent registry, `status` agent, CI test and lint workflow | G1, G7 | ⬜ | | Closes the M0 gate |
+| 16 | `16-supervisor-registry.md` | Supervisor, agent registry, `status` agent, Postgres CI matrix | G1, G7 | ⬜ | | Closes the M0 gate |
 | 17 | `17-policy-config.md` | Policy file; generated master data with regions and Arabic names | E2 | ⬜ | | |
 | 18 | `18-integration-adapters.md` | Simulated Cenomi: mocks, scenario data, faults, notification outbox, dev inbox | E4, E7 | ⬜ | | Adds `react-router-dom` |
 | 19 | `19-email-link-resume.md` | Email-link verification, cross-device resume, resend limits | E3 | ⬜ | | |
@@ -132,8 +135,8 @@ Nothing is blocked: each item has a working assumption implemented in a mock or 
 | Golden rules mention a `submit_inquiry` tool that doesn't exist | 11c | ⬜ |
 | `confirm_fields` can confirm values the user never saw | 11c | ⬜ |
 | LangGraph warns about deserialising unregistered types from checkpoints | 13 | ⬜ |
-| CI runs only `e2e.yml`; no test and lint workflow | 16 | ⬜ |
-| `scripts/` not covered by `make lint` (7 E501 lines in `generate_e2e_scripts.py`) | 16 | ⬜ |
+| CI runs only `e2e.yml`; no test and lint workflow | 11d | ⬜ |
+| `scripts/` not covered by `make lint` (7 E501 lines in `generate_e2e_scripts.py`) | 11d | ⬜ |
 | No resend cooldown for OTP or email link | 19 | ⬜ |
 | Status API returns a fixed `under_review` and hard-coded steps | 20 | ⬜ |
 | Doubt detection and capture heuristics are English-only; no Arabic-Indic digits | 21b | ⬜ |
@@ -141,3 +144,19 @@ Nothing is blocked: each item has a working assumption implemented in a mock or 
 | `app/agent/e2e_scripts.py` reads scripts from `tests/` | Only matters for a slim image | ⬜ |
 | 4 ESLint fast-refresh warnings in `frontend/src/state/chatStore.tsx` | Low priority | ⬜ |
 | Live test 14 failed on mobile in CI (WebKit) | PR #13 (read text from the DOM); confirm with a live run | 🟡 |
+
+## 7. Test layers
+
+What each layer proves and when it runs: [`docs/specs/testing-strategy.md`](specs/testing-strategy.md) §2 and §4. A step that adds a layer or a suite updates this table.
+
+| Layer | What it covers | Command | In CI | Status today | Notes |
+| --- | --- | --- | --- | --- | --- |
+| BE | ruff, `mypy --strict`; pytest for domain, services, API, workflow, audit, contracts | `make check-be`, `make test-be` | Every PR (from 11d) | 🟡 | pytest, ruff and mypy run via `make test` / `make lint`; not in CI yet; `scripts/` not linted; no coverage report |
+| FE | ESLint, `tsc`, Prettier; Vitest; Playwright against the frontend alone (`VITE_MOCK=1`) | `make check-fe`, `make test-fe`, `make e2e-fe` | Every PR (from 11d) | 🟡 | Vitest and lint exist; frontend-only Playwright doesn't |
+| INT | Playwright, real frontend + backend, scripted agent, mocks | `make e2e-int` (`make e2e`) | Every PR | ✅ | `@scripted` suites, 46/46, desktop and mobile; moves into `ci.yml` in 11d |
+| AGENT-DET | Tools, guard, actions, bundles, prompt snapshot, routing, allowlists, scenarios, parity goldens | `make test-agent` | Every PR (inside `test-be`) | 🟡 | Tests exist under `tests/agent` and `tests/scenarios`; no prompt snapshot or goldens yet (11d, 12) |
+| AGENT-LIVE | `eval_live.py` scenario groups, ×3 repeats, invariants I1–I7, score vs baseline | `make eval-live` | `workflow_dispatch`; nightly opt-in | 🟡 | Script exists (intake scenarios); no repeats, JSON output or invariant checks yet (11d); baseline in 12 |
+| E2E-LIVE | Playwright, real frontend + backend + model; personas and live stories | `make e2e-live` | `workflow_dispatch`; nightly opt-in | 🟡 | `@live` personas: desktop 14/14, mobile 13/14 before #13; invariant checks in 11d |
+
+Coverage (from 11d): `app/domain` — · `app/agent` — · `app` — (floors 95% / 85% / 85%).
+

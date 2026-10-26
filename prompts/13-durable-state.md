@@ -32,6 +32,7 @@ Make an inquiry survive restarts and multiple workers, without changing any API 
 10. Add Postgres to `docker-compose.yml` and set `STATE_BACKEND`/`DATABASE_URL` for `make dev`. Add the config variables from §10.
 
 ## Tests
+**Layers** (`docs/specs/testing-strategy.md`): BE (memory and Postgres), AGENT-DET (parity), INT.
 - Repository contract tests run against both implementations; Postgres tests are marked `@pytest.mark.postgres` and use `TEST_DATABASE_URL`.
 - `tests/durability/test_restart.py`: run two turns, rebuild the app on the same database, run a third turn on the same `session_id`. Draft, cards and history continue.
 - Lease: a second concurrent turn gets 409; an expired lease can be taken over.

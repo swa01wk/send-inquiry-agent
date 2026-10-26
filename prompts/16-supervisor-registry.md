@@ -17,9 +17,10 @@ Turn the single graph into supervisor → domain agents, so routing (L3) and pos
 4. `app/agents/registry.py`: register both agents.
 5. `app/agents/graph.py`: `START → supervisor → {intake | status} → END`. The supervisor is deterministic: `status` when `inquiry.status != draft`, else `intake`. Each agent is a subgraph (agent ⇄ tools → guard) built from its spec.
 6. Update `.cursor/rules/agent.mdc` with the new layout.
-7. CI: add `.github/workflows/ci.yml` running `make test` and `make lint` on every PR, as a matrix over `STATE_BACKEND=memory` and `STATE_BACKEND=postgres` (a `postgres:16` service container). Bring `backend/scripts/` under `make lint` and fix its existing ruff issues (including the E501 lines in `generate_e2e_scripts.py`).
+7. CI: extend the `backend` job in `.github/workflows/ci.yml` (from step 11d) into a matrix over `STATE_BACKEND=memory` and `STATE_BACKEND=postgres`, with a `postgres:16` service container.
 
 ## Tests
+**Layers** (`docs/specs/testing-strategy.md`): Gate step: all six layers; AGENT-LIVE and E2E-LIVE twice each (testing spec §2.5, §2.6).
 - The supervisor routes by inquiry status.
 - The status agent can't call `update_draft` (not in its allowlist).
 - After submit, "what's my status?" uses `get_inquiry_status`.
@@ -32,5 +33,5 @@ Turn the single graph into supervisor → domain agents, so routing (L3) and pos
 
 ## Verify
 ```
-make test && make lint && cd backend && uv run python scripts/eval_live.py
+make gate
 ```

@@ -9,6 +9,7 @@ These specs take the Send Inquiry agent from the v1 POC (solid L2, partial L3) t
 | Spec | Framework stage | Gate | Cursor steps |
 | --- | --- | --- | --- |
 | [pre-baseline-fixes.md](pre-baseline-fixes.md) | Before B0 | Confirm only what was shown; a turn when documents are complete; no Office product line | `prompts/11c` |
+| [testing-strategy.md](testing-strategy.md) | All stages | Six test layers (BE, FE, INT, AGENT-DET, AGENT-LIVE, E2E-LIVE) with one command each, CI, live pass rules and safety invariants | `prompts/11d` |
 | [m0-modular-core.md](m0-modular-core.md) | B0 + M0 | No data lost on restart; a repeat submit returns the same reference; every case has an audit trail; parity suite green | `prompts/12`–`16` |
 | [l3-reliable-intake.md](l3-reliable-intake.md) | L3 | Correct routing, validated inputs, resume after interruption, one unambiguous submission, full audit, Arabic parity, acceptance stories, measured KPIs — all against a simulated Cenomi | `prompts/17`–`22` (with `21b`) |
 | [l4-outcome-assistance.md](l4-outcome-assistance.md) | L4 | The whole §7.1.1 b–c lifecycle runs end to end; reviewers keep every decision; no re-asking; grounded case briefs | `prompts/23`–`28` |
@@ -37,5 +38,6 @@ Each spec ends with the assumptions it adds; `docs/STATUS.md` §5 lists them all
 - **Priorities.** **Must** blocks the gate; **Should** is expected for the gate but can slip with a stated reason; **Could** is optional.
 - **Decisions.** Every new dependency, table or endpoint states why it exists.
 - **Testability.** Every acceptance criterion names the test that proves it. "Demo works" is never an acceptance criterion.
+- **Testing.** Every step follows [testing-strategy.md](testing-strategy.md): `make ci` green, plus the live layers its §4 requires for the change. Each prompt's **Tests** section names its layers.
 - **Stories.** Each level ends with acceptance stories run as Playwright `@scripted` tests (L3 §3.13, L4 §3.10, L5 §3.6), so "agentic" is checked by behaviour, not by impression.
 - **Tracking.** Every implementation PR updates its row in `docs/STATUS.md`.

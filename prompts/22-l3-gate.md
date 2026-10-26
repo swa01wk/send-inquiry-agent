@@ -24,6 +24,9 @@ Make inferred values visibly grounded, prove the whole intake flow with the acce
    Record results and any waived Should items in `docs/eval-notes.md`, and the gate result in `docs/STATUS.md`.
 6. Fold any remaining L3 contract changes into `docs/spec.md` (spec §4 table) and update `docs/assumptions.md` with the L3 assumptions (spec §7) and whatever Cenomi has confirmed.
 
+## Tests
+**Layers** (`docs/specs/testing-strategy.md`): Gate step: all six layers; AGENT-LIVE and E2E-LIVE twice each.
+
 ## Acceptance criteria
 - Every exit-gate row has a passing test or a recorded result.
 - `docs/spec.md` matches the code.
@@ -31,5 +34,5 @@ Make inferred values visibly grounded, prove the whole intake flow with the acce
 
 ## Verify
 ```
-make test && make lint && make e2e && cd backend && uv run python scripts/eval_live.py && uv run python scripts/kpi_report.py --last-run
+make gate && cd backend && uv run python scripts/kpi_report.py --last-run
 ```

@@ -27,6 +27,7 @@ The deterministic checks work as well in Arabic as in English; a second inquiry 
 4. Fold the contract changes into `docs/spec.md`; update `docs/STATUS.md` (row 21b).
 
 ## Tests
+**Layers** (`docs/specs/testing-strategy.md`): BE, AGENT-DET (Arabic golden), FE (follow-on divider, status-page button), INT (stories S4–S6). AGENT-LIVE (new `arabic` group) and E2E-LIVE (S4, S5 live).
 - `tests/arabic/`: digits in CR, phone, VAT, area and rent; Arabic doubt keeps the field unconfirmed; Arabic capture triggers the guard note; Arabic mall names match.
 - `tests/follow_on/`: copied fields are `verified` and unconfirmed; verification carries over only within the window and when unchanged; documents are referenced, not duplicated; a follow-on from a draft inquiry is refused.
 - `tests/duplicates/`: own vs other contact; `warn` vs `block`; the other applicant's details never appear in the note or reply.
