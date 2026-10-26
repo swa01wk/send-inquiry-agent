@@ -152,5 +152,22 @@ The visible structure matches the process-flow text below: CR check with a skip 
 | Automatic contacts request on first-level approval | R52 | L4 §3.4; M0 §6; Day 4; step 23 |
 | CR ID (read-only), VAT ID, National ID and National Address inputs on the documents card | R32, R34, R36, R38 | Pre-baseline F5; Day 1; step 11c |
 | "Lead" wording for second review | R53 | L4 §3.8; Day 5 |
+| Guest Service as a second staff channel; roles on Azure AD invitations; funnel view | R82, R84, R88 | Channels §3.2; L4 §3.2–3.3; Days 4–5, S2 |
+
+## Other sections that touch the inquiry
+
+Reviewed alongside §7.1 ([POC lifecycle](../POC-LIFECYCLE.md) §6).
+
+| # | Requirement | Source | POC | When |
+| --- | --- | --- | --- | --- |
+| R82 | Guest Service (mall service desk) "will be able to add customer inquiries" | Roles table | Second staff role in the assisted channel | Day 5 — **Gap → fixed** |
+| R83 | Customer Relations Team: call centre, first contact, passes lead information on | Roles table | Call-centre console (as R15) | Day 5 |
+| R84 | Tenant users' details are verified by the leasing team; on approval, Azure AD accounts are created and users assigned their roles | §7.12.1, §7.12.2 | Contacts confirmed in the case; invitations carry the role | Day 4 — **Gap → fixed** (role) |
+| R85 | Super Admin: invite, re-invite, block, activate users | §7.12.1 | **Out of scope:** user management | — |
+| R86 | Tenant–staff messaging per module (proposal, service request, sales data) | §7.13 | **Out of scope:** not listed for inquiries | — |
+| R87 | Existing tenant dashboard: "Lease request: list of inquiries … and detail page"; Leasing Opportunity | §7.14 | My inquiries; Leasing Opportunities | Day 5 |
+| R88 | Super Admin dashboard: sales funnel (lease request, lead, proposal, contract), pending approvals, lease requests | §7.14 | Funnel and pending approvals in the reviewer console (Should) | S2 — **Gap → fixed** |
+| R89 | Notifications are "information" or "action required"; content and triggers in a linked document | §7.15 | Every template declares its kind; wording synthetic until Cenomi shares the document | Days 2, 4 |
+| R90 | Lead verification by "Cenomi Leasing Staff & Regional Leasing / Regional Product Line Managers"; Regional Sales Manager replaced Key Account Manager for inquiries | §6 phases; revision V1.7 | **Open question:** only RLM / RPLM act in the POC, as §7.1.1 b–c describe | — |
 
 **Out of scope, by design:** Super Admin onboarding of existing tenants (R4), profile completion after Azure AD login (R51), real Azure AD login for contacts (R65), the Proposal stage (§7.2), General Inquiries (§7.8.1.1) and document-content checks.

@@ -45,7 +45,7 @@ Why a new source instead of reusing `verified`: `verified` means a system of rec
 
 The console stands in for the inquiry-creation screen of the Tenant Admin Platform (assumption D1).
 
-**Access.** `/callcentre`, only when `CALLCENTRE_CONSOLE=true` and `INTEGRATIONS=mock`. A mock sign-in picks an executive from the reviewer directory (role `customer_care`); the frontend sends `X-Staff-Id`.
+**Access.** `/callcentre`, only when `CALLCENTRE_CONSOLE=true` and `INTEGRATIONS=mock`. A mock sign-in picks a staff member from the reviewer directory, role `customer_care` (the Customer Relations Team, i.e. the call centre) or `guest_service` (the mall service desk, which "will be able to add customer inquiries" per the requirements' roles table); the frontend sends `X-Staff-Id`. Both roles use the same assisted mode; `created_by` records which.
 
 **Starting an inquiry.** **New inquiry** creates an inquiry with `channel: "assisted"` and opens the chat in **assisted mode**:
 - The same intake agent, with an assisted prompt: it addresses the executive ("the caller", "they"), asks in the same bundles, and keeps answers short because someone is on the phone.
@@ -164,3 +164,4 @@ Status **Assumed** until Cenomi confirms.
 | D6 | "On contact creation, a notification … to provide additional tenant contacts" (§7.1.1 b) means a contacts request opens automatically when first-level approval creates the Azure AD account |
 | D7 | Reviewers may only remove prefilled contacts ("editable (Delete)"); adding or changing them is the tenant's job |
 | D8 | Leasing Opportunities is a mock list of available units (mall, product line, size range); its real source isn't specified in §7.1 |
+| D9 | Guest Service (mall service desk) raises inquiries exactly as the call centre does; the requirements' roles table says they can add customer inquiries but §7.1 doesn't describe their flow |

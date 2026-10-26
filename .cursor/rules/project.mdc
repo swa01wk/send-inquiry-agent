@@ -21,6 +21,7 @@ the same inquiry payload. Target: about 5 user turns instead of ~25 form inputs.
 - Agent persona and rules: `docs/agent-system-prompt.md`.
 - Assumptions (mocks, OTP code 1234, reference format): `docs/assumptions.md`.
 - Planned changes: `docs/specs/` (one spec per stage; each step is a prompt in `prompts/`).
+- The end-to-end process and what each step must do: `docs/POC-LIFECYCLE.md` (with `docs/specs/workflows-7-1.md` for requirement-level detail).
 - Delivery order: `docs/DELIVERY-PLAN.md` (breadth days in `prompts/breadth/`, then two sprints). During the breadth days, build only what the day prompt lists; the gates come in the sprints.
 - Testing: `docs/specs/testing-strategy.md`. Every PR keeps `make ci` green and runs the live layers its §4 requires; the PR's Testing section lists what ran per layer.
 - Progress: `docs/STATUS.md`. Every implementation PR updates its step row (and the gate table when it closes a gate) in the same PR.

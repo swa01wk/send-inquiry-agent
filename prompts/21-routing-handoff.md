@@ -24,13 +24,14 @@ Each message reaches the right handler, and the user can always reach a person w
 
    The inquiry stays resumable.
 4. Frontend: a `HandoffCard` component in `CardSlot`, styled like the other cards.
+4b. **Form mode** (spec §3.14): two model failures in a turn (or `FORM_MODE=true`) switch the session to form mode; `form_mode` card; editable draft panel; UI actions apply without an agent turn and the phase picks the next card; **Ask us to call you** opens a handoff; the next successful model call returns to chat. Add `llm` to `MOCK_FAULTS` services. Story S13.
 5. `tests/routing/fixtures.jsonl`: at least 60 labelled messages across all intents, including Arabic and mixed-language ones.
 
 ## Tests
-**Layers** (`docs/specs/testing-strategy.md`): BE, AGENT-DET (routing rules, scripted classifier, allowlists), FE (handoff card), INT (stories S7, S8). New flow, so AGENT-LIVE (new `routing` group) and E2E-LIVE (S8 live).
+**Layers** (`docs/specs/testing-strategy.md`): BE, AGENT-DET (routing rules, scripted classifier, allowlists), FE (handoff card), INT (stories S7, S8, S13). New flow, so AGENT-LIVE (new `routing` group) and E2E-LIVE (S8 live).
 - **Routing:** accuracy of at least 95% on the fixture set with a scripted classifier. The same set is also run against the real model as a live eval scenario.
 - **Handoff:** each trigger produces exactly one card, one case and one audit event.
-- **Playwright:** stories S7 and S8 (spec §3.13).
+- **Playwright:** stories S7, S8 and S13 (spec §3.13).
 
 ## Acceptance criteria
 - Gate E1 passes.

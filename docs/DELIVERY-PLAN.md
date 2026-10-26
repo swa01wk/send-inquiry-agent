@@ -1,6 +1,6 @@
 # Delivery plan
 
-**Agreed 26 Oct 2026; revised the same day after reviewing requirements §7.1 line by line ([traceability](specs/workflows-7-1.md)).** The work runs in two parts:
+**Agreed 26 Oct 2026; revised the same day after reviewing requirements §7.1 line by line ([traceability](specs/workflows-7-1.md)) and the whole lifecycle ([POC lifecycle](POC-LIFECYCLE.md)).** The work runs in two parts:
 
 1. **Part A — the 5-day plan.** Every workflow in requirements §7.1 (prospective and existing tenants, self-service and call-centre assisted, both review levels, handover to Yardi) working end to end at **demo depth**.
 2. **Part B — the full implementation plan.** Two 2-week sprints, then a closing phase, take each piece the 5 days built and finish it to its step prompt (11c–31) and its gate in `docs/specs/`. The proactive layer (L5) is built there.
@@ -44,8 +44,8 @@ Each day has one Cursor prompt in `prompts/breadth/`, pointing at the parts of t
 | **1** | Tue 27 Oct | Minimal harness (Make targets, `ci.yml`, PR template). Then the policy file and generated master data, after 11c merges | Step 11c in full, including the document numbers on the documents card | Intake as before, without Office; CR, VAT, National ID and National Address on the documents card; review card on document completion; CI green |
 | **2** | Wed 28 Oct | Simulated Cenomi (CR registry, faults, notification outbox, dev APIs), signed tokens, verify and resume endpoints, resend cooldown, submit once, submission notifications, tracking API | `react-router-dom`; `/inquiry/verify`, `/inquiry/status/:ref`, `/dev/inbox`; resume hydration; countdowns; tracking link | Inquiry → email in dev inbox → link → verified → submit → submission email → status page |
 | **3** | Thu 29 Oct | Call-centre mock and handoff action, Arabic digits and doubt phrases, follow-on backend, scripted stories S2 and S3 | Router (rules + classifier) and redirect replies, handoff card, follow-on divider, prompt updates; one live eval and one `@live` smoke | **Self-service intake at demo depth**: routing, handoff, Arabic, resume, faults, second mall |
-| **4** | Fri 30 Oct | State machine (all rows, actor checks), case data, review routing, reviewer directory, Azure AD (with `has_account`) and Yardi mocks, inline effects and templates (including the automatic contacts request on first-level approval), review API, case brief, case links, applicant UI actions | Reviewer console (queue, case page, actions), case page, case agent, new cards (case status, contacts, sales data, re-upload mode) | Reviewer requests a re-upload → applicant answers in chat → back in review; first-level approval opens a contacts request automatically; contacts collected |
-| **5** | Mon 2 Nov | Approval effects and Yardi handover; re-link actions; `waiting_on_you`; **intake channels**: `staff` source, assisted mode backend, `complete` link and Proceed, tenant directory and prefill, existing-tenant mode, tenant and call-centre APIs, contacts prefill and remove | Reviewer assistant; re-link pickers; "Waiting for you"; **`/callcentre`** (assisted chat, send link, existing-CR choice), **`/tenant`** (opportunities, My inquiries), `basic_info_review` card; story T1; demo script; one live eval and one `@live` run | **Full walkthrough of every §7.1 workflow** (A3) |
+| **4** | Fri 30 Oct | State machine (all rows, actor checks), case data, review routing, reviewer directory, Azure AD (with `has_account` and the role on each invitation) and Yardi mocks, inline effects and templates (including the automatic contacts request on first-level approval), review API, case brief, case links, applicant UI actions | Reviewer console (queue, case page, actions), case page, case agent, new cards (case status, contacts, sales data, re-upload mode) | Reviewer requests a re-upload → applicant answers in chat → back in review; first-level approval opens a contacts request automatically; contacts collected |
+| **5** | Mon 2 Nov | Approval effects and Yardi handover; re-link actions; `waiting_on_you`; **intake channels**: `staff` source, assisted mode backend, `complete` link and Proceed, tenant directory and prefill, existing-tenant mode, tenant and call-centre APIs, contacts prefill and remove; Guest Service as a second staff role; `redirected` state; **dev landing and reset** (`/api/dev/reset`) | Reviewer assistant; re-link pickers; "Waiting for you"; **`/callcentre`** (assisted chat, send link, existing-CR choice), **`/tenant`** (opportunities, My inquiries), `basic_info_review` card; **`/dev` landing page** with every persona's entry point and Reset; `make demo` with every console on; story T1; demo script; one live eval and one `@live` run | **Full walkthrough of every §7.1 workflow** (A3) |
 
 ## A3. What the 5 days cover
 
@@ -71,6 +71,7 @@ These are about reliability and proof, not missing workflows; Part B adds them:
 - **Proof:** the parity goldens, the full audit trail, contract tests, frontend-only Playwright, coverage floors, repeated live evals with safety invariants, and most acceptance stories (only S1–S3, T1 and T2 are automated in the 5 days).
 - **Robustness:** the gateway's timeouts, retries and error types; reconciled submit; the effects outbox.
 - **Should items:** the duplicate check and evidence for derived values.
+- **Form mode:** finishing the inquiry when the model is down (Sprint 1).
 - **Proactivity (L5):** all of it, in the closing phase.
 
 ## A5. Design choices that keep Part B cheap
@@ -104,12 +105,12 @@ The step prompts (`prompts/11c`–`31`) remain the full definition of every piec
 | 18 Simulated Cenomi | Day 2: scenario data, faults, outbox, dev inbox | Contract tests, mock latency, `sandbox`/`live` stubs | B1 |
 | 19 Email link and resume | Day 2: tokens, verify, resume, cooldown | "Continue later", polling on the card, cross-device test | B1 |
 | 20 Notifications and status page | Day 2, nearly in full | Retried and audited failed sends (needs 14, 15) | B1 |
-| 21 Routing and handoff | Day 3: rules, classifier, redirect, two handoff triggers | 60-message fixture set at ≥ 95%, the other handoff triggers, audit events | B1 |
+| 21 Routing and handoff | Day 3: rules, classifier, redirect, two handoff triggers | 60-message fixture set at ≥ 95%, the other handoff triggers, audit events, **form mode** (L3 §3.14) | B1 |
 | 21b Arabic, follow-on, duplicates | Day 3: Arabic digits, doubt and capture; follow-on in chat | Duplicate check, follow-on from the tracking page, Arabic golden, `arabic` eval group | B1 |
 | 21c Intake channels | Day 5: assisted mode, link and Proceed, tenant portal, prefill, contacts prefill and remove | Stories S9–S12, T10, `channels` eval group, access tests, prompt snapshots for both modes | B1 (S9–S12, so E10 can close L3); B2 (T10, C5) |
 | 22 L3 gate | — | Evidence for derived values, stories S4–S8, KPI report; **closes L3 (E1–E10)** | B1 |
 | 23 Lifecycle core | Day 4 (in memory, inline effects, automatic contacts request, `has_account`) | Effects outbox, migration, Postgres | B2 |
-| 24 Reviewer console | Day 4 basic; Day 5 re-link, channel labels, Remove contact | Audit timeline, request history, reason categories, form polish | B2 |
+| 24 Reviewer console | Day 4 basic; Day 5 re-link, channel labels, Remove contact | Audit timeline, request history, reason categories, funnel and pending approvals (Should), form polish | B2 |
 | 25 Case assistant | Day 4 case agent and re-upload; Day 5 "Waiting for you", "Lead" wording | Guard rules, expired or closed links, `case` eval group | B2 |
 | 26 Contacts and sales data | Day 4; Day 5 existing-tenant prefill | Edge cases, `contacts` eval group, story T4 | B2 |
 | 27 Reviewer assistant | Day 5 | Suggestion audit, guard, `reviewer` eval group | B2 |
@@ -145,9 +146,10 @@ followed by the step prompt itself.
 | Full routing fixture set, remaining handoff triggers | 21 | Swaroop |
 | Duplicate check, follow-on from the tracking page, Arabic golden and eval group | 21b | Both |
 | Intake channels: stories S9–S12, access tests, `channels` eval group | 21c | Both |
+| Form mode when the model is unavailable (L1 baseline), story S13 | 21 | Both |
 | Evidence, stories S4–S8, KPI report, the L3 gate run | 22 | Both |
 
-**Capacity.** About 28 days of work against 20 track-days. If it runs short, these slip first, in this order: evidence (§3.9), duplicate check (§3.12), coverage floors, the Postgres CI matrix, then the `channels` live-eval group. Each slip is recorded in `docs/STATUS.md` as waived with a reason. The intake channels themselves don't slip: they're a business workflow, not a Should item.
+**Capacity.** About 30 days of work against 20 track-days. If it runs short, these slip first, in this order: evidence (§3.9), duplicate check (§3.12), coverage floors, the Postgres CI matrix, then the `channels` live-eval group. Form mode doesn't slip: it's the framework's L1 baseline. Each slip is recorded in `docs/STATUS.md` as waived with a reason. The intake channels themselves don't slip: they're a business workflow, not a Should item.
 
 ## B2. Sprint 2 (Tue 17 – Mon 30 Nov): lifecycle and channels to gate quality
 
@@ -160,6 +162,7 @@ followed by the step prompt itself.
 | Case agent guard rules, closed or expired links, `case` eval group | 25 | Swaroop |
 | Contacts edge cases (including existing-tenant prefill and removal), `contacts` eval group, stories T4 and T10 | 26, 21c | Swaroop |
 | Reviewer assistant: suggestion audit, guard, `reviewer` eval group | 27 | Swaroop |
+| Funnel and pending-approvals view in the console (Should, §7.14) | 24 | Swaroop |
 | Yardi retries and operations flag, L4 KPIs, stories T1–T10, the L4 gate run | 28 | Both |
 
 ## B3. Closing (Tue 1 Dec – about Wed 16 Dec): proactivity and production readiness
@@ -185,6 +188,17 @@ About 12 working days.
 | L5 | Y1–Y6 | Closing, about Wed 16 Dec |
 
 ---
+
+## Inputs to ask Cenomi for
+
+These don't block anything (each has an assumption), but they'd make the POC match Cenomi's real process more closely. Full list in [POC lifecycle](POC-LIFECYCLE.md) §7.
+
+1. The §7.1 flow diagrams as source files (the embedded ones can't be read).
+2. The notification content and trigger document referenced in §7.15.
+3. The UX wireframes and UI designs referenced in the requirements.
+4. Whether anyone besides RLM / RPLM verifies leads ("Cenomi Leasing Staff", Regional Sales Manager).
+5. Whether the POC UI should be in Arabic (right-to-left).
+6. The open questions in each spec (`docs/STATUS.md` §5).
 
 ## Risks
 

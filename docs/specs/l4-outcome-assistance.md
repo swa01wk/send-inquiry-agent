@@ -107,7 +107,7 @@ yardi: YardiLink | None                      # company_id, brand_id, lead_ref, s
 | --- | --- | --- | --- |
 | Review routing | policy `review_routing` | `(product_line, region) → role`; Store → `rlm_store`, Media → `rplm_media`, Specialty → `rplm_specialty` | `policy.yaml` |
 | Reviewer directory | `ReviewerDirectory` | Reviewers with role and regions; at least one per queue, plus a region manager per role for L5 escalation | `data/mock_world/reviewers.json` |
-| Azure AD | `IdentityService.invite(contact) / status(invitation_id) / has_account(email)` | Sends an `azure_ad_invitation` message with an "Accept invitation" link to the outbox; following it marks the invitation accepted | — |
+| Azure AD | `IdentityService.invite(contact, role) / status(invitation_id) / has_account(email)`; the invitation records the tenant role it assigns (requirements §7.12.2: "on approval, these users are automatically assigned to their respective roles") | Sends an `azure_ad_invitation` message with an "Accept invitation" link to the outbox; following it marks the invitation accepted | — |
 | Yardi | `YardiService.search_companies(name) / brands_for_company(company_id) / send_lead(payload, idempotency_key)` | Company search by the first word of the company name, active companies only (§7.1.1 c); brands from that company's previous leases and proposals; `send_lead` returns a lead reference, idempotent | `data/mock_world/yardi.json`: includes the companies the CR mock returns (Bean Street Trading Co., Fawaz Alhokair Trading Co.) and near-matches, each with brands |
 
 All go through the gateway and honour `MOCK_FAULTS` (L3 §3.1).
@@ -122,6 +122,7 @@ The console stands in for the Tenant Admin Platform so the lifecycle can be run 
 - **Queue:** cases in the reviewer's queues, with stage, what it's waiting on (reviewer or applicant), age and a possible-duplicate flag.
 - **Case:** the case brief (§3.6), fields with source badges and evidence, documents (open the file; no content processing), the request history, the audit timeline, and an actions panel showing only the actions legal in the current status.
 - **Assistant panel:** the reviewer assistant (§3.6) beside the case.
+- **Funnel (Should):** counts for the reviewer's queues and overall — lease requests (submitted, in first review), leads (second review), approved, sent to Yardi, rejected — and pending approvals per queue, for a chosen period. It mirrors the Super Admin dashboard's "Sales Funnel" and "Pending Approvals" widgets (§7.14), computed from case states.
 
 **Actions.** Each maps 1:1 to a state-machine event (M0 §6): request re-upload (pick documents, remarks), reject (remarks, reason category), approve first level, request contacts, request sales data, withdraw a request, re-link company or brand (with suggestions), approve, reject.
 

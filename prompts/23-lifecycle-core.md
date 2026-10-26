@@ -14,7 +14,7 @@ A submitted inquiry moves through the whole §7.1.1 b–c lifecycle under the st
 4. Effects (spec §3.4): a `case_effects` outbox keyed by `(inquiry_id, event_seq, effect)`; a worker in the app lifespan runs pending effects through the gateway with retries; failures are audited and never roll back the transition. `submitted` triggers `routed`.
 5. Mocks (spec §3.2), each behind the gateway and honouring `MOCK_FAULTS`:
    - `ReviewerDirectory` from `data/mock_world/reviewers.json` (one reviewer per queue, plus a region manager per role);
-   - `IdentityService` (Azure AD): `invite`, `status`, `has_account` (no invite for anyone who already has an account); the invitation message carries an accept link (`GET /api/dev/identity/accept/{invitation_id}`, dev tools only);
+   - `IdentityService` (Azure AD): `invite(contact, role)` (records the tenant role assigned), `status`, `has_account` (no invite for anyone who already has an account); the invitation message carries an accept link (`GET /api/dev/identity/accept/{invitation_id}`, dev tools only);
    - `YardiService`: `search_companies`, `brands_for_company`, `send_lead`, from `data/mock_world/yardi.json`.
 6. Templates for every row of spec §3.4, each with its `kind`. `approved_first` also opens a system contacts request (spec §3.4; requirements §7.1.1 b, "on contact creation").
 7. `domain/payload.py`: `LeadPayload` for Yardi.

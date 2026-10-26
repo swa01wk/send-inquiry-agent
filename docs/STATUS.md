@@ -4,6 +4,8 @@ The single place to see what's built, what's next and how the agent maps to the 
 
 **Objective.** Align the Send Inquiry Agent with the inquiry business process in requirements v2.1.7.1 §7.1 — from "Send us an inquiry" to a Yardi-ready lead — and make it genuinely agentic per the Agent Capability Maturity Framework (L3 → L4 → L5). Every external Cenomi system is simulated until Cenomi gives access.
 
+**Lifecycle:** the whole process with diagrams, verified against the agent, the framework (L1–L5) and the specs: [`docs/POC-LIFECYCLE.md`](POC-LIFECYCLE.md).
+
 **Testing:** every step follows [`docs/specs/testing-strategy.md`](specs/testing-strategy.md); §7 below shows the state of each layer.
 
 **Status values:** ✅ Done · 🟡 In progress, or built at demo depth during the breadth days · ⬜ Not started · ⛔ Blocked · ➖ Waived (with reason)
@@ -54,7 +56,7 @@ Each step is one Cursor prompt in `prompts/` and normally one PR.
 | 18 | `18-integration-adapters.md` | Simulated Cenomi: mocks, scenario data, faults, notification outbox, dev inbox | E4, E7 | ⬜ | | Adds `react-router-dom` |
 | 19 | `19-email-link-resume.md` | Email-link verification, cross-device resume, resend limits | E3 | ⬜ | | |
 | 20 | `20-status-page-notifications.md` | Submission email and SMS, tokenised status page | E4, E5 | ⬜ | | |
-| 21 | `21-routing-handoff.md` | Intent router, redirect agent, human handoff | E1 | ⬜ | | |
+| 21 | `21-routing-handoff.md` | Intent router, redirect agent, human handoff, form mode when the model is down | E1 | ⬜ | | |
 | 21b | `21b-arabic-follow-on-duplicates.md` | Arabic safety nets; follow-on inquiries; duplicate check | E8 | ⬜ | | |
 | 21c | `21c-intake-channels.md` | Call-centre assisted intake (§7.1.1 a2, §7.1.2 a2); existing tenants via Leasing Opportunities (§7.1.2 a1); public-page sign-in path (§7.1); `staff` source; contacts prefill and remove | E10, C1–C6 | ⬜ | | Added after the §7.1 review |
 | 22 | `22-l3-gate.md` | Evidence for derived values, stories S1–S8, KPI report | E1–E9 | ⬜ | | Closes the L3 gate |
@@ -95,6 +97,10 @@ Summary by workflow. Line-by-line coverage of every statement in §7.1, §7.1.1 
 
 | Level | Capability | Where | Status |
 | --- | --- | --- | --- |
+| L1 | Task can be completed through a reliable digital form (incl. when the model is down) | Cards and review card (v1); form mode L3 §3.14 (21) | 🟡 |
+| L1 | Schema, accessibility, authorisation, persistence, duplicate-submission controls | Validators (v1); axe (11d); mock identities (21c, 24); Postgres (13); idempotent submit (14) | 🟡 |
+| L2 | All form paths conversational with no field loss | v1; parity goldens (12) | 🟡 |
+| L2 | Clear handoff to the original transaction | 21; call-centre continuation (21c) | ⬜ |
 | L3 | 1 Intent detection and routing | 16 (supervisor), 21 (router) | ⬜ |
 | L3 | 2 Multi-field extraction | v1; Arabic in 21b; evidence in 22 | 🟡 |
 | L3 | 3 Entity resolution | v1 mall and category matching; Arabic names in 17 | 🟡 |
@@ -151,6 +157,8 @@ Nothing is blocked: each item has a working assumption implemented in a mock or 
 | `confirm_fields` can confirm values the user never saw | 11c | ⬜ |
 | Documents card has no inputs for VAT ID, National ID, National Address; CR ID not shown | 11c | ⬜ |
 | §7.1 flow diagrams are embedded at 96 ppi and can't be read; ask Cenomi for the source files | — | ⬜ |
+| No way to finish the inquiry when the model is down (L1 baseline) | 21 (form mode) | ⬜ |
+| §7.15 notification content and the UX/UI design links aren't available; templates and pages are synthetic | Cenomi input | ⬜ |
 | LangGraph warns about deserialising unregistered types from checkpoints | 13 | ⬜ |
 | CI runs only `e2e.yml`; no test and lint workflow | 11d | ⬜ |
 | `scripts/` not covered by `make lint` (7 E501 lines in `generate_e2e_scripts.py`) | 11d | ⬜ |

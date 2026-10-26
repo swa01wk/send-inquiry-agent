@@ -74,6 +74,7 @@ class InquiryStatus(StrEnum):          # workflow state, see §6
     SUBMITTING = "submitting"
     SUBMITTED = "submitted"
     ABANDONED = "abandoned"
+    REDIRECTED = "redirected"           # existing CR sent to sign in (intake channels §3.2, §3.6)
     # Defined now, reachable only from L4:
     FIRST_REVIEW = "first_review"
     REUPLOAD_REQUESTED = "reupload_requested"
@@ -182,6 +183,7 @@ It raises `IllegalTransition` for anything not in the table below, and every cal
 | `submitting` | `submit_failed(reason)` | `draft` | system | failure is definite (gateway `rejected`) |
 | `submitting` | `submit_unknown` | `submitting` | system | timeout or unavailable; reconcile before any retry (§7) |
 | `draft` | `expired` | `abandoned` | system (purge job) | `now > expires_at` |
+| `draft` | `redirected_to_sign_in` | `redirected` | staff ("ask them to sign in") or system (public page, `existing_tenant_policy: sign_in`) | the CR belongs to an existing tenant |
 | `submitted` | `routed(queue)` | `first_review` | system (L4) | the routing table resolves a queue for the unit type and the mall's region |
 | `first_review` | `reupload_requested(doc_types, remarks)` | `reupload_requested` | reviewer (L4) | `doc_types` non-empty and known; remarks non-empty |
 | `reupload_requested` | `documents_resubmitted` | `first_review` | user (L4) | every requested document replaced after the request |
@@ -201,7 +203,7 @@ Every reviewer event also checks that the actor is a reviewer assigned to the ca
 
 Second-level requests (contacts, sales data) are open requests on the case, not separate statuses: the case stays in `second_review` while the tenant answers, and the status page shows "Waiting for you" from the open requests. Re-upload stays a status because it pauses first-level review until the tenant acts (§7.1.1 b).
 
-M0 implements and tests the first five rows. The L4 rows are in the table and the enum so that reviewer tooling can be built against a fixed contract, but nothing in M0 triggers them. Their data (queue, requests, contacts, remarks) arrives in [L4](l4-outcome-assistance.md).
+M0 implements and tests the first six rows. The L4 rows are in the table and the enum so that reviewer tooling can be built against a fixed contract, but nothing in M0 triggers them. Their data (queue, requests, contacts, remarks) arrives in [L4](l4-outcome-assistance.md).
 
 ## 7. Tool gateway and idempotent submit (Must)
 
