@@ -324,7 +324,7 @@ The framework assigns maturity per workflow and capability. Here it is for the i
 
 | # | Finding | Source | Decision | Where | When |
 | --- | --- | --- | --- | --- | --- |
-| G1 | No way to finish the inquiry if the model is down (L1 baseline) | Framework §3, §10 | Form mode | L3 §3.14; step 21 | S1 |
+| G1 | No way to finish the inquiry if the model is down (L1 baseline) | Framework §3, §10 | Form mode | L3 §3.14; step 21 | Day 3; hardened S1 |
 | G2 | Guest Service desk can also add inquiries | Roles table | Second staff role in the assisted channel | Channels §3.2 | Day 5 |
 | G3 | "Ask them to sign in" had no workflow state | M0 §6 vs Channels §3.2 | `redirected` status | M0 §5.1, §6; step 14 | Day 5 (in memory); S1 |
 | G4 | Approved contacts are assigned their tenant roles | §7.12.2 | `IdentityService.invite(contact, role)` | L4 §3.2; step 23 | Day 4 |

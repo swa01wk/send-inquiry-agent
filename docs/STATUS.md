@@ -61,7 +61,7 @@ Each step is one Cursor prompt in `prompts/` and normally one PR.
 | 21 | `21-routing-handoff.md` | Intent router, redirect agent, human handoff, form mode when the model is down | E1 | ⬜ | | |
 | 21b | `21b-arabic-follow-on-duplicates.md` | Arabic safety nets; follow-on inquiries; duplicate check | E8 | ⬜ | | |
 | 21c | `21c-intake-channels.md` | Call-centre assisted intake (§7.1.1 a2, §7.1.2 a2); existing tenants via Leasing Opportunities (§7.1.2 a1); public-page sign-in path (§7.1); `staff` source; contacts prefill and remove | E10, C1–C6 | ⬜ | | Added after the §7.1 review |
-| 22 | `22-l3-gate.md` | Evidence for derived values, stories S1–S8, KPI report | E1–E9 | ⬜ | | Closes the L3 gate |
+| 22 | `22-l3-gate.md` | Stories S1–S13, KPI report, the L3 gate run (evidence built on Day 3) | E1–E10 | ⬜ | | Closes the L3 gate |
 | 23 | `23-lifecycle-core.md` | Case data, live L4 transitions, review routing, effects, Azure AD and Yardi mocks | X1, X2, X5, X7 | ⬜ | | |
 | 24 | `24-reviewer-console.md` | Review API, mock sign-in, queue and case pages, case brief | X4, X6 | ⬜ | | |
 | 25 | `25-case-assistant.md` | Case links, `case` agent, re-upload loop, outcome framing, full status page | X1, X3 | ⬜ | | |
@@ -115,7 +115,7 @@ Summary by workflow. Line-by-line coverage of every statement in §7.1, §7.1.1 
 | L3 | 10 Audit and recovery | 15, 18, 21 | ⬜ |
 | L4 | 1 Outcome framing | 25 | ⬜ |
 | L4 | 2 Structured context assembly | 24 (case brief) | ⬜ |
-| L4 | 3 Grounded derivation and prefill | 22 (evidence), 26 (reuse primary contact), 21c (tenant-record prefill) | ⬜ |
+| L4 | 3 Grounded derivation and prefill | Day 3 evidence (22), 26 (reuse primary contact), 21c (tenant-record prefill) | ⬜ |
 | L4 | 4 Adaptive dialogue | 25, 26 | ⬜ |
 | L4 | 5 Bounded read-and-reason tools | 25, 27 | ⬜ |
 | L4 | 6 Cross-step continuity | 23, 25; 21c (executive → applicant handover) | ⬜ |
@@ -159,7 +159,7 @@ Nothing is blocked: each item has a working assumption implemented in a mock or 
 | `confirm_fields` can confirm values the user never saw | 11c | ⬜ |
 | Documents card has no inputs for VAT ID, National ID, National Address; CR ID not shown | 11c | ⬜ |
 | §7.1 flow diagrams are embedded at 96 ppi and can't be read; ask Cenomi for the source files | — | ⬜ |
-| No way to finish the inquiry when the model is down (L1 baseline) | 21 (form mode) | ⬜ |
+| No way to finish the inquiry when the model is down (L1 baseline) | Day 3 (form mode); hardened in 21 | ⬜ |
 | §7.15 notification content and the UX/UI design links aren't available; templates and pages are synthetic | Cenomi input | ⬜ |
 | LangGraph warns about deserialising unregistered types from checkpoints | 13 | ⬜ |
 | CI runs only `e2e.yml`; no test and lint workflow | 11d | ⬜ |

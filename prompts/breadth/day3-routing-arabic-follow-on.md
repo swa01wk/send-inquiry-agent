@@ -1,6 +1,6 @@
-# Breadth Day 3 (Thu 29 Oct) — Routing, handoff, Arabic, follow-on (L3 at demo depth)
+# Breadth Day 3 (Thu 29 Oct) — Routing, handoff, Arabic, follow-on, form mode, evidence (every L3 capability)
 
-Read first: @docs/DELIVERY-PLAN.md (§A2, §A5) @docs/specs/l3-reliable-intake.md (sections 3.5, 3.6, 3.10, 3.11, 3.13) @prompts/21-routing-handoff.md @prompts/21b-arabic-follow-on-duplicates.md @backend/app/agent/system_prompt.md
+Read first: @docs/DELIVERY-PLAN.md (§A2, §A4, §A5) @docs/specs/l3-reliable-intake.md (sections 3.5, 3.6, 3.10, 3.11, 3.13) @prompts/21-routing-handoff.md @prompts/21b-arabic-follow-on-duplicates.md @backend/app/agent/system_prompt.md
 
 ## Goal
 Messages reach the right handler, a person is always reachable, Arabic users get the same safety nets, and a second mall takes two messages.
@@ -28,7 +28,7 @@ Messages reach the right handler, a person is always reachable, Arabic users get
 ## Tests
 - Routing fixtures with a scripted classifier (≥ 90% for breadth).
 - Arabic unit tests from the backend PR; follow-on scripted scenario.
-- Stories S1–S3 green.
+- Stories S1–S3 and S13 (form mode) green.
 - Live: `scripts/eval_live.py` once (intake + a few routing and Arabic turns); one `@live` smoke run.
 
 ## End-of-day demo check (every L3 capability at demo depth)
