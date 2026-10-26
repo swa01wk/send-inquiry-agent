@@ -13,7 +13,7 @@ The emailed link really verifies the email and brings the user back to the same 
    - Purposes: `verify_email`, `resume`, `track`.
    - Claims: inquiry id, email (for `verify_email`), nonce, expiry.
    - Nonces are single-use (stored on the inquiry).
-2. `send_verification` emails the `/inquiry/verify?t=…` link built from `PUBLIC_BASE_URL`. The mock keeps exposing a demo token behind `EMAIL_LINK_DEMO`.
+2. `send_verification` emails the `/inquiry/verify?t=…` link built from `PUBLIC_BASE_URL`, through `NotificationService` (template `email_verification_link`), so it lands in the dev inbox (step 18). The mock keeps exposing a demo token behind `EMAIL_LINK_DEMO`.
 3. `POST /api/verifications/email {token}`:
    - validates purpose, expiry, nonce, and that the email still matches the draft;
    - sets `email_verified`;
@@ -44,16 +44,19 @@ The emailed link really verifies the email and brings the user back to the same 
 3. On load with a resume response, the chat store hydrates messages, cards and draft.
 
 ## Tests
+**Layers** (`docs/specs/testing-strategy.md`): BE, FE (verify page, verification card countdown and polling), INT (story S2). New notes, so AGENT-LIVE (intake) and an E2E-LIVE smoke run.
 - **Tokens:** single use; expired; wrong purpose; email changed after sending.
 - **Resume:** a second session on the same inquiry sees the same draft and cards, and its next turn continues the history.
 - **Throttling:** a resend inside the cooldown is refused and the card shows the wait.
 - **Frontend:** polling stops on verify, timeout and unmount; the verify page handles each error code.
+- **Playwright:** story S2 (spec §3.13): close the tab at the verification card, open the resume link from `/dev/inbox` in a new browser context, finish the inquiry.
 
 ## Acceptance criteria
 - Gate E3 passes, including a manual check on a second device.
 - The `EMAIL_LINK_DEMO` button still works for demos.
+- `docs/spec.md` and `docs/STATUS.md` (row 19) updated.
 
 ## Verify
 ```
-make test && make lint
+make ci
 ```

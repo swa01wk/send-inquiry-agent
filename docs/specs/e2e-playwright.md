@@ -1,5 +1,7 @@
 # Spec: End-to-end tests with Playwright (frontend + backend + agent)
 
+> **Done; now part of the wider [testing strategy](testing-strategy.md).** The `@scripted` suite is the **INT** layer and the `@live` suite is the **E2E-LIVE** layer. A frontend-only Playwright layer (**FE**) is added in step 11d.
+
 Goal: prove that **non-technical users** (shop owners, brand managers, people typing on a phone, people who don't know what a CR number is) can finish an inquiry easily, and that the bugs in `docs/specs/ui-bugs.md` stay fixed.
 
 Two suites run the **real browser, frontend and backend**:

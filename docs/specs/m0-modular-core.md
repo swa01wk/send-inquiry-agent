@@ -1,6 +1,8 @@
 # M0 — Modular core (with B0 behaviour parity)
 
-**Status:** proposed · **Builds on:** PR #1 (POC assumptions) · **Cursor steps:** `prompts/12`–`16` · **Next:** [L3 reliable intake](l3-reliable-intake.md)
+**Status:** proposed · **Builds on:** PR #1 (POC assumptions) and [pre-baseline fixes](pre-baseline-fixes.md) · **Cursor steps:** `prompts/12`–`16` · **Next:** [L3 reliable intake](l3-reliable-intake.md)
+
+**Amended 26 Oct 2026:** the baseline is recorded after the pre-baseline fixes (§4); the inquiry model carries the confirm-card turn numbers (§5.1); and the post-submit rows of the state machine now follow requirements §7.1.1 b–c (§6).
 
 ## 1. Why
 
@@ -15,7 +17,7 @@ M0 changes how the agent is built, not what the user sees. Users should notice n
 
 | # | Criterion | Proved by |
 | --- | --- | --- |
-| G1 | Behaviour parity: every scenario in `tests/scenarios` and the golden transcripts pass unchanged; live eval scores no lower than the last baseline run | `tests/parity/`, `scripts/eval_live.py` |
+| G1 | Behaviour parity: every scenario in `tests/scenarios` and the golden transcripts pass unchanged, the Playwright `@scripted` suite is green, and live eval scores no lower than the last baseline run | `tests/parity/`, `make e2e`, `scripts/eval_live.py` |
 | G2 | Restarting the backend mid-intake loses nothing: the same `session_id` continues with draft, cards and history | `tests/durability/test_restart.py` (Postgres) |
 | G3 | Two concurrent `accept_and_submit` calls produce exactly one reference; a repeat returns the same reference and success card | `tests/workflow/test_idempotent_submit.py` |
 | G4 | Every case has an ordered audit trail covering each user turn, tool call, card action, guard verdict, state transition and submit outcome, and no OTP code, link token or file content appears in it | `tests/audit/test_trail.py` |
@@ -48,7 +50,7 @@ M0 changes how the agent is built, not what the user sees. Users should notice n
 
 Freeze today's behaviour before restructuring it.
 
-1. Record **golden SSE transcripts** from `main` after PR #1 with `ScriptedChatModel`:
+1. Record **golden SSE transcripts** from `main` after the pre-baseline fixes (`prompts/11c`) with `ScriptedChatModel`, so they include "confirm only what was shown" and the `documents_updated` turn:
    - CR happy path.
    - Skip CR.
    - Existing CR.
@@ -86,6 +88,8 @@ class Inquiry(BaseModel):
     draft: InquiryDraft                   # unchanged domain model
     cards_shown: list[str]
     confirm_card_keys: dict[str, list[str]]
+    confirm_card_turns: dict[str, int]     # pre-baseline fix F1
+    turn_index: int = 0                    # pre-baseline fix F1
     card_counter: int
     submit_key: str | None = None          # idempotency key, see §7
     reference: str | None = None           # mirrors draft.reference
@@ -96,7 +100,9 @@ class Inquiry(BaseModel):
     expires_at: datetime                   # draft retention, see §5.4
 ```
 
-`cards_shown`, `confirm_card_keys` and `card_counter` move from `app/sessions.py:Session` onto the inquiry, so a restart keeps card state.
+`cards_shown`, `confirm_card_keys`, `confirm_card_turns`, `turn_index` and `card_counter` move from `app/sessions.py:Session` onto the inquiry, so a restart keeps card state.
+
+The post-submit case data (review queue, reviewer requests, additional contacts, onboarding, Yardi link) is added to `Inquiry` by [L4](l4-outcome-assistance.md) §3.1. M0 fixes only the statuses and events (§6), so tooling can be built against them.
 
 ### 5.2 Repository (`app/store/`)
 
@@ -176,13 +182,25 @@ It raises `IllegalTransition` for anything not in the table below, and every cal
 | `submitting` | `submit_failed(reason)` | `draft` | system | failure is definite (gateway `rejected`) |
 | `submitting` | `submit_unknown` | `submitting` | system | timeout or unavailable; reconcile before any retry (§7) |
 | `draft` | `expired` | `abandoned` | system (purge job) | `now > expires_at` |
-| `submitted` | `review_started` | `first_review` | reviewer (L4) | — |
-| `first_review` | `reupload_requested` / `rejected` / `approved_first` | `reupload_requested` / `rejected` / `second_review` | reviewer (L4) | — |
-| `reupload_requested` | `documents_resubmitted` | `first_review` | user (L4) | required docs present |
-| `second_review` | `approved` / `rejected` | `approved` / `rejected` | reviewer (L4) | — |
-| `approved` | `sent_to_yardi` | `sent_to_yardi` | system (L4) | — |
+| `submitted` | `routed(queue)` | `first_review` | system (L4) | the routing table resolves a queue for the unit type and the mall's region |
+| `first_review` | `reupload_requested(doc_types, remarks)` | `reupload_requested` | reviewer (L4) | `doc_types` non-empty and known; remarks non-empty |
+| `reupload_requested` | `documents_resubmitted` | `first_review` | user (L4) | every requested document replaced after the request |
+| `first_review` | `rejected(remarks)` | `rejected` | reviewer (L4) | remarks non-empty |
+| `first_review` | `approved_first` | `second_review` | reviewer (L4) | — ; side effect: primary contact invited (Azure AD, mocked) |
+| `second_review` | `contacts_requested` / `sales_data_requested` | `second_review` | reviewer (L4) | no open request of that kind |
+| `second_review` | `contacts_provided` / `sales_data_provided` | `second_review` | user (L4) | that request is open; contacts valid (Authorized Signatory and Billing Contact present) or file present |
+| `second_review` | `request_withdrawn(kind)` | `second_review` | reviewer (L4) | that request is open |
+| `second_review` | `company_relinked(yardi_company_id)` / `brand_relinked(yardi_brand_id)` | `second_review` | reviewer (L4) | the id exists; a brand belongs to the linked company |
+| `second_review` | `rejected(remarks)` | `rejected` | reviewer (L4) | remarks non-empty |
+| `second_review` | `approved` | `approved` | reviewer (L4) | no open requests; required contacts present when the policy requires them |
+| `approved` | `sent_to_yardi(yardi_ref)` | `sent_to_yardi` | system (L4) | Yardi acknowledged |
+| `approved` | `yardi_failed(kind)` | `approved` | system (L4) | audited; retried through the gateway |
 
-M0 implements and tests the first five rows. The L4 rows are in the table and the enum so that reviewer tooling can be built against a fixed contract, but nothing in M0 triggers them.
+Every reviewer event also checks that the actor is a reviewer assigned to the case's queue (role and region). The machine enforces this, not the console.
+
+Second-level requests (contacts, sales data) are open requests on the case, not separate statuses: the case stays in `second_review` while the tenant answers, and the status page shows "Waiting for you" from the open requests. Re-upload stays a status because it pauses first-level review until the tenant acts (§7.1.1 b).
+
+M0 implements and tests the first five rows. The L4 rows are in the table and the enum so that reviewer tooling can be built against a fixed contract, but nothing in M0 triggers them. Their data (queue, requests, contacts, remarks) arrives in [L4](l4-outcome-assistance.md).
 
 ## 7. Tool gateway and idempotent submit (Must)
 
@@ -261,7 +279,7 @@ class AgentSpec:
 
 - **`app/agents/registry.py`** registers two agents:
   - **`intake`** is today's agent moved without behaviour change: same tools, prompt, guard and bundle hints.
-  - **`status`** handles a submitted inquiry. Its tools are `get_inquiry_status` and `search_faq`, it has a short prompt, and its guard keeps only the false-claim checks.
+  - **`status`** handles a submitted inquiry. Its tools are `get_inquiry_status` and `search_faq`, it has a short prompt, and its guard keeps only the false-claim checks. L4 replaces it with the `case` agent ([L4](l4-outcome-assistance.md) §3.5).
 - **`build_graph`** becomes `START → supervisor → {intake | status} → END`. Each branch is a compiled subgraph (agent ⇄ tools → guard), built from its `AgentSpec`.
 - **The supervisor is deterministic in M0.** It routes to `status` when `inquiry.status != draft`, otherwise to `intake`. LLM intent routing arrives in L3 (§3.6 there), once there are intents to route between.
 

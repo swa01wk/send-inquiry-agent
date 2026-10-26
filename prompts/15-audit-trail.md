@@ -19,6 +19,7 @@ Every case has an ordered, redacted record of what happened and why, ready for r
 5. `scripts/audit_dump.py <inquiry_id>`: print the trail as a readable table.
 
 ## Tests
+**Layers** (`docs/specs/testing-strategy.md`): BE, AGENT-DET.
 - `tests/audit/test_trail.py`: the CR happy path produces the expected ordered event types.
 - Scan every event payload for the OTP code, the link token, the raw email and phone, and file names; none may appear.
 - A guard retry records `guard_verdict` with `retried: true`.
@@ -26,6 +27,7 @@ Every case has an ordered, redacted record of what happened and why, ready for r
 ## Acceptance criteria
 - Gate G4 passes.
 - Parity suite green.
+- `docs/STATUS.md` updated (row 15).
 
 ## Verify
 ```
