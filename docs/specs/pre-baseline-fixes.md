@@ -1,6 +1,6 @@
 # Pre-baseline fixes
 
-**Status:** proposed · **Before:** [M0](m0-modular-core.md) step 12 (baseline parity) · **Cursor step:** `prompts/11c-pre-baseline-fixes.md`
+**Status:** locked (PRD v1.0, `docs/PRD.md`) · **Before:** [M0](m0-modular-core.md) step 12 (baseline parity) · **Cursor step:** `prompts/11c-pre-baseline-fixes.md`
 
 ## 1. Why
 

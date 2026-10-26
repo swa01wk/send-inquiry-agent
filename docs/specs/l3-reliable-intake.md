@@ -1,6 +1,6 @@
 # L3 — Reliable intake
 
-**Status:** proposed · **Depends on:** [M0 modular core](m0-modular-core.md) · **Cursor steps:** `prompts/17`–`22` (with `21b`)
+**Status:** locked (PRD v1.0, `docs/PRD.md`) · **Depends on:** [M0 modular core](m0-modular-core.md) · **Cursor steps:** `prompts/17`–`22` (with `21b`, `21c`)
 
 **Amended 26 Oct 2026 (requirements review):** the other intake channels in §7.1 — call-centre assisted and existing tenant — are specified in [intake-channels.md](intake-channels.md) and join this gate as E10. Line-by-line coverage of §7.1 is in [workflows-7-1.md](workflows-7-1.md).
 

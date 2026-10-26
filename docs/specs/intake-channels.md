@@ -1,6 +1,6 @@
 # Intake channels: call-centre assisted intake and existing tenants
 
-**Status:** proposed · **Requirements:** v2.1.7.1 §7.1, §7.1.1 a2, §7.1.2 · **Depends on:** [L3](l3-reliable-intake.md) §3.2 (signed links and resume), [L4](l4-outcome-assistance.md) §3.1 (case data) · **Cursor step:** `prompts/21c-intake-channels.md` · **Traceability:** [workflows-7-1.md](workflows-7-1.md)
+**Status:** locked (PRD v1.0, `docs/PRD.md`) · **Requirements:** v2.1.7.1 §7.1, §7.1.1 a2, §7.1.2 · **Depends on:** [L3](l3-reliable-intake.md) §3.2 (signed links and resume), [L4](l4-outcome-assistance.md) §3.1 (case data) · **Cursor step:** `prompts/21c-intake-channels.md` · **Traceability:** [workflows-7-1.md](workflows-7-1.md)
 
 ## 1. Why
 

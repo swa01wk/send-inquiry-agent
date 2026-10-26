@@ -4,6 +4,8 @@ These specs take the Send Inquiry agent from the v1 POC (solid L2, partial L3) t
 
 `docs/spec.md` stays the source of truth for the contracts that exist **today**. Each spec here describes a change. When a step lands, fold its contract changes into `docs/spec.md` in the same PR, as `.cursor/rules/project.mdc` requires.
 
+**Scope is locked in [`docs/PRD.md`](../PRD.md) (v1.0, tag `poc-prd-v1.0`).** Changes follow its change-control section.
+
 **The whole lifecycle, with diagrams and its verification against the agent, L1–L5 and these specs, is in [`docs/POC-LIFECYCLE.md`](../POC-LIFECYCLE.md).**
 
 **Progress is tracked in [`docs/STATUS.md`](../STATUS.md):** steps, gates, business-flow coverage, agentic-capability coverage and known issues.

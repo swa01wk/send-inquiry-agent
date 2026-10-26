@@ -1,6 +1,6 @@
 # M0 — Modular core (with B0 behaviour parity)
 
-**Status:** proposed · **Builds on:** PR #1 (POC assumptions) and [pre-baseline fixes](pre-baseline-fixes.md) · **Cursor steps:** `prompts/12`–`16` · **Next:** [L3 reliable intake](l3-reliable-intake.md)
+**Status:** locked (PRD v1.0, `docs/PRD.md`) · **Builds on:** PR #1 (POC assumptions) and [pre-baseline fixes](pre-baseline-fixes.md) · **Cursor steps:** `prompts/12`–`16` · **Next:** [L3 reliable intake](l3-reliable-intake.md)
 
 **Amended 26 Oct 2026:** the baseline is recorded after the pre-baseline fixes (§4); the inquiry model carries the confirm-card turn numbers (§5.1); and the post-submit rows of the state machine now follow requirements §7.1.1 b–c (§6).
 

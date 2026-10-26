@@ -5,7 +5,7 @@
 1. **Part A — the 5-day plan.** Every workflow in requirements §7.1 (prospective and existing tenants, self-service and call-centre assisted, both review levels, handover to Yardi) working end to end at **demo depth**.
 2. **Part B — the full implementation plan.** Two 2-week sprints, then a closing phase, take each piece the 5 days built and finish it to its step prompt (11c–31) and its gate in `docs/specs/`. The proactive layer (L5) is built there.
 
-Progress is tracked in [`docs/STATUS.md`](STATUS.md) §0.
+Scope is locked in [`docs/PRD.md`](PRD.md) v1.0. Progress is tracked in [`docs/STATUS.md`](STATUS.md) §0.
 
 | Phase | Dates | Goal | Ends with |
 | --- | --- | --- | --- |
