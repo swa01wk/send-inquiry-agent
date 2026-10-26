@@ -16,18 +16,18 @@ The single place to see what's built, what's next and how the agent maps to the 
 
 ## 0. Delivery plan
 
-[`docs/DELIVERY-PLAN.md`](DELIVERY-PLAN.md): Part A is the 5-day plan (every level at demo depth; day prompts in `prompts/breadth/`). Part B is the full implementation plan: two 2-week sprints and a short closing phase finish each step to its gate. §B0 there maps every step to what the 5 days built and what's left. In §2 below, 🟡 on a step means it was built at demo depth.
+[`docs/DELIVERY-PLAN.md`](DELIVERY-PLAN.md) (§A4 lists every L3–L5 capability in the 5 days and its depth): Part A is the 5-day plan (every level at demo depth; day prompts in `prompts/breadth/`). Part B is the full implementation plan: two 2-week sprints and a short closing phase finish each step to its gate. §B0 there maps every step to what the 5 days built and what's left. In §2 below, 🟡 on a step means it was built at demo depth.
 
 | Phase | Dates | Goal | Backend PR (Claude) | Frontend and agent PR (Swaroop) | Status | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | Day 1 | Tue 27 Oct | Foundation: 11c, harness, policy and master data | | | ⬜ | |
-| Day 2 | Wed 28 Oct | Simulated Cenomi, verification by link, resume, submit once, tracking | | | ⬜ | |
-| Day 3 | Thu 29 Oct | Routing, handoff, Arabic, follow-on — L3 at demo depth | | | ⬜ | |
-| Day 4 | Fri 30 Oct | Review lifecycle, reviewer console, case assistant | | | ⬜ | |
-| Day 5 | Mon 2 Nov | Yardi handover, reviewer assistant, intake channels (call centre, existing tenant), demo | | | ⬜ | |
+| Day 2 | Wed 28 Oct | Simulated Cenomi, verification by link, resume, submit once, tracking; L3 core: restart-safe store, audit log v0, thin gateway | | | ⬜ | |
+| Day 3 | Thu 29 Oct | Routing, handoff, Arabic, follow-on; L3 core: form mode, evidence — every L3 capability at demo depth | | | ⬜ | |
+| Day 4 | Fri 30 Oct | Review lifecycle, reviewer console with audit timeline, case assistant — L4 core | | | ⬜ | |
+| Day 5 | Mon 2 Nov | Yardi handover, reviewer assistant, intake channels; L5 core: clock, triggers, notification policy, "Needs attention", drafted reminders; demo | | | ⬜ | |
 | Sprint 1 | 3–16 Nov | M0 and L3 gates (incl. E10, intake channels); full test harness | | | ⬜ | |
 | Sprint 2 | 17–30 Nov | L4 gate; channels row C5 | | | ⬜ | |
-| Closing | 1 Dec – ~16 Dec | All of L5 and its gate; production readiness | | | ⬜ | |
+| Closing | 1 Dec – ~16 Dec | L5 to gate quality (thin L5 runs from Day 5); production readiness | | | ⬜ | |
 
 ## 1. Gates
 
