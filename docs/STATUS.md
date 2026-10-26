@@ -12,7 +12,7 @@ The single place to see what's built, what's next and how the agent maps to the 
 
 **Status values:** ✅ Done · 🟡 In progress, or built at demo depth during the breadth days · ⬜ Not started · ⛔ Blocked · ➖ Waived (with reason)
 
-**Last updated:** 26 Oct 2026 · `main` at `afa0ddd` (PR #13)
+**Last updated:** 27 Oct 2026 · Day 1 harness PR
 
 ## 0. Delivery plan
 
@@ -20,7 +20,7 @@ The single place to see what's built, what's next and how the agent maps to the 
 
 | Phase | Dates | Goal | Backend PR (Claude) | Frontend and agent PR (Swaroop) | Status | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| Day 1 | Tue 27 Oct | Foundation: 11c, harness, policy and master data | | | ⬜ | |
+| Day 1 | Tue 27 Oct | Foundation: 11c, harness, policy and master data | Harness PR (this one); policy PR after 11c | | 🟡 | |
 | Day 2 | Wed 28 Oct | Simulated Cenomi, verification by link, resume, submit once, tracking; L3 core: restart-safe store, audit log v0, thin gateway | | | ⬜ | |
 | Day 3 | Thu 29 Oct | Routing, handoff, Arabic, follow-on; L3 core: form mode, evidence — every L3 capability at demo depth | | | ⬜ | |
 | Day 4 | Fri 30 Oct | Review lifecycle, reviewer console with audit timeline, case assistant — L4 core | | | ⬜ | |
@@ -48,7 +48,7 @@ Each step is one Cursor prompt in `prompts/` and normally one PR.
 | --- | --- | --- | --- | --- | --- | --- |
 | 00–11, 11b | `00`–`11b` | v1 POC, POC assumptions, UI fixes, Playwright suites | — | ✅ | #1–#13 | Live e2e: desktop 14/14; mobile test 14 fix in #13, needs a live run to confirm |
 | 11c | `11c-pre-baseline-fixes.md` | Confirm only what was shown; turn on documents complete; Office removed; document numbers on the documents card; landline and `written_keys` fixes | P1–P5 | ⬜ | | Must land before step 12 |
-| 11d | `11d-test-harness.md` | Six test layers with one command each, frontend Playwright, eval repeats and invariants, scenario catalogue, `ci.yml`, PR template | — | ⬜ | | See §7; runs after 11c, before 12 |
+| 11d | `11d-test-harness.md` | Six test layers with one command each, frontend Playwright, eval repeats and invariants, scenario catalogue, `ci.yml`, PR template | — | 🟡 | Day 1 harness PR | Day 1: Make targets, `ci.yml`, PR template. Left for B1: frontend-only Playwright, scenario catalogue, eval repeats and invariants, `@flaky`, prompt snapshot, coverage, `scripts/` linting, `eval-live` CI job |
 | 12 | `12-baseline-parity.md` | Golden transcripts, `make golden`, frontend fixtures from goldens, live-eval baseline | G1 | ⬜ | | |
 | 13 | `13-durable-state.md` | Inquiry store (memory, Postgres), turn lease, checkpointer, bounded history, retention | G2 | ⬜ | | Register `Source`, `InquiryDraft`, `DocType` for checkpoint deserialisation |
 | 14 | `14-workflow-gateway-submit.md` | State machine (L4 rows defined), tool gateway, idempotent submit | G3, G5, G6 | ⬜ | | |
@@ -162,8 +162,8 @@ Nothing is blocked: each item has a working assumption implemented in a mock or 
 | No way to finish the inquiry when the model is down (L1 baseline) | Day 3 (form mode); hardened in 21 | ⬜ |
 | §7.15 notification content and the UX/UI design links aren't available; templates and pages are synthetic | Cenomi input | ⬜ |
 | LangGraph warns about deserialising unregistered types from checkpoints | 13 | ⬜ |
-| CI runs only `e2e.yml`; no test and lint workflow | 11d | ⬜ |
-| `scripts/` not covered by `make lint` (7 E501 lines in `generate_e2e_scripts.py`) | 11d | ⬜ |
+| CI runs only `e2e.yml`; no test and lint workflow | Day 1 harness PR (`ci.yml`) | ✅ |
+| `scripts/` not covered by `make check-be` (27 ruff findings across `eval_live.py`, `generate_e2e_scripts.py`, `chat_cli.py`; 2 files unformatted) | 11d (B1) | ⬜ |
 | No resend cooldown for OTP or email link | 19 | ⬜ |
 | Status API returns a fixed `under_review` and hard-coded steps | 20 | ⬜ |
 | Doubt detection and capture heuristics are English-only; no Arabic-Indic digits | 21b | ⬜ |
@@ -178,10 +178,10 @@ What each layer proves and when it runs: [`docs/specs/testing-strategy.md`](spec
 
 | Layer | What it covers | Command | In CI | Status today | Notes |
 | --- | --- | --- | --- | --- | --- |
-| BE | ruff, `mypy --strict`; pytest for domain, services, API, workflow, audit, contracts | `make check-be`, `make test-be` | Every PR (from 11d) | 🟡 | pytest, ruff and mypy run via `make test` / `make lint`; not in CI yet; `scripts/` not linted; no coverage report |
-| FE | ESLint, `tsc`, Prettier; Vitest; Playwright against the frontend alone (`VITE_MOCK=1`) | `make check-fe`, `make test-fe`, `make e2e-fe` | Every PR (from 11d) | 🟡 | Vitest and lint exist; frontend-only Playwright doesn't |
-| INT | Playwright, real frontend + backend, scripted agent, mocks | `make e2e-int` (`make e2e`) | Every PR | ✅ | `@scripted` suites, 46/46, desktop and mobile; moves into `ci.yml` in 11d |
-| AGENT-DET | Tools, guard, actions, bundles, prompt snapshot, routing, allowlists, scenarios, parity goldens | `make test-agent` | Every PR (inside `test-be`) | 🟡 | Tests exist under `tests/agent` and `tests/scenarios`; no prompt snapshot or goldens yet (11d, 12) |
+| BE | ruff, `mypy --strict`; pytest for domain, services, API, workflow, audit, contracts | `make check-be`, `make test-be` | Every PR (`ci.yml` `backend`) | 🟡 | In CI from Day 1; `scripts/` not linted and no coverage report yet (11d, B1) |
+| FE | ESLint, `tsc`, Prettier; Vitest; Playwright against the frontend alone (`VITE_MOCK=1`) | `make check-fe`, `make test-fe`, `make e2e-fe` | Every PR (`ci.yml` `frontend`) | 🟡 | ESLint, `tsc`, Prettier and Vitest in CI from Day 1; frontend-only Playwright (`e2e-fe`) doesn't exist yet (11d, B1) |
+| INT | Playwright, real frontend + backend, scripted agent, mocks | `make e2e-int` (`make e2e`) | Every PR (`ci.yml` `integration`) | ✅ | `@scripted` suites, 46/46, desktop and mobile; moved from `e2e.yml` to `ci.yml` on Day 1 |
+| AGENT-DET | Tools, guard, actions, bundles, prompt snapshot, routing, allowlists, scenarios, parity goldens | `make test-agent` | Every PR (inside `test-be`) | 🟡 | `make test-agent` runs `tests/agent`, `tests/scenarios` and the e2e-script tests (Day 1); markers, prompt snapshot and goldens in 11d and 12 |
 | AGENT-LIVE | `eval_live.py` scenario groups, ×3 repeats, invariants I1–I7, score vs baseline | `make eval-live` | `workflow_dispatch`; nightly opt-in | 🟡 | Script exists (intake scenarios); no repeats, JSON output or invariant checks yet (11d); baseline in 12 |
 | E2E-LIVE | Playwright, real frontend + backend + model; personas and live stories | `make e2e-live` | `workflow_dispatch`; nightly opt-in | 🟡 | `@live` personas: desktop 14/14, mobile 13/14 before #13; invariant checks in 11d |
 

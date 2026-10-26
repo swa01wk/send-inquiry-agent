@@ -40,10 +40,16 @@ Set `VITE_API_BASE=http://localhost:8000` if the API is not on the default port.
 | `make demo` | Docker Compose with `OTP_MOCK_CODE=1234` and `VITE_DEMO=1` |
 | `make dev` | Same stack without demo env defaults |
 | `make dev-backend` / `make dev-frontend` | Run one app locally |
-| `make test` | Backend pytest + frontend Vitest |
-| `make lint` | Ruff, mypy, ESLint, `tsc` |
+| `make ci` | Everything a PR needs (also run by `.github/workflows/ci.yml`): `check`, `test`, `e2e-int` |
+| `make check` (`make lint`) | `check-be` (ruff, mypy) and `check-fe` (ESLint, `tsc`, Prettier) |
+| `make test` | `test-be` (pytest) and `test-fe` (Vitest) |
+| `make test-agent` | The deterministic agent tests on their own (scripted model) |
+| `make e2e-int` (`make e2e`) | Playwright, real frontend + backend, scripted agent |
+| `make eval-live` | Live evaluation with the real model (needs `OPENAI_API_KEY`, `OPENAI_MODEL`) |
+| `make e2e-live` | Playwright with the real model |
+| `make gate` | Every layer: `ci`, `eval-live`, `e2e-live` (gates and demos) |
 
-Live prompt check (not CI): `cd backend && uv run python scripts/eval_live.py`
+Test layers and when each must run: `docs/specs/testing-strategy.md`.
 
 ## Environment variables
 
