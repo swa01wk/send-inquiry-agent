@@ -229,7 +229,7 @@ Each stage lists what the requirements ask for, what deterministic code does, wh
 | Sales data received | Queue reviewers | Information | `sales_data_received` | Day 4 |
 | Request withdrawn | Applicant | Information | `request_withdrawn` | Day 4 |
 | Approved | Applicant | Information | `inquiry_accepted` | Day 5 |
-| Stalled review, reminders, escalations, resume nudges | Reviewers or applicant | Per policy tier | L5 templates | Closing |
+| Stalled review, reminders, escalations | Reviewers or applicant | Per policy tier | L5 templates | Day 5 (resume nudges: Closing) |
 
 ### 3.11 Exceptions and recovery
 
@@ -238,10 +238,10 @@ Each stage lists what the requirements ask for, what deterministic code does, wh
 | The applicant asks for a person, or the agent can't finish | Handoff card; call-centre case that continues the same inquiry | Offers it; never invents contact details | L3 §3.6; Channels §3.2 | Day 3; Day 5 |
 | A Cenomi system times out or is down | Gateway timeouts, retries, typed errors; inquiry stays resumable | Says what happens next | M0 §7; L3 §3.1 | Faults Day 2; gateway S1 |
 | Submit times out | `submit_pending`; reconcile before retrying | Says it's being confirmed; never claims success | M0 §7.2 | Day 3 story S3; S1 |
-| **The model itself is unavailable** | Form mode: the inquiry can be finished from the draft panel, cards and review card without the model; handoff offered | — | L3 §3.14 | S1 (**added in this review**) |
+| **The model itself is unavailable** | Form mode: the inquiry can be finished from the draft panel, cards and review card without the model; handoff offered | — | L3 §3.14 | Day 3; hardened S1 |
 | Expired or used link | Clear error; offer to resend | — | L3 §3.2 | Day 2 |
 | Second mall | Follow-on inquiry reusing verified details | Asks only for the new mall | L3 §3.11 | Day 3 |
-| Abandoned draft, stalled review, unanswered request | Proactive triggers under the notification policy | Drafts reminders for approval | L5 | Closing |
+| Stalled review, unanswered request (abandoned draft later) | Proactive triggers under the notification policy | Drafts reminders for approval | L5 | Day 5; Closing |
 
 ---
 
@@ -253,7 +253,7 @@ The framework assigns maturity per workflow and capability. Here it is for the i
 
 | Level | Framework acceptance evidence | POC | When |
 | --- | --- | --- | --- |
-| L1 | The task can be completed through a reliable digital form | Cards and the review card hold every field; **form mode lets the user finish without the model** (§3.11) | Built; form mode S1 (**gap found in this review**) |
+| L1 | The task can be completed through a reliable digital form | Cards and the review card hold every field; **form mode lets the user finish without the model** (§3.11) | Built; form mode Day 3, hardened S1 |
 | L1 | Forms satisfy schema, accessibility, authorisation, persistence and duplicate-submission controls | Validators; axe in frontend Playwright; mock identities per console; Postgres store; idempotent submit | Built; S1 |
 | L2 | All form paths work conversationally with no field loss | Every field reachable by chat, card or edit; parity goldens | Built; goldens S1 |
 | L2 | Clear handoff to the original transaction | Handoff to the call centre, continuing the same inquiry | Day 3; Day 5 |
@@ -263,15 +263,15 @@ The framework assigns maturity per workflow and capability. Here it is for the i
 | # | Capability | Where in the lifecycle | When |
 | --- | --- | --- | --- |
 | 1 | Intent detection and routing | §3.1 router; supervisor | Day 3; S1 |
-| 2 | Multi-field extraction with provenance | §3.2 bundles; evidence for derived values | Built; evidence S1 |
+| 2 | Multi-field extraction with provenance | §3.2 bundles; evidence for derived values | Built; evidence Day 3 |
 | 3 | Entity resolution | §3.2 malls, categories, Arabic names; §3.8 Yardi companies and brands | Built; Days 1, 5 |
 | 4 | Verified context reuse | §3.2 CR prefill; §3.1 tenant-record prefill; follow-on inquiries | Built; Days 3, 5 |
 | 5 | Adaptive slot filling | §3.2 bundles; §3.4 documents-complete turn | Built; Day 1 |
 | 6 | Deterministic validation | §3.2–3.5 validators, policy file, confirm-only-shown, `staff` confirmation | Built; Days 1, 5 |
-| 7 | Durable drafts and resume | §3.3 resume from the link; Postgres store | Day 2; S1 |
+| 7 | Durable drafts and resume | §3.3 resume from the link; survives a restart (snapshot, then Postgres) | Day 2; S1 |
 | 8 | Explicit review and consent | §3.5 | Built |
-| 9 | Reliable tool and API execution | §3.5 idempotent submit; §3.11 gateway | Day 2; S1 |
-| 10 | Audit and recovery | §3.11 handoff, form mode, faults; audit trail | Days 2–3; S1 |
+| 9 | Reliable tool and API execution | §3.5 submit once; §3.11 timeouts and typed failures (thin gateway, then retries and reconciliation) | Day 2; S1 |
+| 10 | Audit and recovery | §3.11 handoff, form mode, faults; audit log v0 with the console timeline | Days 2–4; S1 |
 
 ### 4.3 L4 — context-aware outcome ownership
 
@@ -292,14 +292,14 @@ The framework assigns maturity per workflow and capability. Here it is for the i
 
 | # | Capability | Where | When |
 | --- | --- | --- | --- |
-| 1 | Event and state awareness | Event engine on the audit stream | Closing |
-| 2 | Next-best-action recommendations | "Needs attention" ranking | Closing |
-| 3 | Proactive preparation | Drafted reminders | Closing |
-| 4 | Cross-role coordination | Escalation to the region manager | Closing |
-| 5 | Process optimisation | Insight report and funnel | Closing (funnel view S2) |
-| 6 | Bounded automation | Notification tiers | Closing |
-| 7 | Attention management | Quiet hours, throttles, opt-out | Closing |
-| 8 | Feedback and learning | KPIs: proactive actions accepted vs ignored | Closing |
+| 1 | Event and state awareness | Triggers on each clock tick (case states, then the audit stream) | Day 5; Closing |
+| 2 | Next-best-action recommendations | "Needs attention" ranking | Day 5 |
+| 3 | Proactive preparation | Reminders drafted by the reviewer assistant (deterministic checks later) | Day 5; Closing |
+| 4 | Cross-role coordination | Escalation to the region manager | Day 5 |
+| 5 | Process optimisation | Raised / sent / dismissed counts; funnel; insight report | Day 5; S2; Closing |
+| 6 | Bounded automation | Notification tiers | Day 5 |
+| 7 | Attention management | Quiet hours and once per period; throttles and opt-out | Day 5; Closing |
+| 8 | Feedback and learning | Accepted vs dismissed per item; KPI comparison on and off | Day 5; Closing |
 
 **Verdict.** Every framework capability L1–L5 has a home in the lifecycle and a step that builds it. The one missing piece was the L1 baseline itself — finishing the inquiry when the model is down — now added as form mode (§3.11).
 

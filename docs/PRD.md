@@ -101,7 +101,7 @@ A conversational demo alone never passes a gate.
 
 | Phase | Dates | Outcome |
 | --- | --- | --- |
-| 5-day plan | 27 Oct – 2 Nov | Every §7.1 workflow demoable end to end (demo depth) |
+| 5-day plan | 27 Oct – 2 Nov | Every §7.1 workflow and the core of L3, L4 and L5 demoable end to end (demo depth) |
 | Sprint 1 | 3 – 16 Nov | M0 and L3 gates: the intake POC at gate quality |
 | Sprint 2 | 17 – 30 Nov | L4 gate: the review lifecycle at gate quality |
 | Closing | 1 – ~16 Dec | L5 gate; production readiness |
@@ -125,3 +125,4 @@ From this version on:
 | Version | Date | Change |
 | --- | --- | --- |
 | 1.0 | 26 Oct 2026 | Locked: PRs #14–#18 (lifecycle specs, testing strategy, delivery plan, §7.1 traceability, intake channels, lifecycle review) |
+| 1.0 (clarification) | 26 Oct 2026 | Delivery order only, no scope change: the core of L3, L4 and L5 is shown in the 5-day plan at demo depth (restart-safe drafts, audit log, typed failures, form mode, evidence, thin proactive layer); Claude also builds the deterministic UI pages. Gates and dates unchanged |

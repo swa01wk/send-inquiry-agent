@@ -15,6 +15,10 @@ The applicant gets real (simulated) emails and SMS, verifies by clicking the ema
 - Submit once: a repeat `accept_and_submit` on a submitted inquiry returns the same reference and success card (note `submitted reference=… (repeat)`).
 - On submit: `submission_email` and `submission_sms` to the outbox; `success.tracking_url` = `/inquiry/status/<ref>?t=<track token>`.
 - `GET /api/inquiries/{reference}?t=` (token required) with stages, current stage, owner role, `waiting_on_you` (empty for now) and last change.
+- **L3 core — durable drafts (capability 7):** `SessionStore` writes a JSON snapshot of every inquiry (draft, cards, messages needed for resume, case data, audit log) to `DATA_DIR` after each turn and action, and reloads it at start-up. A backend restart mid-inquiry continues the same session.
+- **L3 core — audit (capability 10):** `AuditLog.record(inquiry_id, type, actor, payload)` with the M0 §8 event types (`user_message`, `ui_action`, `tool_called`, `field_written`, `field_confirmed`, `guard_verdict`, `verification_sent`, `verification_result`, `submit_attempt`, `submit_result`, `notification_sent`) and its redaction allowlist (no codes, tokens, raw contact details or file names). Dev-only `GET /api/dev/audit/{inquiry_id}`.
+- **L3 core — reliable execution (capability 9):** one thin gateway around every mock call: a timeout per service and the four error kinds (`timeout`, `unavailable`, `rejected`, `invalid`) from M0 §7.1, each mapped to a user-facing note. No retries yet (Sprint 1).
+- Tests: restart test (two turns, rebuild the app on the same `DATA_DIR`, third turn continues); audit trail of the happy path has the expected event types and no secrets; each fault kind ends in a clear note.
 - Contract changes folded into `docs/spec.md`.
 
 ## Your track (Cursor)
@@ -35,4 +39,6 @@ The applicant gets real (simulated) emails and SMS, verifies by clicking the ema
 ## End-of-day demo check
 - [ ] Inquiry → verification email in `/dev/inbox` → click → verified → continue in the chat → SMS code from the inbox → documents → submit → submission email → status page.
 - [ ] Pressing Submit twice gives one reference.
+- [ ] Restarting the backend in the middle of an inquiry loses nothing: the chat carries on.
+- [ ] `GET /api/dev/audit/<id>` shows the inquiry's steps in order, with no OTP, token or raw email in it.
 - [ ] `docs/STATUS.md` §0 Day 2 ✅; rows 18, 19, 20 🟡.
