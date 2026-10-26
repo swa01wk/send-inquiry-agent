@@ -1,6 +1,6 @@
 # Breadth Day 3 (Thu 29 Oct) — Routing, handoff, Arabic, follow-on (L3 at demo depth)
 
-Read first: @docs/DELIVERY-PLAN.md (section 2) @docs/specs/l3-reliable-intake.md (sections 3.5, 3.6, 3.10, 3.11, 3.13) @prompts/21-routing-handoff.md @prompts/21b-arabic-follow-on-duplicates.md @backend/app/agent/system_prompt.md
+Read first: @docs/DELIVERY-PLAN.md (§A2, §A5) @docs/specs/l3-reliable-intake.md (sections 3.5, 3.6, 3.10, 3.11, 3.13) @prompts/21-routing-handoff.md @prompts/21b-arabic-follow-on-duplicates.md @backend/app/agent/system_prompt.md
 
 ## Goal
 Messages reach the right handler, a person is always reachable, Arabic users get the same safety nets, and a second mall takes two messages.

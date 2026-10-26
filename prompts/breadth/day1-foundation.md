@@ -1,6 +1,6 @@
 # Breadth Day 1 (Tue 27 Oct) — Foundation
 
-Read first: @docs/DELIVERY-PLAN.md (sections 1, 2) @prompts/11c-pre-baseline-fixes.md @docs/specs/pre-baseline-fixes.md
+Read first: @docs/DELIVERY-PLAN.md (§A1, §A2) @prompts/11c-pre-baseline-fixes.md @docs/specs/pre-baseline-fixes.md
 
 ## Goal
 Corrected intake, CI that runs every layer we have today, and business rules in a policy file.

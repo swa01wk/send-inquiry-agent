@@ -1,6 +1,6 @@
 # Breadth Day 2 (Wed 28 Oct) — Simulated Cenomi, real verification, submit and tracking
 
-Read first: @docs/DELIVERY-PLAN.md (section 2) @docs/specs/l3-reliable-intake.md (sections 3.1–3.4) @prompts/18-integration-adapters.md @prompts/19-email-link-resume.md @prompts/20-status-page-notifications.md
+Read first: @docs/DELIVERY-PLAN.md (§A2, §A5) @docs/specs/l3-reliable-intake.md (sections 3.1–3.4) @prompts/18-integration-adapters.md @prompts/19-email-link-resume.md @prompts/20-status-page-notifications.md
 
 ## Goal
 The applicant gets real (simulated) emails and SMS, verifies by clicking the emailed link, can resume from it, submits once, and tracks the inquiry on a private page.
