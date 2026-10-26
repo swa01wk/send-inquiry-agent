@@ -2,6 +2,8 @@
 
 **Status:** proposed · **Depends on:** [M0 modular core](m0-modular-core.md) · **Cursor steps:** `prompts/17`–`22` (with `21b`)
 
+**Amended 26 Oct 2026 (requirements review):** the other intake channels in §7.1 — call-centre assisted and existing tenant — are specified in [intake-channels.md](intake-channels.md) and join this gate as E10. Line-by-line coverage of §7.1 is in [workflows-7-1.md](workflows-7-1.md).
+
 **Revised 26 Oct 2026: mock-first.** Every external Cenomi system is simulated (§3.1), so no step waits for Cenomi access. The open questions became working assumptions (§7). New items: a dev inbox for the simulated email and SMS (§3.4), generated master data (§3.8), Arabic in the safety nets (§3.10), follow-on inquiries that reuse verified details (§3.11), a duplicate check before submit (§3.12) and acceptance stories (§3.13).
 
 ## 1. Why
@@ -31,6 +33,7 @@ All rows are Must. These are the framework's L3 exit criteria, made concrete.
 | E7 | Recovery: a timeout or outage at any step leaves the inquiry resumable, and the user is told what happens next | `tests/gateway/test_failures.py` with mock faults (§3.1) |
 | E8 | Arabic: routing, doubt detection, contact and mall capture work for Arabic and mixed messages, including Arabic-Indic digits | `tests/arabic/`, the Arabic golden transcript, live eval "Arabic" scenario |
 | E9 | The acceptance stories in §3.13 pass as Playwright `@scripted` tests | `make e2e` |
+| E10 | Every intake channel in requirements §7.1 works end to end: call-centre assisted (§7.1.1 a2, §7.1.2 a2) and existing tenant (§7.1.2 a1, §7.1) — gate rows C1–C4 and C6 of [intake channels](intake-channels.md) | Stories S9–S12 |
 
 A conversational demo alone does not pass this gate.
 
@@ -161,7 +164,7 @@ How the router decides:
 
 `backend/app/policy/policy.yaml` is loaded and validated at start-up (`PolicyConfig`, Pydantic). It holds:
 - product lines (Store, Media, Specialty; Office was removed by the pre-baseline fixes);
-- `existing_tenant_policy: sign_in | allow_inquiry` (assumption 3, §7);
+- `existing_tenant_policy: sign_in | allow_inquiry` (assumption 3, §7); what each value does is in [intake channels](intake-channels.md) §3.6;
 - `max_malls_per_inquiry: 1`;
 - allowed phone countries (`any` or a list);
 - verification channels;

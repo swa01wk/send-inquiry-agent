@@ -9,8 +9,8 @@ A final approval invites the extra contacts, tells the applicant, and hands the 
 1. On `approved` (effects, spec §3.4 and §3.7): invitations for additional contacts without one; `inquiry_accepted`; `YardiService.send_lead(LeadPayload, idempotency_key=f"lead:{inquiry_id}")` → `sent_to_yardi` or `yardi_failed` with retries; after `YARDI_MAX_ATTEMPTS`, flag the case for operations in the console.
 2. Status page and case agent: "Approved — your details are with the leasing team for a proposal" only after `sent_to_yardi`.
 3. `kpi_report.py`: add the L4 KPIs (spec §3.11), from audit events and console timestamps.
-4. Make sure stories T1–T8 all exist in `e2e/tests/stories/` and pass.
-5. Run the L4 gate: X1–X9, two live eval runs (Case, Contacts, Reviewer scenarios), the KPI report. Record results in `docs/eval-notes.md` and the gate in `docs/STATUS.md`.
+4. Make sure stories T1–T10 (T9 and T10 in `docs/specs/intake-channels.md` §4) all exist in `e2e/tests/stories/` and pass.
+5. Run the L4 gate: X1–X9 and intake-channels C5, two live eval runs (Case, Contacts, Reviewer scenarios), the KPI report. Record results in `docs/eval-notes.md` and the gate in `docs/STATUS.md`.
 6. Fold remaining L4 contract changes into `docs/spec.md`; add the L4 assumptions (spec §6) to `docs/assumptions.md`.
 
 ## Tests

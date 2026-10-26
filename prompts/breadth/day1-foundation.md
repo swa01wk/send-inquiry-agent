@@ -15,6 +15,7 @@ Run `prompts/11c-pre-baseline-fixes.md` in full:
 - `documents_updated` action and the documents-complete turn;
 - Office removed from seed data, FAQ and unit codes;
 - landline 8 or 9 digits; `written_keys` de-duplicated;
+- document numbers on the documents card: CR ID read-only, VAT ID, National ID, National Address (requirements §7.1.1 documents table);
 - the doc and rule fixes.
 
 ## Tests
@@ -24,5 +25,6 @@ Run `prompts/11c-pre-baseline-fixes.md` in full:
 ## End-of-day demo check
 - [ ] The happy path in `docs/demo-script.md` works; the review card appears right after the second required upload.
 - [ ] "office" is offered nowhere.
+- [ ] The documents card shows the CR ID read-only and saves a valid VAT ID; an invalid one shows its error.
 - [ ] `ci.yml` is green on the 11c PR.
 - [ ] `docs/STATUS.md` §0: Day 1 ✅, rows 11c ✅ and 17 🟡 (demo depth) once the policy PR merges.

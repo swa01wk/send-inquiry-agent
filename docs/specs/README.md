@@ -12,8 +12,10 @@ These specs take the Send Inquiry agent from the v1 POC (solid L2, partial L3) t
 | --- | --- | --- | --- |
 | [pre-baseline-fixes.md](pre-baseline-fixes.md) | Before B0 | Confirm only what was shown; a turn when documents are complete; no Office product line | `prompts/11c` |
 | [testing-strategy.md](testing-strategy.md) | All stages | Six test layers (BE, FE, INT, AGENT-DET, AGENT-LIVE, E2E-LIVE) with one command each, CI, live pass rules and safety invariants | `prompts/11d` |
+| [workflows-7-1.md](workflows-7-1.md) | All stages | Traceability: every statement in requirements §7.1, §7.1.1 and §7.1.2 mapped to POC behaviour, spec section and delivery day | — |
 | [m0-modular-core.md](m0-modular-core.md) | B0 + M0 | No data lost on restart; a repeat submit returns the same reference; every case has an audit trail; parity suite green | `prompts/12`–`16` |
-| [l3-reliable-intake.md](l3-reliable-intake.md) | L3 | Correct routing, validated inputs, resume after interruption, one unambiguous submission, full audit, Arabic parity, acceptance stories, measured KPIs — all against a simulated Cenomi | `prompts/17`–`22` (with `21b`) |
+| [l3-reliable-intake.md](l3-reliable-intake.md) | L3 | Correct routing, validated inputs, resume after interruption, one unambiguous submission, full audit, Arabic parity, acceptance stories, measured KPIs — all against a simulated Cenomi | `prompts/17`–`22` (with `21b`, `21c`) |
+| [intake-channels.md](intake-channels.md) | L3 + L4 | Call-centre assisted intake (§7.1.1 a2, §7.1.2 a2) and existing tenants via Leasing Opportunities (§7.1.2 a1); C1–C6 | `prompts/21c` |
 | [l4-outcome-assistance.md](l4-outcome-assistance.md) | L4 | The whole §7.1.1 b–c lifecycle runs end to end; reviewers keep every decision; no re-asking; grounded case briefs | `prompts/23`–`28` |
 | [l5-governed-proactivity.md](l5-governed-proactivity.md) | L5 | Triggers fire on time and once; every message passes the notification policy; no proactive status change; value measured | `prompts/29`–`31` |
 

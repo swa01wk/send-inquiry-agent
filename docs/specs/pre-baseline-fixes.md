@@ -14,6 +14,7 @@ Each fix closes a gap between the agent and either a golden rule or the business
 | F2 | Uploading the last required document doesn't run a turn, so the review card appears only after the user's next message | §7.1.1: documents → submit; framework L3 capability 5 (stop when completion conditions are met) |
 | F3 | Office is still offered as a product line (`data/master_data.json`, `data/faq.json`), so the agent can map a user to it | §1 and §7.1.1 list three product lines: Store, Media, Specialty |
 | F4 | Two known contract bugs leak into what the parity suite compares | Handoff §9 |
+| F5 | The documents card has no inputs for VAT ID, National ID and National Address, and doesn't show the CR ID, although the fields and validators exist | §7.1.1 documents table ([traceability](workflows-7-1.md) R32–R38) |
 
 ## 2. Gate
 
@@ -23,6 +24,7 @@ Each fix closes a gap between the agent and either a golden rule or the business
 | P2 | Completing the required documents runs one agent turn and shows the review card without a typed message | `tests/api/test_documents_complete.py`, Playwright `@scripted` happy path |
 | P3 | No `office` unit type anywhere in seed data, FAQ, unit codes or prompts | `tests/domain/test_master_data.py` grep check |
 | P4 | `make test`, `make lint`, `make e2e` green; because the prompt changes, `scripts/eval_live.py` run twice with no lower score and an `@live` smoke run (testing strategy §4) | CI and local run; results in the PR |
+| P5 | The documents card shows the CR ID read-only and accepts VAT ID, National ID and National Address next to their uploads, validated by the existing rules | `tests/api/test_document_card.py`, Vitest, Playwright `@scripted` |
 
 ## 3. Work items
 
@@ -82,7 +84,16 @@ Uploads are REST calls (`POST /api/sessions/{id}/documents`), not chat turns, so
 - `write_fields` lists `mobile` or `landline` twice in `written_keys` for `contact_number`; de-duplicate, keeping order. `changed_keys` in the `draft` event then lists each key once.
 - Saudi landline rule: accept 8 **or 9** digits after `+966` for a number not starting with 5 (real numbers such as `+966 11 234 5678` have 9). Update `normalise_landline`, `docs/spec.md` §2 field table, and the validation tests.
 
-### 3.5 Doc and rule fixes (Could)
+### 3.5 F5: document numbers on the documents card (Must)
+
+Requirements §7.1.1 pair each optional document with its number: CR ID (10 digits, **disabled**, from basic info), VAT ID (15 digits), National ID (10 digits, of the primary contact) and National Address. The fields `vat_number`, `national_id_number` and `national_address` and their validators exist, but nothing collects them.
+
+- The `document_upload` card payload gains `numbers: [{key, label, value, editable, error}]`: `cr_number` (read-only, from the draft), `vat_number`, `national_id_number`, `national_address`. Each row sits next to its document in the card.
+- New UI action `set_document_number {key, value}`: validates with the existing rule, writes the field as `user`, confirmed; note `document_number_set <key>` or `document_number_invalid <key> <code>`. It runs a turn like every action; the agent replies only if the value was invalid.
+- The agent may still save these numbers from chat with `update_draft`, as today.
+- The review card already lists them under Documents.
+
+### 3.6 Doc and rule fixes (Could)
 
 - `.cursor/rules/project.mdc` golden rule 3 and `.cursor/rules/agent.mdc` mention a `submit_inquiry` tool that doesn't exist. Submit is the `accept_and_submit` UI action; reword both.
 - `docs/eval-notes.md`: the first entry mentions forced tool choice, which the graph no longer does; add a correction note (don't rewrite history).
@@ -96,6 +107,8 @@ Uploads are REST calls (`POST /api/sessions/{id}/documents`), not chat turns, so
 | Tools | `confirm_fields` skips keys not shown on an earlier confirm card (`not_shown`) |
 | Data | Landline: `+966` + 8 or 9 digits, not starting with 5 |
 | Seed data | Unit types Store, Media, Specialty; codes `STR`, `MED`, `SPC` |
+| Cards | `document_upload` gains `numbers[]` |
+| Actions | `set_document_number {key, value}` → notes `document_number_set <key>` or `document_number_invalid <key> <code>` |
 
 ## 5. Out of scope
 

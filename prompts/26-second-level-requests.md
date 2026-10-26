@@ -15,8 +15,9 @@ When a reviewer asks for contacts or sales data, the applicant answers in one or
 2. `show_contacts_review` emits a `contacts` card: one row per role, required roles from `policy.second_level_contacts`, source badges, edit and confirm like the confirm card.
 3. UI action `submit_contacts`: all required roles present and valid, nothing unconfirmed → `contacts_provided`; note `contacts_submitted` or `contacts_blocked <reasons>`.
 4. `request_sales_data_upload` emits a `sales_data_upload` card (one file, usual extension and size checks, upload via the documents endpoint with `doc_type=sales_data`). UI action `submit_sales_data` → `sales_data_provided`.
-5. Case-agent prompt: one bundle question for contacts; reuse the primary contact when the applicant says it's them; mention optional roles once.
-6. Update `docs/spec.md` and `docs/STATUS.md` (row 26).
+5. Existing tenants (intake-channels §3.7): when the case enters `second_review`, prefill `tenant_contacts` from the tenant record as `verified`; the `contacts` card shows them for confirmation; removed contacts stay removed. The automatic contacts request on first-level approval (step 23) uses the same card.
+6. Case-agent prompt: one bundle question for contacts; reuse the primary contact when the applicant says it's them; mention optional roles once.
+7. Update `docs/spec.md` and `docs/STATUS.md` (row 26).
 
 ## Tests
 **Layers** (`docs/specs/testing-strategy.md`): BE, AGENT-DET, FE (contacts and sales-data cards), INT (T1 contacts part, T4). AGENT-LIVE (new `contacts` group) and E2E-LIVE (T1 applicant side live).

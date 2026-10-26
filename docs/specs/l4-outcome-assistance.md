@@ -18,14 +18,19 @@ Everything external stays simulated (as in L3 §3.1): the Tenant Admin Platform 
 | b. First-level verification of profile and documents | Reviewer | Shows the case in the queue | **Reviewer assistant:** case brief with every value's source, documents checklist, duplicates, suggested next step |
 | b. Re-upload requested, email with link to an external page | Reviewer → applicant | Transition, `reupload_request` email with a case link | **Case assistant:** explains which document and why (from the remarks), shows an upload card for only those documents, resubmits |
 | b. Rejected with remarks, rejection email | Reviewer → applicant | Transition, `inquiry_rejected` email | **Case assistant:** explains the remarks plainly and what the applicant can do next; never reopens |
-| b. Approved: Azure AD account and invitation; limited access; profile completion | Reviewer → applicant | Transition, identity invitation (mocked), `first_level_approved` email | **Case assistant:** explains the invitation and what comes next |
+| b. Approved: Azure AD account and invitation; limited access; profile completion | Reviewer → applicant | Transition, identity invitation (mocked, skipped if the contact already has an account), `first_level_approved` email | **Case assistant:** explains the invitation and what comes next |
+| b. On contact creation, a notification asks for additional tenant contacts | System → applicant | A contacts request opens automatically with first-level approval; `contacts_request` email | **Case assistant:** collects the contacts (as in c) |
+| b. After first level, the tenant is qualified as a lead | System | Second review is shown as "Lead — second review" | Uses the same wording |
 | c. Additional contacts requested (Authorized Signatory and Billing Contact required; Leasing Manager, Financial Controller, Company Admin optional) | Reviewer → applicant | Open request, `contacts_request` email | **Case assistant:** collects all contacts in one bundle; reuses the primary contact when it's the same person |
 | c. Estimated sales data requested; reviewer notified when uploaded | Reviewer → applicant → reviewer | Open request, `sales_data_request` email, `sales_data_received` to the reviewer | **Case assistant:** explains the request and takes the upload |
 | c. Re-link company (first company-name search on active Yardi companies) and brand (brands from that company's leases and proposals) | Reviewer | Transition with the chosen Yardi ids | **Reviewer assistant:** suggests matches with the reason for each |
+| c. Existing tenants (§7.1.2 c): contacts prefilled under the Tenants tab, editable (delete) by the reviewer | System, reviewer | Contacts prefilled from the tenant record; console **Remove** (`contact_removed`) | **Case assistant:** shows the prefilled contacts for confirmation |
 | c. Approve or reject the lead; AD accounts for additional contacts; acceptance email; data sent to Yardi | Reviewer → system | Transition, invitations, `inquiry_accepted` email, `send_lead` to Yardi | **Case assistant:** explains the outcome and the Proposal stage next |
 | Tracking link: track the status at any time | Applicant | Status page with stage, owner role and anything waiting on them | **Case assistant:** answers "where is my inquiry?" with stage, owner and what's pending |
 
-Out of scope: profile completion on the Tenant Platform after Azure AD sign-in (explained, not built), the Proposal stage (§7.2), the existing-tenant prefilled flow (§7.1.2) and document-content checks (not in the POC; see `docs/assumptions.md`, Documents).
+Every intake channel — self-service, call-centre assisted and existing tenant ([intake channels](intake-channels.md)) — reaches this same lifecycle (requirements §7.1.2 b–c: "same as prospective tenant flow").
+
+Out of scope: profile completion on the Tenant Platform after Azure AD sign-in (explained, not built), the Proposal stage (§7.2) and document-content checks (not in the POC; see `docs/assumptions.md`, Documents).
 
 ## 2. Exit gate
 
@@ -102,7 +107,7 @@ yardi: YardiLink | None                      # company_id, brand_id, lead_ref, s
 | --- | --- | --- | --- |
 | Review routing | policy `review_routing` | `(product_line, region) → role`; Store → `rlm_store`, Media → `rplm_media`, Specialty → `rplm_specialty` | `policy.yaml` |
 | Reviewer directory | `ReviewerDirectory` | Reviewers with role and regions; at least one per queue, plus a region manager per role for L5 escalation | `data/mock_world/reviewers.json` |
-| Azure AD | `IdentityService.invite(contact) / status(invitation_id)` | Sends an `azure_ad_invitation` message with an "Accept invitation" link to the outbox; following it marks the invitation accepted | — |
+| Azure AD | `IdentityService.invite(contact) / status(invitation_id) / has_account(email)` | Sends an `azure_ad_invitation` message with an "Accept invitation" link to the outbox; following it marks the invitation accepted | — |
 | Yardi | `YardiService.search_companies(name) / brands_for_company(company_id) / send_lead(payload, idempotency_key)` | Company search by the first word of the company name, active companies only (§7.1.1 c); brands from that company's previous leases and proposals; `send_lead` returns a lead reference, idempotent | `data/mock_world/yardi.json`: includes the companies the CR mock returns (Bean Street Trading Co., Fawaz Alhokair Trading Co.) and near-matches, each with brands |
 
 All go through the gateway and honour `MOCK_FAULTS` (L3 §3.1).
@@ -141,13 +146,13 @@ Effects run after the transition is persisted, from a small outbox table (`case_
 | `reupload_requested` | — | `reupload_request` (action required) → primary contact, with a case link |
 | `documents_resubmitted` | — | `reupload_received` (information) → queue reviewers |
 | `rejected` (either level) | — | `inquiry_rejected` (information) → primary contact, with the remarks |
-| `approved_first` | `IdentityService.invite(primary contact)` | `azure_ad_invitation` → primary contact; `first_level_approved` (information) → primary contact |
+| `approved_first` | `IdentityService.invite(primary contact)` unless `has_account`; then, when policy `auto_request_contacts_after_first_approval` is on (default), a system `contacts_requested` | `azure_ad_invitation` → primary contact (if invited); `first_level_approved` (information) → primary contact; `contacts_request` (action required) → primary contact |
 | `contacts_requested` | — | `contacts_request` (action required) → primary contact, with a case link |
 | `contacts_provided` | — | `contacts_received` (information) → queue reviewers |
 | `sales_data_requested` | — | `sales_data_request` (action required) → primary contact, with a case link |
 | `sales_data_provided` | — | `sales_data_received` (information) → queue reviewers (requirement: reviewer notified on upload) |
 | `request_withdrawn` | — | `request_withdrawn` (information) → primary contact |
-| `approved` | Invite additional contacts without an invitation; then `send_lead` to Yardi | `azure_ad_invitation` → each new contact; `inquiry_accepted` (information) → primary contact |
+| `approved` | Invite each additional contact for whom `IdentityService.has_account` is false and no invitation exists; then `send_lead` to Yardi | `azure_ad_invitation` → each new contact; `inquiry_accepted` (information) → primary contact |
 | `sent_to_yardi` | — | — (the status page shows "Proposal stage next") |
 | `yardi_failed` | Retry with backoff; after `YARDI_MAX_ATTEMPTS`, flag the case for operations in the console | — |
 
@@ -205,7 +210,7 @@ On `approved`: invitations for additional contacts, the `inquiry_accepted` email
 
 ### 3.8 Status page (Must)
 
-The L3 status page shows the full lifecycle: Submitted → First review → Second review → Outcome (Approved and sent to the leasing team, or Not approved). "Waiting for you" lists open requests, each with a button that opens the case link.
+The L3 status page shows the full lifecycle: Submitted → First review → Lead — second review → Outcome (Approved and sent to the leasing team, or Not approved). The requirements call a case that passed first-level verification a **lead** (§7.1.1 b), so the page, the case assistant and the console use that word. "Waiting for you" lists open requests, each with a button that opens the case link.
 
 ### 3.9 Access (Must)
 
@@ -219,7 +224,7 @@ Playwright `@scripted`, with an applicant context and a reviewer context in the 
 
 | # | Story | Proves |
 | --- | --- | --- |
-| T1 | Submit a Store inquiry at a Central mall → it appears in the RLM-Store Central queue → approve first level → the Azure AD invitation is in the dev inbox and accepted → request contacts → the applicant opens the link and says "I'm the authorized signatory; billing is Omar Saleh, omar@…, +966 5…" → contacts sent → approve → acceptance email; status page shows approved and sent | The full a1 → b → c path (X1, X3, X5) |
+| T1 | Submit a Store inquiry at a Central mall → it appears in the RLM-Store Central queue → approve first level → the Azure AD invitation and the automatic contacts request are in the dev inbox; the invitation is accepted → the applicant opens the contacts link and says "I'm the authorized signatory; billing is Omar Saleh, omar@…, +966 5…" → contacts sent → approve → acceptance email; status page shows approved and sent | The full a1 → b → c path (X1, X3, X5) |
 | T2 | Reviewer requests a Brand Profile re-upload with remarks → the applicant opens the link; the agent explains the reason; the card offers only Brand Profile → upload → Resubmit → the case is back in first review; no intake question asked | Re-upload loop, no re-asking (X1, X3) |
 | T3 | Reviewer rejects at first level with remarks → the applicant opens the tracking link; the agent explains and doesn't reopen | Rejection framing |
 | T4 | Reviewer requests sales data → the applicant uploads → the reviewer gets `sales_data_received` | Sales-data loop |
@@ -255,7 +260,7 @@ Computed by `scripts/kpi_report.py` from audit events and console timestamps.
 | Notes | `documents_resubmitted`, `contacts_submitted`, `sales_data_submitted`, `case_updated <event>` |
 | REST | `/api/review/*` (§3.3); `GET /api/inquiries/{reference}?t=` gains `waiting_on_you` |
 | Services | `IdentityService`, `YardiService`, `ReviewerDirectory` |
-| Config | `REVIEWER_CONSOLE`, `YARDI_MAX_ATTEMPTS`; policy `review_routing`, `second_level_contacts`, `rejection_categories`, `after_rejection` |
+| Config | `REVIEWER_CONSOLE`, `YARDI_MAX_ATTEMPTS`; policy `review_routing`, `second_level_contacts`, `rejection_categories`, `after_rejection`, `auto_request_contacts_after_first_approval` |
 | Frontend routes | `/inquiry/case`, `/review`, `/review/cases/:id` |
 
 ## 5. Sequencing
@@ -282,3 +287,4 @@ Status **Assumed** until Cenomi confirms.
 | A7 | Yardi search follows §7.1.1 c: first company-name word, active companies; brands from the company's previous leases and proposals |
 | A8 | Rejection reason categories are a synthetic list in the policy |
 | A9 | No review SLAs (L5 adds demo-only thresholds) |
+| A10 | A contacts request opens automatically on first-level approval (requirements §7.1.1 b, "on contact creation"); reviewers can still request contacts later if none is open. Same as intake-channels D6 |

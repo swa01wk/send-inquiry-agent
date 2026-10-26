@@ -187,7 +187,8 @@ It raises `IllegalTransition` for anything not in the table below, and every cal
 | `reupload_requested` | `documents_resubmitted` | `first_review` | user (L4) | every requested document replaced after the request |
 | `first_review` | `rejected(remarks)` | `rejected` | reviewer (L4) | remarks non-empty |
 | `first_review` | `approved_first` | `second_review` | reviewer (L4) | — ; side effect: primary contact invited (Azure AD, mocked) |
-| `second_review` | `contacts_requested` / `sales_data_requested` | `second_review` | reviewer (L4) | no open request of that kind |
+| `second_review` | `contacts_requested` / `sales_data_requested` | `second_review` | reviewer (L4); `contacts_requested` also system, as an effect of `approved_first` ([L4](l4-outcome-assistance.md) §3.4) | no open request of that kind |
+| `second_review` | `contact_removed(role)` | `second_review` | reviewer (L4) | the contact was prefilled from the tenant record ([intake channels](intake-channels.md) §3.7) |
 | `second_review` | `contacts_provided` / `sales_data_provided` | `second_review` | user (L4) | that request is open; contacts valid (Authorized Signatory and Billing Contact present) or file present |
 | `second_review` | `request_withdrawn(kind)` | `second_review` | reviewer (L4) | that request is open |
 | `second_review` | `company_relinked(yardi_company_id)` / `brand_relinked(yardi_brand_id)` | `second_review` | reviewer (L4) | the id exists; a brand belongs to the linked company |
@@ -196,7 +197,7 @@ It raises `IllegalTransition` for anything not in the table below, and every cal
 | `approved` | `sent_to_yardi(yardi_ref)` | `sent_to_yardi` | system (L4) | Yardi acknowledged |
 | `approved` | `yardi_failed(kind)` | `approved` | system (L4) | audited; retried through the gateway |
 
-Every reviewer event also checks that the actor is a reviewer assigned to the case's queue (role and region). The machine enforces this, not the console.
+Every reviewer event also checks that the actor is a reviewer assigned to the case's queue (role and region). The machine enforces this, not the console. The one system-initiated request is the automatic contacts request on first-level approval (requirements §7.1.1 b: "on contact creation, a notification … to provide additional tenant contacts").
 
 Second-level requests (contacts, sales data) are open requests on the case, not separate statuses: the case stays in `second_review` while the tenant answers, and the status page shows "Waiting for you" from the open requests. Re-upload stays a status because it pauses first-level review until the tenant acts (§7.1.1 b).
 
