@@ -285,3 +285,22 @@ Frontend: `VITE_API_BASE` (default `http://localhost:8000`), `VITE_MOCK` (`1` = 
 - Added `show_mall_picker`, `suggest_replies` and the `confirm_card` / `edit_field` actions.
 - `DraftSummary.changed_keys` drives the draft panel's highlight and auto-scroll.
 - POC assumptions (Oct 2026, requirements §7.1.1): email verified by link and mobile by OTP as separate checks (`send_otp` → `send_verification`, `otp_input` card → `verification`, `otp_verified` → `email_verified` + `mobile_verified`); one mall per inquiry; international phone numbers accepted, OTP to mobile only.
+
+## 12. Commands and CI
+
+Test layers and when each runs: `docs/specs/testing-strategy.md`.
+
+| Command | Runs |
+| --- | --- |
+| `make check-be` | `ruff check` and `ruff format --check` over `app` and `tests`; `mypy --strict` over `app` |
+| `make check-fe` | ESLint, `tsc -b --noEmit`, Prettier `--check` (frontend) |
+| `make check` | `check-be`, `check-fe` (`make lint` is an alias) |
+| `make test-be` / `make test-fe` / `make test` | pytest / Vitest / both |
+| `make test-agent` | `pytest tests/agent tests/scenarios tests/test_e2e_scripts.py` (moves to `pytest -m agent` in step 11d) |
+| `make e2e-int` | Playwright `@scripted` suites, real frontend + backend, `AGENT_MODE=scripted` (`make e2e` is an alias) |
+| `make eval-live` | `scripts/eval_live.py` with the real model; `GROUP=` is passed through for step 11d |
+| `make e2e-live` | Playwright `@live` suites with the real model |
+| `make ci` | `check`, `test`, `e2e-int` |
+| `make gate` | `ci`, `eval-live`, `e2e-live` |
+
+CI: `.github/workflows/ci.yml` runs `backend` (`check-be`, `test-be`), `frontend` (`check-fe`, `test-fe`) and `integration` (`e2e-int`) on every PR and push to `main`. `.github/workflows/e2e.yml` runs the live Playwright suite on `workflow_dispatch`, and nightly when the repository variable `NIGHTLY_LIVE=true`. Step 11d (B1) adds `e2e-fe`, coverage, `scripts/` linting and the `eval-live` job.

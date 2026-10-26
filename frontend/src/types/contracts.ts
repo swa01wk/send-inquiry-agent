@@ -1,7 +1,13 @@
 export type Source = 'user' | 'derived' | 'verified' | 'default'
 
 export type Phase =
-  'existing_account' | 'submitted' | 'gate' | 'collecting' | 'verifying' | 'documents' | 'review'
+  | 'existing_account'
+  | 'submitted'
+  | 'gate'
+  | 'collecting'
+  | 'verifying'
+  | 'documents'
+  | 'review'
 
 export type CardType =
   | 'confirm_fields'
