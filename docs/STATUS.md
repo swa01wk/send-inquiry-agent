@@ -6,9 +6,23 @@ The single place to see what's built, what's next and how the agent maps to the 
 
 **Testing:** every step follows [`docs/specs/testing-strategy.md`](specs/testing-strategy.md); §7 below shows the state of each layer.
 
-**Status values:** ✅ Done · 🟡 In progress · ⬜ Not started · ⛔ Blocked · ➖ Waived (with reason)
+**Status values:** ✅ Done · 🟡 In progress, or built at demo depth during the breadth days · ⬜ Not started · ⛔ Blocked · ➖ Waived (with reason)
 
 **Last updated:** 26 Oct 2026 · `main` at `afa0ddd` (PR #13)
+
+## 0. Delivery plan
+
+[`docs/DELIVERY-PLAN.md`](DELIVERY-PLAN.md): 5 breadth days at demo depth, then two 2-week sprints to the gates. Day prompts are in `prompts/breadth/`.
+
+| Phase | Dates | Goal | Backend PR (Claude) | Frontend and agent PR (Swaroop) | Status | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| Day 1 | Tue 27 Oct | Foundation: 11c, harness, policy and master data | | | ⬜ | |
+| Day 2 | Wed 28 Oct | Simulated Cenomi, verification by link, resume, submit once, tracking | | | ⬜ | |
+| Day 3 | Thu 29 Oct | Routing, handoff, Arabic, follow-on — L3 at demo depth | | | ⬜ | |
+| Day 4 | Fri 30 Oct | Review lifecycle, reviewer console, case assistant | | | ⬜ | |
+| Day 5 | Mon 2 Nov | Yardi handover, reviewer assistant, thin L5, demo | | | ⬜ | |
+| Sprint 1 | 3–16 Nov | M0 and L3 gates; full test harness | | | ⬜ | |
+| Sprint 2 | 17–30 Nov | L4 gate; L5 governance (Y2, Y3) | | | ⬜ | |
 
 ## 1. Gates
 
