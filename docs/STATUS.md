@@ -12,7 +12,7 @@ The single place to see what's built, what's next and how the agent maps to the 
 
 ## 0. Delivery plan
 
-[`docs/DELIVERY-PLAN.md`](DELIVERY-PLAN.md): 5 breadth days at demo depth, then two 2-week sprints to the gates. Day prompts are in `prompts/breadth/`.
+[`docs/DELIVERY-PLAN.md`](DELIVERY-PLAN.md): Part A is the 5-day plan (every level at demo depth; day prompts in `prompts/breadth/`). Part B is the full implementation plan: two 2-week sprints and a short closing phase finish each step to its gate. §B0 there maps every step to what the 5 days built and what's left. In §2 below, 🟡 on a step means it was built at demo depth.
 
 | Phase | Dates | Goal | Backend PR (Claude) | Frontend and agent PR (Swaroop) | Status | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -23,6 +23,7 @@ The single place to see what's built, what's next and how the agent maps to the 
 | Day 5 | Mon 2 Nov | Yardi handover, reviewer assistant, thin L5, demo | | | ⬜ | |
 | Sprint 1 | 3–16 Nov | M0 and L3 gates; full test harness | | | ⬜ | |
 | Sprint 2 | 17–30 Nov | L4 gate; L5 governance (Y2, Y3) | | | ⬜ | |
+| Closing | 1 Dec – ~9 Dec | L5 gate; production readiness | | | ⬜ | |
 
 ## 1. Gates
 

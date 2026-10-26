@@ -6,7 +6,7 @@ These specs take the Send Inquiry agent from the v1 POC (solid L2, partial L3) t
 
 **Progress is tracked in [`docs/STATUS.md`](../STATUS.md):** steps, gates, business-flow coverage, agentic-capability coverage and known issues.
 
-**Delivery order is in [`docs/DELIVERY-PLAN.md`](../DELIVERY-PLAN.md):** 5 breadth days at demo depth (`prompts/breadth/`), then Sprint 1 (M0 and L3 gates) and Sprint 2 (L4 gate). The step prompts stay the reference for what each piece must finally do.
+**Delivery order is in [`docs/DELIVERY-PLAN.md`](../DELIVERY-PLAN.md):** Part A, the 5-day plan at demo depth (`prompts/breadth/`); Part B, the full implementation: Sprint 1 (M0 and L3 gates), Sprint 2 (L4 gate), then a closing phase (L5 gate). The step prompts stay the reference for what each piece must finally do; §B0 maps what the 5 days build against each one.
 
 | Spec | Framework stage | Gate | Cursor steps |
 | --- | --- | --- | --- |
