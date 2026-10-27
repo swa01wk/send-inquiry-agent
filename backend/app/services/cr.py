@@ -1,9 +1,20 @@
-"""Commercial registration verification."""
+"""Commercial registration verification (simulated CR registry, L3 §3.1).
+
+Scenario data: `app/data/mock_world/cr_registry.json`. Unknown numbers are "new, no
+details". Fault numbers raise the same errors a real outage would, so the gateway maps
+them to `timeout` or `unavailable`.
+"""
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
-from typing import Protocol
+from pathlib import Path
+from typing import Any, Protocol
+
+from app.services.errors import ServiceTimeout, ServiceUnavailable
+
+REGISTRY_PATH = Path(__file__).resolve().parents[1] / "data" / "mock_world" / "cr_registry.json"
 
 
 @dataclass(frozen=True)
@@ -18,27 +29,23 @@ class CrService(Protocol):
 
 
 class MockCrService:
-    _EXISTING = "1010000000"
-    _NEW_WITH_DETAILS = "1010123456"
-    _NEW_FAWAZ = "1010222222"
-    _COMPANY = "Bean Street Trading Co."
-    _ADDRESS = "King Fahd Road, Al Olaya, Riyadh"
-    _FAWAZ_COMPANY = "Fawaz Alhokair Trading Co."
-    _FAWAZ_ADDRESS = "King Fahd Road, Riyadh"
+    def __init__(self, registry_path: Path = REGISTRY_PATH) -> None:
+        raw: dict[str, Any] = json.loads(registry_path.read_text(encoding="utf-8"))
+        self._records: dict[str, dict[str, Any]] = {r["cr_number"]: r for r in raw["records"]}
 
     def verify(self, cr_number: str) -> CrResult:
-        if cr_number == self._EXISTING:
+        record = self._records.get(cr_number)
+        if record is None:
+            return CrResult(exists=False)
+        outcome = record["outcome"]
+        if outcome == "fault":
+            if record.get("fault") == "timeout":
+                raise ServiceTimeout("CR registry did not answer")
+            raise ServiceUnavailable("CR registry is unavailable")
+        if outcome == "existing":
             return CrResult(exists=True)
-        if cr_number == self._NEW_WITH_DETAILS:
-            return CrResult(
-                exists=False,
-                company_name=self._COMPANY,
-                company_address=self._ADDRESS,
-            )
-        if cr_number == self._NEW_FAWAZ:
-            return CrResult(
-                exists=False,
-                company_name=self._FAWAZ_COMPANY,
-                company_address=self._FAWAZ_ADDRESS,
-            )
-        return CrResult(exists=False)
+        return CrResult(
+            exists=False,
+            company_name=record.get("company_name"),
+            company_address=record.get("company_address"),
+        )

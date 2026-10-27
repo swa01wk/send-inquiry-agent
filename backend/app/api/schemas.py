@@ -34,7 +34,8 @@ class ErrorEnvelope(BaseModel):
 
 class AssistantMessage(BaseModel):
     id: str
-    role: Literal["assistant"] = "assistant"
+    # "user" appears only when a chat is resumed (POST /api/sessions/resume).
+    role: Literal["assistant", "user"] = "assistant"
     text: str
 
 
@@ -84,6 +85,8 @@ class VerificationEmail(BaseModel):
     verified: bool
     # Demo only (EMAIL_LINK_DEMO): stands in for clicking the emailed link.
     demo_token: str | None = None
+    # ISO time when Resend is allowed again (cooldown / hourly cap); None = now.
+    resend_available_at: str | None = None
 
 
 class VerificationMobile(BaseModel):
@@ -92,6 +95,7 @@ class VerificationMobile(BaseModel):
     verified: bool
     attempts_left: int
     code_length: int = 4
+    resend_available_at: str | None = None
 
 
 class VerificationPayload(BaseModel):
@@ -216,6 +220,28 @@ class InquiryStatusResponse(BaseModel):
     status: Literal["under_review"]
     submitted_at: datetime
     steps: list[InquiryStatusStep]
+    # Day 2 (L3 §3.4): the stages, who holds the inquiry (a role), what waits on the applicant.
+    stages: list[InquiryStatusStep] = Field(default_factory=list)
+    current_stage: str = "first_review"
+    owner_role: str = ""
+    waiting_on_you: list[str] = Field(default_factory=list)
+    last_change: datetime | None = None
+
+
+class ResumeRequest(BaseModel):
+    token: str
+
+
+class VerifyEmailRequest(BaseModel):
+    token: str
+
+
+class VerifyEmailResponse(BaseModel):
+    status: Literal["verified"]
+    session_id: str
+    email_masked: str | None
+    # Signed `resume` token: POST /api/sessions/resume continues the chat on any device.
+    resume_token: str
 
 
 class ChatRequestMessage(BaseModel):

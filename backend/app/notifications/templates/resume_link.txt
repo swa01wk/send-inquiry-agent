@@ -1,0 +1,13 @@
+kind: action_required
+channel: email
+subject: Continue your Cenomi leasing inquiry
+---
+Hello $first_name,
+
+Your leasing inquiry for $brand is saved. Pick up where you left off, on any device:
+
+Continue my inquiry: $resume_url
+
+This link expires in $ttl_days days.
+
+Cenomi Tenant Central

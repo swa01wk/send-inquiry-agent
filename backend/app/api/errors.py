@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 
 from app.api.schemas import ErrorBody, ErrorEnvelope
+from app.gateway import GatewayError
 from app.services.errors import ReferenceNotFoundError
 from app.sessions import SessionNotFound, TurnInProgress
 
@@ -35,6 +36,14 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(ApiError)
     async def _api_error(_request: Request, exc: ApiError) -> JSONResponse:
         return error_response(exc.status_code, exc.code, exc.message)
+
+    @app.exception_handler(GatewayError)
+    async def _gateway_error(_request: Request, exc: GatewayError) -> JSONResponse:
+        return error_response(
+            503,
+            f"{exc.service}_{exc.kind}",
+            "A connected system didn't answer. Nothing was lost; please try again shortly.",
+        )
 
     @app.exception_handler(TurnInProgress)
     async def _turn_in_progress(_request: Request, _exc: TurnInProgress) -> JSONResponse:

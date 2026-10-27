@@ -1,0 +1,14 @@
+kind: action_required
+channel: email
+subject: Confirm your email for your Cenomi leasing inquiry
+---
+Hello $first_name,
+
+Please confirm this email address so we can continue your leasing inquiry for $brand.
+
+Confirm my email: $verify_url
+
+The link works once and expires in $ttl_hours hours. If you didn't start an inquiry with
+Cenomi, you can ignore this email.
+
+Cenomi Tenant Central

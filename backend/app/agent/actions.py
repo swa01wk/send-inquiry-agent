@@ -7,6 +7,7 @@ from typing import Any
 
 from langchain_core.messages import HumanMessage
 
+from app.agent.context import message_context
 from app.agent.events import SseEvent
 from app.agent.runtime import AgentRuntime
 from app.api.cards import (
@@ -14,7 +15,6 @@ from app.api.cards import (
     build_document_upload_card,
     build_review_card,
     build_success_card,
-    build_verification_card,
     remember_confirm_card_keys,
 )
 from app.api.schemas import UiCard
@@ -25,6 +25,8 @@ from app.domain.models import FieldKey, InquiryDraft, Source
 from app.domain.rules import can_submit, contact_verified
 from app.domain.summary import build_draft_summary
 from app.domain.validation import validate_malls
+from app.gateway import GatewayError
+from app.security import tokens
 from app.sessions import Session
 
 
@@ -120,8 +122,23 @@ def _verification_events(
     runtime: AgentRuntime,
     changed_keys: list[str],
 ) -> list[SseEvent]:
-    card = build_verification_card(draft, demo_token=runtime.email_demo_token(session.id))
+    card = runtime.verification_card(draft, session.id)
     return [_card_event(session, card), _draft_event(draft, runtime, changed_keys)]
+
+
+def _audit(runtime: AgentRuntime, session: Session, event: str, **payload: object) -> None:
+    runtime.services.audit.record(session.id, event, actor="user", payload=dict(payload))
+
+
+def _throttled(runtime: AgentRuntime, session: Session, channel: str) -> ActionResult | None:
+    wait = runtime.services.resend.wait_seconds(session.id, channel)  # type: ignore[arg-type]
+    if not wait:
+        return None
+    _audit(runtime, session, "verification_sent", channel=channel, result="throttled")
+    return ActionResult(
+        note=HumanMessage(content=f"[ui_event] resend_throttled {wait}"),
+        events=_verification_events(session, session.draft, runtime, []),
+    )
 
 
 async def _verify_email(
@@ -132,15 +149,30 @@ async def _verify_email(
     """The user followed the emailed link (in the POC, the card's demo button)."""
     token = str(payload.get("token", ""))
     draft = session.draft.model_copy(deep=True)
-    check = await runtime.services.email_verification.verify(session.id, token)
+    try:
+        check = await runtime.services.gateway.call(
+            "email",
+            "verify",
+            runtime.services.email_verification.verify,
+            session.id,
+            token,
+            inquiry_id=session.id,
+        )
+    except GatewayError as err:
+        return ActionResult(
+            note=HumanMessage(content=f"[ui_event] {err.note}"),
+            events=_verification_events(session, draft, runtime, []),
+        )
     current = draft.fields[FieldKey.EMAIL].value
     if check.verified_email is None or check.verified_email != current:
+        _audit(runtime, session, "verification_result", channel="email", result="invalid")
         return ActionResult(
             note=HumanMessage(content="[ui_event] email_link_invalid"),
             events=_verification_events(session, draft, runtime, []),
         )
     draft.email_verified = True
     session.draft = draft
+    _audit(runtime, session, "verification_result", channel="email", result="verified")
     return ActionResult(
         note=_verification_note("email_verified", draft),
         events=_verification_events(session, draft, runtime, ["email_verified"]),
@@ -158,7 +190,26 @@ async def _resend_email_link(
     email = draft.fields[FieldKey.EMAIL].value
     if not email:
         return ActionResult(note=HumanMessage(content="[ui_event] email_link_blocked no_email"))
-    await runtime.services.email_verification.send_link(session.id, str(email))
+    if (throttled := _throttled(runtime, session, "email")) is not None:
+        return throttled
+    try:
+        await runtime.services.gateway.call(
+            "email",
+            "send_link",
+            runtime.services.email_verification.send_link,
+            session.id,
+            str(email),
+            message_context(draft, runtime.master),
+            inquiry_id=session.id,
+        )
+    except GatewayError as err:
+        _audit(runtime, session, "verification_sent", channel="email", result=err.kind)
+        return ActionResult(
+            note=HumanMessage(content=f"[ui_event] {err.note}"),
+            events=_verification_events(session, draft, runtime, []),
+        )
+    runtime.services.resend.record(session.id, "email")
+    _audit(runtime, session, "verification_sent", channel="email", result="sent")
     draft.email_link_sent_to = str(email)
     session.draft = draft
     return ActionResult(
@@ -178,20 +229,54 @@ async def _submit_otp(
     mobile = draft.fields[FieldKey.MOBILE].value
     if not mobile or draft.otp_sent_to != str(mobile):
         return ActionResult(note=HumanMessage(content="[ui_event] otp_not_sent"))
-    verified = await runtime.services.otp.verify(session.id, code)
+    try:
+        verified = await runtime.services.gateway.call(
+            "otp",
+            "verify",
+            runtime.services.otp.verify,
+            session.id,
+            code,
+            inquiry_id=session.id,
+        )
+    except GatewayError as err:
+        return ActionResult(
+            note=HumanMessage(content=f"[ui_event] {err.note}"),
+            events=_verification_events(session, draft, runtime, []),
+        )
 
     if verified:
         draft.mobile_verified = True
         session.draft = draft
+        _audit(runtime, session, "verification_result", channel="sms", result="verified")
         return ActionResult(
             note=_verification_note("mobile_verified", draft),
             events=_verification_events(session, draft, runtime, ["mobile_verified"]),
             changed_keys=["mobile_verified"],
         )
 
+    _audit(runtime, session, "verification_result", channel="sms", result="wrong_code")
     draft.otp_attempts_left = max(0, draft.otp_attempts_left - 1)
     if draft.otp_attempts_left <= 0:
-        await runtime.services.otp.send(session.id, str(mobile))
+        session.draft = draft
+        if (throttled := _throttled(runtime, session, "sms")) is not None:
+            return throttled
+        try:
+            await runtime.services.gateway.call(
+                "otp",
+                "send",
+                runtime.services.otp.send,
+                session.id,
+                str(mobile),
+                message_context(draft, runtime.master),
+                inquiry_id=session.id,
+            )
+        except GatewayError as err:
+            return ActionResult(
+                note=HumanMessage(content=f"[ui_event] {err.note}"),
+                events=_verification_events(session, draft, runtime, []),
+            )
+        runtime.services.resend.record(session.id, "sms")
+        _audit(runtime, session, "verification_sent", channel="sms", result="sent")
         draft.otp_attempts_left = 3
         session.draft = draft
         return ActionResult(
@@ -222,7 +307,26 @@ async def _resend_otp(
         return ActionResult(
             note=HumanMessage(content="[ui_event] otp_send_blocked no_mobile"),
         )
-    await runtime.services.otp.send(session.id, str(mobile))
+    if (throttled := _throttled(runtime, session, "sms")) is not None:
+        return throttled
+    try:
+        await runtime.services.gateway.call(
+            "otp",
+            "send",
+            runtime.services.otp.send,
+            session.id,
+            str(mobile),
+            message_context(draft, runtime.master),
+            inquiry_id=session.id,
+        )
+    except GatewayError as err:
+        _audit(runtime, session, "verification_sent", channel="sms", result=err.kind)
+        return ActionResult(
+            note=HumanMessage(content=f"[ui_event] {err.note}"),
+            events=_verification_events(session, draft, runtime, []),
+        )
+    runtime.services.resend.record(session.id, "sms")
+    _audit(runtime, session, "verification_sent", channel="sms", result="sent")
     draft.otp_sent_to = str(mobile)
     draft.otp_attempts_left = 3
     session.draft = draft
@@ -371,6 +475,28 @@ async def _accept_and_submit(
         return ActionResult(
             note=HumanMessage(content="[ui_event] submit_blocked terms_not_accepted"),
         )
+    submit_key = f"inq:{session.id}:v1"
+
+    # Submit once (M0 §7.2 at Day 2 depth): a second press shows the same reference.
+    if session.draft.reference:
+        reference = session.draft.reference
+        _audit(
+            runtime,
+            session,
+            "submit_result",
+            submit_key=submit_key,
+            outcome="submitted",
+            reference=reference,
+            repeat=True,
+        )
+        success = build_success_card(
+            reference, tracking_url=tracking_url(runtime, session.id, reference)
+        )
+        return ActionResult(
+            note=HumanMessage(content=f"[ui_event] submitted reference={reference} (repeat)"),
+            events=[_card_event(session, success)],
+        )
+
     draft = session.draft.model_copy(deep=True)
     draft.terms_accepted = True
     blockers = can_submit(draft)
@@ -379,17 +505,50 @@ async def _accept_and_submit(
         card = build_review_card(draft, runtime.master)
         if "review" not in session.cards_shown:
             session.cards_shown.add("review")
-        tokens = " ".join(b.token for b in blockers)
+        tokens_text = " ".join(b.token for b in blockers)
         return ActionResult(
-            note=HumanMessage(content=f"[ui_event] submit_blocked {tokens}"),
+            note=HumanMessage(content=f"[ui_event] submit_blocked {tokens_text}"),
             events=[_card_event(session, card), _draft_event(draft, runtime, ["terms_accepted"])],
             changed_keys=["terms_accepted"],
         )
 
-    reference = runtime.services.submit.submit(draft, runtime.master)
+    _audit(runtime, session, "submit_attempt", submit_key=submit_key, outcome="sent")
+    try:
+        reference = runtime.services.gateway.call_sync(
+            "submit",
+            "submit",
+            runtime.services.submit.submit,
+            draft,
+            runtime.master,
+            idempotency_key=submit_key,
+            inquiry_id=session.id,
+        )
+    except GatewayError as err:
+        # Nothing is lost: the same key returns the same reference when Submit is pressed
+        # again. Rejected = a definite no; timeout or unavailable = try again shortly.
+        session.draft = draft
+        outcome = "submit_failed" if err.kind in ("rejected", "invalid") else "submit_pending"
+        _audit(runtime, session, "submit_result", submit_key=submit_key, outcome=err.kind)
+        return ActionResult(
+            note=HumanMessage(content=f"[ui_event] {outcome} {err.kind}"),
+            events=[_draft_event(draft, runtime, ["terms_accepted"])],
+            changed_keys=["terms_accepted"],
+        )
+
     draft.reference = reference
     session.draft = draft
-    success = build_success_card(reference)
+    _audit(
+        runtime,
+        session,
+        "submit_result",
+        submit_key=submit_key,
+        outcome="submitted",
+        reference=reference,
+        repeat=False,
+    )
+    link = tracking_url(runtime, session.id, reference)
+    await _send_submission_notices(runtime, session, draft, reference, link)
+    success = build_success_card(reference, tracking_url=link)
     session.cards_shown.add("success")
     return ActionResult(
         note=HumanMessage(content=f"[ui_event] submitted reference={reference}"),
@@ -399,3 +558,72 @@ async def _accept_and_submit(
         ],
         changed_keys=["reference", "terms_accepted"],
     )
+
+
+def tracking_url(runtime: AgentRuntime, session_id: str, reference: str) -> str:
+    """Private tracking link: `<PUBLIC_BASE_URL>/inquiry/status/<ref>?t=<track token>`."""
+    settings = runtime.settings
+    token, _claims = tokens.issue(
+        settings.token_secret,
+        "track",
+        reference,
+        ttl_seconds=settings.track_ttl_days * 86400,
+        data={"i": session_id},
+    )
+    return f"{settings.public_base_url.rstrip('/')}/inquiry/status/{reference}?t={token}"
+
+
+async def _send_submission_notices(
+    runtime: AgentRuntime,
+    session: Session,
+    draft: InquiryDraft,
+    reference: str,
+    link: str,
+) -> None:
+    """Reference and tracking link to the verified email, and by SMS to a verified mobile.
+
+    A failed send never undoes the submission; it is audited (retries arrive in step 20).
+    """
+    context = {
+        **message_context(draft, runtime.master),
+        "reference": reference,
+        "tracking_url": link,
+    }
+    targets: list[tuple[str, str]] = []
+    email = draft.fields[FieldKey.EMAIL].value
+    if email and draft.email_verified:
+        targets.append(("submission_email", str(email)))
+    mobile = draft.fields[FieldKey.MOBILE].value
+    if mobile and draft.mobile_verified:
+        targets.append(("submission_sms", str(mobile)))
+    for template, to in targets:
+        channel = "sms" if template.endswith("sms") else "email"
+        try:
+            message_id = await runtime.services.gateway.call(
+                "notifications",
+                "send",
+                runtime.services.notifications.send,
+                template,
+                to,
+                context,
+                inquiry_id=session.id,
+            )
+        except GatewayError as err:
+            _audit(
+                runtime,
+                session,
+                "notification_sent",
+                template=template,
+                channel=channel,
+                outcome=err.kind,
+            )
+            continue
+        _audit(
+            runtime,
+            session,
+            "notification_sent",
+            template=template,
+            channel=channel,
+            outcome="sent",
+            message_id=message_id,
+        )

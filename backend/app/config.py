@@ -34,6 +34,27 @@ class Settings(BaseSettings):
         validation_alias="CORS_ORIGINS",
     )
     log_level: str = Field(default="INFO", validation_alias="LOG_LEVEL")
+    # ---- Simulated Cenomi and dev tools (L3 §3.1–3.4) ----------------------------
+    # Which implementations back the services. Only `mock` exists in the POC.
+    integrations: Literal["mock", "sandbox", "live"] = Field(
+        default="mock", validation_alias="INTEGRATIONS"
+    )
+    # Dev-only endpoints: /api/dev/outbox and /api/dev/audit/{id}. Mock integrations only.
+    dev_tools: bool = Field(default=False, validation_alias="DEV_TOOLS")
+    # Fault injection for mocks: "service:kind[:count],..." (kind: timeout|unavailable|rejected).
+    mock_faults: str = Field(default="", validation_alias="MOCK_FAULTS")
+    # Where restart-safe snapshots live (sessions, mock systems, audit). Empty = memory only.
+    data_dir: str | None = Field(default=None, validation_alias="DATA_DIR")
+    # Links in emails and SMS point at the frontend.
+    public_base_url: str = Field(
+        default="http://localhost:5173", validation_alias="PUBLIC_BASE_URL"
+    )
+    # Signs verification, resume and tracking links (HMAC-SHA256). Set a real secret outside dev.
+    token_secret: str = Field(default="dev-only-change-me", validation_alias="RESUME_TOKEN_SECRET")
+    email_link_ttl_hours: int = Field(default=72, validation_alias="EMAIL_LINK_TTL_HOURS")
+    resume_ttl_days: int = Field(default=7, validation_alias="RESUME_TTL_DAYS")
+    track_ttl_days: int = Field(default=365, validation_alias="TRACK_TTL_DAYS")
+
     # Business-rule policy file (L3 §3.7); empty = the packaged app/policy/policy.yaml.
     policy_path: str | None = Field(default=None, validation_alias="POLICY_PATH")
     # Master data source (L3 §3.8): the generated seed JSON, or Cenomi's (stub until access).

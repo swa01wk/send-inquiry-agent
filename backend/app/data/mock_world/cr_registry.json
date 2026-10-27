@@ -1,0 +1,27 @@
+{
+  "_about": "Simulated CR registry (L3 §3.1). Keep today's numbers so goldens and e2e scripts don't move.",
+  "records": [
+    {
+      "cr_number": "1010123456",
+      "outcome": "new",
+      "company_name": "Bean Street Trading Co.",
+      "company_address": "King Fahd Road, Al Olaya, Riyadh"
+    },
+    {
+      "cr_number": "1010222222",
+      "outcome": "new",
+      "company_name": "Fawaz Alhokair Trading Co.",
+      "company_address": "King Fahd Road, Riyadh"
+    },
+    {
+      "cr_number": "1010333333",
+      "outcome": "new",
+      "company_name": "شركة الواحة للتجارة",
+      "company_address": "طريق الملك عبدالعزيز، حي الربوة، الرياض"
+    },
+    {"cr_number": "1010000000", "outcome": "existing"},
+    {"cr_number": "1010999991", "outcome": "fault", "fault": "timeout"},
+    {"cr_number": "1010999992", "outcome": "fault", "fault": "unavailable"}
+  ],
+  "default": "new_without_details"
+}

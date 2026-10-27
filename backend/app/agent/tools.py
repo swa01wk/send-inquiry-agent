@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from app.agent.blockers import format_blockers
 from app.agent.brand_infer import fill_brands_from_user_message
 from app.agent.confirm_policy import key_shown_on_earlier_turn, keys_blocked_from_confirmation
+from app.agent.context import message_context
 from app.agent.mall_match import fill_mentioned_malls, filter_mall_ids
 from app.agent.runtime import runtime_from_config
 from app.agent.state import AgentState
@@ -25,7 +26,6 @@ from app.api.cards import (
     build_mall_picker_card,
     build_quick_replies_card,
     build_review_card,
-    build_verification_card,
     confirm_card_id_for_keys,
 )
 from app.api.schemas import UiCard
@@ -36,6 +36,7 @@ from app.domain.models import FieldKey, InquiryDraft, Source
 from app.domain.rules import can_submit, contact_verified
 from app.domain.summary import build_draft_summary
 from app.domain.validation import validate_cr_number
+from app.gateway import GatewayError
 from app.policy.config import get_policy
 from app.services.errors import ReferenceNotFoundError
 
@@ -125,7 +126,20 @@ def verify_cr(
         )
 
     rt = runtime_from_config(runtime.config)
-    result = rt.services.cr.verify(validated)
+    try:
+        result = rt.services.gateway.call_sync(
+            "cr", "verify", rt.services.cr.verify, validated, inquiry_id=state["session_id"]
+        )
+    except GatewayError as err:
+        return _tool_result(
+            runtime,
+            draft=state["draft"],
+            content=(
+                f"{err.note}: the CR registry didn't answer, so nothing was saved. "
+                "Tell the user kindly, and offer to try again in a moment or to continue "
+                "without the CR."
+            ),
+        )
     draft = state["draft"]
     cards_shown = list(state["cards_shown"])
 
@@ -541,42 +555,132 @@ async def send_verification(
             content="Need email and a contact number before verification.",
         )
 
+    services = rt.services
+    audit = services.audit
+    context = message_context(draft, rt.master)
     updated = draft.model_copy(deep=True)
     sent: list[str] = []
+    throttled: list[int] = []
+    failures: list[str] = []
+
     email_text = str(email)
     if not updated.email_verified and (resend or updated.email_link_sent_to != email_text):
-        await rt.services.email_verification.send_link(session_id, email_text)
-        updated.email_link_sent_to = email_text
-        sent.append("email verification link")
+        is_resend = updated.email_link_sent_to == email_text
+        wait = services.resend.wait_seconds(session_id, "email") if is_resend else 0
+        if wait:
+            throttled.append(wait)
+            audit.record(
+                session_id,
+                "verification_sent",
+                actor="agent",
+                payload={"channel": "email", "result": "throttled"},
+            )
+        else:
+            try:
+                await services.gateway.call(
+                    "email",
+                    "send_link",
+                    services.email_verification.send_link,
+                    session_id,
+                    email_text,
+                    context,
+                    inquiry_id=session_id,
+                )
+            except GatewayError as err:
+                failures.append(err.note)
+                audit.record(
+                    session_id,
+                    "verification_sent",
+                    actor="agent",
+                    payload={"channel": "email", "result": err.kind},
+                )
+            else:
+                services.resend.record(session_id, "email")
+                updated.email_link_sent_to = email_text
+                sent.append("email verification link")
+                audit.record(
+                    session_id,
+                    "verification_sent",
+                    actor="agent",
+                    payload={"channel": "email", "result": "sent"},
+                )
+
     mobile_text = str(mobile) if mobile else None
     if (
         mobile_text
         and not updated.mobile_verified
         and (resend or updated.otp_sent_to != mobile_text)
     ):
-        await rt.services.otp.send(session_id, mobile_text)
-        updated.otp_sent_to = mobile_text
-        updated.otp_attempts_left = 3
-        sent.append("mobile code")
+        is_resend = updated.otp_sent_to == mobile_text
+        wait = services.resend.wait_seconds(session_id, "sms") if is_resend else 0
+        if wait:
+            throttled.append(wait)
+            audit.record(
+                session_id,
+                "verification_sent",
+                actor="agent",
+                payload={"channel": "sms", "result": "throttled"},
+            )
+        else:
+            try:
+                await services.gateway.call(
+                    "otp",
+                    "send",
+                    services.otp.send,
+                    session_id,
+                    mobile_text,
+                    context,
+                    inquiry_id=session_id,
+                )
+            except GatewayError as err:
+                failures.append(err.note)
+                audit.record(
+                    session_id,
+                    "verification_sent",
+                    actor="agent",
+                    payload={"channel": "sms", "result": err.kind},
+                )
+            else:
+                services.resend.record(session_id, "sms")
+                updated.otp_sent_to = mobile_text
+                updated.otp_attempts_left = 3
+                sent.append("mobile code")
+                audit.record(
+                    session_id,
+                    "verification_sent",
+                    actor="agent",
+                    payload={"channel": "sms", "result": "sent"},
+                )
 
-    card = build_verification_card(updated, demo_token=rt.email_demo_token(session_id))
+    card = rt.verification_card(updated, session_id)
     cards_shown = list(state["cards_shown"])
     if VERIFICATION_CARD_ID not in cards_shown:
         cards_shown.append(VERIFICATION_CARD_ID)
     _emit_card(card, runtime)
 
+    parts: list[str] = []
     if contact_verified(updated):
-        content = "Contact already verified."
+        parts.append("Contact already verified.")
     elif sent:
-        content = f"Sent: {' and '.join(sent)}."
+        parts.append(f"Sent: {' and '.join(sent)}.")
         if not mobile_text:
-            content += " No mobile given, so the email link alone verifies this applicant."
-    else:
-        content = "Verification already sent; waiting for the user to complete it in the card."
+            parts.append("No mobile given, so the email link alone verifies this applicant.")
+    elif not throttled and not failures:
+        parts.append("Verification already sent; waiting for the user to complete it in the card.")
+    if throttled:
+        parts.append(
+            f"resend_throttled {max(throttled)}: a new link or code can be sent in "
+            f"{max(throttled)} seconds; the card shows when."
+        )
+    for note in failures:
+        parts.append(
+            f"{note}: that message couldn't be sent. Tell the user kindly and offer to try "
+            "again in a moment; nothing else is lost."
+        )
     return _tool_result(
         runtime,
         draft=updated,
-        content=content,
+        content=" ".join(parts),
         changed_keys=["otp_attempts_left"] if "mobile code" in sent else None,
         cards_shown=cards_shown,
     )
@@ -681,16 +785,31 @@ def search_faq(query: str, runtime: ToolRuntime) -> str:
 
 
 @tool
-def get_inquiry_status(reference: str, runtime: ToolRuntime) -> str:
+def get_inquiry_status(
+    reference: str,
+    state: Annotated[AgentState, InjectedState],
+    runtime: ToolRuntime,
+) -> str:
     """Look up inquiry status by reference number."""
     rt = runtime_from_config(runtime.config)
+    own = state["draft"].reference
+    if reference.strip().upper() != (own or "").upper():
+        # A reference alone must not expose an applicant's case (L3 §3.4).
+        return (
+            "For privacy, only this conversation's own inquiry can be looked up here. "
+            "Other inquiries are tracked from the private link in the submission email."
+        )
     try:
-        status = rt.services.status.get(reference)
+        status = rt.services.gateway.call_sync(
+            "status", "get", rt.services.status.get, own, inquiry_id=state["session_id"]
+        )
     except ReferenceNotFoundError:
         return f"No inquiry found for reference {reference}."
+    except GatewayError as err:
+        return f"{err.note}: the status service didn't answer; offer to try again later."
     return (
-        f"Reference {status.reference} is {status.status}, "
-        f"submitted at {status.submitted_at.isoformat()}."
+        f"Reference {status.reference} is {status.status}, in {status.current_stage} with "
+        f"the {status.owner_role}, submitted at {status.submitted_at.isoformat()}."
     )
 
 

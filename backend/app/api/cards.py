@@ -317,6 +317,8 @@ def build_verification_card(
     *,
     demo_token: str | None = None,
     message_id: str | None = None,
+    email_resend_at: str | None = None,
+    mobile_resend_at: str | None = None,
 ) -> UiCard:
     """Email link status plus, when a mobile was given, the mobile OTP box."""
     email = draft.fields[FieldKey.EMAIL].value
@@ -328,6 +330,7 @@ def build_verification_card(
         link_sent=draft.email_link_sent_to is not None and draft.email_link_sent_to == email_text,
         verified=draft.email_verified,
         demo_token=None if draft.email_verified else demo_token,
+        resend_available_at=None if draft.email_verified else email_resend_at,
     )
     mobile_section = (
         VerificationMobile(
@@ -335,6 +338,7 @@ def build_verification_card(
             code_sent=draft.otp_sent_to is not None and draft.otp_sent_to == mobile_text,
             verified=draft.mobile_verified,
             attempts_left=draft.otp_attempts_left,
+            resend_available_at=None if draft.mobile_verified else mobile_resend_at,
         )
         if mobile_text
         else None

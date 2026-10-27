@@ -61,6 +61,49 @@ def _graph_config(
     return {"configurable": configurable}
 
 
+HISTORY_LIMIT = 20
+
+
+def _history_messages(session: Session) -> list[BaseMessage]:
+    """The last messages the user saw, as model messages (used after a restart)."""
+    restored: list[BaseMessage] = []
+    for entry in session.transcript[-HISTORY_LIMIT:]:
+        text = entry.get("text", "")
+        if not text:
+            continue
+        if entry.get("role") == "user":
+            restored.append(HumanMessage(content=text))
+        else:
+            restored.append(AIMessage(content=text))
+    return restored
+
+
+def _audit_turn(
+    runtime: AgentRuntime,
+    session_id: str,
+    turn_messages: list[BaseMessage],
+    retractions: int,
+) -> None:
+    """Agent tool calls and guard retractions for this turn (audit log v0)."""
+    audit = runtime.services.audit
+    for message in turn_messages:
+        if isinstance(message, AIMessage):
+            for call in message.tool_calls:
+                audit.record(
+                    session_id,
+                    "tool_called",
+                    actor="agent",
+                    payload={"layer": "agent", "name": call.get("name", "")},
+                )
+    if retractions:
+        audit.record(
+            session_id,
+            "guard_verdict",
+            actor="system",
+            payload={"rule": "retract_reply", "retractions": retractions},
+        )
+
+
 def _new_message_id() -> str:
     return f"m_{uuid.uuid4().hex[:10]}"
 
@@ -136,11 +179,19 @@ async def run_turn(
         turn_index=session.turn_index,
         confirm_card_turns=dict(session.confirm_card_turns),
     )
-    state["messages"] = [user_input]
     state["cards_shown"] = list(session.cards_shown)
     state["confirm_card_keys"] = dict(session.confirm_card_keys)
 
     config = _graph_config(session, runtime, settings=settings)
+    before = await graph.aget_state(config)
+    prior_count = len((before.values or {}).get("messages", []))
+    if prior_count == 0 and session.has_user_messages():
+        # The checkpointer is in memory; after a restart the transcript restores memory.
+        history = _history_messages(session)
+        state["messages"] = [*history, user_input]
+    else:
+        state["messages"] = [user_input]
+
     bound = (config.get("configurable") or {}).get("bound_chat_model")
     replies = _ReplyTracker()
     pending_cards: list[SseEvent] = []
@@ -199,6 +250,7 @@ async def run_turn(
         snapshot = await graph.aget_state(config)
         final = cast(AgentState, snapshot.values)
         final_messages = list(final.get("messages", []))
+        _audit_turn(runtime, session.id, final_messages[prior_count:], retractions)
         session.draft = final["draft"]
         session.cards_shown = set(final.get("cards_shown", []))
         session.confirm_card_keys = dict(final.get("confirm_card_keys", session.confirm_card_keys))

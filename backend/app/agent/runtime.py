@@ -7,8 +7,11 @@ from typing import Any
 
 from langchain_core.runnables.config import RunnableConfig
 
+from app.api.cards import build_verification_card
+from app.api.schemas import UiCard
 from app.config import Settings
 from app.domain.master import MasterData
+from app.domain.models import InquiryDraft
 from app.services.container import ServiceContainer
 
 
@@ -23,6 +26,21 @@ class AgentRuntime:
         if not self.settings.email_link_demo:
             return None
         return self.services.email_verification.demo_token(session_id)
+
+    def verification_card(self, draft: InquiryDraft, session_id: str) -> UiCard:
+        """The verification card with the demo token and resend availability."""
+        resend = self.services.resend
+
+        def iso(channel: str) -> str | None:
+            ready = resend.available_at(session_id, channel)  # type: ignore[arg-type]
+            return ready.isoformat() if ready else None
+
+        return build_verification_card(
+            draft,
+            demo_token=self.email_demo_token(session_id),
+            email_resend_at=iso("email"),
+            mobile_resend_at=iso("sms"),
+        )
 
 
 def runtime_from_config(config: RunnableConfig | dict[str, Any]) -> AgentRuntime:

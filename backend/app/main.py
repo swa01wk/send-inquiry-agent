@@ -13,12 +13,14 @@ from slowapi.middleware import SlowAPIMiddleware
 from app.agent.graph import build_graph
 from app.agent.model import ScriptedChatModel, get_chat_model
 from app.api.chat import router as chat_router
+from app.api.dev import router as dev_router
 from app.api.documents import router as documents_router
 from app.api.errors import register_exception_handlers
 from app.api.inquiries import router as inquiries_router
 from app.api.limiter import limiter
 from app.api.master import router as master_router
 from app.api.sessions import router as sessions_router
+from app.api.verifications import router as verifications_router
 from app.config import Settings, get_settings
 from app.domain.master import configure_master_data, load_master_data
 from app.policy.config import PolicyError, install_policy, load_policy
@@ -45,6 +47,9 @@ def create_app(
         msg = f"Policy product_lines not in master data unit_types: {', '.join(unknown_lines)}"
         raise PolicyError(msg)
     install_policy(policy)
+    if cfg.dev_tools and cfg.integrations != "mock":
+        msg = "DEV_TOOLS=true is only allowed with INTEGRATIONS=mock (the outbox is dev data)."
+        raise RuntimeError(msg)
 
     def default_model_factory() -> BaseChatModel:
         if cfg.agent_mode == "scripted":
@@ -57,7 +62,9 @@ def create_app(
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.settings = cfg
         app.state.policy = policy
-        app.state.session_store = SessionStore(ttl_minutes=cfg.session_ttl_minutes)
+        app.state.session_store = SessionStore(
+            ttl_minutes=cfg.session_ttl_minutes, data_dir=cfg.data_dir
+        )
         app.state.services = build_services(cfg)
         app.state.graph = build_graph(model_factory=chat_model_factory)
         yield
@@ -87,6 +94,9 @@ def create_app(
     app.include_router(documents_router)
     app.include_router(master_router)
     app.include_router(inquiries_router)
+    app.include_router(verifications_router)
+    if cfg.dev_tools:
+        app.include_router(dev_router)
 
     return app
 

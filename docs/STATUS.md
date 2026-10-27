@@ -12,7 +12,7 @@ The single place to see what's built, what's next and how the agent maps to the 
 
 **Status values:** ✅ Done · 🟡 In progress, or built at demo depth during the breadth days · ⬜ Not started · ⛔ Blocked · ➖ Waived (with reason)
 
-**Last updated:** 27 Oct 2026 · Day 1 closed (`main` at `893efdd`, PRs #24–#29)
+**Last updated:** 28 Oct 2026 · Day 2 backend PR
 
 ## 0. Delivery plan
 
@@ -21,7 +21,7 @@ The single place to see what's built, what's next and how the agent maps to the 
 | Phase | Dates | Goal | Backend PR (Claude) | Frontend and agent PR (Swaroop) | Status | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | Day 1 | Tue 27 Oct | Foundation: 11c, harness, policy and master data | #24 harness; #26 card fix; #27 policy; #28 CI without Playwright; #29 live targets load `.env` | #25 (11c) | ✅ | Live checks recorded in `docs/eval-notes.md` |
-| Day 2 | Wed 28 Oct | Simulated Cenomi, verification by link, resume, submit once, tracking; L3 core: restart-safe store, audit log v0, thin gateway | | | ⬜ | |
+| Day 2 | Wed 28 Oct | Simulated Cenomi, verification by link, resume, submit once, tracking; L3 core: restart-safe store, audit log v0, thin gateway | Day 2 backend PR | | 🟡 | Backend PR first; frontend and prompt (`prompts/breadth/day2-simulated-cenomi.md`) on top |
 | Day 3 | Thu 29 Oct | Routing, handoff, Arabic, follow-on; L3 core: form mode, evidence — every L3 capability at demo depth | | | ⬜ | |
 | Day 4 | Fri 30 Oct | Review lifecycle, reviewer console with audit timeline, case assistant — L4 core | | | ⬜ | |
 | Day 5 | Mon 2 Nov | Yardi handover, reviewer assistant, intake channels; L5 core: clock, triggers, notification policy, "Needs attention", drafted reminders; demo | | | ⬜ | |
@@ -50,14 +50,14 @@ Each step is one Cursor prompt in `prompts/` and normally one PR.
 | 11c | `11c-pre-baseline-fixes.md` | Confirm only what was shown; turn on documents complete; Office removed; document numbers on the documents card; landline and `written_keys` fixes | P1–P5 | ✅ | #25, #26 | #26: a corrected document number clears its card error |
 | 11d | `11d-test-harness.md` | Six test layers with one command each, frontend Playwright, eval repeats and invariants, scenario catalogue, `ci.yml`, PR template | — | 🟡 | Day 1 harness PR | Day 1: Make targets, `ci.yml`, PR template. Left for B1: frontend-only Playwright, scenario catalogue, eval repeats and invariants, `@flaky`, prompt snapshot, coverage, `scripts/` linting, `eval-live` CI job |
 | 12 | `12-baseline-parity.md` | Golden transcripts, `make golden`, frontend fixtures from goldens, live-eval baseline | G1 | ⬜ | | |
-| 13 | `13-durable-state.md` | Inquiry store (memory, Postgres), turn lease, checkpointer, bounded history, retention | G2 | ⬜ | | Register `Source`, `InquiryDraft`, `DocType` for checkpoint deserialisation |
-| 14 | `14-workflow-gateway-submit.md` | State machine (L4 rows defined), tool gateway, idempotent submit | G3, G5, G6 | ⬜ | | |
-| 15 | `15-audit-trail.md` | Redacted, append-only audit trail | G4 | ⬜ | | |
+| 13 | `13-durable-state.md` | Inquiry store (memory, Postgres), turn lease, checkpointer, bounded history, retention | G2 | 🟡 | Day 2 backend PR | Day 2: JSON snapshots of sessions and the simulated systems in `DATA_DIR`, history restored after restart. Left: Postgres store, turn lease, checkpointer, retention; register `Source`, `InquiryDraft`, `DocType` for checkpoint deserialisation |
+| 14 | `14-workflow-gateway-submit.md` | State machine (L4 rows defined), tool gateway, idempotent submit | G3, G5, G6 | 🟡 | Day 2 backend PR | Day 2: thin gateway (timeouts, four error kinds, faults, audited calls), submit once with an idempotency key. Left: retries, reconciliation (`submit_pending` follow-up), `InquiryPayload`, state machine (Day 4) |
+| 15 | `15-audit-trail.md` | Redacted, append-only audit trail | G4 | 🟡 | Day 2 backend PR | Day 2: audit log v0 with a redaction allowlist, `GET /api/dev/audit/{id}`. Left: `inquiry_events` table, correlation ids, `audit_dump.py` |
 | 16 | `16-supervisor-registry.md` | Supervisor, agent registry, `status` agent, Postgres CI matrix | G1, G7 | ⬜ | | Closes the M0 gate |
 | 17 | `17-policy-config.md` | Policy file; generated master data with regions and Arabic names | E2 | 🟡 | #27 | Built: `policy.yaml` read by validators, `can_submit`, cards, `verify_cr`; "Rules in force" prompt block; 20 malls with Arabic names and regions; `MasterDataSource`; flip tests. Left: verification-channel flips (19), resend limits read (19), duplicate and follow-on read (21b), `allow_inquiry` tenant prefill (21c) |
-| 18 | `18-integration-adapters.md` | Simulated Cenomi: mocks, scenario data, faults, notification outbox, dev inbox | E4, E7 | ⬜ | | Adds `react-router-dom` |
-| 19 | `19-email-link-resume.md` | Email-link verification, cross-device resume, resend limits | E3 | ⬜ | | |
-| 20 | `20-status-page-notifications.md` | Submission email and SMS, tokenised status page | E4, E5 | ⬜ | | |
+| 18 | `18-integration-adapters.md` | Simulated Cenomi: mocks, scenario data, faults, notification outbox, dev inbox | E4, E7 | 🟡 | Day 2 backend PR | Backend done at demo depth (CR registry, `MOCK_FAULTS` / `X-Mock-Faults`, notifications and outbox, `/api/dev/outbox`). Left: `/dev/inbox` page and `react-router-dom` (frontend track), contract tests, `MOCK_LATENCY_MS`, sandbox/live stubs |
+| 19 | `19-email-link-resume.md` | Email-link verification, cross-device resume, resend limits | E3 | 🟡 | Day 2 backend PR | Backend: signed single-use links, `POST /api/verifications/email`, `POST /api/sessions/resume`, cooldown and hourly cap with `resend_available_at`. Left: `/inquiry/verify` page and countdown (frontend track), "Continue later", card polling |
+| 20 | `20-status-page-notifications.md` | Submission email and SMS, tokenised status page | E4, E5 | 🟡 | Day 2 backend PR | Backend: submission email and SMS to the outbox, `tracking_url`, `GET /api/inquiries/{ref}?t=` with stages and owner role. Left: status page (frontend track), retried failed sends |
 | 21 | `21-routing-handoff.md` | Intent router, redirect agent, human handoff, form mode when the model is down | E1 | ⬜ | | |
 | 21b | `21b-arabic-follow-on-duplicates.md` | Arabic safety nets; follow-on inquiries; duplicate check | E8 | ⬜ | | |
 | 21c | `21c-intake-channels.md` | Call-centre assisted intake (§7.1.1 a2, §7.1.2 a2); existing tenants via Leasing Opportunities (§7.1.2 a1); public-page sign-in path (§7.1); `staff` source; contacts prefill and remove | E10, C1–C6 | ⬜ | | Added after the §7.1 review |
@@ -109,10 +109,10 @@ Summary by workflow. Line-by-line coverage of every statement in §7.1, §7.1.1 
 | L3 | 4 Verified context reuse | v1 CR prefill; follow-on inquiries in 21b | 🟡 |
 | L3 | 5 Adaptive slot filling | v1 bundles; documents-complete turn in 11c | 🟡 |
 | L3 | 6 Deterministic validation | v1; "confirm only what was shown" in 11c; policy in 17 | 🟡 |
-| L3 | 7 Durable drafts and resume | 13, 19 | ⬜ |
+| L3 | 7 Durable drafts and resume | 13, 19 (Day 2: JSON snapshots, resume by link) | 🟡 |
 | L3 | 8 Explicit review and consent | v1 | ✅ |
-| L3 | 9 Reliable tool and API execution | 14, 18 | ⬜ |
-| L3 | 10 Audit and recovery | 15, 18, 21 | ⬜ |
+| L3 | 9 Reliable tool and API execution | 14, 18 (Day 2: thin gateway, submit once) | 🟡 |
+| L3 | 10 Audit and recovery | 15, 18, 21 (Day 2: audit log v0, faults end in clear notes) | 🟡 |
 | L4 | 1 Outcome framing | 25 | ⬜ |
 | L4 | 2 Structured context assembly | 24 (case brief) | ⬜ |
 | L4 | 3 Grounded derivation and prefill | Day 3 evidence (22), 26 (reuse primary contact), 21c (tenant-record prefill) | ⬜ |
@@ -164,8 +164,8 @@ Nothing is blocked: each item has a working assumption implemented in a mock or 
 | LangGraph warns about deserialising unregistered types from checkpoints | 13 | ⬜ |
 | CI runs only `e2e.yml`; no test and lint workflow | Day 1 harness PR (`ci.yml`) | ✅ |
 | `scripts/` not covered by `make check-be` (27 ruff findings across `eval_live.py`, `generate_e2e_scripts.py`, `chat_cli.py`; 2 files unformatted) | 11d (B1) | ⬜ |
-| No resend cooldown for OTP or email link | 19 | ⬜ |
-| Status API returns a fixed `under_review` and hard-coded steps | 20 | ⬜ |
+| No resend cooldown for OTP or email link | Day 2 backend PR (policy `resend`) | ✅ |
+| Status API returns a fixed `under_review` and hard-coded steps | Day 2: stages and owner role, token required; real stages with the lifecycle (Day 4) | 🟡 |
 | Doubt detection and capture heuristics are English-only; no Arabic-Indic digits | 21b | ⬜ |
 | `EMAIL_LINK_DEMO` defaults to `true` | Before any non-demo deploy | ⬜ |
 | `app/agent/e2e_scripts.py` reads scripts from `tests/` | Only matters for a slim image | ⬜ |
