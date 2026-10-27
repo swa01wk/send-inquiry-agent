@@ -46,7 +46,7 @@ Set `VITE_API_BASE=http://localhost:8000` if the API is not on the default port.
 | `make test-agent` | The deterministic agent tests on their own (scripted model) |
 | `make e2e-int` (`make e2e`) | Playwright, real frontend + backend, scripted agent. Flags: `ARGS='-g "13 wrong files" --project=mobile'` |
 | `make eval-live` | Live evaluation with the real model (needs `OPENAI_API_KEY`, `OPENAI_MODEL`) |
-| `make e2e-live` | Playwright with the real model |
+| `make e2e-live` | Playwright with the real model; loads `backend/.env` itself, so the key doesn't need exporting |
 | `make gate` | Every layer: `ci`, `eval-live`, `e2e-live` (gates and demos) |
 
 Test layers and when each must run: `docs/specs/testing-strategy.md`.
