@@ -349,9 +349,15 @@ async def _set_document_number(
             events=[_card_event(session, card)],
         )
     session.draft = draft
+    # Re-send the card without errors so an earlier error on this row clears.
+    card = build_document_upload_card(
+        draft,
+        runtime.master,
+        max_mb=runtime.settings.max_upload_mb,
+    )
     return ActionResult(
         note=HumanMessage(content=f"[ui_event] document_number_set {key}"),
-        events=[_draft_event(draft, runtime, written)],
+        events=[_card_event(session, card), _draft_event(draft, runtime, written)],
         changed_keys=written,
     )
 

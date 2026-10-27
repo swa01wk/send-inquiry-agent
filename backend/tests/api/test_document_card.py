@@ -100,6 +100,46 @@ async def test_set_document_number_invalid_vat_shows_card_error_and_note_code(
 
 
 @pytest.mark.asyncio
+async def test_set_document_number_valid_after_invalid_clears_card_error(
+    client: AsyncClient,
+    app,
+) -> None:
+    store = app.state.session_store
+    session = await store.create()
+
+    def vat_row(events: list[tuple[str, dict]]) -> dict:
+        cards = [data for name, data in events if name == "ui_card"]
+        doc_card = next(c for c in cards if c.get("card_type") == "document_upload")
+        return next(row for row in doc_card["payload"]["numbers"] if row["key"] == "vat_number")
+
+    invalid = await _chat(
+        client,
+        session.id,
+        {
+            "type": "action",
+            "action": "set_document_number",
+            "payload": {"key": "vat_number", "value": "100000000000001"},
+        },
+    )
+    assert vat_row(invalid)["error"]
+
+    vat = "300000000000003"
+    valid = await _chat(
+        client,
+        session.id,
+        {
+            "type": "action",
+            "action": "set_document_number",
+            "payload": {"key": "vat_number", "value": vat},
+        },
+    )
+    row = vat_row(valid)
+    assert row["error"] is None
+    assert row["value"] == vat
+    assert session.draft.fields[FieldKey.VAT_NUMBER].value == vat
+
+
+@pytest.mark.asyncio
 async def test_set_document_number_valid_vat_despite_unrelated_cross_field_error(
     client: AsyncClient,
     app,
