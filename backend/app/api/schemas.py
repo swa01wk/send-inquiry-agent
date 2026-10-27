@@ -18,6 +18,7 @@ CardType = Literal[
     "success",
     "quick_replies",
     "handoff",
+    "form_mode",
 ]
 
 StepState = Literal["done", "current", "upcoming"]
@@ -169,6 +170,30 @@ class HandoffPayload(BaseModel):
     short_ref: str
     case_id: str
     reason: str
+
+
+FormModeStep = Literal[
+    "existing_account", "cr", "details", "verification", "documents", "review", "submitted"
+]
+
+
+class FormModeField(BaseModel):
+    """A value still missing, typed by the user (saved with the `edit_field` action)."""
+
+    key: str  # a field key, or "contact_number" (saved as mobile or landline)
+    label: str
+    kind: Literal["text", "select"]
+    master_kind: str | None = None  # for selects: GET /api/master/{master_kind}
+
+
+class FormModePayload(BaseModel):
+    """The model is unavailable: finish the inquiry from the cards (L3 §3.14)."""
+
+    active: bool  # false once the assistant is back
+    message: str
+    next_step: FormModeStep
+    fields: list[FormModeField] = Field(default_factory=list)
+    can_skip_cr: bool = False
 
 
 class QuickReplyOption(BaseModel):

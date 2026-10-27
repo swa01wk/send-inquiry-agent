@@ -20,17 +20,19 @@ export class InquiryPage {
     this.page = page
   }
 
-  async open(scenario?: string) {
+  /** `faults` sets X-Mock-Faults for this session (scripted mode), e.g. `submit:timeout:1`. */
+  async open(scenario?: string, options: { faults?: string } = {}) {
     if (scenario) {
       await this.page.route('**/api/sessions', async (route) => {
         if (route.request().method() !== 'POST') {
           await route.continue()
           return
         }
-        const headers = {
+        const headers: Record<string, string> = {
           ...route.request().headers(),
           'X-Test-Scenario': scenario,
         }
+        if (options.faults) headers['X-Mock-Faults'] = options.faults
         await route.continue({ headers })
       })
     }
@@ -178,6 +180,40 @@ export class InquiryPage {
     await expect(row.getByText(message)).toBeVisible()
   }
 
+  /** Form mode (L3 §3.14): skip the CR from the form-mode card. */
+  async formSkipCr() {
+    const doneBefore = await readDoneEventCount(this.page)
+    await this.cards('form_mode').getByRole('button', { name: /skip for now/i }).click()
+    await this.waitForTurnDone(doneBefore)
+  }
+
+  /** Form mode: type (or pick) a missing value in the form-mode card and save it. */
+  async formSave(label: string, value: string) {
+    const card = this.cards('form_mode')
+    const control = card.getByLabel(label, { exact: true })
+    const tag = await control.evaluate((el) => el.tagName.toLowerCase())
+    if (tag === 'select') {
+      await expect(control.locator(`option[value="${value}"]`)).toHaveCount(1, { timeout: 10_000 })
+      await control.selectOption(value)
+    } else {
+      await control.fill(value)
+    }
+    const row = card.locator('[data-testid^="form-mode-field-"]').filter({ has: control })
+    const doneBefore = await readDoneEventCount(this.page)
+    await row.getByRole('button', { name: 'Save' }).click()
+    await this.waitForTurnDone(doneBefore)
+    await expect(card.getByLabel(label, { exact: true })).toHaveCount(0)
+  }
+
+  /** Mall picker by the start of the mall's name (form mode lists every mall with its city). */
+  async pickMallStartingWith(prefix: string) {
+    const picker = this.cards('mall_picker').last()
+    await picker.getByRole('button', { name: new RegExp(`^${prefix}`) }).click()
+    const doneBefore = await readDoneEventCount(this.page)
+    await picker.getByRole('button', { name: 'Done' }).click()
+    await this.waitForTurnDone(doneBefore)
+  }
+
   async acceptAndSubmit() {
     const review = this.cards('review')
     await expect(review).toBeVisible({ timeout: 60_000 })
@@ -226,6 +262,7 @@ export class InquiryPage {
     if (type === 'mall_picker') return this.page.getByTestId('mall-picker-card')
     if (type === 'review') return this.page.getByTestId('review-card')
     if (type === 'success') return this.page.getByTestId('success-card')
+    if (type === 'form_mode') return this.page.getByTestId('form-mode-card')
     return this.page.locator(`[data-card-type="${type}"]`)
   }
 

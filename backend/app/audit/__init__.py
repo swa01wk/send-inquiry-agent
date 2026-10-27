@@ -42,6 +42,8 @@ ALLOWED_KEYS: dict[str, frozenset[str]] = {
     "error": frozenset({"where", "kind"}),
     "handoff_created": frozenset({"reason", "case_id", "created", "via"}),
     "follow_on_started": frozenset({"from_reference", "inquiry_seq", "reused_verification"}),
+    "form_mode_entered": frozenset({"kind"}),
+    "form_mode_left": frozenset(),
 }
 
 # Never kept, whatever the event type says.

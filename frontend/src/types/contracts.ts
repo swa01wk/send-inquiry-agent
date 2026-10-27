@@ -11,6 +11,7 @@ export type CardType =
   | 'review'
   | 'success'
   | 'quick_replies'
+  | 'form_mode'
 
 export type StepState = 'done' | 'current' | 'upcoming'
 
@@ -201,6 +202,35 @@ export type UiCard =
       message_id: string | null
       payload: QuickRepliesPayload
     }
+  | {
+      card_id: string
+      card_type: 'form_mode'
+      message_id: string | null
+      payload: FormModePayload
+    }
+
+export type FormModeStep =
+  'existing_account' | 'cr' | 'details' | 'verification' | 'documents' | 'review' | 'submitted'
+
+/** A value still missing in form mode; saved with the `edit_field` action. */
+export interface FormModeField {
+  /** A field key, or `contact_number` (saved as mobile or landline). */
+  key: string
+  label: string
+  kind: 'text' | 'select'
+  /** For selects: GET /api/master/{master_kind}. */
+  master_kind: string | null
+}
+
+/** The model is unavailable: finish the inquiry from the cards (L3 §3.14). */
+export interface FormModePayload {
+  /** False once the assistant is back. */
+  active: boolean
+  message: string
+  next_step: FormModeStep
+  fields: FormModeField[]
+  can_skip_cr: boolean
+}
 
 export interface DraftFieldRow {
   key: string
