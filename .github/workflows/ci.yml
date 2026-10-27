@@ -28,7 +28,16 @@ jobs:
       - name: Checks (ruff, mypy)
         run: make check-be
       - name: Tests (pytest, incl. AGENT-DET)
-        run: make test-be
+        # Same as `make test-be`; failing tests are also printed as annotations.
+        run: |
+          cd backend
+          set +e
+          uv run pytest -q -rfE 2>&1 | tee pytest.log
+          status=${PIPESTATUS[0]}
+          grep -E "^(FAILED|ERROR) " pytest.log | head -40 | while IFS= read -r line; do
+            echo "::error title=pytest::${line}"
+          done
+          exit $status
 
   frontend:
     runs-on: ubuntu-latest
