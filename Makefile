@@ -68,11 +68,15 @@ e2e: e2e-int
 
 # AGENT-LIVE: live evaluation. Groups (GROUP=intake, arabic, …) and repeats arrive in step 11d (B1).
 eval-live:
-	cd backend && GROUP=$(GROUP) uv run python scripts/eval_live.py
+	$(LOAD_ENV); cd backend && GROUP=$(GROUP) uv run python scripts/eval_live.py
+
+# Live targets export backend/.env first, so OPENAI_API_KEY and OPENAI_MODEL reach the
+# Playwright process too (the backend reads .env itself; the tests need the key in the shell).
+LOAD_ENV = if [ -f backend/.env ]; then set -a; . ./backend/.env; set +a; fi
 
 # E2E-LIVE: Playwright with the real model (@live suites).
 e2e-live:
-	$(E2E_DEPS) && CI=1 E2E_LIVE=1 npm run test:live -- $(ARGS)
+	$(LOAD_ENV); $(E2E_DEPS) && CI=1 E2E_LIVE=1 npm run test:live -- $(ARGS)
 
 e2e-report:
 	cd e2e && npx playwright show-report
