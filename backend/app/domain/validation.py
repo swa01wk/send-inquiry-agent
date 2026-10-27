@@ -8,6 +8,7 @@ from typing import Literal, TypeVar
 from pydantic import BaseModel, EmailStr, TypeAdapter
 
 from app.domain.master import MasterData
+from app.policy.config import get_policy
 
 T = TypeVar("T")
 
@@ -98,6 +99,8 @@ def validate_master_id(
     value = raw.strip() if isinstance(raw, str) else str(raw)
     if value not in master.ids_for_kind(kind):
         return ValidationError(code=code, message=f"Unknown {label}.")
+    if kind == "unit_types" and value not in get_policy().product_lines:
+        return ValidationError(code=code, message=f"Unknown {label}.")
     return value
 
 
@@ -106,10 +109,21 @@ def validate_malls(raw: list[str] | str, master: MasterData) -> list[str] | Vali
         return ValidationError(code="invalid_malls", message="Malls must be a list of mall ids.")
     if len(raw) < 1:
         return ValidationError(code="invalid_malls", message="Select a mall.")
-    if len(set(raw)) > 1:
+    max_malls = get_policy().max_malls_per_inquiry
+    if len(set(raw)) > max_malls:
+        if max_malls == 1:
+            return ValidationError(
+                code="one_mall_per_inquiry",
+                message=(
+                    "Choose one mall per inquiry. Another inquiry can be raised for a second mall."
+                ),
+            )
         return ValidationError(
-            code="one_mall_per_inquiry",
-            message="Choose one mall per inquiry. Another inquiry can be raised for a second mall.",
+            code="too_many_malls",
+            message=(
+                f"Choose up to {max_malls} malls per inquiry. "
+                "Another inquiry can be raised for the others."
+            ),
         )
     raw = list(dict.fromkeys(raw))
     mall_ids = master.mall_ids()
@@ -250,6 +264,11 @@ def international_number(raw: str) -> str | ValidationError | None:
         return ValidationError(
             code="invalid_phone",
             message="Enter the number with its country code, e.g. +971501234567.",
+        )
+    if not get_policy().phone.allows(digits):
+        return ValidationError(
+            code="phone_country_not_allowed",
+            message="We can only accept phone numbers from the supported countries.",
         )
     return f"+{digits}"
 

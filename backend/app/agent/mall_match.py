@@ -7,6 +7,7 @@ import re
 from app.domain import draft_ops
 from app.domain.master import Mall, MasterData
 from app.domain.models import FieldKey, InquiryDraft, Source
+from app.policy.config import get_policy
 
 # "at Red Sea Mall", "in Riyadh Mall A", "at Mall of Arabia"
 _MALL_AT_IN_RE = re.compile(
@@ -104,7 +105,7 @@ def phrase_matches_seed_mall(phrase: str, master: MasterData) -> bool:
         seed = _normalize_phrase(mall.name)
         if normalized == seed or normalized in seed or seed in normalized:
             return True
-        for alias in mall.aliases:
+        for alias in mall.names()[1:]:
             alias_norm = _normalize_phrase(alias)
             if normalized == alias_norm or normalized in alias_norm or alias_norm in normalized:
                 return True
@@ -130,7 +131,9 @@ def user_message_mentions_mall(
 
 
 def _mall_mentioned(user_text: str, mall: Mall) -> bool:
-    return user_message_mentions_mall(user_text, mall.name, aliases=mall.aliases)
+    """English name, Arabic name or any alias, matched as a whole name."""
+    name, *others = mall.names()
+    return user_message_mentions_mall(user_text, name, aliases=others)
 
 
 def mentioned_seed_mall_ids(user_text: str, master: MasterData) -> list[str]:
@@ -153,16 +156,16 @@ def fill_mentioned_malls(
     user_text: str,
     master: MasterData,
 ) -> tuple[InquiryDraft, bool]:
-    """When malls is empty and the user named exactly one seed mall, write it as user.
+    """When malls is empty and the user named seed malls within the policy's limit, write them.
 
-    One mall per inquiry: if the message names several, nothing is written and the
-    agent asks which one to start with.
+    If the message names more malls than an inquiry can cover
+    (`max_malls_per_inquiry`), nothing is written and the agent asks which to start with.
     """
     raw = draft.fields[FieldKey.MALLS].value
     if isinstance(raw, list) and raw:
         return draft, False
     ids = mentioned_seed_mall_ids(user_text, master)
-    if len(ids) != 1:
+    if not 1 <= len(ids) <= get_policy().max_malls_per_inquiry:
         return draft, False
     updated, written, errors = draft_ops.write_fields(
         draft,

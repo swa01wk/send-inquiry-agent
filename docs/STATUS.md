@@ -12,7 +12,7 @@ The single place to see what's built, what's next and how the agent maps to the 
 
 **Status values:** ✅ Done · 🟡 In progress, or built at demo depth during the breadth days · ⬜ Not started · ⛔ Blocked · ➖ Waived (with reason)
 
-**Last updated:** 27 Oct 2026 · Step 11c
+**Last updated:** 27 Oct 2026 · Day 1 policy PR (step 17)
 
 ## 0. Delivery plan
 
@@ -20,7 +20,7 @@ The single place to see what's built, what's next and how the agent maps to the 
 
 | Phase | Dates | Goal | Backend PR (Claude) | Frontend and agent PR (Swaroop) | Status | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| Day 1 | Tue 27 Oct | Foundation: 11c, harness, policy and master data | Harness PR (this one); policy PR after 11c | | 🟡 | |
+| Day 1 | Tue 27 Oct | Foundation: 11c, harness, policy and master data | #24 harness; #26 card fix; policy PR (step 17) | #25 (11c) | ✅ | Done when the policy PR merges |
 | Day 2 | Wed 28 Oct | Simulated Cenomi, verification by link, resume, submit once, tracking; L3 core: restart-safe store, audit log v0, thin gateway | | | ⬜ | |
 | Day 3 | Thu 29 Oct | Routing, handoff, Arabic, follow-on; L3 core: form mode, evidence — every L3 capability at demo depth | | | ⬜ | |
 | Day 4 | Fri 30 Oct | Review lifecycle, reviewer console with audit timeline, case assistant — L4 core | | | ⬜ | |
@@ -33,7 +33,7 @@ The single place to see what's built, what's next and how the agent maps to the 
 
 | Gate | Spec | Rows | Status | Result |
 | --- | --- | --- | --- | --- |
-| Pre-baseline | [pre-baseline-fixes.md](specs/pre-baseline-fixes.md) §2 | P1–P5 | ⬜ | — (11c implemented; gate run pending) |
+| Pre-baseline | [pre-baseline-fixes.md](specs/pre-baseline-fixes.md) §2 | P1–P5 | 🟡 | P1–P3, P5 proven in CI (#25, #26). P4: CI green; eval run 1 18/20, `@live` smoke 26/28 (06 WhatsApp and 22 model variance); eval run 2 to record in `docs/eval-notes.md` |
 | M0 modular core | [m0-modular-core.md](specs/m0-modular-core.md) §2 | G1–G7 | ⬜ | — |
 | L3 reliable intake | [l3-reliable-intake.md](specs/l3-reliable-intake.md) §2 | E1–E9 | ⬜ | — |
 | Intake channels | [intake-channels.md](specs/intake-channels.md) §2 | C1–C6 (C1–C4, C6 with L3 as E10; C5 with L4) | ⬜ | — |
@@ -47,14 +47,14 @@ Each step is one Cursor prompt in `prompts/` and normally one PR.
 | Step | Prompt | Delivers | Gate rows | Status | PR | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | 00–11, 11b | `00`–`11b` | v1 POC, POC assumptions, UI fixes, Playwright suites | — | ✅ | #1–#13 | Live e2e: desktop 14/14; mobile test 14 fix in #13, needs a live run to confirm |
-| 11c | `11c-pre-baseline-fixes.md` | Confirm only what was shown; turn on documents complete; Office removed; document numbers on the documents card; landline and `written_keys` fixes | P1–P5 | 🟡 | | Must land before step 12 |
+| 11c | `11c-pre-baseline-fixes.md` | Confirm only what was shown; turn on documents complete; Office removed; document numbers on the documents card; landline and `written_keys` fixes | P1–P5 | ✅ | #25, #26 | #26: a corrected document number clears its card error |
 | 11d | `11d-test-harness.md` | Six test layers with one command each, frontend Playwright, eval repeats and invariants, scenario catalogue, `ci.yml`, PR template | — | 🟡 | Day 1 harness PR | Day 1: Make targets, `ci.yml`, PR template. Left for B1: frontend-only Playwright, scenario catalogue, eval repeats and invariants, `@flaky`, prompt snapshot, coverage, `scripts/` linting, `eval-live` CI job |
 | 12 | `12-baseline-parity.md` | Golden transcripts, `make golden`, frontend fixtures from goldens, live-eval baseline | G1 | ⬜ | | |
 | 13 | `13-durable-state.md` | Inquiry store (memory, Postgres), turn lease, checkpointer, bounded history, retention | G2 | ⬜ | | Register `Source`, `InquiryDraft`, `DocType` for checkpoint deserialisation |
 | 14 | `14-workflow-gateway-submit.md` | State machine (L4 rows defined), tool gateway, idempotent submit | G3, G5, G6 | ⬜ | | |
 | 15 | `15-audit-trail.md` | Redacted, append-only audit trail | G4 | ⬜ | | |
 | 16 | `16-supervisor-registry.md` | Supervisor, agent registry, `status` agent, Postgres CI matrix | G1, G7 | ⬜ | | Closes the M0 gate |
-| 17 | `17-policy-config.md` | Policy file; generated master data with regions and Arabic names | E2 | ⬜ | | |
+| 17 | `17-policy-config.md` | Policy file; generated master data with regions and Arabic names | E2 | 🟡 | Day 1 policy PR | Built: `policy.yaml` read by validators, `can_submit`, cards, `verify_cr`; "Rules in force" prompt block; 20 malls with Arabic names and regions; `MasterDataSource`; flip tests. Left: verification-channel flips (19), resend limits read (19), duplicate and follow-on read (21b), `allow_inquiry` tenant prefill (21c) |
 | 18 | `18-integration-adapters.md` | Simulated Cenomi: mocks, scenario data, faults, notification outbox, dev inbox | E4, E7 | ⬜ | | Adds `react-router-dom` |
 | 19 | `19-email-link-resume.md` | Email-link verification, cross-device resume, resend limits | E3 | ⬜ | | |
 | 20 | `20-status-page-notifications.md` | Submission email and SMS, tokenised status page | E4, E5 | ⬜ | | |
@@ -82,7 +82,7 @@ Summary by workflow. Line-by-line coverage of every statement in §7.1, §7.1.1 
 | §7.1.1 a2 — prospective, via the call centre: executive raises it; applicant completes from the emailed link (email auto-verified, review basic info, Proceed, OTP, documents, submit) | 21c | Day 5 | ⬜ |
 | §7.1.2 a1 — existing tenant via Leasing Opportunities: prefilled details and documents, property preselected, verify and edit, submit, My inquiries | 21c | Day 5 | ⬜ |
 | §7.1.2 a2 — existing tenant via the call centre: CR exists → ask to sign in, or continue with the record prefilled | 21c | Day 5 | ⬜ |
-| §7.1 — existing tenant on the public page (`existing_tenant_policy`) | 17, 21c | Days 1, 5 | ⬜ |
+| §7.1 — existing tenant on the public page (`existing_tenant_policy`) | 17, 21c | Days 1, 5 | 🟡 |
 | b — routing to RLM-Store / RPLM-Media / RPLM-Specialty by unit type and region | 23 | Day 4 | ⬜ |
 | b — first-level review: re-upload by email link, reject with remarks, approve with Azure AD invitation (only if no account) | 23–25 | Day 4 | ⬜ |
 | b — automatic contacts request "on contact creation"; qualified as a lead | 23, 25 | Days 4, 5 | ⬜ |
@@ -105,7 +105,7 @@ Summary by workflow. Line-by-line coverage of every statement in §7.1, §7.1.1 
 | L2 | Clear handoff to the original transaction | 21; call-centre continuation (21c) | ⬜ |
 | L3 | 1 Intent detection and routing | 16 (supervisor), 21 (router) | ⬜ |
 | L3 | 2 Multi-field extraction | v1; Arabic in 21b; evidence in 22 | 🟡 |
-| L3 | 3 Entity resolution | v1 mall and category matching; Arabic names in 17 | 🟡 |
+| L3 | 3 Entity resolution | v1 mall and category matching; Arabic mall names and aliases matched (17) | 🟡 |
 | L3 | 4 Verified context reuse | v1 CR prefill; follow-on inquiries in 21b | 🟡 |
 | L3 | 5 Adaptive slot filling | v1 bundles; documents-complete turn in 11c | 🟡 |
 | L3 | 6 Deterministic validation | v1; "confirm only what was shown" in 11c; policy in 17 | 🟡 |
@@ -170,7 +170,7 @@ Nothing is blocked: each item has a working assumption implemented in a mock or 
 | `EMAIL_LINK_DEMO` defaults to `true` | Before any non-demo deploy | ⬜ |
 | `app/agent/e2e_scripts.py` reads scripts from `tests/` | Only matters for a slim image | ⬜ |
 | 4 ESLint fast-refresh warnings in `frontend/src/state/chatStore.tsx` | Low priority | ⬜ |
-| Live test 14 failed on mobile in CI (WebKit) | PR #13 (read text from the DOM); confirm with a live run | 🟡 |
+| Live test 14 failed on mobile in CI (WebKit) | PR #13 (read text from the DOM); passed on mobile in the 27 Oct live smoke run | ✅ |
 
 ## 7. Test layers
 

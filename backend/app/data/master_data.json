@@ -1,42 +1,371 @@
 {
+  "regions": [
+    {
+      "id": "central",
+      "label": "Central",
+      "label_ar": "المنطقة الوسطى"
+    },
+    {
+      "id": "western",
+      "label": "Western",
+      "label_ar": "المنطقة الغربية"
+    },
+    {
+      "id": "eastern",
+      "label": "Eastern",
+      "label_ar": "المنطقة الشرقية"
+    }
+  ],
   "unit_types": [
-    {"id": "store", "label": "Store", "code": "STR"},
-    {"id": "media", "label": "Media", "code": "MED"},
-    {"id": "specialty", "label": "Specialty", "code": "SPC"}
+    {
+      "id": "store",
+      "label": "Store",
+      "label_ar": "متجر",
+      "code": "STR"
+    },
+    {
+      "id": "media",
+      "label": "Media",
+      "label_ar": "مساحة إعلانية",
+      "code": "MED"
+    },
+    {
+      "id": "specialty",
+      "label": "Specialty",
+      "label_ar": "وحدة متخصصة",
+      "code": "SPC"
+    }
   ],
   "sales_categories": [
-    {"id": "fnb_cafe", "label": "Food & Beverage · Café"},
-    {"id": "fnb_restaurant", "label": "Food & Beverage · Restaurant"},
-    {"id": "fashion", "label": "Fashion & Apparel"},
-    {"id": "beauty", "label": "Health & Beauty"},
-    {"id": "electronics", "label": "Electronics"},
-    {"id": "entertainment", "label": "Entertainment"},
-    {"id": "services", "label": "Services"}
+    {
+      "id": "fnb_cafe",
+      "label": "Food & Beverage · Café",
+      "label_ar": "أغذية ومشروبات · مقهى"
+    },
+    {
+      "id": "fnb_restaurant",
+      "label": "Food & Beverage · Restaurant",
+      "label_ar": "أغذية ومشروبات · مطعم"
+    },
+    {
+      "id": "fashion",
+      "label": "Fashion & Apparel",
+      "label_ar": "أزياء وملابس"
+    },
+    {
+      "id": "beauty",
+      "label": "Health & Beauty",
+      "label_ar": "صحة وجمال"
+    },
+    {
+      "id": "electronics",
+      "label": "Electronics",
+      "label_ar": "إلكترونيات"
+    },
+    {
+      "id": "entertainment",
+      "label": "Entertainment",
+      "label_ar": "ترفيه"
+    },
+    {
+      "id": "services",
+      "label": "Services",
+      "label_ar": "خدمات"
+    }
   ],
   "cities": [
-    {"id": "riyadh", "label": "Riyadh"},
-    {"id": "jeddah", "label": "Jeddah"},
-    {"id": "dammam", "label": "Dammam"}
+    {
+      "id": "riyadh",
+      "label": "Riyadh",
+      "label_ar": "الرياض",
+      "region": "central"
+    },
+    {
+      "id": "jeddah",
+      "label": "Jeddah",
+      "label_ar": "جدة",
+      "region": "western"
+    },
+    {
+      "id": "dammam",
+      "label": "Dammam",
+      "label_ar": "الدمام",
+      "region": "eastern"
+    },
+    {
+      "id": "buraidah",
+      "label": "Buraidah",
+      "label_ar": "بريدة",
+      "region": "central"
+    },
+    {
+      "id": "makkah",
+      "label": "Makkah",
+      "label_ar": "مكة المكرمة",
+      "region": "western"
+    },
+    {
+      "id": "madinah",
+      "label": "Madinah",
+      "label_ar": "المدينة المنورة",
+      "region": "western"
+    },
+    {
+      "id": "khobar",
+      "label": "Al Khobar",
+      "label_ar": "الخبر",
+      "region": "eastern"
+    },
+    {
+      "id": "jubail",
+      "label": "Jubail",
+      "label_ar": "الجبيل",
+      "region": "eastern"
+    }
   ],
   "malls": [
-    {"id": "riyadh-mall-a", "name": "Riyadh Mall A", "city": "riyadh"},
-    {"id": "riyadh-mall-b", "name": "Riyadh Mall B", "city": "riyadh"},
-    {"id": "riyadh-mall-c", "name": "Riyadh Mall C", "city": "riyadh"},
-    {"id": "riyadh-mall-d", "name": "Riyadh Mall D", "city": "riyadh"},
-    {"id": "jeddah-mall-a", "name": "Jeddah Mall A", "city": "jeddah"},
-    {"id": "jeddah-mall-b", "name": "Jeddah Mall B", "city": "jeddah"},
-    {"id": "mall-of-arabia", "name": "Mall of Arabia", "city": "jeddah", "aliases": ["Arabia Mall"]},
-    {"id": "dammam-mall-a", "name": "Dammam Mall A", "city": "dammam"},
-    {"id": "mall-of-dhahran", "name": "Mall of Dhahran", "city": "dammam"}
+    {
+      "id": "riyadh-mall-a",
+      "name": "Riyadh Mall A",
+      "name_ar": "الرياض مول أ",
+      "city": "riyadh",
+      "region": "central",
+      "aliases": [
+        "مول الرياض أ",
+        "الرياض مول ا"
+      ]
+    },
+    {
+      "id": "riyadh-mall-b",
+      "name": "Riyadh Mall B",
+      "name_ar": "الرياض مول ب",
+      "city": "riyadh",
+      "region": "central",
+      "aliases": [
+        "مول الرياض ب"
+      ]
+    },
+    {
+      "id": "riyadh-mall-c",
+      "name": "Riyadh Mall C",
+      "name_ar": "الرياض مول ج",
+      "city": "riyadh",
+      "region": "central",
+      "aliases": [
+        "مول الرياض ج"
+      ]
+    },
+    {
+      "id": "riyadh-mall-d",
+      "name": "Riyadh Mall D",
+      "name_ar": "الرياض مول د",
+      "city": "riyadh",
+      "region": "central",
+      "aliases": [
+        "مول الرياض د"
+      ]
+    },
+    {
+      "id": "jeddah-mall-a",
+      "name": "Jeddah Mall A",
+      "name_ar": "جدة مول أ",
+      "city": "jeddah",
+      "region": "western",
+      "aliases": [
+        "مول جدة أ",
+        "جدة مول ا"
+      ]
+    },
+    {
+      "id": "jeddah-mall-b",
+      "name": "Jeddah Mall B",
+      "name_ar": "جدة مول ب",
+      "city": "jeddah",
+      "region": "western",
+      "aliases": [
+        "مول جدة ب"
+      ]
+    },
+    {
+      "id": "mall-of-arabia",
+      "name": "Mall of Arabia",
+      "name_ar": "مول العرب",
+      "city": "jeddah",
+      "region": "western",
+      "aliases": [
+        "Arabia Mall",
+        "العرب مول"
+      ]
+    },
+    {
+      "id": "dammam-mall-a",
+      "name": "Dammam Mall A",
+      "name_ar": "الدمام مول أ",
+      "city": "dammam",
+      "region": "eastern",
+      "aliases": [
+        "مول الدمام أ",
+        "الدمام مول ا"
+      ]
+    },
+    {
+      "id": "mall-of-dhahran",
+      "name": "Mall of Dhahran",
+      "name_ar": "مول الظهران",
+      "city": "dammam",
+      "region": "eastern",
+      "aliases": [
+        "الظهران مول"
+      ]
+    },
+    {
+      "id": "buraidah-mall-a",
+      "name": "Buraidah Mall A",
+      "name_ar": "بريدة مول أ",
+      "city": "buraidah",
+      "region": "central",
+      "aliases": [
+        "مول بريدة أ",
+        "بريدة مول ا"
+      ]
+    },
+    {
+      "id": "buraidah-mall-b",
+      "name": "Buraidah Mall B",
+      "name_ar": "بريدة مول ب",
+      "city": "buraidah",
+      "region": "central",
+      "aliases": [
+        "مول بريدة ب"
+      ]
+    },
+    {
+      "id": "makkah-mall-a",
+      "name": "Makkah Mall A",
+      "name_ar": "مكة مول أ",
+      "city": "makkah",
+      "region": "western",
+      "aliases": [
+        "مول مكة أ",
+        "مكة مول ا"
+      ]
+    },
+    {
+      "id": "makkah-mall-b",
+      "name": "Makkah Mall B",
+      "name_ar": "مكة مول ب",
+      "city": "makkah",
+      "region": "western",
+      "aliases": [
+        "مول مكة ب"
+      ]
+    },
+    {
+      "id": "makkah-mall-c",
+      "name": "Makkah Mall C",
+      "name_ar": "مكة مول ج",
+      "city": "makkah",
+      "region": "western",
+      "aliases": [
+        "مول مكة ج"
+      ]
+    },
+    {
+      "id": "madinah-mall-a",
+      "name": "Madinah Mall A",
+      "name_ar": "المدينة مول أ",
+      "city": "madinah",
+      "region": "western",
+      "aliases": [
+        "مول المدينة أ",
+        "المدينة مول ا"
+      ]
+    },
+    {
+      "id": "madinah-mall-b",
+      "name": "Madinah Mall B",
+      "name_ar": "المدينة مول ب",
+      "city": "madinah",
+      "region": "western",
+      "aliases": [
+        "مول المدينة ب"
+      ]
+    },
+    {
+      "id": "khobar-mall-a",
+      "name": "Khobar Mall A",
+      "name_ar": "الخبر مول أ",
+      "city": "khobar",
+      "region": "eastern",
+      "aliases": [
+        "مول الخبر أ",
+        "الخبر مول ا"
+      ]
+    },
+    {
+      "id": "khobar-mall-b",
+      "name": "Khobar Mall B",
+      "name_ar": "الخبر مول ب",
+      "city": "khobar",
+      "region": "eastern",
+      "aliases": [
+        "مول الخبر ب"
+      ]
+    },
+    {
+      "id": "khobar-mall-c",
+      "name": "Khobar Mall C",
+      "name_ar": "الخبر مول ج",
+      "city": "khobar",
+      "region": "eastern",
+      "aliases": [
+        "مول الخبر ج"
+      ]
+    },
+    {
+      "id": "jubail-mall-a",
+      "name": "Jubail Mall A",
+      "name_ar": "الجبيل مول أ",
+      "city": "jubail",
+      "region": "eastern",
+      "aliases": [
+        "مول الجبيل أ",
+        "الجبيل مول ا"
+      ]
+    }
   ],
   "lease_periods": [
-    {"id": "1y", "label": "1 year"},
-    {"id": "2y", "label": "2 years"},
-    {"id": "3y", "label": "3 years"},
-    {"id": "5y", "label": "5 years"}
+    {
+      "id": "1y",
+      "label": "1 year",
+      "label_ar": "سنة واحدة"
+    },
+    {
+      "id": "2y",
+      "label": "2 years",
+      "label_ar": "سنتان"
+    },
+    {
+      "id": "3y",
+      "label": "3 years",
+      "label_ar": "3 سنوات"
+    },
+    {
+      "id": "5y",
+      "label": "5 years",
+      "label_ar": "5 سنوات"
+    }
   ],
   "rent_periods": [
-    {"id": "monthly", "label": "Monthly"},
-    {"id": "yearly", "label": "Yearly"}
+    {
+      "id": "monthly",
+      "label": "Monthly",
+      "label_ar": "شهري"
+    },
+    {
+      "id": "yearly",
+      "label": "Yearly",
+      "label_ar": "سنوي"
+    }
   ]
 }

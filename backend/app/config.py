@@ -34,6 +34,13 @@ class Settings(BaseSettings):
         validation_alias="CORS_ORIGINS",
     )
     log_level: str = Field(default="INFO", validation_alias="LOG_LEVEL")
+    # Business-rule policy file (L3 §3.7); empty = the packaged app/policy/policy.yaml.
+    policy_path: str | None = Field(default=None, validation_alias="POLICY_PATH")
+    # Master data source (L3 §3.8): the generated seed JSON, or Cenomi's (stub until access).
+    master_data_source: Literal["seed", "cenomi"] = Field(
+        default="seed",
+        validation_alias="MASTER_DATA_SOURCE",
+    )
     agent_mode: Literal["openai", "scripted"] = Field(
         default="openai",
         validation_alias="AGENT_MODE",
