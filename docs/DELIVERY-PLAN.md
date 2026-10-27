@@ -242,7 +242,7 @@ These don't block anything (each has an assumption), but they'd make the POC mat
 | The 5 days build L4 and the channels before M0, so Sprint 1 restructures code that already works | Rework, regressions | The design choices in §A5 keep interfaces stable; goldens are recorded at the start of Sprint 1, so M0's refactor is checked against them |
 | Bugs from the 5 days get frozen into the goldens | Wrong behaviour locked in | Fix the demo findings first in Sprint 1, before step 12 |
 | Parallel tracks touch the same contracts | Merge conflicts, broken builds | Backend PR merges first each day; contracts come from the specs; frontend rebases |
-| Claude's PRs are tested only in CI | Slower feedback | `ci.yml` lands first on Day 1; small PRs |
+| Claude's PRs are tested only in CI, and Playwright doesn't run in CI on PRs | Slower feedback; UI regressions caught late | `ci.yml` (BE, FE) landed on Day 1; small PRs; Swaroop runs `make e2e-int` locally before merging a Claude PR that touches the UI or SSE contracts |
 | Live-model behaviour (Arabic, assisted mode, case assistant) needs prompt tuning | Days or sprint items slip | Live runs on Days 3 and 5; tuning time in each sprint |
 | Sprint 1 is over capacity (about 27 days of work for 20 track-days) | L3 Should items slip | The slip order in §B1, recorded as waivers |
 | The flow diagrams can't be read at their embedded resolution | A step only shown in a diagram is missed | Structure checked against the text ([traceability](specs/workflows-7-1.md)); ask Cenomi for the source diagrams |

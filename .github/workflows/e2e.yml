@@ -1,16 +1,53 @@
 name: e2e
 
-# Live layers (docs/specs/testing-strategy.md §6). The scripted Playwright job runs in ci.yml.
-# Nightly runs are opt-in: set the repository variable NIGHTLY_LIVE=true (they cost model calls).
+# Playwright in CI, on demand only (docs/specs/testing-strategy.md §6). Every PR runs these
+# suites locally instead (installing browsers in CI took most of each run).
+#   Run workflow → suite "scripted": the INT layer (@scripted), desktop Chrome + mobile WebKit.
+#   Run workflow → suite "live": the E2E-LIVE layer (@live), real model.
+# Nightly live runs are opt-in: set the repository variable NIGHTLY_LIVE=true (model cost).
 
 on:
   workflow_dispatch:
+    inputs:
+      suite:
+        description: Which Playwright suite to run
+        type: choice
+        options: [scripted, live]
+        default: scripted
   schedule:
     - cron: '30 21 * * *' # 03:00 IST / 00:30 Asia/Riyadh
 
 jobs:
+  playwright-scripted:
+    if: github.event_name == 'workflow_dispatch' && inputs.suite == 'scripted'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            e2e/package-lock.json
+      - name: Install deps
+        run: |
+          (cd backend && uv sync)
+          (cd frontend && npm ci)
+          (cd e2e && npm ci && npx playwright install --with-deps chromium webkit)
+      - name: Integration Playwright (@scripted)
+        run: make e2e-int
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: e2e/playwright-report/
+
   playwright-live:
-    if: github.event_name == 'workflow_dispatch' || vars.NIGHTLY_LIVE == 'true'
+    if: >-
+      (github.event_name == 'workflow_dispatch' && inputs.suite == 'live') ||
+      (github.event_name == 'schedule' && vars.NIGHTLY_LIVE == 'true')
     runs-on: ubuntu-latest
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

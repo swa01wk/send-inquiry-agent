@@ -22,7 +22,7 @@ Every layer in the testing spec exists, has one command, and runs in CI where th
 6. **AGENT-LIVE** (spec §2.5): `eval_live.py` gains scenario groups (today's = `intake`), `EVAL_REPEATS` (3) with the 2-of-3 rule, `EVAL_TOLERANCE`, JSON output to `backend/eval-results/` (gitignored), a Markdown summary, and the safety-invariant checks I1–I7 (spec §3) on every turn as hard failures.
 7. **E2E-LIVE** (spec §2.6): add the invariant checks to `e2e/support/turnChecks.ts`; support the `@flaky` tag (reported, excluded from the pass rate); failures attach the SSE capture (as today).
 8. **Catalogue** (spec §7): move today's scenario definitions to `backend/tests/scenarios/catalogue/*.yaml`; `generate_e2e_scripts.py` and the scenario tests read from it. No behaviour change: existing scripts must regenerate byte-identical.
-9. **CI** (spec §6): new `.github/workflows/ci.yml` with `backend`, `frontend` and `integration` jobs on every PR and push to `main`; move the scripted job out of `e2e.yml`; add an `eval-live` job to `e2e.yml` (`workflow_dispatch`, nightly when `NIGHTLY_LIVE=true`).
+9. **CI** (spec §6): `.github/workflows/ci.yml` runs `backend` and `frontend` on every PR (done on Day 1; Playwright runs locally since 27 Oct); add an `eval-live` job to `e2e.yml` (`workflow_dispatch`, nightly when `NIGHTLY_LIVE=true`).
 10. **PR template** `.github/pull_request_template.md`: summary, then a **Testing** table with one row per layer (ran / not run / why), the live results when §4 requires them, and a `docs/STATUS.md` checkbox.
 11. Fold spec §8 into `docs/spec.md`; update `docs/STATUS.md` (row 11d and §7).
 
@@ -35,7 +35,7 @@ Every layer in the testing spec exists, has one command, and runs in CI where th
 - Regenerated e2e scripts are byte-identical.
 
 ## Acceptance criteria
-- `make ci` is green locally and in the new `ci.yml`.
+- `make ci` is green locally, and `ci.yml` is green.
 - `make gate` runs every layer end to end (live layers need `OPENAI_API_KEY` and `OPENAI_MODEL`).
 - `docs/STATUS.md` §7 shows every layer with its command and current status.
 

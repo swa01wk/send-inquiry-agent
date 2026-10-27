@@ -40,11 +40,11 @@ Set `VITE_API_BASE=http://localhost:8000` if the API is not on the default port.
 | `make demo` | Docker Compose with `OTP_MOCK_CODE=1234` and `VITE_DEMO=1` |
 | `make dev` | Same stack without demo env defaults |
 | `make dev-backend` / `make dev-frontend` | Run one app locally |
-| `make ci` | Everything a PR needs (also run by `.github/workflows/ci.yml`): `check`, `test`, `e2e-int` |
+| `make ci` | Everything a PR needs, run locally: `check`, `test`, `e2e-int`. CI runs `make ci-remote` (`check`, `test`); Playwright runs on your machine |
 | `make check` (`make lint`) | `check-be` (ruff, mypy) and `check-fe` (ESLint, `tsc`, Prettier) |
 | `make test` | `test-be` (pytest) and `test-fe` (Vitest) |
 | `make test-agent` | The deterministic agent tests on their own (scripted model) |
-| `make e2e-int` (`make e2e`) | Playwright, real frontend + backend, scripted agent |
+| `make e2e-int` (`make e2e`) | Playwright, real frontend + backend, scripted agent. Flags: `ARGS='-g "13 wrong files" --project=mobile'` |
 | `make eval-live` | Live evaluation with the real model (needs `OPENAI_API_KEY`, `OPENAI_MODEL`) |
 | `make e2e-live` | Playwright with the real model |
 | `make gate` | Every layer: `ci`, `eval-live`, `e2e-live` (gates and demos) |

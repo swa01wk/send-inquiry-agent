@@ -41,4 +41,4 @@ the same inquiry payload. Target: about 5 user turns instead of ~25 form inputs.
 - Small, focused modules; type everything (TypeScript strict, Python type hints + mypy-friendly).
 - Tests alongside each step; keep them green before moving on.
 - No new dependencies beyond the stack above without stating why.
-- Commands: `make dev`; `make ci` before every PR (check, test, e2e-int); `make gate` at gates (root Makefile; layers in `docs/specs/testing-strategy.md`).
+- Commands: `make dev`; `make ci` locally before every PR (check, test, e2e-int; CI runs only check and test, so report the Playwright result in the PR); `make gate` at gates (root Makefile; layers in `docs/specs/testing-strategy.md`).

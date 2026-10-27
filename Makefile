@@ -1,11 +1,12 @@
 # Test layers and their commands: docs/specs/testing-strategy.md §2.
-# Every PR: `make ci` (also run by .github/workflows/ci.yml). Gates and demos: `make gate`.
+# Every PR: `make ci` locally (CI runs `make ci-remote`: everything except Playwright).
+# Gates and demos: `make gate`.
 
 .PHONY: dev demo dev-backend dev-frontend \
 	check check-be check-fe lint \
 	test test-be test-fe test-agent \
 	e2e e2e-int e2e-live e2e-report eval-live \
-	ci gate
+	ci ci-remote gate
 
 # ---- Run ---------------------------------------------------------------
 
@@ -52,9 +53,14 @@ test: test-be test-fe
 test-agent:
 	cd backend && uv run pytest tests/agent tests/scenarios tests/test_e2e_scripts.py
 
+# Playwright runs locally before every PR (not in CI on PRs; testing strategy §6).
+# Deps install only when missing; pass Playwright flags with ARGS, e.g.
+#   make e2e-int ARGS='-g "13 wrong files" --project=mobile'
+E2E_DEPS = cd e2e && ([ -d node_modules ] || npm ci) && npx playwright install chromium webkit
+
 # INT: Playwright, real frontend + backend, scripted agent (@scripted suites).
 e2e-int:
-	cd e2e && npm ci && npx playwright install chromium webkit && CI=1 npm run test:scripted
+	$(E2E_DEPS) && CI=1 npm run test:scripted -- $(ARGS)
 
 e2e: e2e-int
 
@@ -66,15 +72,19 @@ eval-live:
 
 # E2E-LIVE: Playwright with the real model (@live suites).
 e2e-live:
-	cd e2e && npm ci && npx playwright install chromium webkit && CI=1 E2E_LIVE=1 npm run test:live
+	$(E2E_DEPS) && CI=1 E2E_LIVE=1 npm run test:live -- $(ARGS)
 
 e2e-report:
 	cd e2e && npx playwright show-report
 
 # ---- Bundles ---------------------------------------------------------------
 
-# Everything a PR needs. `e2e-fe` (frontend-only Playwright) joins when step 11d adds it (B1).
+# Everything a PR needs, run locally. CI runs `check` and `test`; the Playwright part
+# (`e2e-int`) is yours to run and report in the PR. `e2e-fe` joins when step 11d adds it (B1).
 ci: check test e2e-int
+
+# What CI runs on every PR (no browsers needed).
+ci-remote: check test
 
 # Every layer, at gates and before demos.
 gate: ci eval-live e2e-live
