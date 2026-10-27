@@ -76,4 +76,25 @@ describe('VerificationCard', () => {
     expect(screen.queryByLabelText(/verification code/i)).not.toBeInTheDocument()
     expect(screen.getByText(/we sent a verification link/i)).toBeInTheDocument()
   })
+
+  it('shows a countdown instead of resend while throttled', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-28T12:00:00.000Z'))
+    const payload = examplePayload()
+    render(
+      <VerificationCard
+        payload={{
+          ...payload,
+          email: { ...payload.email, resend_available_at: '2026-10-28T12:01:30.000Z' },
+        }}
+        onVerifyEmail={noop}
+        onResendEmailLink={noop}
+        onVerifyCode={noop}
+        onResendCode={noop}
+      />,
+    )
+    expect(screen.getByText(/resend link in 1:30/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /resend link/i })).not.toBeInTheDocument()
+    vi.useRealTimers()
+  })
 })

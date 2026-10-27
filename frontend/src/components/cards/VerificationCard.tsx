@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { VerificationMobile, VerificationPayload } from '../../types/contracts'
 import shared from './cards.module.css'
+import { ResendButton } from './ResendButton'
 import styles from './VerificationCard.module.css'
 
 interface VerificationCardProps {
@@ -84,9 +85,11 @@ function MobileCode({ mobile, onVerifyCode, onResendCode }: MobileCodeProps) {
           {mobile.masked ? `Sent by SMS to ${mobile.masked}` : 'Sent by SMS'}
         </p>
       )}
-      <button type="button" className={shared.textLink} onClick={onResendCode}>
-        Resend code
-      </button>
+      <ResendButton
+        label="Resend code"
+        resendAvailableAt={mobile.resend_available_at}
+        onResend={onResendCode}
+      />
     </div>
   )
 }
@@ -134,9 +137,11 @@ export function VerificationCard({
                 Open verification link (demo)
               </button>
             ) : null}
-            <button type="button" className={shared.textLink} onClick={onResendEmailLink}>
-              Resend link
-            </button>
+            <ResendButton
+              label="Resend link"
+              resendAvailableAt={email.resend_available_at}
+              onResend={onResendEmailLink}
+            />
           </>
         )}
       </div>

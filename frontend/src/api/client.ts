@@ -1,6 +1,13 @@
 import { API_BASE, E2E_MODE, MOCK_MODE } from '../config'
 import { mockCreateSession, mockRemoveDocument, mockUploadDocument } from '../mocks/mockSession'
-import type { CreateSessionResponse, DraftSummary, UiCard } from '../types/contracts'
+import type {
+  CreateSessionResponse,
+  DraftSummary,
+  InquiryStatusResponse,
+  OutboxMessage,
+  UiCard,
+  VerifyEmailResponse,
+} from '../types/contracts'
 
 interface ApiErrorBody {
   error?: { code: string; message: string }
@@ -96,6 +103,66 @@ export async function uploadDocument(
     throw Object.assign(new Error(err.message), { code: err.code })
   }
   return res.json() as Promise<DocumentMutationResponse>
+}
+
+export async function verifyEmailLink(token: string): Promise<VerifyEmailResponse> {
+  const res = await fetch(`${API_BASE}/api/verifications/email`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  })
+  if (!res.ok) {
+    const err = await parseError(res)
+    throw Object.assign(new Error(err.message), { code: err.code })
+  }
+  return res.json() as Promise<VerifyEmailResponse>
+}
+
+export async function resumeSession(token: string): Promise<CreateSessionResponse> {
+  const res = await fetch(`${API_BASE}/api/sessions/resume`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  })
+  if (!res.ok) {
+    const err = await parseError(res)
+    throw Object.assign(new Error(err.message), { code: err.code })
+  }
+  return res.json() as Promise<CreateSessionResponse>
+}
+
+export async function fetchInquiryStatus(
+  reference: string,
+  trackToken: string,
+): Promise<InquiryStatusResponse> {
+  const url = new URL(`${API_BASE}/api/inquiries/${encodeURIComponent(reference)}`)
+  url.searchParams.set('t', trackToken)
+  const res = await fetch(url.toString())
+  if (!res.ok) {
+    const err = await parseError(res)
+    throw Object.assign(new Error(err.message), { code: err.code })
+  }
+  return res.json() as Promise<InquiryStatusResponse>
+}
+
+export async function fetchOutbox(to?: string): Promise<OutboxMessage[]> {
+  const url = new URL(`${API_BASE}/api/dev/outbox`)
+  if (to) url.searchParams.set('to', to)
+  const res = await fetch(url.toString())
+  if (!res.ok) {
+    const err = await parseError(res)
+    throw Object.assign(new Error(err.message), { code: err.code })
+  }
+  const body = (await res.json()) as { messages: OutboxMessage[] }
+  return body.messages
+}
+
+export async function clearOutbox(): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/dev/outbox`, { method: 'DELETE' })
+  if (!res.ok) {
+    const err = await parseError(res)
+    throw Object.assign(new Error(err.message), { code: err.code })
+  }
 }
 
 export async function removeDocument(

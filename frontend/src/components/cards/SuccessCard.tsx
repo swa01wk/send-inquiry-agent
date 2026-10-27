@@ -16,7 +16,10 @@ function stepMarkClass(state: SuccessStep['state']): string {
 
 function trackingHref(url: string): string {
   if (url.startsWith('http://') || url.startsWith('https://')) return url
-  if (url.startsWith('/')) return `${API_BASE}${url}`
+  if (url.startsWith('/')) {
+    if (typeof window !== 'undefined') return `${window.location.origin}${url}`
+    return `${API_BASE}${url}`
+  }
   return url
 }
 
