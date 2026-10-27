@@ -12,6 +12,11 @@ CONTEXT = {
     "code": "1234",
     "ttl_hours": 72,
     "ttl_days": 7,
+    "case_id": "CC-123456",
+    "short_ref": "INQ-ABC123",
+    "reason_label": "The applicant asked to speak to someone",
+    "summary": "Stage: verifying.",
+    "contact_name": "Sara Ali",
 }
 
 
