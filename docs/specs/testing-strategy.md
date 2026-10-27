@@ -13,13 +13,15 @@ Today there are three layers: backend `pytest` with `make lint`, frontend Vitest
 | ID | Layer | What runs | Model | Proves | Command | When |
 | --- | --- | --- | --- | --- | --- | --- |
 | **BE** | Backend checks and tests | `ruff check`, `ruff format --check`, `mypy --strict` over `app` and `scripts`; `pytest` (domain, services, API, workflow, audit, contract tests against mocks; Postgres-marked from step 13) | None | Rules, contracts and state transitions are correct in code | `make check-be`, `make test-be` | Every PR |
-| **FE** | Frontend checks, unit tests and frontend Playwright | ESLint, `tsc`, Prettier; Vitest; **Playwright against the frontend alone** (`VITE_MOCK=1`, no backend) | None | Every card and page renders, acts, is accessible and responsive, and handles stream errors | `make check-fe`, `make test-fe`, `make e2e-fe` | Every PR |
-| **INT** | Frontend + backend integration (Playwright) | Real browser, real frontend, real backend with `AGENT_MODE=scripted`, `INTEGRATIONS=mock`, `DEV_TOOLS=true` | Scripted | The frontend and backend agree on every contract (SSE, cards, actions, REST); mocks, faults, outbox and multi-user flows work | `make e2e-int` (alias `make e2e`) | Every PR |
+| **FE** | Frontend checks, unit tests and frontend Playwright | ESLint, `tsc`, Prettier; Vitest; **Playwright against the frontend alone** (`VITE_MOCK=1`, no backend) | None | Every card and page renders, acts, is accessible and responsive, and handles stream errors | `make check-fe`, `make test-fe`, `make e2e-fe` | Every PR (checks and Vitest in CI; `e2e-fe` locally) |
+| **INT** | Frontend + backend integration (Playwright) | Real browser, real frontend, real backend with `AGENT_MODE=scripted`, `INTEGRATIONS=mock`, `DEV_TOOLS=true` | Scripted | The frontend and backend agree on every contract (SSE, cards, actions, REST); mocks, faults, outbox and multi-user flows work | `make e2e-int` (alias `make e2e`) | Every PR, run locally by the author (result in the PR); in CI on demand |
 | **AGENT-DET** | Agent, deterministic | `pytest` over tools, guard, actions, bundles, prompt assembly, routing rules, agent allowlists, scenario scripts and parity goldens | Scripted | Given the same model output, the agent's state, cards and guard decisions never change | `make test-agent` | Every PR (it's a subset of `make test-be`, runnable on its own) |
 | **AGENT-LIVE** | Agent, live evaluation | `scripts/eval_live.py` scenarios through the HTTP app, repeated | Real (`OPENAI_MODEL`) | The real model, with our prompt and tools, completes each scenario's goal and never breaks a safety invariant | `make eval-live` | When §4 requires it; every gate |
 | **E2E-LIVE** | Frontend + backend + live agent (Playwright) | Real browser, frontend, backend and model; personas and live variants of the acceptance stories | Real | A real user in a real browser gets the outcome, on desktop and mobile | `make e2e-live` | When §4 requires it; every gate; before demos |
 
-`make check` runs `check-be` and `check-fe` (`make lint` stays as an alias). `make test` runs `test-be` and `test-fe`. `make ci` runs everything a PR needs: `check`, `test`, `e2e-fe`, `e2e-int`. `make gate` adds `eval-live` and `e2e-live`.
+`make check` runs `check-be` and `check-fe` (`make lint` stays as an alias). `make test` runs `test-be` and `test-fe`. `make ci` runs everything a PR needs: `check`, `test`, `e2e-fe`, `e2e-int`. `make ci-remote` is the part CI runs on every PR: `check` and `test`. `make gate` adds `eval-live` and `e2e-live`.
+
+**Where Playwright runs (27 Oct 2026).** Installing browsers took most of each CI run, so the Playwright layers (`e2e-fe`, `e2e-int`, `e2e-live`) run on the author's machine before every PR, and their results go in the PR's Testing table. `e2e.yml` runs the scripted or live suite in CI on demand. For Claude's PRs, which can't run browsers in Claude's workspace, Swaroop runs `make e2e-int` before merging.
 
 ### 2.1 BE — backend checks and tests
 
@@ -100,7 +102,7 @@ Checked automatically in AGENT-LIVE and E2E-LIVE on every turn, and asserted in 
 
 ## 4. Which layers a change must run
 
-Every PR runs `make ci` (BE, FE, INT, AGENT-DET) in CI. These changes also need the live layers, run locally or by `workflow_dispatch`, with the results in the PR's testing section:
+Every PR runs `make ci` (BE, FE, INT, AGENT-DET): CI runs the BE, FE (checks and Vitest) and AGENT-DET parts; the author runs the Playwright parts locally and reports them. These changes also need the live layers, run locally or by `workflow_dispatch`, with the results in the PR's testing section:
 
 | The PR changes… | AGENT-LIVE | E2E-LIVE |
 | --- | --- | --- |
@@ -114,7 +116,7 @@ Every PR runs `make ci` (BE, FE, INT, AGENT-DET) in CI. These changes also need 
 ## 5. Definition of done for a step
 
 1. Its tests exist in the right layers (each prompt's **Tests** section names them).
-2. `make ci` is green in CI.
+2. CI (`backend`, `frontend`) is green, and `make e2e-int` (plus `make e2e-fe` from 11d) is green locally, with the result in the PR.
 3. The live layers in §4 were run when required, and their results are in the PR.
 4. The PR's **Testing** section lists, per layer, what ran, what didn't and why (`.github/pull_request_template.md`).
 5. `docs/STATUS.md` is updated, including the test-layer table (§7 there) when the step adds a layer or a suite.
@@ -123,10 +125,10 @@ Every PR runs `make ci` (BE, FE, INT, AGENT-DET) in CI. These changes also need 
 
 | Workflow | Trigger | Jobs |
 | --- | --- | --- |
-| `ci.yml` (new, step 11d) | Every PR and push to `main` | `backend` (`check-be`, `test-be`; from step 16 a matrix over `STATE_BACKEND=memory\|postgres`), `frontend` (`check-fe`, `test-fe`, `e2e-fe`), `integration` (`e2e-int`, Chromium and WebKit). Coverage report uploaded as an artifact |
-| `e2e.yml` (existing) | `workflow_dispatch`; nightly when `NIGHTLY_LIVE=true` | `playwright-live` (as today) and a new `eval-live` job; both upload results and the KPI report |
+| `ci.yml` (step 11d) | Every PR and push to `main` | `backend` (`check-be`, `test-be`; from step 16 a matrix over `STATE_BACKEND=memory\|postgres`), `frontend` (`check-fe`, `test-fe`). Coverage report uploaded as an artifact |
+| `e2e.yml` | `workflow_dispatch` with `suite: scripted \| live`; nightly live when `NIGHTLY_LIVE=true` | `playwright-scripted` (INT), `playwright-live` (E2E-LIVE), and from 11d an `eval-live` job; all upload results |
 
-`backend`, `frontend` and `integration` become required checks on `main`. The scripted Playwright job in `e2e.yml` moves into `ci.yml`.
+`backend` and `frontend` are the required checks on `main`. Playwright doesn't run in CI on PRs (see §2): the author runs it locally and reports it in the PR.
 
 ## 7. Shared scenario catalogue
 

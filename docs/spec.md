@@ -302,7 +302,8 @@ Test layers and when each runs: `docs/specs/testing-strategy.md`.
 | `make e2e-int` | Playwright `@scripted` suites, real frontend + backend, `AGENT_MODE=scripted` (`make e2e` is an alias) |
 | `make eval-live` | `scripts/eval_live.py` with the real model; `GROUP=` is passed through for step 11d |
 | `make e2e-live` | Playwright `@live` suites with the real model |
-| `make ci` | `check`, `test`, `e2e-int` |
+| `make ci` | `check`, `test`, `e2e-int` (run locally before every PR) |
+| `make ci-remote` | `check`, `test` (what CI runs on every PR) |
 | `make gate` | `ci`, `eval-live`, `e2e-live` |
 
-CI: `.github/workflows/ci.yml` runs `backend` (`check-be`, `test-be`), `frontend` (`check-fe`, `test-fe`) and `integration` (`e2e-int`) on every PR and push to `main`. `.github/workflows/e2e.yml` runs the live Playwright suite on `workflow_dispatch`, and nightly when the repository variable `NIGHTLY_LIVE=true`. Step 11d (B1) adds `e2e-fe`, coverage, `scripts/` linting and the `eval-live` job.
+CI: `.github/workflows/ci.yml` runs `backend` (`check-be`, `test-be`) and `frontend` (`check-fe`, `test-fe`) on every PR and push to `main`. Playwright runs locally (`make e2e-int`, `make e2e-live`; Playwright flags via `ARGS=…`), or in CI on demand from `e2e.yml` (`suite: scripted | live`). Nightly live runs need the repository variable `NIGHTLY_LIVE=true`. Step 11d (B1) adds `e2e-fe`, coverage, `scripts/` linting and the `eval-live` job.

@@ -10,13 +10,13 @@
 
 ## Testing
 
-Layers and when each must run: `docs/specs/testing-strategy.md` §2 and §4. `make ci` runs in CI on every PR.
+Layers and when each must run: `docs/specs/testing-strategy.md` §2 and §4. CI runs BE and FE on every PR; run the Playwright layers locally (`make e2e-int`) and report them here.
 
 | Layer | Command | Result | Notes (what ran, what didn't and why) |
 | --- | --- | --- | --- |
 | BE — backend checks and tests | `make check-be`, `make test-be` | ✅ / ❌ / not run | |
 | FE — frontend checks and unit tests | `make check-fe`, `make test-fe` | ✅ / ❌ / not run | |
-| INT — frontend + backend Playwright (scripted) | `make e2e-int` | ✅ / ❌ / not run | |
+| INT — frontend + backend Playwright (scripted) | `make e2e-int` (local) | ✅ / ❌ / not run | Pass count per project, e.g. desktop 23/23, mobile 23/23 |
 | AGENT-DET — agent, deterministic | `make test-agent` | ✅ / ❌ / not run | |
 | AGENT-LIVE — live evaluation | `make eval-live` | ✅ / ❌ / not required | Required when the prompt, tools, guard, router, notes or graph change (§4) |
 | E2E-LIVE — Playwright with the real model | `make e2e-live` | ✅ / ❌ / not required | Smoke or full run as §4 requires |

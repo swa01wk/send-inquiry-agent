@@ -122,7 +122,7 @@ Tags: all scenarios are `@scripted` (with a script). Those marked **L** also run
 ## 7. CI
 
 `.github/workflows/e2e.yml`:
-- `pull_request`: now the `integration` job in `ci.yml` (testing strategy §6): set up Python (uv) and Node, install Playwright browsers, run `make e2e-int` on both projects; upload `playwright-report/` as an artifact.
+- `pull_request`: not run in CI since 27 Oct 2026; the author runs `make e2e-int` locally (testing strategy §2, §6). On demand: `e2e.yml` with `suite: scripted` installs browsers, runs `make e2e-int` on both projects and uploads `playwright-report/` on failure.
 - `workflow_dispatch`: live suite with secret `OPENAI_API_KEY`.
 
 ## 8. Done when
