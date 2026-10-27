@@ -13,7 +13,7 @@ from pydantic import BaseModel
 
 from app.agent.blockers import format_blockers
 from app.agent.brand_infer import fill_brands_from_user_message
-from app.agent.confirm_policy import keys_blocked_from_confirmation
+from app.agent.confirm_policy import key_shown_on_earlier_turn, keys_blocked_from_confirmation
 from app.agent.mall_match import fill_mentioned_malls, filter_mall_ids
 from app.agent.runtime import runtime_from_config
 from app.agent.state import AgentState
@@ -73,6 +73,7 @@ def _tool_result(
     changed_keys: list[str] | None = None,
     cards_shown: list[str] | None = None,
     confirm_card_keys: dict[str, list[str]] | None = None,
+    confirm_card_turns: dict[str, int] | None = None,
 ) -> Command[Any]:
     update: dict[str, Any] = {"draft": draft}
     if changed_keys is not None:
@@ -81,6 +82,8 @@ def _tool_result(
         update["cards_shown"] = cards_shown
     if confirm_card_keys is not None:
         update["confirm_card_keys"] = confirm_card_keys
+    if confirm_card_turns is not None:
+        update["confirm_card_turns"] = confirm_card_turns
     return Command(
         update={
             **update,
@@ -93,12 +96,16 @@ def _tool_result(
 
 def _remember_confirm_card_keys(
     confirm_card_keys: dict[str, list[str]],
+    confirm_card_turns: dict[str, int],
     card_id: str,
     keys: list[str],
-) -> dict[str, list[str]]:
-    updated = dict(confirm_card_keys)
-    updated[card_id] = list(keys)
-    return updated
+    turn_index: int,
+) -> tuple[dict[str, list[str]], dict[str, int]]:
+    updated_keys = dict(confirm_card_keys)
+    updated_keys[card_id] = list(keys)
+    updated_turns = dict(confirm_card_turns)
+    updated_turns[card_id] = turn_index
+    return updated_keys, updated_turns
 
 
 @tool
@@ -165,10 +172,12 @@ def verify_cr(
     )
     if card_id not in cards_shown:
         cards_shown.append(card_id)
-    confirm_card_keys = _remember_confirm_card_keys(
+    confirm_card_keys, confirm_card_turns = _remember_confirm_card_keys(
         dict(state.get("confirm_card_keys", {})),
+        dict(state.get("confirm_card_turns", {})),
         card_id,
         confirm_keys,
+        state["turn_index"],
     )
     _emit_card(card, runtime)
     return _tool_result(
@@ -178,6 +187,7 @@ def verify_cr(
         changed_keys=written,
         cards_shown=cards_shown,
         confirm_card_keys=confirm_card_keys,
+        confirm_card_turns=confirm_card_turns,
     )
 
 
@@ -307,6 +317,7 @@ def update_draft(
 
     cards_update = cards_shown
     confirm_card_keys = dict(state.get("confirm_card_keys", {}))
+    confirm_card_turns = dict(state.get("confirm_card_turns", {}))
     user_written = [key for key in written if key not in derived_keys]
     card_refresh_keys = list(
         dict.fromkeys(
@@ -338,7 +349,13 @@ def update_draft(
         if card_id not in cards_shown:
             cards_shown = cards_shown + [card_id]
             cards_update = cards_shown
-        confirm_card_keys = _remember_confirm_card_keys(confirm_card_keys, card_id, card_keys)
+        confirm_card_keys, confirm_card_turns = _remember_confirm_card_keys(
+            confirm_card_keys,
+            confirm_card_turns,
+            card_id,
+            card_keys,
+            state["turn_index"],
+        )
         _emit_card(card, runtime)
 
     parts = []
@@ -357,6 +374,7 @@ def update_draft(
         changed_keys=written,
         cards_shown=cards_update,
         confirm_card_keys=confirm_card_keys,
+        confirm_card_turns=confirm_card_turns,
     )
 
 
@@ -383,12 +401,20 @@ def confirm_fields(
     draft = state["draft"]
     cards_shown = list(state["cards_shown"])
     blocked = keys_blocked_from_confirmation(_last_user_text(state))
+    confirm_card_keys = dict(state.get("confirm_card_keys", {}))
+    confirm_card_turns = dict(state.get("confirm_card_turns", {}))
+    turn_index = state.get("turn_index", 0)
 
     confirmable: list[str] = []
     skipped: list[str] = []
     for key_str in keys:
         if key_str in blocked:
             skipped.append(f"{key_str}: user_expressed_doubt")
+            continue
+        if not key_shown_on_earlier_turn(
+            key_str, confirm_card_keys, confirm_card_turns, turn_index
+        ):
+            skipped.append(f"{key_str}: not_shown")
             continue
         try:
             key = FieldKey(key_str)
@@ -416,7 +442,6 @@ def confirm_fields(
         )
 
     updated = draft_ops.confirm(draft, confirmable)
-    confirm_card_keys = dict(state.get("confirm_card_keys", {}))
     card_id = confirm_card_id_for_keys(cards_shown, confirm_card_keys, confirmable)
     if card_id:
         listed = confirm_card_keys.get(card_id, confirmable)
@@ -430,6 +455,7 @@ def confirm_fields(
         changed_keys=confirmable,
         cards_shown=cards_shown,
         confirm_card_keys=confirm_card_keys,
+        confirm_card_turns=confirm_card_turns,
     )
 
 

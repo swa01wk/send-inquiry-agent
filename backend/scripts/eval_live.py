@@ -441,6 +441,24 @@ async def _setup_riyadh_mall_picker(client: AsyncClient, session_id: str) -> Non
     )
 
 
+def _check_two_malls(session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
+    malls_raw = session.draft.fields[FieldKey.MALLS].value
+    malls = list(malls_raw) if isinstance(malls_raw, list) else []
+    last = turns[-1].assistant.lower() if turns else ""
+    return [
+        ("at most one mall saved", len(malls) <= 1),
+        ("asks which mall to start with", "which" in last),
+    ]
+
+
+def _check_international_number(session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
+    draft = session.draft
+    return [
+        ("mobile saved in international form", draft.fields[FieldKey.MOBILE].value == "+971501234567"),
+        ("verification card shown", any(_cards(t.events, "verification") for t in turns)),
+    ]
+
+
 SCENARIOS: list[LiveScenario] = [
     LiveScenario(
         "C condensation with brief, natural answers",
@@ -612,24 +630,6 @@ SCENARIOS: list[LiveScenario] = [
         _check_international_number,
     ),
 ]
-
-
-def _check_two_malls(session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
-    malls_raw = session.draft.fields[FieldKey.MALLS].value
-    malls = list(malls_raw) if isinstance(malls_raw, list) else []
-    last = turns[-1].assistant.lower() if turns else ""
-    return [
-        ("at most one mall saved", len(malls) <= 1),
-        ("asks which mall to start with", "which" in last),
-    ]
-
-
-def _check_international_number(session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
-    draft = session.draft
-    return [
-        ("mobile saved in international form", draft.fields[FieldKey.MOBILE].value == "+971501234567"),
-        ("verification card shown", any(_cards(t.events, "verification") for t in turns)),
-    ]
 
 
 async def run_scenario(client: AsyncClient, app, scenario: LiveScenario) -> ScenarioResult:

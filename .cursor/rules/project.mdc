@@ -30,7 +30,7 @@ the same inquiry payload. Target: about 5 user turns instead of ~25 form inputs.
 ## Golden rules
 1. The LLM acts only through tools. It never writes state directly.
 2. Every draft field records `source` (user | derived | verified | default) and `confirmed`. Derived and verified values must be confirmed by the user before submit.
-3. Submit rules are enforced in code (`can_submit`, the guard node and the `submit_inquiry` tool), never trusted to the LLM.
+3. Submit rules are enforced in code (`can_submit`, the guard node and the `accept_and_submit` UI action), never trusted to the LLM.
 4. Consent (`terms_accepted`) can only be set by a UI action from the review card, never by the LLM.
 5. Documents: only check presence, extension and size (5 MB). Never read or analyse file content.
 6. All external systems (CR verify, email link, OTP, storage, submit, status) are mocks behind interfaces in `backend/app/services/`.

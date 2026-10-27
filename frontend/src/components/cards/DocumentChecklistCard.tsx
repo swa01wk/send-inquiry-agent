@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import type { DocumentUploadPayload } from '../../types/contracts'
+import type { DocumentNumberRow, DocumentUploadPayload } from '../../types/contracts'
 import shared from './cards.module.css'
 import { formatFileSize, validateDocumentFile } from './documentFileCheck'
 import styles from './DocumentChecklistCard.module.css'
@@ -8,16 +8,41 @@ interface DocumentChecklistCardProps {
   payload: DocumentUploadPayload
   onUpload: (docType: string, file: File) => Promise<void>
   onRemove: (docType: string) => Promise<void>
+  onSetNumber: (key: string, value: string) => void
 }
 
 const FOOTER_COPY =
   'PDF, JPG, PNG, DOC, XLSX, ZIP · up to 5 MB each · we only check that files are uploaded'
 
-export function DocumentChecklistCard({ payload, onUpload, onRemove }: DocumentChecklistCardProps) {
+const NUMBER_BY_DOC: Record<string, string> = {
+  cr_certificate: 'cr_number',
+  vat_certificate: 'vat_number',
+  national_id: 'national_id_number',
+  national_address: 'national_address',
+}
+
+function numberForDoc(
+  docType: string,
+  numbers: DocumentNumberRow[] | undefined,
+): DocumentNumberRow | undefined {
+  const key = NUMBER_BY_DOC[docType]
+  if (!key || !numbers) return undefined
+  return numbers.find((row) => row.key === key)
+}
+
+export function DocumentChecklistCard({
+  payload,
+  onUpload,
+  onRemove,
+  onSetNumber,
+}: DocumentChecklistCardProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const pendingTypeRef = useRef<string | null>(null)
   const [uploadingType, setUploadingType] = useState<string | null>(null)
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({})
+  const [numberDrafts, setNumberDrafts] = useState<Record<string, string>>({})
+
+  const numbers = payload.numbers ?? []
 
   const openPicker = (docType: string) => {
     pendingTypeRef.current = docType
@@ -50,6 +75,8 @@ export function DocumentChecklistCard({ payload, onUpload, onRemove }: DocumentC
 
   const accept = payload.allowed_extensions.join(',')
 
+  const displayValue = (row: DocumentNumberRow) => numberDrafts[row.key] ?? row.value ?? ''
+
   return (
     <div className={`${shared.shell} ${styles.shell}`} data-testid="document-checklist-card">
       <div className={styles.header}>
@@ -71,6 +98,7 @@ export function DocumentChecklistCard({ payload, onUpload, onRemove }: DocumentC
       />
       {payload.docs.map((doc) => {
         const uploading = uploadingType === doc.doc_type
+        const numberRow = numberForDoc(doc.doc_type, numbers)
         return (
           <div key={doc.doc_type} className={styles.row}>
             <div className={styles.info}>
@@ -85,6 +113,30 @@ export function DocumentChecklistCard({ payload, onUpload, onRemove }: DocumentC
                   ? `Uploaded · ${doc.file_name}${doc.size_bytes != null ? ` · ${formatFileSize(doc.size_bytes)}` : ''}`
                   : 'Not uploaded'}
               </span>
+              {numberRow ? (
+                <label className={styles.numberField}>
+                  <span className={shared.caption}>{numberRow.label}</span>
+                  <input
+                    className={styles.numberInput}
+                    type="text"
+                    readOnly={!numberRow.editable}
+                    value={displayValue(numberRow)}
+                    aria-label={numberRow.label}
+                    data-testid={`doc-number-${numberRow.key}`}
+                    onChange={(e) => {
+                      if (!numberRow.editable) return
+                      setNumberDrafts((d) => ({ ...d, [numberRow.key]: e.target.value }))
+                    }}
+                    onBlur={() => {
+                      if (!numberRow.editable) return
+                      const value = displayValue(numberRow).trim()
+                      if (value && value !== (numberRow.value ?? '')) {
+                        onSetNumber(numberRow.key, value)
+                      }
+                    }}
+                  />
+                </label>
+              ) : null}
               {rowErrors[doc.doc_type] ? (
                 <span className={shared.captionError}>{rowErrors[doc.doc_type]}</span>
               ) : null}

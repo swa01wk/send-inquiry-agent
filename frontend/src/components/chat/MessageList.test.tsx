@@ -16,6 +16,7 @@ describe('MessageList', () => {
       editReviewField: async () => true,
       uploadDocument: async () => undefined,
       removeDocument: async () => undefined,
+      setDocumentNumber: () => undefined,
       mallsConfirmed: false,
     }
     render(
@@ -38,6 +39,7 @@ describe('MessageList', () => {
       editReviewField: async () => true,
       uploadDocument: async () => undefined,
       removeDocument: async () => undefined,
+      setDocumentNumber: () => undefined,
       mallsConfirmed: false,
     }
     render(

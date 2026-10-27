@@ -32,8 +32,8 @@
   {
     "id": "unit_types",
     "question": "What do the unit types mean?",
-    "keywords": ["unit type", "store", "media", "specialty", "office", "space type"],
-    "answer": "Store is a standard retail unit, Media is advertising or screen space, Specialty suits kiosks or small formats, and Office is office space in the mall. Your leasing contact can confirm the best fit for your brand."
+    "keywords": ["unit type", "store", "media", "specialty", "space type"],
+    "answer": "Store is a standard retail unit, Media is advertising or screen space, and Specialty suits kiosks or small formats. Your leasing contact can confirm the best fit for your brand."
   },
   {
     "id": "edit_after_submit",

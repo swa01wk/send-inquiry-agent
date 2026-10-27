@@ -19,7 +19,7 @@ Each open question has an assumption the POC builds on. Integrations sit behind 
 | Documents | Company Profile and Brand Profile required; CR, VAT, National ID/Iqama, National Address, Article of Association optional. Presence, extension and size (≤ 5 MB) only — no content processing. |
 | Storage | Local disk under `UPLOAD_DIR`. |
 | Master data | Seeded JSON with sample malls (Riyadh/Jeddah/Dammam "Mall A…"). Replace with real data before any demo to Cenomi stakeholders. |
-| Submit | Mocked with the same payload shape as the current form. Reference `GEO-{STR|MED|SPC|OFF}-{6 digits}`. |
+| Submit | Mocked with the same payload shape as the current form. Reference `GEO-{STR|MED|SPC}-{6 digits}`. |
 | Status | Mocked: any submitted reference returns "Under review". |
 | Email notifications | Not sent; logged only. |
 | Language | English UI; the agent can greet in Arabic. Full Arabic is phase 2. |

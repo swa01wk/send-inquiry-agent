@@ -172,7 +172,7 @@ async def test_accept_and_submit_success_reference(client: AsyncClient, app) -> 
         data for name, data in events if name == "ui_card" and data.get("card_type") == "success"
     )
     reference = success["payload"]["reference"]
-    assert re.match(r"^GEO-(STR|MED|SPC|OFF)-\d{6}$", reference)
+    assert re.match(r"^GEO-(STR|MED|SPC)-\d{6}$", reference)
     assert session.draft.reference == reference
 
 

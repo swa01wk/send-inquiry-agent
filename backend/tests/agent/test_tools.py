@@ -251,6 +251,8 @@ async def test_confirm_fields_updates_existing_confirm_card(agent_runtime, strea
     state["confirm_card_keys"] = {
         "confirm-1": [FieldKey.COMPANY_NAME.value, FieldKey.COMPANY_ADDRESS.value],
     }
+    state["turn_index"] = 2
+    state["confirm_card_turns"] = {"confirm-1": 1}
     events, writer = stream_events
     runtime = make_tool_runtime(state=state, agent_runtime=agent_runtime, writer=writer)
     result = confirm_fields.invoke(

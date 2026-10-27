@@ -28,6 +28,8 @@ class Session:
     cards_shown: set[str] = field(default_factory=set)
     card_counter: int = 0
     confirm_card_keys: dict[str, list[str]] = field(default_factory=dict)
+    confirm_card_turns: dict[str, int] = field(default_factory=dict)
+    turn_index: int = 0
     test_scenario: str | None = None
     script_step: int = 0
 

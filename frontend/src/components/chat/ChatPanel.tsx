@@ -30,6 +30,7 @@ export function ChatPanel({ draftPanelVisible, onToggleDraftPanel }: ChatPanelPr
     editReviewField,
     uploadDocument,
     removeDocument,
+    setDocumentNumber,
     retry,
     restart,
   } = useChatSession()
@@ -50,9 +51,17 @@ export function ChatPanel({ draftPanelVisible, onToggleDraftPanel }: ChatPanelPr
       editReviewField,
       uploadDocument,
       removeDocument,
+      setDocumentNumber,
       mallsConfirmed,
     }),
-    [sendAction, editReviewField, uploadDocument, removeDocument, mallsConfirmed],
+    [
+      sendAction,
+      editReviewField,
+      uploadDocument,
+      removeDocument,
+      setDocumentNumber,
+      mallsConfirmed,
+    ],
   )
 
   const errorMessage = error?.message ?? GENERIC_ERROR

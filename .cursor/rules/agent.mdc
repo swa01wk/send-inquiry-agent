@@ -24,7 +24,7 @@ START → agent ─(tool calls)→ tools → agent
 - Exactly the tools listed in `docs/spec.md`, with those names and arguments. Each enforces its own preconditions with `domain/validation.py` and returns a short, factual result string the LLM can turn into friendly copy.
 - `update_draft` never sets `confirmed=True` for derived or verified values. Only `confirm_fields` does, and only for fields currently unconfirmed.
 - Nothing can set `terms_accepted` except the `accept_and_submit` UI action handled in the chat endpoint.
-- `submit_inquiry` calls `can_submit`; on failure it returns the list of blockers, never submits.
+- `accept_and_submit` runs `can_submit` in the action handler; on failure it returns blockers in the `[ui_event]` note, never submits.
 
 ## Streaming
 - Run the graph with `astream(..., stream_mode=["messages", "custom"])`.

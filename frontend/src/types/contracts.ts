@@ -79,8 +79,17 @@ export interface DraftDocumentRow {
   size_bytes: number | null
 }
 
+export interface DocumentNumberRow {
+  key: string
+  label: string
+  value: string | null
+  editable: boolean
+  error?: string | null
+}
+
 export interface DocumentUploadPayload {
   docs: DraftDocumentRow[]
+  numbers?: DocumentNumberRow[]
   required_uploaded: number
   required_total: number
   allowed_extensions: string[]

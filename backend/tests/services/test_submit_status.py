@@ -8,7 +8,7 @@ from app.services.errors import ReferenceNotFoundError
 from app.services.status import MockStatusService
 from app.services.submit import MockSubmitService
 
-_REF_RE = re.compile(r"^GEO-(STR|MED|SPC|OFF)-\d{6}$")
+_REF_RE = re.compile(r"^GEO-(STR|MED|SPC)-\d{6}$")
 
 
 def test_submit_reference_format_for_each_unit_type():
@@ -20,7 +20,6 @@ def test_submit_reference_format_for_each_unit_type():
         ("store", "STR"),
         ("media", "MED"),
         ("specialty", "SPC"),
-        ("office", "OFF"),
     ]:
         draft = new_inquiry_draft()
         draft, _, errors = write_fields(
@@ -37,5 +36,7 @@ def test_submit_reference_format_for_each_unit_type():
         assert inquiry.status == "under_review"
         assert inquiry.reference == reference
 
+    unknown = "GEO-STR-999999"
+    assert unknown not in submit.submissions
     with pytest.raises(ReferenceNotFoundError):
-        status.get("GEO-STR-000000")
+        status.get(unknown)

@@ -101,8 +101,17 @@ class VerificationPayload(BaseModel):
     all_verified: bool
 
 
+class DocumentNumberRow(BaseModel):
+    key: str
+    label: str
+    value: str | None
+    editable: bool
+    error: str | None = None
+
+
 class DocumentUploadPayload(BaseModel):
     docs: list[DraftDocumentRow]
+    numbers: list[DocumentNumberRow] = Field(default_factory=list)
     required_uploaded: int
     required_total: int
     allowed_extensions: list[str]

@@ -56,6 +56,7 @@ export function CardSlot({ card, actions, focusOnMount = false }: CardSlotProps)
           payload={card.payload}
           onUpload={actions.uploadDocument}
           onRemove={actions.removeDocument}
+          onSetNumber={actions.setDocumentNumber}
         />
       ) : null}
       {card.card_type === 'review' ? (

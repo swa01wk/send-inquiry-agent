@@ -9,6 +9,7 @@ from typing import Literal
 from app.api.schemas import (
     ConfirmFieldRow,
     ConfirmFieldsPayload,
+    DocumentNumberRow,
     DocumentUploadPayload,
     MallPickerCity,
     MallPickerMall,
@@ -94,6 +95,30 @@ def _mask_email(value: str | None) -> str | None:
     return f"{local[0]}***@{domain}"
 
 
+def _document_number_rows(draft: InquiryDraft) -> list[DocumentNumberRow]:
+    rows: list[DocumentNumberRow] = []
+    for key in (
+        FieldKey.CR_NUMBER,
+        FieldKey.VAT_NUMBER,
+        FieldKey.NATIONAL_ID_NUMBER,
+        FieldKey.NATIONAL_ADDRESS,
+    ):
+        definition = FIELD_BY_KEY[key]
+        field = draft.fields[key]
+        value = field.value
+        display = str(value) if value not in (None, "") else None
+        rows.append(
+            DocumentNumberRow(
+                key=key.value,
+                label=definition.label,
+                value=display,
+                editable=key != FieldKey.CR_NUMBER,
+                error=None,
+            ),
+        )
+    return rows
+
+
 def document_upload_payload(
     draft: InquiryDraft,
     master: MasterData,
@@ -103,6 +128,7 @@ def document_upload_payload(
     summary = build_draft_summary(draft, master)
     return DocumentUploadPayload(
         docs=summary.documents,
+        numbers=_document_number_rows(draft),
         required_uploaded=summary.checks.required_docs_uploaded,
         required_total=summary.checks.required_docs_total,
         allowed_extensions=dotted_allowed_extensions(),
@@ -202,6 +228,7 @@ def remember_confirm_card_keys(session: Session, card: UiCard) -> None:
             if isinstance(key, str):
                 keys.append(key)
     session.confirm_card_keys[card.card_id] = keys
+    session.confirm_card_turns[card.card_id] = session.turn_index
 
 
 def build_confirm_fields_card(

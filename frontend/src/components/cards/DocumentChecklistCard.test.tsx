@@ -15,6 +15,7 @@ describe('DocumentChecklistCard', () => {
         payload={documentUploadCardExample.payload}
         onUpload={onUpload}
         onRemove={async () => undefined}
+        onSetNumber={() => undefined}
       />,
     )
 
@@ -44,6 +45,7 @@ describe('DocumentChecklistCard', () => {
         payload={documentUploadCardExample.payload}
         onUpload={onUpload}
         onRemove={async () => undefined}
+        onSetNumber={() => undefined}
       />,
     )
 
@@ -52,5 +54,31 @@ describe('DocumentChecklistCard', () => {
     const ok = new File(['pdf'], 'doc.pdf', { type: 'application/pdf' })
     await user.upload(input, ok)
     await waitFor(() => expect(onUpload).toHaveBeenCalledWith('company_profile', ok))
+  })
+
+  it('shows read-only CR number next to CR certificate row', () => {
+    if (documentUploadCardExample.card_type !== 'document_upload') throw new Error('bad fixture')
+    const payload = {
+      ...documentUploadCardExample.payload,
+      numbers: [
+        {
+          key: 'cr_number',
+          label: 'CR number',
+          value: '1010123456',
+          editable: false,
+        },
+      ],
+    }
+    render(
+      <DocumentChecklistCard
+        payload={payload}
+        onUpload={async () => undefined}
+        onRemove={async () => undefined}
+        onSetNumber={() => undefined}
+      />,
+    )
+    const crInput = screen.getByTestId('doc-number-cr_number')
+    expect(crInput).toHaveAttribute('readonly')
+    expect(crInput).toHaveValue('1010123456')
   })
 })

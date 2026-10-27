@@ -263,7 +263,7 @@ def normalise_mobile(raw: str) -> str | ValidationError:
 
 
 def normalise_landline(raw: str) -> str | ValidationError:
-    """Saudi landlines (+966 + 8 digits, not 5…) or any international number."""
+    """Saudi landlines (+966 + 8 or 9 digits, not 5…) or any international number."""
     international = international_number(raw)
     if international is not None:
         return international
@@ -293,11 +293,11 @@ def normalise_saudi_landline(raw: str) -> str | ValidationError:
         digits = digits[3:]
     if digits.startswith("0"):
         digits = digits[1:]
-    if not re.match(r"^[1-49]\d{7}$", digits):
+    if not re.match(r"^[1-49]\d{7,8}$", digits):
         return ValidationError(
             code="invalid_landline",
             message=(
-                "Landline must be +966 followed by 8 digits not starting with 5, "
+                "Landline must be +966 followed by 8 or 9 digits not starting with 5, "
                 "or include its country code."
             ),
         )

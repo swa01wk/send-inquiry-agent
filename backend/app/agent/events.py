@@ -128,10 +128,13 @@ async def run_turn(
     settings: Settings | None = None,
 ) -> AsyncIterator[SseEvent]:
     phase = compute_phase(session.draft).value
+    session.turn_index += 1
     state: AgentState = initial_agent_state(
         session_id=session.id,
         draft=session.draft,
         phase=phase,
+        turn_index=session.turn_index,
+        confirm_card_turns=dict(session.confirm_card_turns),
     )
     state["messages"] = [user_input]
     state["cards_shown"] = list(session.cards_shown)
@@ -199,6 +202,9 @@ async def run_turn(
         session.draft = final["draft"]
         session.cards_shown = set(final.get("cards_shown", []))
         session.confirm_card_keys = dict(final.get("confirm_card_keys", session.confirm_card_keys))
+        session.confirm_card_turns = dict(
+            final.get("confirm_card_turns", session.confirm_card_turns),
+        )
         if isinstance(bound, ScriptedChatModel):
             session.script_step = bound._step_index
 

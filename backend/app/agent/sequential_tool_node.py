@@ -25,6 +25,7 @@ def _apply_command(
     draft = state["draft"]
     cards_shown = list(state["cards_shown"])
     confirm_card_keys = dict(state.get("confirm_card_keys", {}))
+    confirm_card_turns = dict(state.get("confirm_card_turns", {}))
     new_messages: list[BaseMessage] = []
 
     for item in items:
@@ -36,6 +37,8 @@ def _apply_command(
                 cards_shown = list(update["cards_shown"])
             if "confirm_card_keys" in update:
                 confirm_card_keys = dict(update["confirm_card_keys"])
+            if "confirm_card_turns" in update:
+                confirm_card_turns = dict(update["confirm_card_turns"])
             for message in update.get("messages", []):
                 if isinstance(message, ToolMessage):
                     new_messages.append(message)
@@ -51,6 +54,7 @@ def _apply_command(
         "draft": draft,
         "cards_shown": cards_shown,
         "confirm_card_keys": confirm_card_keys,
+        "confirm_card_turns": confirm_card_turns,
         "messages": [*state["messages"], *new_messages],
     }
 
@@ -85,6 +89,7 @@ def build_sequential_tool_node(tools: list[Any]) -> Any:
             "draft": working["draft"],
             "cards_shown": working["cards_shown"],
             "confirm_card_keys": working.get("confirm_card_keys", {}),
+            "confirm_card_turns": working.get("confirm_card_turns", {}),
             "messages": working["messages"][len(state["messages"]) :],
         }
 
