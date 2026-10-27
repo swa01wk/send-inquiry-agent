@@ -13,13 +13,19 @@ async def test_inquiry_status_unknown(client) -> None:
 
 @pytest.mark.asyncio
 async def test_inquiry_status_known(app) -> None:
+    from app.security import tokens
+
     master = load_master_data()
     draft = new_inquiry_draft()
     reference = app.state.services.submit.submit(draft, master)
+    token, _ = tokens.issue(
+        app.state.settings.token_secret, "track", reference, ttl_seconds=60, data={"i": "s"}
+    )
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as http:
-        response = await http.get(f"/api/inquiries/{reference}")
+        response = await http.get(f"/api/inquiries/{reference}", params={"t": token})
+        no_token = await http.get(f"/api/inquiries/{reference}")
 
     assert response.status_code == 200
     body = response.json()
@@ -28,3 +34,6 @@ async def test_inquiry_status_known(app) -> None:
     assert len(body["steps"]) == 3
     assert body["steps"][0]["state"] == "done"
     assert body["steps"][1]["state"] == "current"
+    assert body["current_stage"] == "first_review"
+    # A guessable reference alone exposes nothing (L3 §3.4).
+    assert no_token.status_code == 404

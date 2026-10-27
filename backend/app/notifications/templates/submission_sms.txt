@@ -1,0 +1,5 @@
+kind: information
+channel: sms
+subject: Inquiry received
+---
+Cenomi: we've received your leasing inquiry $reference. Track it: $tracking_url

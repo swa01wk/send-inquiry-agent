@@ -126,7 +126,7 @@ All tools return a short factual string for the LLM. Tools that change state ret
 | `show_review` | — | Only when the only remaining blocker is `terms_not_accepted`; emits the `review` card. Otherwise returns the blockers. |
 | `suggest_replies` | `options: list[str]` (1–3, ≤ 60 chars each) | Emits a `quick_replies` card for this turn. |
 | `search_faq` | `query: str` | Top 2 matches from `faq.json` (keyword score). The agent answers only from these. |
-| `get_inquiry_status` | `reference: str` | Calls `StatusService.get`. |
+| `get_inquiry_status` | `reference: str` | Only this conversation's own reference (a reference alone must not expose an applicant's case); otherwise points to the tracking link. Calls `StatusService.get` through the gateway. |
 
 There is no submit tool and no verify tool: both happen through UI actions, so the link token, the SMS code and consent never pass through the LLM.
 
@@ -136,14 +136,16 @@ There is no submit tool and no verify tool: both happen through UI actions, so t
 | --- | --- | --- |
 | `select_malls` | `{mall_ids: list[str]}` | Validate (1 to `max_malls_per_inquiry` malls); write `malls` as user, confirmed. Note: `malls_selected: <name>` or `malls_invalid <code>` |
 | `verify_email` | `{token: str}` | `EmailVerificationService.verify`; valid only for the link sent to the current email. Sets `email_verified`. Note: `email_verified` (+ ` verification_complete` when nothing else is pending) or `email_link_invalid`. The token is never added to messages. |
-| `resend_email_link` | `{}` | New link to the current email (the old one stops working). Note: `email_link_resent` |
-| `submit_otp` | `{code: str}` | Only for the code sent to the current mobile. `OtpService.verify`; on success `mobile_verified=True`; on failure decrement attempts (0 → auto resend, reset to 3). Note: `mobile_verified` (+ ` verification_complete`), `otp_failed attempts_left=N`, `otp_resent` or `otp_not_sent`. The code is never added to messages. |
-| `resend_otp` | `{}` | Resend to the mobile, reset attempts. Note: `otp_resent` or `otp_send_blocked no_mobile` |
+| `resend_email_link` | `{}` | New link to the current email (the old one stops working), within the resend limits (policy `resend`). Note: `email_link_resent`, `resend_throttled <seconds>` or `service_error email <kind>` |
+| `submit_otp` | `{code: str}` | Only for the code sent to the current mobile. `OtpService.verify`; on success `mobile_verified=True`; on failure decrement attempts (0 → auto resend within the resend limits, reset to 3). Note: `mobile_verified` (+ ` verification_complete`), `otp_failed attempts_left=N`, `otp_resent`, `resend_throttled <seconds>`, `service_error otp <kind>` or `otp_not_sent`. The code is never added to messages. |
+| `resend_otp` | `{}` | Resend to the mobile within the resend limits, reset attempts. Note: `otp_resent`, `resend_throttled <seconds>`, `service_error otp <kind>` or `otp_send_blocked no_mobile` |
 | `edit_field` | `{key, value}` | Validate; write as user, confirmed. Note: `field_edited <key>` |
 | `confirm_card` | `{card_id}` | Confirm all fields on that confirm card. Note: `fields_confirmed <keys>` |
-| `accept_and_submit` | `{terms_accepted: true}` | Set `terms_accepted`; run `can_submit`; if clear, `SubmitService.submit` → set `reference`, emit `success` card. Note: `submitted reference=<ref>` or `submit_blocked <blockers>` |
+| `accept_and_submit` | `{terms_accepted: true}` | **Submit once:** if a reference exists, re-emit the same `success` card (note `submitted reference=<ref> (repeat)`). Otherwise set `terms_accepted`; run `can_submit`; if clear, `SubmitService.submit` with idempotency key `inq:<session_id>:v1` → set `reference`, send `submission_email` (verified email) and `submission_sms` (verified mobile), emit `success` with the private `tracking_url`. Note: `submitted reference=<ref>`, `submit_blocked <blockers>`, `submit_pending timeout\|unavailable` (nothing lost; Submit again returns the same reference) or `submit_failed rejected\|invalid` |
 | `documents_updated` | `{}` | Recompute required documents from the draft. Note: `documents_complete` or `documents_pending <doc_types>` |
 | `set_document_number` | `{key, value}` | Validate and write the document number field as user, confirmed. Note: `document_number_set <key>` or `document_number_invalid <key> <code>` |
+
+Every service call goes through the gateway (`app/gateway/`). A failure becomes one of four kinds, `timeout`, `unavailable`, `rejected` or `invalid`, and reaches the agent as `service_error <service> <kind>` (in a note, or at the start of a tool result) — never as a raw error.
 
 `[ui_event]` notes are appended as a `HumanMessage` whose content starts with `[ui_event]`. They are never shown in the chat UI. The system prompt tells the agent they are system notifications, not the user's words.
 
@@ -164,12 +166,16 @@ Errors: `{"error": {"code": str, "message": str}}` with 4xx/5xx.
 | --- | --- | --- | --- |
 | GET | `/api/health` | — | `{status:"ok"}` |
 | POST | `/api/sessions` | — | `{session_id, messages:[{id, role:"assistant", text}], cards:[UiCard], draft:DraftSummary}` (fixed welcome, see design spec) |
+| POST | `/api/sessions/resume` | `{token}` (purpose `resume`) | Same shape as `POST /api/sessions` for the same `session_id`: the last 20 messages (`role` `user` or `assistant`), the latest version of each card, the draft. 400 `token_invalid` / `token_expired`; 404 `inquiry_not_found` |
+| POST | `/api/verifications/email` | `{token}` (purpose `verify_email`, from the emailed link) | `{status:"verified", session_id, email_masked, resume_token}`. 400 `token_invalid` / `token_expired` / `token_used` / `email_changed`. A link works once; only the latest link works |
 | POST | `/api/sessions/{id}/chat` | `ChatRequest` | `text/event-stream` (section 7) |
 | POST | `/api/sessions/{id}/documents` | multipart: `doc_type`, `file` | `{document, card: UiCard(document_upload), draft}` · 400 `invalid_extension` / `too_large` / `unknown_doc_type` |
 | DELETE | `/api/sessions/{id}/documents/{doc_type}` | — | `{card, draft}` |
 | GET | `/api/sessions/{id}/draft` | — | `DraftSummary` |
 | GET | `/api/master/{kind}` | `?city=` for malls | list of master items |
-| GET | `/api/inquiries/{reference}` | — | `{reference, status:"under_review", submitted_at, steps:[{key, label, state:"done"\|"current"\|"upcoming"}]}` |
+| GET | `/api/inquiries/{reference}` | `?t=<token>` (purpose `track`, required) | `{reference, status:"under_review", submitted_at, steps:[…], stages:[{key, label, state}] (submitted → first_review → second_review → outcome), current_stage, owner_role (a role, never a person), waiting_on_you:[], last_change}`. A missing, wrong or expired token gets the same 404 `reference_not_found` as an unknown reference |
+| GET / DELETE | `/api/dev/outbox?to=` | — | `DEV_TOOLS=true` only: `{messages:[{id, inquiry_id, channel, to, template, kind, subject, body, links, created_at}]}`, newest first; DELETE clears it |
+| GET | `/api/dev/audit/{inquiry_id}` | — | `DEV_TOOLS=true` only: `{inquiry_id, events:[{seq, at, type, actor, payload}]}` (redacted) |
 
 `ChatRequest`:
 ```json
@@ -177,9 +183,9 @@ Errors: `{"error": {"code": str, "message": str}}` with 4xx/5xx.
 {"type": "action", "action": "select_malls", "payload": {"mall_ids": ["riyadh-mall-a"]}}
 ```
 
-Test hook: when `AGENT_MODE=scripted`, `POST /api/sessions` accepts an `X-Test-Scenario` header naming a script in `backend/tests/e2e_scripts/`; the session then replays that script. The header is ignored in `openai` mode and for unknown names.
+Test hooks: when `AGENT_MODE=scripted`, `POST /api/sessions` accepts an `X-Test-Scenario` header naming a script in `backend/tests/e2e_scripts/`; the session then replays that script. It also accepts `X-Mock-Faults` (`service:kind[:count],…`; services `cr`, `email`, `otp`, `notifications`, `submit`, `status`, `storage`; kinds `timeout`, `unavailable`, `rejected`) for faults in that session only; a bad spec is 400 `bad_mock_faults`. Both headers are ignored in `openai` mode.
 
-Unknown session → 404 `session_not_found`. Sessions expire after 2 hours idle. Rate limits: 30 chat requests/min per session, 60/min per IP → 429 `rate_limited`.
+Unknown session → 404 `session_not_found`. Sessions expire after 2 hours idle; a signed link (verification, resume) reaches an idle session again. A connected system that fails surfaces as 503 `<service>_<kind>`. Rate limits: 30 chat requests/min per session, 60/min per IP → 429 `rate_limited`.
 
 ## 7. SSE events
 
@@ -205,10 +211,10 @@ At the start of each turn the frontend clears the previous `quick_replies` chips
 | --- | --- |
 | `confirm_fields` | `{title, fields:[{key, label, display, source, confirmed}], all_confirmed}` |
 | `mall_picker` | `{city:{id,label}, malls:[{id,name}], selected:[id], min_select:1, max_select}` (`max_select` = policy `max_malls_per_inquiry`, default 1) |
-| `verification` | `{email:{masked, link_sent, verified, demo_token}, mobile:{masked, code_sent, verified, attempts_left, code_length:4} \| null, all_verified}` (`mobile` is null for a landline-only applicant; `demo_token` only when `EMAIL_LINK_DEMO`) |
+| `verification` | `{email:{masked, link_sent, verified, demo_token, resend_available_at}, mobile:{masked, code_sent, verified, attempts_left, code_length:4, resend_available_at} \| null, all_verified}` (`mobile` is null for a landline-only applicant; `demo_token` only when `EMAIL_LINK_DEMO`; `resend_available_at` is an ISO time while the resend cooldown or hourly cap applies, else null) |
 | `document_upload` | `{docs:[{doc_type,label,required,uploaded,file_name,size_bytes}], numbers:[{key,label,value,editable,error}], required_uploaded, required_total, allowed_extensions (dotted, e.g. `.pdf`), max_mb}` |
 | `review` | `{groups:[{title, rows:[{key,label,display,source,confirmed,required}]}], documents:[...], checks:Checks, can_submit, terms_accepted, blockers:[str]}` |
-| `success` | `{reference, tracking_url, steps:[{label, detail, state}]}` |
+| `success` | `{reference, tracking_url, steps:[{label, detail, state}]}` (`tracking_url` = `<PUBLIC_BASE_URL>/inquiry/status/<reference>?t=<track token>`, the private tracking page) |
 | `quick_replies` | `{options:[{label, text, action?: "send" \| "focus_input", placeholder?: string}]}` — default `action` is `send` |
 
 ### `DraftSummary`
@@ -224,16 +230,23 @@ At the start of each turn the frontend clears the previous `quick_replies` chips
 ```
 Groups in order: company, brand, space, contact. Area shows as one row (`area`), rent as one row (`rent`), lease as one row.
 
-## 8. Services (mocks, `backend/app/services/`)
+## 8. Services (simulated Cenomi, `backend/app/services/`)
 
-| Interface | Mock behaviour |
+Every call goes through the gateway (`app/gateway/`): a timeout per service, four error kinds, fault injection (`MOCK_FAULTS`, `X-Mock-Faults`) and an audit record per call. With `DATA_DIR` set, each simulated system keeps its state across restarts (`<DATA_DIR>/mock_world/`), as a real one would.
+
+| Interface | Simulated behaviour |
 | --- | --- |
-| `CrService.verify(cr) -> CrResult` | `1010123456` → new, company "Bean Street Trading Co.", address "King Fahd Road, Al Olaya, Riyadh" · `1010222222` → new, company "Fawaz Alhokair Trading Co.", address "King Fahd Road, Riyadh" · `1010000000` → existing · any other valid number → new, no details |
-| `EmailVerificationService.send_link(session, email)` / `verify(session, token)` / `demo_token(session)` | One live single-use token per session; logs "Email verification link sent" without the token |
-| `OtpService.send(session, mobile)` / `verify(session, code)` | Mobile only. Code = `OTP_MOCK_CODE`; logs "OTP sent" without the code |
+| `CrService.verify(cr) -> CrResult` | Scenario data `app/data/mock_world/cr_registry.json`: `1010123456` → new, "Bean Street Trading Co.", "King Fahd Road, Al Olaya, Riyadh" · `1010222222` → new, "Fawaz Alhokair Trading Co.", "King Fahd Road, Riyadh" · `1010333333` → new, Arabic company name and address · `1010000000` → existing · `1010999991` → timeout · `1010999992` → unavailable · any other valid number → new, no details |
+| `EmailVerificationService.send_link(session, email, context)` / `verify(session, token)` / `verify_link(token)` / `demo_token(session)` | Issues a signed `verify_email` token (inquiry id, address fingerprint, nonce, expiry) and emails `<PUBLIC_BASE_URL>/inquiry/verify?t=<token>` (template `email_verification_link`). Only the latest link works, once. Logs "Email verification link sent" without the token |
+| `OtpService.send(session, mobile, context)` / `verify(session, code)` | Mobile only. Code = `OTP_MOCK_CODE`, delivered to the outbox as an SMS (`sms_otp`); logs "OTP sent" without the code |
+| `NotificationService.send(template, to, context, inquiry_id) -> message id` | Renders `app/notifications/templates/<template>.txt` (`kind`, `channel`, `subject`, `string.Template` body) into the outbox. Templates: `email_verification_link`, `sms_otp`, `resume_link`, `submission_email`, `submission_sms` |
 | `StorageService.save(session, doc_type, upload) -> DocumentRef` | Writes to `UPLOAD_DIR/<session>/<uuid><ext>`; never opens content |
-| `SubmitService.submit(draft) -> reference` | `GEO-{unit code}-{6 random digits}`; stores the payload in memory; logs it |
-| `StatusService.get(reference)` | Known reference → `under_review`; else 404 |
+| `SubmitService.submit(draft, master, idempotency_key) -> reference` / `lookup(key)` | `GEO-{unit code}-{6 random digits}`; the same key returns the same reference |
+| `StatusService.get(reference)` | Known reference → `under_review`, stage `first_review`, owner role by product line (Regional Leasing Manager (Store), Regional Property Leasing Manager (Media / Specialty)); else 404 |
+| `ResendLimiter` | Policy `resend`: `cooldown_seconds` between sends on a channel, at most `max_per_hour` per channel per inquiry; the first send is never delayed |
+| `AuditLog.record(inquiry_id, type, actor, payload)` | Append-only, numbered, redacted at write (allowlist per event type; never codes, tokens, contact details, file names or message text). Types: `inquiry_created`, `user_message`, `ui_action`, `tool_called` (agent tools and service calls), `field_written`, `field_confirmed`, `guard_verdict`, `card_shown`, `verification_sent`, `verification_result`, `document_added`, `document_removed`, `submit_attempt`, `submit_result`, `notification_sent`, `error` |
+
+**Sessions** (`app/sessions.py`) keep the transcript (`{id, role, text}`) and the latest version of each card, for resume. With `DATA_DIR`, each session is saved after every turn, action, upload and verification and reloaded at start-up; the first turn after a restart gives the model the last 20 messages again, since the graph's checkpointer is in memory.
 
 Unit codes: store `STR`, media `MED`, specialty `SPC`.
 
@@ -302,6 +315,13 @@ process steps · review time · required documents · what a CR number is · wha
 | `AGENT_MODE` | `openai`; `scripted` runs `ScriptedChatModel` for the Playwright e2e suite (never set in a deployed environment) |
 | `POLICY_PATH` | — (the packaged `app/policy/policy.yaml`) |
 | `MASTER_DATA_SOURCE` | `seed` (`cenomi` is a stub that falls back to the seed) |
+| `INTEGRATIONS` | `mock` (the only tier until Cenomi gives access; `sandbox`/`live` refuse to start) |
+| `DEV_TOOLS` | `false`; `true` mounts `/api/dev/outbox` and `/api/dev/audit/{id}` (refused unless `INTEGRATIONS=mock`) |
+| `MOCK_FAULTS` | empty; `service:kind[:count],…` injects faults into the simulated systems |
+| `DATA_DIR` | empty = memory only; a directory = restart-safe JSON snapshots of sessions, the simulated systems' state (outbox, submissions, links, OTP, sends) and the audit log |
+| `PUBLIC_BASE_URL` | `http://localhost:5173` (links in emails and SMS) |
+| `RESUME_TOKEN_SECRET` | `dev-only-change-me` (signs verification, resume and tracking links; set a real secret outside dev) |
+| `EMAIL_LINK_TTL_HOURS` / `RESUME_TTL_DAYS` / `TRACK_TTL_DAYS` | `72` / `7` / `365` |
 
 Frontend: `VITE_API_BASE` (default `http://localhost:8000`), `VITE_MOCK` (`1` = run on fixtures), `VITE_E2E` (`1` = send the `X-Test-Scenario` header; e2e only).
 

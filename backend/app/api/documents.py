@@ -10,15 +10,21 @@ from app.api.cards import build_document_upload_card, parse_doc_type
 from app.api.deps import get_master_data, get_services, get_session_store, get_settings
 from app.api.errors import ApiError
 from app.api.limiter import limiter
-from app.api.schemas import DeleteDocumentResponse, DocumentResponse, UploadDocumentResponse
+from app.api.schemas import (
+    DeleteDocumentResponse,
+    DocumentResponse,
+    UiCard,
+    UploadDocumentResponse,
+)
 from app.config import Settings
 from app.domain import draft_ops
 from app.domain.master import MasterData
 from app.domain.summary import build_draft_summary
 from app.domain.validation import validate_document_extension, validate_document_size
+from app.gateway import GatewayError
 from app.services.container import ServiceContainer
 from app.services.errors import UploadTooLargeError, UploadValidationError
-from app.sessions import SessionStore
+from app.sessions import Session, SessionStore
 
 router = APIRouter(prefix="/api/sessions", tags=["documents"])
 
@@ -56,13 +62,21 @@ async def upload_document(
     session = await store.touch(session_id)
 
     try:
-        ref = services.storage.save(
+        ref = services.gateway.call_sync(
+            "storage",
+            "save",
+            services.storage.save,
             session_id,
             parsed,
             filename,
             iter([content]),
             size,
+            inquiry_id=session_id,
         )
+    except GatewayError as exc:
+        raise ApiError(
+            503, f"storage_{exc.kind}", "We couldn't store that file. Please try again."
+        ) from exc
     except UploadTooLargeError as exc:
         raise ApiError(400, "too_large", str(exc)) from exc
     except UploadValidationError as exc:
@@ -87,6 +101,15 @@ async def upload_document(
         master,
         max_mb=settings.max_upload_mb,
     )
+    _remember(session, card)
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    services.audit.record(
+        session_id,
+        "document_added",
+        actor="user",
+        payload={"doc_type": parsed.value, "ext": ext, "size_bytes": ref.size_bytes},
+    )
+    store.save(session)
     draft = build_draft_summary(session.draft, master, changed_keys=[])
     document = DocumentResponse(
         doc_type=ref.doc_type.value,
@@ -128,5 +151,19 @@ async def delete_document(
         master,
         max_mb=settings.max_upload_mb,
     )
+    _remember(session, card)
+    services.audit.record(
+        session_id, "document_removed", actor="user", payload={"doc_type": parsed.value}
+    )
+    store.save(session)
     draft = build_draft_summary(session.draft, master, changed_keys=[])
     return DeleteDocumentResponse(card=card, draft=draft)
+
+
+def _remember(session: Session, card: UiCard) -> None:
+    """Keep the latest documents card for resume, attached to its original message."""
+    data = card.model_dump()
+    previous = session.cards.get(card.card_id)
+    if previous is not None and data.get("message_id") is None:
+        data["message_id"] = previous.get("message_id")
+    session.remember_card(data)

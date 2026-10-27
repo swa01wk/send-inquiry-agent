@@ -1,0 +1,5 @@
+kind: action_required
+channel: sms
+subject: Verification code
+---
+Your Cenomi Tenant Central verification code is $code. Enter it in the code box to continue your inquiry.

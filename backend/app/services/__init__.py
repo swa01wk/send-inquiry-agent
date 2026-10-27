@@ -1,5 +1,5 @@
-"""External service interfaces and mock implementations."""
+"""External service interfaces and mock implementations.
 
-from app.services.container import ServiceContainer, build_services
-
-__all__ = ["ServiceContainer", "build_services"]
+Import the container from `app.services.container`. This package init stays empty so
+that `app.gateway` can import `app.services.errors` without a cycle.
+"""

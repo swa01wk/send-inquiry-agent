@@ -1,0 +1,14 @@
+kind: information
+channel: email
+subject: Your Cenomi leasing inquiry $reference
+---
+Hello $first_name,
+
+Thank you. We've received your leasing inquiry for $brand at $mall.
+
+Reference: $reference
+
+Our leasing team reviews every inquiry. You can follow its progress here:
+$tracking_url
+
+Cenomi Tenant Central
