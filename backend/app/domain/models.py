@@ -70,10 +70,16 @@ class Phase(StrEnum):
 CrStatus = Literal["unknown", "new", "existing", "skipped"]
 
 
+EVIDENCE_MAX_CHARS = 80
+
+
 class FieldValue(BaseModel):
     value: Any | None = None
     source: Source | None = None
     confirmed: bool = False
+    # For derived values: the user's words the value came from (L3 §3.9), shown on the
+    # confirm card ("from: '…'") and kept in the audit trail for reviewers.
+    evidence: str | None = None
 
 
 class DocumentRef(BaseModel):
@@ -82,6 +88,8 @@ class DocumentRef(BaseModel):
     file_name: str
     size_bytes: int
     uploaded_at: datetime
+    # Reused from an earlier inquiry (its reference) by a follow-on inquiry (L3 §3.11).
+    copied_from: str | None = None
 
 
 class Blocker(BaseModel):
@@ -136,6 +144,10 @@ class InquiryDraft(BaseModel):
     otp_attempts_left: int = 3
     terms_accepted: bool = False
     reference: str | None = None
+    # When the contact became fully verified (decides follow-on reuse, L3 §3.11).
+    verified_at: datetime | None = None
+    # The submitted inquiry this one follows on from (same chat, another mall).
+    follow_on_of: str | None = None
 
 
 def new_inquiry_draft() -> InquiryDraft:

@@ -112,7 +112,8 @@ def parse_contact_from_message(user_text: str) -> tuple[str, str, str, str] | No
     """Return (first_name, last_name, email, phone_raw) when all are present."""
     if not user_text.strip() or user_text.startswith("[ui_event]"):
         return None
-    normalised = user_text.replace("،", ",")
+    # Arabic-Indic digits count like any others (L3 §3.10).
+    normalised = v.normalise_digits(user_text).replace("،", ",")
     email_match = _EMAIL_RE.search(normalised)
     if not email_match:
         return None

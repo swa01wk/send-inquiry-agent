@@ -27,6 +27,7 @@ TEMPLATE_NAMES = (
     "resume_link",
     "submission_email",
     "submission_sms",
+    "call_centre_case",
 )
 Channel = Literal["email", "sms"]
 Kind = Literal["information", "action_required"]

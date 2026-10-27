@@ -57,6 +57,9 @@ class DraftSummary(BaseModel):
     checks: DraftChecks
     can_submit: bool
     changed_keys: list[str] = Field(default_factory=list)
+    # Set on a follow-on inquiry: the reference it follows on from (L3 §3.11). The chat
+    # shows a "New inquiry" divider when this changes.
+    follow_on_of: str | None = None
 
 
 REQUIRED_SLOT_KEYS: list[FieldKey | str] = [
@@ -263,6 +266,7 @@ def build_draft_summary(
         checks=checks,
         can_submit=len(blockers) == 0,
         changed_keys=list(changed_keys or []),
+        follow_on_of=draft.follow_on_of,
     )
 
 

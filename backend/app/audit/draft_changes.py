@@ -30,6 +30,9 @@ def record_draft_changes(
                     payload["value_sha256"] = value_hash(new.value)
                 else:
                     payload["display"] = str(new.value)[:80]
+                    if new.evidence:
+                        # The user's words a derived value came from, for the reviewer.
+                        payload["evidence"] = new.evidence
             audit.record(inquiry_id, "field_written", actor=actor, payload=payload)
         elif new.confirmed and not old.confirmed:
             confirmed.append(key.value)

@@ -14,12 +14,32 @@ T = TypeVar("T")
 
 _EMAIL_ADAPTER: TypeAdapter[EmailStr] = TypeAdapter(EmailStr)
 
-CR_NUMBER_RE = re.compile(r"^\d{10}$")
+CR_NUMBER_RE = re.compile(r"^[0-9]{10}$")
 VAT_RE = re.compile(r"^3\d{13}3$")
 NATIONAL_ID_RE = re.compile(r"^[12]\d{9}$")
 LATIN_RE = re.compile(r"^[A-Za-z0-9\s&'.,\-()]+$")
 ARABIC_RE = re.compile(r"[\u0600-\u06FF]")
 ALLOWED_EXTENSIONS = frozenset({"pdf", "jpg", "jpeg", "png", "doc", "docx", "xlsx", "zip"})
+
+
+# Arabic-Indic (٠–٩) and Eastern Arabic-Indic (۰–۹) digits → ASCII (L3 §3.10).
+_DIGIT_MAP = {
+    **{0x0660 + i: ord("0") + i for i in range(10)},
+    **{0x06F0 + i: ord("0") + i for i in range(10)},
+}
+
+
+def normalise_digits(text: str) -> str:
+    """Arabic-Indic and Eastern Arabic-Indic digits as ASCII; everything else unchanged.
+
+    Every numeric rule runs on the result (CR, phone numbers, VAT, National ID, area, rent)
+    so an Arabic-speaking user gets the same checks as everyone else.
+    """
+    return text.translate(_DIGIT_MAP)
+
+
+def _normalised_number(raw: int | str) -> int | str:
+    return normalise_digits(raw).strip() if isinstance(raw, str) else raw
 
 
 class ValidationError(BaseModel):
@@ -32,7 +52,7 @@ def is_validation_error(result: T | ValidationError) -> bool:
 
 
 def validate_cr_number(raw: str) -> str | ValidationError:
-    value = raw.strip()
+    value = normalise_digits(raw).strip()
     if not CR_NUMBER_RE.match(value):
         return ValidationError(code="invalid_cr_number", message="CR number must be 10 digits.")
     return value
@@ -135,7 +155,7 @@ def validate_malls(raw: list[str] | str, master: MasterData) -> list[str] | Vali
 
 def validate_area_min(raw: int | str) -> int | ValidationError:
     try:
-        value = int(raw)
+        value = int(_normalised_number(raw))
     except (TypeError, ValueError):
         return ValidationError(code="invalid_area_min", message="Area min must be a whole number.")
     if not 10 <= value <= 25000:
@@ -148,7 +168,7 @@ def validate_area_min(raw: int | str) -> int | ValidationError:
 
 def validate_area_max(raw: int | str) -> int | ValidationError:
     try:
-        value = int(raw)
+        value = int(_normalised_number(raw))
     except (TypeError, ValueError):
         return ValidationError(code="invalid_area_max", message="Area max must be a whole number.")
     if not 10 <= value <= 25000:
@@ -172,7 +192,7 @@ def validate_area_range(area_min: int | None, area_max: int | None) -> Validatio
 
 def validate_rent_min(raw: int | str) -> int | ValidationError:
     try:
-        value = int(raw)
+        value = int(_normalised_number(raw))
     except (TypeError, ValueError):
         return ValidationError(code="invalid_rent_min", message="Rent min must be a whole number.")
     if value < 0:
@@ -182,7 +202,7 @@ def validate_rent_min(raw: int | str) -> int | ValidationError:
 
 def validate_rent_max(raw: int | str) -> int | ValidationError:
     try:
-        value = int(raw)
+        value = int(_normalised_number(raw))
     except (TypeError, ValueError):
         return ValidationError(code="invalid_rent_max", message="Rent max must be a whole number.")
     if value < 0:
@@ -236,7 +256,7 @@ def validate_email(raw: str) -> str | ValidationError:
 
 
 def _digits_only(raw: str) -> str:
-    return re.sub(r"\D", "", raw)
+    return re.sub(r"[^0-9]", "", normalise_digits(raw))
 
 
 SAUDI_COUNTRY_CODE = "966"
@@ -251,7 +271,7 @@ def international_number(raw: str) -> str | ValidationError | None:
     apply. Without a numbering-plan library we can't tell a foreign mobile from a
     foreign landline; the field it is written to decides.
     """
-    stripped = raw.strip()
+    stripped = normalise_digits(raw).strip()
     if stripped.startswith("+"):
         digits = _digits_only(stripped)
     elif stripped.startswith("00"):

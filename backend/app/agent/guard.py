@@ -34,9 +34,10 @@ from app.api.cards import (
     build_review_card,
 )
 from app.api.schemas import UiCard
-from app.domain.models import FieldKey
+from app.domain.models import FieldKey, Source
 from app.domain.rules import compute_phase, contact_verified
 from app.domain.summary import build_draft_summary
+from app.domain.validation import normalise_digits
 
 GUARD_PREFIX = "[ui_event] guard:"
 
@@ -126,7 +127,8 @@ def _current_turn(state: AgentState) -> tuple[str, list[BaseMessage]]:
         if isinstance(message, HumanMessage) and not _content_text(message).startswith(
             GUARD_PREFIX
         ):
-            return _content_text(message), list(messages[index + 1 :])
+            # Digits normalised so every numeric check sees Arabic-Indic digits (L3 §3.10).
+            return normalise_digits(_content_text(message)), list(messages[index + 1 :])
     return "", []
 
 
@@ -141,7 +143,7 @@ def _tools_called(messages: list[BaseMessage]) -> set[str]:
 
 def message_likely_has_inquiry_data(text: str) -> bool:
     """True when a user message looks like it carries details to save (not a question)."""
-    stripped = text.strip()
+    stripped = normalise_digits(text).strip()
     if not stripped or stripped.startswith("[ui_event]"):
         return False
     if stripped.endswith(("?", "؟")) or _QUESTION_START_RE.match(stripped):
@@ -338,7 +340,9 @@ def _unconfirm_doubted_fields(state: AgentState) -> tuple[Any, list[str]]:
         except ValueError:
             continue
         field = draft.fields[key]
-        if field.confirmed:
+        # Only derived or prefilled values need the user's acceptance; what the user
+        # typed themselves stays as it is.
+        if field.confirmed and field.source in (Source.DERIVED, Source.VERIFIED):
             draft.fields[key] = field.model_copy(update={"confirmed": False})
             changed.append(key_str)
     return draft, changed
@@ -362,8 +366,18 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
 
     ai_text = _last_ai_text(state)
     status_lookup = "get_inquiry_status" in _tools_called(turn_messages)
+    # After a follow-on, talking about the earlier (really submitted) inquiry is fine.
+    about_earlier = bool(draft.follow_on_of) and (
+        str(draft.follow_on_of) in ai_text or "start_follow_on" in _tools_called(turn_messages)
+    )
     if guard_retries < 1:
-        if draft.reference is None and not status_lookup and ai_text and claims_submission(ai_text):
+        if (
+            draft.reference is None
+            and not status_lookup
+            and not about_earlier
+            and ai_text
+            and claims_submission(ai_text)
+        ):
             note = (
                 f"{GUARD_PREFIX} Do not tell the user the inquiry was submitted. "
                 "It is only submitted when a submitted reference ui_event arrives. "

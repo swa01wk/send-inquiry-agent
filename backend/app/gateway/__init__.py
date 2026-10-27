@@ -25,7 +25,16 @@ from app.services.errors import ServiceRejected, ServiceTimeout, ServiceUnavaila
 
 ErrorKind = Literal["timeout", "unavailable", "rejected", "invalid"]
 FaultKind = Literal["timeout", "unavailable", "rejected"]
-SERVICES = ("cr", "email", "otp", "notifications", "submit", "status", "storage")
+SERVICES = (
+    "cr",
+    "email",
+    "otp",
+    "notifications",
+    "submit",
+    "status",
+    "storage",
+    "call_centre",
+)
 
 DEFAULT_TIMEOUTS_S: dict[str, float] = {
     "cr": 5.0,
@@ -35,6 +44,7 @@ DEFAULT_TIMEOUTS_S: dict[str, float] = {
     "submit": 10.0,
     "status": 5.0,
     "storage": 10.0,
+    "call_centre": 5.0,
 }
 
 T = TypeVar("T")

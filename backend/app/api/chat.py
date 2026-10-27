@@ -14,7 +14,7 @@ from sse_starlette.sse import EventSourceResponse
 from app.agent.actions import handle_ui_action
 from app.agent.events import SseEvent, run_turn
 from app.agent.runtime import AgentRuntime
-from app.api.cards import remember_confirm_card_keys
+from app.api.cards import remember_confirm_card_keys, scope_card_data
 from app.api.deps import get_services, get_session_store, get_settings
 from app.api.limiter import limiter
 from app.api.schemas import ChatRequestAction, ChatRequestMessage, UiCard
@@ -22,7 +22,7 @@ from app.audit.draft_changes import record_draft_changes
 from app.config import Settings
 from app.domain.master import load_master_data
 from app.services.container import ServiceContainer
-from app.sessions import SessionStore
+from app.sessions import Session, SessionStore
 
 router = APIRouter(prefix="/api/sessions", tags=["chat"])
 
@@ -41,6 +41,13 @@ def _session_rate_limit_key(request: Request) -> str:
 
 def _sse(event: SseEvent) -> dict[str, str]:
     return {"event": event["event"], "data": json.dumps(event["data"])}
+
+
+def _scoped(event: SseEvent, session: Session) -> SseEvent:
+    """Card ids carry the inquiry's number after a follow-on (L3 §3.11)."""
+    if event["event"] != "ui_card":
+        return event
+    return SseEvent(event="ui_card", data=scope_card_data(event["data"], session.inquiry_seq))
 
 
 @router.post("/{session_id}/chat")
@@ -122,6 +129,7 @@ async def chat_stream(
             for item in action_events:
                 if item["event"] == "ui_card":
                     remember_confirm_card_keys(session, UiCard.model_validate(item["data"]))
+                item = _scoped(item, session)
                 observe(item)
                 yield _sse(item)
             async for item in run_turn(
@@ -131,6 +139,7 @@ async def chat_stream(
                 runtime=runtime,
                 settings=settings,
             ):
+                item = _scoped(item, session)
                 observe(item)
                 yield _sse(item)
         finally:

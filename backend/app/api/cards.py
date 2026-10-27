@@ -11,6 +11,7 @@ from app.api.schemas import (
     ConfirmFieldsPayload,
     DocumentNumberRow,
     DocumentUploadPayload,
+    HandoffPayload,
     MallPickerCity,
     MallPickerMall,
     MallPickerPayload,
@@ -28,7 +29,7 @@ from app.api.schemas import (
 )
 from app.domain.fields import FIELD_BY_KEY, GROUP_ORDER, FieldGroup
 from app.domain.master import MasterData
-from app.domain.models import DocType, FieldKey, InquiryDraft
+from app.domain.models import DocType, FieldKey, InquiryDraft, Source
 from app.domain.rules import can_submit, contact_verified
 from app.domain.summary import build_draft_summary
 from app.domain.validation import ALLOWED_EXTENSIONS
@@ -270,6 +271,7 @@ def build_confirm_fields_card(
                 display=definition.display(draft, master),
                 source=field.source.value if field.source else None,
                 confirmed=field.confirmed,
+                evidence=field.evidence if field.source == Source.DERIVED else None,
             )
         )
     all_confirmed = all(row.confirmed for row in rows) if rows else True
@@ -508,6 +510,59 @@ def build_success_card(
         message_id=message_id,
         payload=payload.model_dump(),
     )
+
+
+HANDOFF_CARD_ID = "handoff"
+
+
+def build_handoff_card(
+    *,
+    phone: str,
+    email: str,
+    hours: str,
+    short_ref: str,
+    case_id: str,
+    reason: str,
+    message_id: str | None = None,
+) -> UiCard:
+    payload = HandoffPayload(
+        phone=phone, email=email, hours=hours, short_ref=short_ref, case_id=case_id, reason=reason
+    )
+    return UiCard(
+        card_id=HANDOFF_CARD_ID,
+        card_type="handoff",
+        message_id=message_id,
+        payload=payload.model_dump(),
+    )
+
+
+# ---- Card ids per inquiry (follow-on inquiries, L3 §3.11) ---------------------------
+# The chat keeps every card it showed, keyed by card_id. A follow-on inquiry in the same
+# chat shows the same kinds of cards again, so its card ids carry the inquiry's number
+# ("review~2"); the cards of the earlier inquiry stay as they were above the divider.
+# Inside the backend (cards_shown, confirm_card_keys) ids stay unscoped.
+_SCOPE_SEP = "~"
+
+
+def scoped_card_id(card_id: str, inquiry_seq: int) -> str:
+    return card_id if inquiry_seq <= 1 else f"{card_id}{_SCOPE_SEP}{inquiry_seq}"
+
+
+def split_card_id(card_id: str) -> tuple[str, int]:
+    """(unscoped id, inquiry number) for a card id the frontend sent back."""
+    base, sep, seq = card_id.rpartition(_SCOPE_SEP)
+    if sep and seq.isdigit():
+        return base, int(seq)
+    return card_id, 1
+
+
+def scope_card_data(data: dict[str, object], inquiry_seq: int) -> dict[str, object]:
+    """A ui_card event's data with its card_id scoped to the inquiry."""
+    card_id = data.get("card_id")
+    if inquiry_seq <= 1 or not isinstance(card_id, str):
+        return data
+    base, _seq = split_card_id(card_id)
+    return {**data, "card_id": scoped_card_id(base, inquiry_seq)}
 
 
 def parse_doc_type(raw: str) -> DocType | None:

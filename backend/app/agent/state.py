@@ -21,6 +21,8 @@ class AgentState(TypedDict):
     turn_index: int
     guard_retries: int
     retry_agent: NotRequired[bool]
+    # Which inquiry of the chat is current (follow-on inquiries, L3 §3.11).
+    inquiry_seq: NotRequired[int]
 
 
 def initial_agent_state(

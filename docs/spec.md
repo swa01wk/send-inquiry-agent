@@ -25,6 +25,7 @@ class FieldValue(BaseModel):
     value: Any | None = None
     source: Source | None = None
     confirmed: bool = False      # USER and DEFAULT values are confirmed on write
+    evidence: str | None = None  # derived values only: the user's words (≤ 80 chars, L3 §3.9)
 
 class DocumentRef(BaseModel):
     doc_type: DocType
@@ -32,6 +33,7 @@ class DocumentRef(BaseModel):
     file_name: str
     size_bytes: int
     uploaded_at: datetime
+    copied_from: str | None = None   # reused from that reference by a follow-on inquiry
 
 class InquiryDraft(BaseModel):
     fields: dict[FieldKey, FieldValue]      # every FieldKey present; empty FieldValue when unknown
@@ -44,7 +46,11 @@ class InquiryDraft(BaseModel):
     otp_attempts_left: int = 3
     terms_accepted: bool = False
     reference: str | None = None
+    verified_at: datetime | None = None     # when the contact became fully verified
+    follow_on_of: str | None = None         # the submitted reference this inquiry follows on from
 ```
+
+**Arabic digits.** Every numeric rule (CR, phone numbers, VAT, National ID, area, rent, the OTP code) runs on `validation.normalise_digits(text)`, which maps Arabic-Indic (`٠–٩`) and Eastern Arabic-Indic (`۰–۹`) digits to ASCII. Contact detection (`contact_infer`), the guard's checks and the tools see normalised text too (L3 §3.10).
 
 ### Field keys
 
@@ -117,8 +123,8 @@ All tools return a short factual string for the LLM. Tools that change state ret
 | `verify_cr` | `cr_number: str` | Validate format; call `CrService.verify`. Existing → `cr_status="existing"`. New → `cr_status="new"`, write `cr_number` (user) and any returned `company_name`/`company_address` as `verified`, unconfirmed; emit a `confirm_fields` card for them. |
 | `skip_cr` | — | Only after the user agreed to skip. `cr_status="skipped"`. |
 | `get_master_data` | `kind: str, city: str \| None` | Read-only lookup: `unit_types`, `sales_categories`, `cities`, `malls`, `lease_periods`, `rent_periods`. |
-| `update_draft` | `fields: list[{key, value, source: "user" \| "derived"}]` | Validate each; write valid ones (user → confirmed, derived → unconfirmed); return per-field errors. Emit a `confirm_fields` card listing newly written derived values. The LLM can't write `verified`, `default`, `email_verified`, `mobile_verified`, `terms_accepted`, `documents` or `reference`. |
-| `confirm_fields` | `keys: list[str]` | Mark those unconfirmed fields confirmed (only after the user agreed and the key was on a confirm card shown before this turn). Skips others with `not_shown`. Updates the existing confirm card. |
+| `update_draft` | `fields: list[{key, value, source: "user" \| "derived", evidence?: str}]` | Validate each; write valid ones (user → confirmed, derived → unconfirmed); return per-field errors. Emit a `confirm_fields` card listing newly written derived values. `evidence` (derived only) quotes the user's words the value came from, ≤ 80 chars; it is kept only if the user really wrote it (case and spacing ignored), otherwise the result says `Evidence ignored …`. The LLM can't write `verified`, `default`, `email_verified`, `mobile_verified`, `terms_accepted`, `documents` or `reference`. |
+| `confirm_fields` | `keys: list[str]` | Mark those unconfirmed fields confirmed (only after the user agreed and the key was on a confirm card shown before this turn). Skips others with `not_shown`, and with `user_expressed_doubt` when the user doubted that field (English or Arabic, `confirm_policy.py`) or sent only a short message of doubt ("hmm, not sure", «مو متأكد»). Updates the existing confirm card. |
 | `get_missing_fields` | — | Returns blockers from `can_submit` in plain words. |
 | `show_mall_picker` | `city: str` | Emits a `mall_picker` card with that city's malls and the current selection. |
 | `send_verification` | `resend: bool = False` | Requires `email` and a contact number. Emails a link via `EmailVerificationService.send_link` unless one already went to the current address; texts a code via `OtpService.send` when a mobile is given and no code went to it yet (`resend` forces both). Emits the `verification` card. |
@@ -126,7 +132,8 @@ All tools return a short factual string for the LLM. Tools that change state ret
 | `show_review` | — | Only when the only remaining blocker is `terms_not_accepted`; emits the `review` card. Otherwise returns the blockers. |
 | `suggest_replies` | `options: list[str]` (1–3, ≤ 60 chars each) | Emits a `quick_replies` card for this turn. |
 | `search_faq` | `query: str` | Top 2 matches from `faq.json` (keyword score). The agent answers only from these. |
-| `get_inquiry_status` | `reference: str` | Only this conversation's own reference (a reference alone must not expose an applicant's case); otherwise points to the tracking link. Calls `StatusService.get` through the gateway. |
+| `get_inquiry_status` | `reference: str` | Only this conversation's own references (the current inquiry and, after a follow-on, the one it follows); a reference alone must not expose an applicant's case, so others point to the tracking link. Calls `StatusService.get` through the gateway. |
+| `start_follow_on` | `mall_id: str \| None` | Only after this inquiry was submitted (L3 §3.11). Starts the next inquiry in the same chat (`inquiry_seq` + 1) with `follow_on_of=<reference>`: company, brand, unit type, sales category and contact copied as `verified`, unconfirmed, on one `confirm_fields` card titled "Same details as <reference>"; Company Profile and Brand Profile reused by reference (`copied_from`); the contact stays verified when it was verified within policy `follow_on_reuse_hours`. `mall_id` is saved only when the user named that mall, and never the submitted inquiry's mall. Result starts `follow_on_started from=<ref>`; audit `follow_on_started`. |
 
 There is no submit tool and no verify tool: both happen through UI actions, so the link token, the SMS code and consent never pass through the LLM.
 
@@ -140,10 +147,11 @@ There is no submit tool and no verify tool: both happen through UI actions, so t
 | `submit_otp` | `{code: str}` | Only for the code sent to the current mobile. `OtpService.verify`; on success `mobile_verified=True`; on failure decrement attempts (0 → auto resend within the resend limits, reset to 3). Note: `mobile_verified` (+ ` verification_complete`), `otp_failed attempts_left=N`, `otp_resent`, `resend_throttled <seconds>`, `service_error otp <kind>` or `otp_not_sent`. The code is never added to messages. |
 | `resend_otp` | `{}` | Resend to the mobile within the resend limits, reset attempts. Note: `otp_resent`, `resend_throttled <seconds>`, `service_error otp <kind>` or `otp_send_blocked no_mobile` |
 | `edit_field` | `{key, value}` | Validate; write as user, confirmed. Note: `field_edited <key>` |
-| `confirm_card` | `{card_id}` | Confirm all fields on that confirm card. Note: `fields_confirmed <keys>` |
-| `accept_and_submit` | `{terms_accepted: true}` | **Submit once:** if a reference exists, re-emit the same `success` card (note `submitted reference=<ref> (repeat)`). Otherwise set `terms_accepted`; run `can_submit`; if clear, `SubmitService.submit` with idempotency key `inq:<session_id>:v1` → set `reference`, send `submission_email` (verified email) and `submission_sms` (verified mobile), emit `success` with the private `tracking_url`. Note: `submitted reference=<ref>`, `submit_blocked <blockers>`, `submit_pending timeout\|unavailable` (nothing lost; Submit again returns the same reference) or `submit_failed rejected\|invalid` |
+| `confirm_card` | `{card_id}` | Confirm all fields on that confirm card. Note: `fields_confirmed <keys>`, `confirm_failed`, or `confirm_failed stale_card` for a card of an earlier inquiry in the chat |
+| `accept_and_submit` | `{terms_accepted: true}` | **Submit once:** if a reference exists, re-emit the same `success` card (note `submitted reference=<ref> (repeat)`). Otherwise set `terms_accepted`; run `can_submit`; if clear, `SubmitService.submit` with idempotency key `inq:<session_id>:v<inquiry_seq>` (`v1`, then `v2`… for follow-on inquiries) → set `reference`, send `submission_email` (verified email) and `submission_sms` (verified mobile), emit `success` with the private `tracking_url`. Note: `submitted reference=<ref>`, `submit_blocked <blockers>`, `submit_pending timeout\|unavailable` (nothing lost; Submit again returns the same reference) or `submit_failed rejected\|invalid` |
 | `documents_updated` | `{}` | Recompute required documents from the draft. Note: `documents_complete` or `documents_pending <doc_types>` |
 | `set_document_number` | `{key, value}` | Validate and write the document number field as user, confirmed. Note: `document_number_set <key>` or `document_number_invalid <key> <code>` |
+| `request_handoff` | `{reason?: "user_asked" \| "model_unavailable"}` | Human handoff (L3 §3.6): `CallCentreService.create_case` with the inquiry, the reason and a summary built from the draft and the last three user messages (no model call); emit the `handoff` card. One open case per inquiry: asking again shows the same case. Needs no model, so form mode uses it. The router's `human_help` intent calls the same handler. Note: `handoff_created <reason>`, `handoff_created <reason> (repeat)`, or `handoff_created <reason> service_error call_centre <kind>` (the card still shows the phone number and hours) |
 
 Every service call goes through the gateway (`app/gateway/`). A failure becomes one of four kinds, `timeout`, `unavailable`, `rejected` or `invalid`, and reaches the agent as `service_error <service> <kind>` (in a note, or at the start of a tool result) — never as a raw error.
 
@@ -154,9 +162,10 @@ Every service call goes through the gateway (`app/gateway/`). A failure becomes 
 After the agent's final reply each turn:
 1. Recompute `phase`; emit a `draft` event.
 2. Attach the card for a phase the user just entered if it hasn't been shown: `documents` → `document_upload`, `review` → `review`. (`verifying` cards come from `send_verification`.)
-3. If the reply claims the inquiry was submitted (`claims_submission` in `guard.py`: "has been submitted", "I've sent your inquiry", "your reference is …"; conditional mentions such as "once the inquiry is sent" don't count) while `reference` is None → add a system note and route back to `agent` once.
+3. If the reply claims the inquiry was submitted (`claims_submission` in `guard.py`: "has been submitted", "I've sent your inquiry", "your reference is …"; conditional mentions such as "once the inquiry is sent" don't count) while `reference` is None → add a system note and route back to `agent` once. After a follow-on, a reply about the earlier inquiry (it names `follow_on_of`, or `start_follow_on` ran this turn) is allowed.
 4. If phase is `existing_account`, ensure the reply points to Sign In.
-5. When `malls` is empty and the user's message names exactly one seed mall (same mention rules as `filter_mall_ids`), write that mall id as `user` (naming two or more writes nothing, so the agent asks which one) (see `fill_mentioned_malls` in `mall_match.py`). Also runs after `update_draft` when malls were omitted. Mall mention: the full normalised mall name (or optional `aliases` on a mall in master data) must appear as whole words in the user message (`\b` boundaries, optional leading “the”); city or country tokens alone do not match.
+5. Doubt: when the user doubts a derived or prefilled value ("not sure about the category", «مو متأكد من الفئة»), that field is un-confirmed (values the user typed are left alone). Doubt is attributed to the nearest field named after the doubt phrase, else before it, in the same sentence.
+6. When `malls` is empty and the user's message names exactly one seed mall (same mention rules as `filter_mall_ids`), write that mall id as `user` (naming two or more writes nothing, so the agent asks which one) (see `fill_mentioned_malls` in `mall_match.py`). Also runs after `update_draft` when malls were omitted. Mall mention: the full normalised mall name (or optional `aliases` on a mall in master data) must appear as whole words in the user message (`\b` boundaries, optional leading “the”); city or country tokens alone do not match.
 
 ## 6. REST API (`/api`)
 
@@ -183,7 +192,7 @@ Errors: `{"error": {"code": str, "message": str}}` with 4xx/5xx.
 {"type": "action", "action": "select_malls", "payload": {"mall_ids": ["riyadh-mall-a"]}}
 ```
 
-Test hooks: when `AGENT_MODE=scripted`, `POST /api/sessions` accepts an `X-Test-Scenario` header naming a script in `backend/tests/e2e_scripts/`; the session then replays that script. It also accepts `X-Mock-Faults` (`service:kind[:count],…`; services `cr`, `email`, `otp`, `notifications`, `submit`, `status`, `storage`; kinds `timeout`, `unavailable`, `rejected`) for faults in that session only; a bad spec is 400 `bad_mock_faults`. Both headers are ignored in `openai` mode.
+Test hooks: when `AGENT_MODE=scripted`, `POST /api/sessions` accepts an `X-Test-Scenario` header naming a script in `backend/tests/e2e_scripts/`; the session then replays that script. It also accepts `X-Mock-Faults` (`service:kind[:count],…`; services `cr`, `email`, `otp`, `notifications`, `submit`, `status`, `storage`, `call_centre`; kinds `timeout`, `unavailable`, `rejected`) for faults in that session only; a bad spec is 400 `bad_mock_faults`. Both headers are ignored in `openai` mode.
 
 Unknown session → 404 `session_not_found`. Sessions expire after 2 hours idle; a signed link (verification, resume) reaches an idle session again. A connected system that fails surfaces as 503 `<service>_<kind>`. Rate limits: 30 chat requests/min per session, 60/min per IP → 429 `rate_limited`.
 
@@ -194,7 +203,7 @@ Each event is `event: <type>` + `data: <json>`.
 | Event | Data | Frontend |
 | --- | --- | --- |
 | `token` | `{message_id, text}` | Append to the assistant message `message_id` (create it if new) |
-| `ui_card` | `UiCard` | Insert after the current assistant message, or replace in place if `card_id` exists |
+| `ui_card` | `UiCard` | Insert after the current assistant message, or replace in place if `card_id` exists. After a follow-on (`inquiry_seq` ≥ 2) card ids carry the inquiry's number (`review~2`, `confirm-1~2`), so the earlier inquiry's cards stay as they were; actions send the id back as received |
 | `draft` | `DraftSummary` | Replace draft state; flash and scroll to `changed_keys` |
 | `message_remove` | `{message_id}` | Remove the assistant bubble with that id (guard retracted a rejected reply) |
 | `done` | `{phase}` | Stop typing indicator, enable composer |
@@ -209,13 +218,14 @@ At the start of each turn the frontend clears the previous `quick_replies` chips
 
 | `card_type` | `payload` |
 | --- | --- |
-| `confirm_fields` | `{title, fields:[{key, label, display, source, confirmed}], all_confirmed}` |
+| `confirm_fields` | `{title, fields:[{key, label, display, source, confirmed, evidence}], all_confirmed}` (`evidence`: the user's words a derived value came from, shown as "from: '…'"; else null. `title` is "Same details as <reference>" for a follow-on prefill) |
 | `mall_picker` | `{city:{id,label}, malls:[{id,name}], selected:[id], min_select:1, max_select}` (`max_select` = policy `max_malls_per_inquiry`, default 1) |
 | `verification` | `{email:{masked, link_sent, verified, demo_token, resend_available_at}, mobile:{masked, code_sent, verified, attempts_left, code_length:4, resend_available_at} \| null, all_verified}` (`mobile` is null for a landline-only applicant; `demo_token` only when `EMAIL_LINK_DEMO`; `resend_available_at` is an ISO time while the resend cooldown or hourly cap applies, else null) |
 | `document_upload` | `{docs:[{doc_type,label,required,uploaded,file_name,size_bytes}], numbers:[{key,label,value,editable,error}], required_uploaded, required_total, allowed_extensions (dotted, e.g. `.pdf`), max_mb}` |
 | `review` | `{groups:[{title, rows:[{key,label,display,source,confirmed,required}]}], documents:[...], checks:Checks, can_submit, terms_accepted, blockers:[str]}` |
 | `success` | `{reference, tracking_url, steps:[{label, detail, state}]}` (`tracking_url` = `<PUBLIC_BASE_URL>/inquiry/status/<reference>?t=<track token>`, the private tracking page) |
 | `quick_replies` | `{options:[{label, text, action?: "send" \| "focus_input", placeholder?: string}]}` — default `action` is `send` |
+| `handoff` | `{phone, email, hours, short_ref, case_id, reason}` (call-centre details from `CALL_CENTRE_*`; `short_ref` is the reference, or `INQ-XXXXXX` before submit; `case_id` is empty when the case system was down) |
 
 ### `DraftSummary`
 ```json
@@ -225,9 +235,11 @@ At the start of each turn the frontend clears the previous `quick_replies` chips
   "documents": [{"doc_type": "company_profile", "label": "Company Profile", "required": true, "uploaded": false, "file_name": null, "size_bytes": null}],
   "checks": {"required_filled": 7, "required_total": 11, "unconfirmed": 2, "email_verified": false, "mobile_verified": false, "contact_verified": false, "required_docs_uploaded": 0, "required_docs_total": 2, "terms_accepted": false},
   "can_submit": false,
-  "changed_keys": ["company_name", "company_address"]
+  "changed_keys": ["company_name", "company_address"],
+  "follow_on_of": null
 }
 ```
+`follow_on_of` is the earlier reference on a follow-on inquiry; the chat shows a "New inquiry" divider when it changes.
 Groups in order: company, brand, space, contact. Area shows as one row (`area`), rent as one row (`rent`), lease as one row.
 
 ## 8. Services (simulated Cenomi, `backend/app/services/`)
@@ -239,14 +251,15 @@ Every call goes through the gateway (`app/gateway/`): a timeout per service, fou
 | `CrService.verify(cr) -> CrResult` | Scenario data `app/data/mock_world/cr_registry.json`: `1010123456` → new, "Bean Street Trading Co.", "King Fahd Road, Al Olaya, Riyadh" · `1010222222` → new, "Fawaz Alhokair Trading Co.", "King Fahd Road, Riyadh" · `1010333333` → new, Arabic company name and address · `1010000000` → existing · `1010999991` → timeout · `1010999992` → unavailable · any other valid number → new, no details |
 | `EmailVerificationService.send_link(session, email, context)` / `verify(session, token)` / `verify_link(token)` / `demo_token(session)` | Issues a signed `verify_email` token (inquiry id, address fingerprint, nonce, expiry) and emails `<PUBLIC_BASE_URL>/inquiry/verify?t=<token>` (template `email_verification_link`). Only the latest link works, once. Logs "Email verification link sent" without the token |
 | `OtpService.send(session, mobile, context)` / `verify(session, code)` | Mobile only. Code = `OTP_MOCK_CODE`, delivered to the outbox as an SMS (`sms_otp`); logs "OTP sent" without the code |
-| `NotificationService.send(template, to, context, inquiry_id) -> message id` | Renders `app/notifications/templates/<template>.txt` (`kind`, `channel`, `subject`, `string.Template` body) into the outbox. Templates: `email_verification_link`, `sms_otp`, `resume_link`, `submission_email`, `submission_sms` |
+| `NotificationService.send(template, to, context, inquiry_id) -> message id` | Renders `app/notifications/templates/<template>.txt` (`kind`, `channel`, `subject`, `string.Template` body) into the outbox. Templates: `email_verification_link`, `sms_otp`, `resume_link`, `submission_email`, `submission_sms`, `call_centre_case` |
+| `CallCentreService.create_case(inquiry_id, payload, reason, transcript_summary, short_ref, context) -> (case, created)` / `open_case(inquiry_id)` | Opens a case (`CC-NNNNNN`) a customer-care executive continues in the Tenant Admin Platform (§7.1.1 a2); one open case per inquiry. The mock keeps cases in `mock_world/cases.json` and emails each to `CALL_CENTRE_EMAIL` (template `call_centre_case`), so it shows in the dev inbox |
 | `StorageService.save(session, doc_type, upload) -> DocumentRef` | Writes to `UPLOAD_DIR/<session>/<uuid><ext>`; never opens content |
 | `SubmitService.submit(draft, master, idempotency_key) -> reference` / `lookup(key)` | `GEO-{unit code}-{6 random digits}`; the same key returns the same reference |
 | `StatusService.get(reference)` | Known reference → `under_review`, stage `first_review`, owner role by product line (Regional Leasing Manager (Store), Regional Property Leasing Manager (Media / Specialty)); else 404 |
 | `ResendLimiter` | Policy `resend`: `cooldown_seconds` between sends on a channel, at most `max_per_hour` per channel per inquiry; the first send is never delayed |
-| `AuditLog.record(inquiry_id, type, actor, payload)` | Append-only, numbered, redacted at write (allowlist per event type; never codes, tokens, contact details, file names or message text). Types: `inquiry_created`, `user_message`, `ui_action`, `tool_called` (agent tools and service calls), `field_written`, `field_confirmed`, `guard_verdict`, `card_shown`, `verification_sent`, `verification_result`, `document_added`, `document_removed`, `submit_attempt`, `submit_result`, `notification_sent`, `error` |
+| `AuditLog.record(inquiry_id, type, actor, payload)` | Append-only, numbered, redacted at write (allowlist per event type; never codes, tokens, contact details, file names or message text). Types: `inquiry_created`, `user_message`, `ui_action`, `tool_called` (agent tools and service calls), `field_written`, `field_confirmed`, `guard_verdict`, `card_shown`, `verification_sent`, `verification_result`, `document_added`, `document_removed`, `submit_attempt`, `submit_result`, `notification_sent`, `error`, `handoff_created` (reason, case_id, created, via), `follow_on_started` (from_reference, inquiry_seq, reused_verification). `field_written` keeps `evidence` for derived values (never for personal fields) |
 
-**Sessions** (`app/sessions.py`) keep the transcript (`{id, role, text}`) and the latest version of each card, for resume. With `DATA_DIR`, each session is saved after every turn, action, upload and verification and reloaded at start-up; the first turn after a restart gives the model the last 20 messages again, since the graph's checkpointer is in memory.
+**Sessions** (`app/sessions.py`) keep `inquiry_seq` (1, then 2, 3… after follow-ons), the transcript (`{id, role, text}`) and the latest version of each card, for resume. With `DATA_DIR`, each session is saved after every turn, action, upload and verification and reloaded at start-up; the first turn after a restart gives the model the last 20 messages again, since the graph's checkpointer is in memory.
 
 Unit codes: store `STR`, media `MED`, specialty `SPC`.
 
@@ -322,6 +335,7 @@ process steps · review time · required documents · what a CR number is · wha
 | `PUBLIC_BASE_URL` | `http://localhost:5173` (links in emails and SMS) |
 | `RESUME_TOKEN_SECRET` | `dev-only-change-me` (signs verification, resume and tracking links; set a real secret outside dev) |
 | `EMAIL_LINK_TTL_HOURS` / `RESUME_TTL_DAYS` / `TRACK_TTL_DAYS` | `72` / `7` / `365` |
+| `CALL_CENTRE_PHONE` / `CALL_CENTRE_EMAIL` / `CALL_CENTRE_HOURS` | `+966 11 000 0000` / `leasing-callcentre@example.com` / `Sunday to Thursday, 9 am to 5 pm (Riyadh time)` — placeholders until Cenomi confirms; shown on the `handoff` card; mock cases are emailed to `CALL_CENTRE_EMAIL` |
 
 Frontend: `VITE_API_BASE` (default `http://localhost:8000`), `VITE_MOCK` (`1` = run on fixtures), `VITE_E2E` (`1` = send the `X-Test-Scenario` header; e2e only).
 

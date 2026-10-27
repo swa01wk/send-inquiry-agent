@@ -181,6 +181,7 @@ async def run_turn(
     )
     state["cards_shown"] = list(session.cards_shown)
     state["confirm_card_keys"] = dict(session.confirm_card_keys)
+    state["inquiry_seq"] = session.inquiry_seq
 
     config = _graph_config(session, runtime, settings=settings)
     before = await graph.aget_state(config)
@@ -257,6 +258,7 @@ async def run_turn(
         session.confirm_card_turns = dict(
             final.get("confirm_card_turns", session.confirm_card_turns),
         )
+        session.inquiry_seq = int(final.get("inquiry_seq", session.inquiry_seq))
         if isinstance(bound, ScriptedChatModel):
             session.script_step = bound._step_index
 
