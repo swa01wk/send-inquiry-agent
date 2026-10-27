@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -599,14 +600,10 @@ async def _send_submission_notices(
     for template, to in targets:
         channel = "sms" if template.endswith("sms") else "email"
         try:
+            # The gateway keeps `inquiry_id` for itself; bind the service's own argument.
+            send = functools.partial(runtime.services.notifications.send, inquiry_id=session.id)
             message_id = await runtime.services.gateway.call(
-                "notifications",
-                "send",
-                runtime.services.notifications.send,
-                template,
-                to,
-                context,
-                inquiry_id=session.id,
+                "notifications", "send", send, template, to, context, inquiry_id=session.id
             )
         except GatewayError as err:
             _audit(
