@@ -37,6 +37,9 @@ Requires `OPENAI_API_KEY` and `OPENAI_MODEL`. Target: all scenarios but at most 
 | 2026-10-14 | **18/18** + **18/18** (retractions: **0** / **0**) | After demo-run UI bug fixes (B1–B8): dotted upload extensions, confirm-card lifecycle, bot formatting, Lumen Eyewear prompt examples, required-docs copy, CR focus chip, draft phone row. |
 | 2026-10-14 | **e2e scripted: 44/44** (desktop + mobile) | Playwright `@scripted` suite; `AGENT_MODE=scripted` + `?e2eScenario=` session scripts. Live `@live` not re-run in this pass. |
 | 2026-10-14 | **e2e scripted: 45/46 pass (1 flaky mobile 14)** | Phase B complete: 23 scenarios × 2 projects, guard on in scripted mode, route + `E2E_MODE` scenario wiring. Live `@live` not run (no key in agent env). |
+| 2026-10-27 | **18/20** (run 1, retractions: 1) | Step 11c (#25): confirm only shown values, `documents_complete` turn, Office removed, document numbers. 20 scenarios (two of them, "Two malls named" and "International mobile", load for the first time after an ordering fix in `eval_live.py`), so no earlier baseline at this size. `@live` smoke: 26/28 (mobile 06 WhatsApp failed, mobile 22 lost mid-way flaky; model variance); 06 WhatsApp ×3 on mobile 3/3 with one retry after a 90 s timeout. |
+| 2026-10-27 | **19/20** (run 1, retractions: 0) | Step 17 (#27): "Rules in force" block rendered from `policy.yaml`; rule sentences removed from the static prompt. Failure: **Two malls named** (asks which mall to start with) — the agent said it had "started with Riyadh Mall A" instead of asking. Watch: that rule now lives only in the Rules in force block. |
+| 2026-10-27 | **Passed** (run 2, reported by Swaroop) | Same commit as above, on `main` after #29. `@live` smoke `01 shop owner` and `05 Arabic`: passed. Closes the pre-baseline gate (P4). Step 12 records the formal baseline. |
 
 ## Prompt changes (2026-10-14, fix/conversational-friendliness)
 

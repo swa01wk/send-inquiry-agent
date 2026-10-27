@@ -12,7 +12,7 @@ The single place to see what's built, what's next and how the agent maps to the 
 
 **Status values:** ✅ Done · 🟡 In progress, or built at demo depth during the breadth days · ⬜ Not started · ⛔ Blocked · ➖ Waived (with reason)
 
-**Last updated:** 27 Oct 2026 · Day 1 policy PR (step 17)
+**Last updated:** 27 Oct 2026 · Day 1 closed (`main` at `893efdd`, PRs #24–#29)
 
 ## 0. Delivery plan
 
@@ -20,7 +20,7 @@ The single place to see what's built, what's next and how the agent maps to the 
 
 | Phase | Dates | Goal | Backend PR (Claude) | Frontend and agent PR (Swaroop) | Status | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| Day 1 | Tue 27 Oct | Foundation: 11c, harness, policy and master data | #24 harness; #26 card fix; policy PR (step 17) | #25 (11c) | ✅ | Done when the policy PR merges |
+| Day 1 | Tue 27 Oct | Foundation: 11c, harness, policy and master data | #24 harness; #26 card fix; #27 policy; #28 CI without Playwright; #29 live targets load `.env` | #25 (11c) | ✅ | Live checks recorded in `docs/eval-notes.md` |
 | Day 2 | Wed 28 Oct | Simulated Cenomi, verification by link, resume, submit once, tracking; L3 core: restart-safe store, audit log v0, thin gateway | | | ⬜ | |
 | Day 3 | Thu 29 Oct | Routing, handoff, Arabic, follow-on; L3 core: form mode, evidence — every L3 capability at demo depth | | | ⬜ | |
 | Day 4 | Fri 30 Oct | Review lifecycle, reviewer console with audit timeline, case assistant — L4 core | | | ⬜ | |
@@ -33,7 +33,7 @@ The single place to see what's built, what's next and how the agent maps to the 
 
 | Gate | Spec | Rows | Status | Result |
 | --- | --- | --- | --- | --- |
-| Pre-baseline | [pre-baseline-fixes.md](specs/pre-baseline-fixes.md) §2 | P1–P5 | 🟡 | P1–P3, P5 proven in CI (#25, #26). P4: CI green; eval run 1 18/20, `@live` smoke 26/28 (06 WhatsApp and 22 model variance); eval run 2 to record in `docs/eval-notes.md` |
+| Pre-baseline | [pre-baseline-fixes.md](specs/pre-baseline-fixes.md) §2 | P1–P5 | ✅ | P1–P3, P5 in CI (#25, #26). P4: CI green; eval 18/20 (11c), 19/20 and a passing run 2 (#27); `@live` smoke 26/28, then 01 and 05 passing (`docs/eval-notes.md`) |
 | M0 modular core | [m0-modular-core.md](specs/m0-modular-core.md) §2 | G1–G7 | ⬜ | — |
 | L3 reliable intake | [l3-reliable-intake.md](specs/l3-reliable-intake.md) §2 | E1–E9 | ⬜ | — |
 | Intake channels | [intake-channels.md](specs/intake-channels.md) §2 | C1–C6 (C1–C4, C6 with L3 as E10; C5 with L4) | ⬜ | — |
@@ -54,7 +54,7 @@ Each step is one Cursor prompt in `prompts/` and normally one PR.
 | 14 | `14-workflow-gateway-submit.md` | State machine (L4 rows defined), tool gateway, idempotent submit | G3, G5, G6 | ⬜ | | |
 | 15 | `15-audit-trail.md` | Redacted, append-only audit trail | G4 | ⬜ | | |
 | 16 | `16-supervisor-registry.md` | Supervisor, agent registry, `status` agent, Postgres CI matrix | G1, G7 | ⬜ | | Closes the M0 gate |
-| 17 | `17-policy-config.md` | Policy file; generated master data with regions and Arabic names | E2 | 🟡 | Day 1 policy PR | Built: `policy.yaml` read by validators, `can_submit`, cards, `verify_cr`; "Rules in force" prompt block; 20 malls with Arabic names and regions; `MasterDataSource`; flip tests. Left: verification-channel flips (19), resend limits read (19), duplicate and follow-on read (21b), `allow_inquiry` tenant prefill (21c) |
+| 17 | `17-policy-config.md` | Policy file; generated master data with regions and Arabic names | E2 | 🟡 | #27 | Built: `policy.yaml` read by validators, `can_submit`, cards, `verify_cr`; "Rules in force" prompt block; 20 malls with Arabic names and regions; `MasterDataSource`; flip tests. Left: verification-channel flips (19), resend limits read (19), duplicate and follow-on read (21b), `allow_inquiry` tenant prefill (21c) |
 | 18 | `18-integration-adapters.md` | Simulated Cenomi: mocks, scenario data, faults, notification outbox, dev inbox | E4, E7 | ⬜ | | Adds `react-router-dom` |
 | 19 | `19-email-link-resume.md` | Email-link verification, cross-device resume, resend limits | E3 | ⬜ | | |
 | 20 | `20-status-page-notifications.md` | Submission email and SMS, tokenised status page | E4, E5 | ⬜ | | |
