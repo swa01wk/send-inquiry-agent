@@ -16,6 +16,11 @@ function friendlyStreamError(code: string, message: string): { code: string; mes
   return { code: code || 'stream_failed', message: message || GENERIC_ERROR }
 }
 
+/** Draft keys an edit of `key` writes (`contact_number` is saved as mobile or landline). */
+function savedKeys(key: string): string[] {
+  return key === 'contact_number' ? ['mobile', 'landline'] : [key]
+}
+
 export function useChatSession() {
   const { state, dispatch, initialSession } = useChatStore()
   const abortRef = useRef<AbortController | null>(null)
@@ -152,7 +157,7 @@ export function useChatSession() {
             if (
               event.event === 'draft' &&
               Array.isArray(event.data.changed_keys) &&
-              event.data.changed_keys.includes(key)
+              savedKeys(key).some((k) => event.data.changed_keys.includes(k))
             ) {
               saved = true
             }

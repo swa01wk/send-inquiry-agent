@@ -13,6 +13,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from app.agent.actions import handle_ui_action
 from app.agent.events import SseEvent, run_turn
+from app.agent.form_mode import form_mode_cards
 from app.agent.runtime import AgentRuntime
 from app.api.cards import remember_confirm_card_keys, scope_card_data
 from app.api.deps import get_services, get_session_store, get_settings
@@ -21,6 +22,8 @@ from app.api.schemas import ChatRequestAction, ChatRequestMessage, UiCard
 from app.audit.draft_changes import record_draft_changes
 from app.config import Settings
 from app.domain.master import load_master_data
+from app.domain.rules import compute_phase
+from app.domain.summary import build_draft_summary
 from app.services.container import ServiceContainer
 from app.sessions import Session, SessionStore
 
@@ -132,6 +135,20 @@ async def chat_stream(
                 item = _scoped(item, session)
                 observe(item)
                 yield _sse(item)
+            if session.form_mode and user_text is None:
+                # Form mode (L3 §3.14): the action is applied; no agent turn runs. The phase
+                # decides the next card.
+                for card in await form_mode_cards(session, runtime):
+                    remember_confirm_card_keys(session, card)
+                    item = _scoped(SseEvent(event="ui_card", data=card.model_dump()), session)
+                    observe(item)
+                    yield _sse(item)
+                summary = build_draft_summary(session.draft, runtime.master, [])
+                yield _sse(SseEvent(event="draft", data=summary.model_dump()))
+                yield _sse(
+                    SseEvent(event="done", data={"phase": compute_phase(session.draft).value})
+                )
+                return
             async for item in run_turn(
                 graph,
                 session,

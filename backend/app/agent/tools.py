@@ -18,7 +18,7 @@ from app.agent.confirm_policy import (
     key_shown_on_earlier_turn,
     keys_blocked_from_confirmation,
 )
-from app.agent.context import message_context
+from app.agent.cr_check import apply_cr_result
 from app.agent.mall_match import (
     fill_mentioned_malls,
     filter_mall_ids,
@@ -26,6 +26,7 @@ from app.agent.mall_match import (
 )
 from app.agent.runtime import runtime_from_config
 from app.agent.state import AgentState
+from app.agent.verification import send_contact_verification
 from app.api.cards import (
     VERIFICATION_CARD_ID,
     allocate_confirm_card_id,
@@ -200,18 +201,11 @@ def verify_cr(
                 "without the CR."
             ),
         )
-    draft = state["draft"]
     cards_shown = list(state["cards_shown"])
+    outcome = apply_cr_result(state["draft"], validated, result, rt.master)
+    updated = outcome.draft
 
-    if result.exists and get_policy().existing_tenant_policy == "allow_inquiry":
-        # Requirements §7.1: existing tenants may raise an inquiry from this page.
-        # The tenant record prefill arrives with intake channels (step 21c).
-        updated, written, _errors = draft_ops.write_fields(
-            draft,
-            [(FieldKey.CR_NUMBER.value, validated, Source.USER)],
-            master=rt.master,
-        )
-        updated.cr_status = "new"
+    if outcome.kind == "existing_allowed":
         return _tool_result(
             runtime,
             draft=updated,
@@ -219,44 +213,25 @@ def verify_cr(
                 "CR number belongs to an existing Tenant Central account. Policy allows the "
                 "inquiry to continue: collect company name and address as usual."
             ),
-            changed_keys=written,
+            changed_keys=outcome.changed,
             cards_shown=cards_shown,
         )
 
-    if result.exists:
-        updated = draft.model_copy(deep=True)
-        updated.cr_status = "existing"
-        changed = ["cr_number"]
-        updated, written, _errors = draft_ops.write_fields(
-            updated,
-            [(FieldKey.CR_NUMBER.value, validated, Source.USER)],
-            master=rt.master,
-        )
-        changed.extend(written)
+    if outcome.kind == "existing":
         return _tool_result(
             runtime,
             draft=updated,
             content="CR number belongs to an existing Tenant Central account.",
-            changed_keys=changed,
+            changed_keys=outcome.changed,
             cards_shown=cards_shown,
         )
 
-    entries: list[tuple[str, object, Source]] = [
-        (FieldKey.CR_NUMBER.value, validated, Source.USER),
-    ]
-    if result.company_name:
-        entries.append((FieldKey.COMPANY_NAME.value, result.company_name, Source.VERIFIED))
-    if result.company_address:
-        entries.append((FieldKey.COMPANY_ADDRESS.value, result.company_address, Source.VERIFIED))
-
-    updated, written, errors = draft_ops.write_fields(draft, entries, master=rt.master)
-    updated.cr_status = "new"
-    if errors:
-        msg = "; ".join(f"{key}: {err.message}" for key, err in errors.items())
+    written = outcome.changed
+    if outcome.errors:
+        msg = "; ".join(f"{key}: {err.message}" for key, err in outcome.errors.items())
         return _tool_result(runtime, draft=updated, content=f"CR verified with errors: {msg}")
 
-    confirmable = {FieldKey.COMPANY_NAME.value, FieldKey.COMPANY_ADDRESS.value}
-    confirm_keys = [k for k in written if k in confirmable]
+    confirm_keys = outcome.confirm_keys
     card_id = allocate_confirm_card_id(cards_shown)
     card = build_confirm_fields_card(
         updated,
@@ -637,102 +612,12 @@ async def send_verification(
             content="Need email and a contact number before verification.",
         )
 
-    services = rt.services
-    audit = services.audit
-    context = message_context(draft, rt.master)
-    updated = draft.model_copy(deep=True)
-    sent: list[str] = []
-    throttled: list[int] = []
-    failures: list[str] = []
-
-    email_text = str(email)
-    if not updated.email_verified and (resend or updated.email_link_sent_to != email_text):
-        is_resend = updated.email_link_sent_to == email_text
-        wait = services.resend.wait_seconds(session_id, "email") if is_resend else 0
-        if wait:
-            throttled.append(wait)
-            audit.record(
-                session_id,
-                "verification_sent",
-                actor="agent",
-                payload={"channel": "email", "result": "throttled"},
-            )
-        else:
-            try:
-                await services.gateway.call(
-                    "email",
-                    "send_link",
-                    services.email_verification.send_link,
-                    session_id,
-                    email_text,
-                    context,
-                    inquiry_id=session_id,
-                )
-            except GatewayError as err:
-                failures.append(err.note)
-                audit.record(
-                    session_id,
-                    "verification_sent",
-                    actor="agent",
-                    payload={"channel": "email", "result": err.kind},
-                )
-            else:
-                services.resend.record(session_id, "email")
-                updated.email_link_sent_to = email_text
-                sent.append("email verification link")
-                audit.record(
-                    session_id,
-                    "verification_sent",
-                    actor="agent",
-                    payload={"channel": "email", "result": "sent"},
-                )
-
+    outcome = await send_contact_verification(
+        rt.services, rt.master, session_id, draft, resend=resend, actor="agent"
+    )
+    updated = outcome.draft
+    sent, throttled, failures = outcome.sent, outcome.throttled, outcome.failures
     mobile_text = str(mobile) if mobile else None
-    if (
-        mobile_text
-        and not updated.mobile_verified
-        and (resend or updated.otp_sent_to != mobile_text)
-    ):
-        is_resend = updated.otp_sent_to == mobile_text
-        wait = services.resend.wait_seconds(session_id, "sms") if is_resend else 0
-        if wait:
-            throttled.append(wait)
-            audit.record(
-                session_id,
-                "verification_sent",
-                actor="agent",
-                payload={"channel": "sms", "result": "throttled"},
-            )
-        else:
-            try:
-                await services.gateway.call(
-                    "otp",
-                    "send",
-                    services.otp.send,
-                    session_id,
-                    mobile_text,
-                    context,
-                    inquiry_id=session_id,
-                )
-            except GatewayError as err:
-                failures.append(err.note)
-                audit.record(
-                    session_id,
-                    "verification_sent",
-                    actor="agent",
-                    payload={"channel": "sms", "result": err.kind},
-                )
-            else:
-                services.resend.record(session_id, "sms")
-                updated.otp_sent_to = mobile_text
-                updated.otp_attempts_left = 3
-                sent.append("mobile code")
-                audit.record(
-                    session_id,
-                    "verification_sent",
-                    actor="agent",
-                    payload={"channel": "sms", "result": "sent"},
-                )
 
     card = rt.verification_card(updated, session_id)
     cards_shown = list(state["cards_shown"])

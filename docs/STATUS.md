@@ -58,10 +58,10 @@ Each step is one Cursor prompt in `prompts/` and normally one PR.
 | 18 | `18-integration-adapters.md` | Simulated Cenomi: mocks, scenario data, faults, notification outbox, dev inbox | E4, E7 | 🟡 | Day 2 backend PR (#31), Day 2 frontend | `/dev/inbox`, outbox API wired in e2e. Left: contract tests, `MOCK_LATENCY_MS`, sandbox/live stubs |
 | 19 | `19-email-link-resume.md` | Email-link verification, cross-device resume, resend limits | E3 | 🟡 | Day 2 backend PR (#31), Day 2 frontend | `/inquiry/verify`, resume hydrate, resend countdown. Left: "Continue later", card polling |
 | 20 | `20-status-page-notifications.md` | Submission email and SMS, tokenised status page | E4, E5 | 🟡 | Day 2 backend PR (#31), Day 2 frontend | Status page, success card tracking link. Left: retried failed sends |
-| 21 | `21-routing-handoff.md` | Intent router, redirect agent, human handoff, form mode when the model is down | E1 | 🟡 | Day 3 backend PR A | Built: `CallCentreService` mock (cases in the dev inbox), `request_handoff` action, `handoff` card, `CALL_CENTRE_*`. Left: router and redirect (frontend track), handoff card in the chat, the other handoff triggers (Sprint 1), form mode (PR B) |
+| 21 | `21-routing-handoff.md` | Intent router, redirect agent, human handoff, form mode when the model is down | E1 | 🟡 | Day 3 backend PR A | Built: `CallCentreService` mock (cases in the dev inbox), `request_handoff` action, `handoff` card, `CALL_CENTRE_*`. Day 3 PR B: form mode (`llm` faults, two failures → form mode, `form_mode` card, `cr_check`/`cr_skip`, phase-driven cards without the model, recovery), story S13. Left: router and redirect (frontend track), handoff card in the chat, the other handoff triggers (Sprint 1) |
 | 21b | `21b-arabic-follow-on-duplicates.md` | Arabic safety nets; follow-on inquiries; duplicate check | E8 | 🟡 | Day 3 backend PR A | Built: Arabic-Indic digits through every numeric rule, Arabic doubt for every derived field, `start_follow_on` (copy, reuse verification and profiles, card ids per inquiry, `follow_on_of`). Left: Arabic capture words in the guard and the follow-on divider and prompt (frontend track); duplicate check, follow-on from the tracking page, Arabic golden (Sprint 1) |
 | 21c | `21c-intake-channels.md` | Call-centre assisted intake (§7.1.1 a2, §7.1.2 a2); existing tenants via Leasing Opportunities (§7.1.2 a1); public-page sign-in path (§7.1); `staff` source; contacts prefill and remove | E10, C1–C6 | ⬜ | | Added after the §7.1 review |
-| 22 | `22-l3-gate.md` | Stories S1–S13, KPI report, the L3 gate run (evidence built on Day 3) | E1–E10 | ⬜ | | Closes the L3 gate |
+| 22 | `22-l3-gate.md` | Stories S1–S13, KPI report, the L3 gate run (evidence built on Day 3) | E1–E10 | 🟡 | Day 2 frontend (S1), Day 3 PR B (S2, S3, S13) | Stories S1, S2, S3, S13 scripted; evidence for derived values (Day 3 PR A). Left: S4–S8, KPI report. Closes the L3 gate |
 | 23 | `23-lifecycle-core.md` | Case data, live L4 transitions, review routing, effects, Azure AD and Yardi mocks | X1, X2, X5, X7 | ⬜ | | |
 | 24 | `24-reviewer-console.md` | Review API, mock sign-in, queue and case pages, case brief | X4, X6 | ⬜ | | |
 | 25 | `25-case-assistant.md` | Case links, `case` agent, re-upload loop, outcome framing, full status page | X1, X3 | ⬜ | | |
@@ -159,7 +159,7 @@ Nothing is blocked: each item has a working assumption implemented in a mock or 
 | `confirm_fields` can confirm values the user never saw | 11c | ✅ |
 | Documents card has no inputs for VAT ID, National ID, National Address; CR ID not shown | 11c | ✅ |
 | §7.1 flow diagrams are embedded at 96 ppi and can't be read; ask Cenomi for the source files | — | ⬜ |
-| No way to finish the inquiry when the model is down (L1 baseline) | Day 3 (form mode); hardened in 21 | ⬜ |
+| No way to finish the inquiry when the model is down (L1 baseline) | Day 3 (form mode); hardened in 21 | 🟡 |
 | §7.15 notification content and the UX/UI design links aren't available; templates and pages are synthetic | Cenomi input | ⬜ |
 | LangGraph warns about deserialising unregistered types from checkpoints | 13 | ⬜ |
 | CI runs only `e2e.yml`; no test and lint workflow | Day 1 harness PR (`ci.yml`) | ✅ |

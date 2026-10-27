@@ -57,6 +57,8 @@ class Session:
     cards: dict[str, dict[str, Any]] = field(default_factory=dict)
     # Which inquiry of this chat is current: 1, then 2, 3… for follow-on inquiries (L3 §3.11).
     inquiry_seq: int = 1
+    # The model failed twice in a turn: the user finishes in the cards (L3 §3.14).
+    form_mode: bool = False
 
     def add_message(self, message_id: str, role: str, text: str) -> None:
         self.transcript.append({"id": message_id, "role": role, "text": text})
@@ -87,6 +89,7 @@ class Session:
             "transcript": self.transcript,
             "cards": self.cards,
             "inquiry_seq": self.inquiry_seq,
+            "form_mode": self.form_mode,
         }
 
     @classmethod
@@ -106,6 +109,7 @@ class Session:
             transcript=list(raw.get("transcript", [])),
             cards=dict(raw.get("cards", {})),
             inquiry_seq=int(raw.get("inquiry_seq", 1)),
+            form_mode=bool(raw.get("form_mode", False)),
         )
 
 

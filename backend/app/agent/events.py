@@ -19,7 +19,12 @@ from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage, Huma
 from langchain_core.runnables import RunnableConfig
 
 from app.agent.e2e_scripts import scripted_model_for_session
-from app.agent.model import ScriptedChatModel
+from app.agent.form_mode import (
+    FORM_MODE_NOTICE,
+    build_form_mode_card,
+    form_mode_cards,
+)
+from app.agent.model import ModelUnavailable, ScriptedChatModel
 from app.agent.runtime import AgentRuntime
 from app.agent.state import AgentState, initial_agent_state
 from app.agent.tools import TOOLS
@@ -27,6 +32,7 @@ from app.api.cards import remember_confirm_card_keys
 from app.api.schemas import UiCard
 from app.config import Settings
 from app.domain.rules import compute_phase
+from app.domain.summary import build_draft_summary
 from app.observability.turn_log import TurnTimer, log_chat_turn
 from app.sessions import Session
 
@@ -62,6 +68,16 @@ def _graph_config(
 
 
 HISTORY_LIMIT = 20
+
+FORM_MODE_RESUME_NOTE = (
+    "[ui_event] form_mode_resume: the assistant was unavailable for a while and the user "
+    "carried on in the cards. The current state is in the system message; don't ask again "
+    "for anything already there."
+)
+FORM_MODE_STILL_DOWN = (
+    "Our assistant still isn't available. You can keep going with the cards below, "
+    "or ask us to call you."
+)
 
 
 def _history_messages(session: Session) -> list[BaseMessage]:
@@ -186,12 +202,17 @@ async def run_turn(
     config = _graph_config(session, runtime, settings=settings)
     before = await graph.aget_state(config)
     prior_count = len((before.values or {}).get("messages", []))
+    turn_input: list[BaseMessage] = [user_input]
+    was_form_mode = session.form_mode
+    if was_form_mode:
+        # Trying the model again after form mode: it didn't see what happened in the cards.
+        turn_input = [HumanMessage(content=FORM_MODE_RESUME_NOTE), user_input]
     if prior_count == 0 and session.has_user_messages():
         # The checkpointer is in memory; after a restart the transcript restores memory.
         history = _history_messages(session)
-        state["messages"] = [*history, user_input]
+        state["messages"] = [*history, *turn_input]
     else:
-        state["messages"] = [user_input]
+        state["messages"] = turn_input
 
     bound = (config.get("configurable") or {}).get("bound_chat_model")
     replies = _ReplyTracker()
@@ -281,6 +302,13 @@ async def run_turn(
             remember_confirm_card_keys(session, card)
             yield card_event
 
+        if was_form_mode:
+            # The model answered: back to chat; the card says so. Nothing is lost.
+            session.form_mode = False
+            runtime.services.audit.record(session.id, "form_mode_left", actor="system")
+            back = build_form_mode_card(session.draft, active=False)
+            yield SseEvent(event="ui_card", data=back.model_dump())
+
         done_phase = str(final.get("phase", phase))
         log_chat_turn(
             session_id=session.id,
@@ -292,6 +320,53 @@ async def run_turn(
             outcome="done",
         )
         yield SseEvent(event="done", data={"phase": done_phase})
+
+    except ModelUnavailable as unavailable:
+        # Two model failures in this turn (L3 §3.14): keep what tools already saved, then
+        # let the user finish from the cards.
+        snapshot = await graph.aget_state(config)
+        saved = cast(AgentState, snapshot.values or {})
+        if "draft" in saved:
+            session.draft = saved["draft"]
+            session.cards_shown = set(saved.get("cards_shown", session.cards_shown))
+            session.confirm_card_keys = dict(
+                saved.get("confirm_card_keys", session.confirm_card_keys)
+            )
+            session.inquiry_seq = int(saved.get("inquiry_seq", session.inquiry_seq))
+        entering = not session.form_mode
+        session.form_mode = True
+        if entering:
+            runtime.services.audit.record(
+                session.id, "form_mode_entered", actor="system", payload={"kind": unavailable.kind}
+            )
+        log_chat_turn(
+            session_id=session.id,
+            phase=phase,
+            messages=final_messages,
+            latency_ms=timer.elapsed_ms(),
+            streamed_token_chars=streamed_token_chars,
+            retractions=retractions,
+            outcome="form_mode",
+        )
+        notice_id = _new_message_id()
+        yield SseEvent(
+            event="token",
+            data={
+                "message_id": notice_id,
+                "text": FORM_MODE_NOTICE if entering else FORM_MODE_STILL_DOWN,
+            },
+        )
+        for card_event in pending_cards:
+            card_event["data"]["message_id"] = notice_id
+            remember_confirm_card_keys(session, UiCard.model_validate(card_event["data"]))
+            yield card_event
+        for card in await form_mode_cards(session, runtime):
+            card.message_id = notice_id
+            remember_confirm_card_keys(session, card)
+            yield SseEvent(event="ui_card", data=card.model_dump())
+        summary = build_draft_summary(session.draft, runtime.master, [])
+        yield SseEvent(event="draft", data=summary.model_dump())
+        yield SseEvent(event="done", data={"phase": compute_phase(session.draft).value})
 
     except Exception:
         logger.exception("agent turn failed")
