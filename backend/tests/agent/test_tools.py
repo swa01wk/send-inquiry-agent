@@ -149,6 +149,47 @@ def test_update_draft_rejects_two_malls(agent_runtime, stream_events):
     assert result.update["draft"].fields[FieldKey.MALLS].value is None
 
 
+def test_update_draft_wont_pick_one_of_two_named_malls(agent_runtime, stream_events):
+    """The user named two malls; the agent tries to save just one. Nothing is saved."""
+    state = initial_agent_state(session_id="sess-1", draft=new_inquiry_draft(), phase="collecting")
+    state["messages"] = [
+        HumanMessage(content="Bean Street café kiosks at Riyadh Mall A and Mall of Arabia.")
+    ]
+    events, writer = stream_events
+    runtime = make_tool_runtime(state=state, agent_runtime=agent_runtime, writer=writer)
+    result = update_draft.invoke(
+        {
+            "fields": [
+                {"key": "malls", "value": ["riyadh-mall-a"], "source": "user"},
+                {"key": "brand_name_en", "value": "Bean Street", "source": "user"},
+            ],
+            "state": state,
+            "runtime": runtime,
+        }
+    )
+    content = result.update["messages"][0].content
+    assert "one_mall_per_inquiry" in content
+    assert "ask which one to start with" in content
+    draft = result.update["draft"]
+    assert draft.fields[FieldKey.MALLS].value is None
+    assert draft.fields[FieldKey.BRAND_NAME_EN].value == "Bean Street"
+
+
+def test_update_draft_saves_the_mall_the_user_picks_next(agent_runtime, stream_events):
+    state = initial_agent_state(session_id="sess-1", draft=new_inquiry_draft(), phase="collecting")
+    state["messages"] = [HumanMessage(content="Let's start with Riyadh Mall A.")]
+    events, writer = stream_events
+    runtime = make_tool_runtime(state=state, agent_runtime=agent_runtime, writer=writer)
+    result = update_draft.invoke(
+        {
+            "fields": [{"key": "malls", "value": ["riyadh-mall-a"], "source": "user"}],
+            "state": state,
+            "runtime": runtime,
+        }
+    )
+    assert result.update["draft"].fields[FieldKey.MALLS].value == ["riyadh-mall-a"]
+
+
 def test_show_review_blocked(agent_runtime, base_state, stream_events):
     events, writer = stream_events
     runtime = make_tool_runtime(state=base_state, agent_runtime=agent_runtime, writer=writer)
