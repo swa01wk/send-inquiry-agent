@@ -15,7 +15,11 @@ from app.agent.blockers import format_blockers
 from app.agent.brand_infer import fill_brands_from_user_message
 from app.agent.confirm_policy import key_shown_on_earlier_turn, keys_blocked_from_confirmation
 from app.agent.context import message_context
-from app.agent.mall_match import fill_mentioned_malls, filter_mall_ids
+from app.agent.mall_match import (
+    fill_mentioned_malls,
+    filter_mall_ids,
+    mentioned_seed_mall_ids,
+)
 from app.agent.runtime import runtime_from_config
 from app.agent.state import AgentState
 from app.api.cards import (
@@ -314,6 +318,17 @@ def update_draft(
                     "use show_mall_picker for the city",
                 )
             max_malls = get_policy().max_malls_per_inquiry
+            named = mentioned_seed_mall_ids(user_text, rt.master)
+            if len(named) > max_malls:
+                # The user named more malls than one inquiry covers: the agent may not pick
+                # for them (policy max_malls_per_inquiry; regression seen in eval "Two malls").
+                code = "one_mall_per_inquiry" if max_malls == 1 else "too_many_malls"
+                rejected.append(
+                    f"{item.key}: {code} (the user named {', '.join(named)}); save no mall, "
+                    "ask which one to start with, and say they can raise another inquiry "
+                    "for the others",
+                )
+                continue
             if len(accepted) > max_malls:
                 code = "one_mall_per_inquiry" if max_malls == 1 else "too_many_malls"
                 rejected.append(
