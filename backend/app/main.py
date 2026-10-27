@@ -28,6 +28,13 @@ from app.services.container import build_services
 from app.sessions import SessionStore
 
 
+# Registered once at import: a limit decorated inside create_app would be added again for
+# every app built (tests build many), and identical limits share one counter.
+@limiter.limit(lambda: get_settings().rate_limit_ip)
+async def health(request: Request) -> dict[str, str]:
+    return {"status": "ok"}
+
+
 def create_app(
     settings: Settings | None = None,
     model_factory: Callable[[], BaseChatModel] | None = None,
@@ -84,10 +91,7 @@ def create_app(
 
     register_exception_handlers(app)
 
-    @app.get("/api/health")
-    @limiter.limit(cfg.rate_limit_ip)
-    async def health(request: Request) -> dict[str, str]:
-        return {"status": "ok"}
+    app.add_api_route("/api/health", health, methods=["GET"])
 
     app.include_router(sessions_router)
     app.include_router(chat_router)
