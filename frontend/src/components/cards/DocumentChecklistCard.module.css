@@ -106,3 +106,25 @@
 .hiddenInput {
   display: none;
 }
+
+.numberField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.numberInput {
+  font-size: 14px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-sm);
+  min-height: 44px;
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+
+.numberInput:read-only {
+  background: var(--color-muted-fill);
+  color: var(--color-text-secondary);
+}

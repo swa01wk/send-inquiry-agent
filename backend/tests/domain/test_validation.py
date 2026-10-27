@@ -31,6 +31,8 @@ def test_classify_contact_number():
     assert mobile == ("mobile", "+966501234567")
     landline = v.classify_contact_number("11234567")
     assert landline == ("landline", "+96611234567")
+    nine = v.classify_contact_number("112345678")
+    assert nine == ("landline", "+966112345678")
     assert v.classify_contact_number("invalid").code in {
         "invalid_mobile",
         "invalid_landline",

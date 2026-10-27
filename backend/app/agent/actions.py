@@ -11,6 +11,7 @@ from app.agent.events import SseEvent
 from app.agent.runtime import AgentRuntime
 from app.api.cards import (
     build_confirm_fields_card,
+    build_document_upload_card,
     build_review_card,
     build_success_card,
     build_verification_card,
@@ -19,6 +20,7 @@ from app.api.cards import (
 from app.api.schemas import UiCard
 from app.domain import draft_ops
 from app.domain import validation as v
+from app.domain.fields import DOCUMENT_DEFINITIONS
 from app.domain.models import FieldKey, InquiryDraft, Source
 from app.domain.rules import can_submit, contact_verified
 from app.domain.summary import build_draft_summary
@@ -31,6 +33,15 @@ class ActionResult:
     note: HumanMessage
     events: list[SseEvent] = field(default_factory=list)
     changed_keys: list[str] = field(default_factory=list)
+
+
+_SETTABLE_DOCUMENT_NUMBER_KEYS = frozenset(
+    {
+        FieldKey.VAT_NUMBER.value,
+        FieldKey.NATIONAL_ID_NUMBER.value,
+        FieldKey.NATIONAL_ADDRESS.value,
+    }
+)
 
 
 def _draft_event(draft: InquiryDraft, runtime: AgentRuntime, changed_keys: list[str]) -> SseEvent:
@@ -58,6 +69,8 @@ async def handle_ui_action(
         "edit_field": _edit_field,
         "confirm_card": _confirm_card,
         "accept_and_submit": _accept_and_submit,
+        "documents_updated": _documents_updated,
+        "set_document_number": _set_document_number,
     }
     handler = handlers.get(action)
     if handler is None:
@@ -277,6 +290,69 @@ async def _confirm_card(
         note=HumanMessage(content=f"[ui_event] fields_confirmed {' '.join(keys)}"),
         events=events,
         changed_keys=keys,
+    )
+
+
+async def _documents_updated(
+    payload: dict[str, Any],
+    session: Session,
+    runtime: AgentRuntime,
+) -> ActionResult:
+    del payload
+    draft = session.draft
+    pending = [
+        doc_type.value
+        for doc_type, _label, required in DOCUMENT_DEFINITIONS
+        if required and doc_type not in draft.documents
+    ]
+    if not pending:
+        return ActionResult(note=HumanMessage(content="[ui_event] documents_complete"))
+    return ActionResult(
+        note=HumanMessage(content=f"[ui_event] documents_pending {' '.join(pending)}"),
+    )
+
+
+async def _set_document_number(
+    payload: dict[str, Any],
+    session: Session,
+    runtime: AgentRuntime,
+) -> ActionResult:
+    key = payload.get("key")
+    value = payload.get("value")
+    if not isinstance(key, str) or not isinstance(value, str):
+        return ActionResult(note=HumanMessage(content="[ui_event] document_number_invalid"))
+    if key not in _SETTABLE_DOCUMENT_NUMBER_KEYS:
+        if key == FieldKey.CR_NUMBER.value:
+            code = "read_only"
+        else:
+            code = "unknown_field"
+        return ActionResult(
+            note=HumanMessage(content=f"[ui_event] document_number_invalid {key} {code}"),
+        )
+    draft, written, errors = draft_ops.write_fields(
+        session.draft,
+        [(key, value, Source.USER)],
+        master=runtime.master,
+    )
+    field_err = errors.get(key)
+    if field_err is not None:
+        card = build_document_upload_card(
+            session.draft,
+            runtime.master,
+            max_mb=runtime.settings.max_upload_mb,
+            number_errors={key: field_err.message},
+        )
+        return ActionResult(
+            note=HumanMessage(
+                content=f"[ui_event] document_number_invalid {key} {field_err.code}",
+            ),
+            events=[_card_event(session, card)],
+        )
+    session.draft = draft
+    return ActionResult(
+        note=HumanMessage(content=f"[ui_event] document_number_set {key}"),
+        events=[_draft_event(draft, runtime, written)],
+        changed_keys=written,
     )
 
 

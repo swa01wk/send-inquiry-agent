@@ -12,7 +12,7 @@ The single place to see what's built, what's next and how the agent maps to the 
 
 **Status values:** ✅ Done · 🟡 In progress, or built at demo depth during the breadth days · ⬜ Not started · ⛔ Blocked · ➖ Waived (with reason)
 
-**Last updated:** 27 Oct 2026 · Day 1 harness PR
+**Last updated:** 27 Oct 2026 · Step 11c
 
 ## 0. Delivery plan
 
@@ -33,7 +33,7 @@ The single place to see what's built, what's next and how the agent maps to the 
 
 | Gate | Spec | Rows | Status | Result |
 | --- | --- | --- | --- | --- |
-| Pre-baseline | [pre-baseline-fixes.md](specs/pre-baseline-fixes.md) §2 | P1–P5 | ⬜ | — |
+| Pre-baseline | [pre-baseline-fixes.md](specs/pre-baseline-fixes.md) §2 | P1–P5 | ⬜ | — (11c implemented; gate run pending) |
 | M0 modular core | [m0-modular-core.md](specs/m0-modular-core.md) §2 | G1–G7 | ⬜ | — |
 | L3 reliable intake | [l3-reliable-intake.md](specs/l3-reliable-intake.md) §2 | E1–E9 | ⬜ | — |
 | Intake channels | [intake-channels.md](specs/intake-channels.md) §2 | C1–C6 (C1–C4, C6 with L3 as E10; C5 with L4) | ⬜ | — |
@@ -47,7 +47,7 @@ Each step is one Cursor prompt in `prompts/` and normally one PR.
 | Step | Prompt | Delivers | Gate rows | Status | PR | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | 00–11, 11b | `00`–`11b` | v1 POC, POC assumptions, UI fixes, Playwright suites | — | ✅ | #1–#13 | Live e2e: desktop 14/14; mobile test 14 fix in #13, needs a live run to confirm |
-| 11c | `11c-pre-baseline-fixes.md` | Confirm only what was shown; turn on documents complete; Office removed; document numbers on the documents card; landline and `written_keys` fixes | P1–P5 | ⬜ | | Must land before step 12 |
+| 11c | `11c-pre-baseline-fixes.md` | Confirm only what was shown; turn on documents complete; Office removed; document numbers on the documents card; landline and `written_keys` fixes | P1–P5 | 🟡 | | Must land before step 12 |
 | 11d | `11d-test-harness.md` | Six test layers with one command each, frontend Playwright, eval repeats and invariants, scenario catalogue, `ci.yml`, PR template | — | 🟡 | Day 1 harness PR | Day 1: Make targets, `ci.yml`, PR template. Left for B1: frontend-only Playwright, scenario catalogue, eval repeats and invariants, `@flaky`, prompt snapshot, coverage, `scripts/` linting, `eval-live` CI job |
 | 12 | `12-baseline-parity.md` | Golden transcripts, `make golden`, frontend fixtures from goldens, live-eval baseline | G1 | ⬜ | | |
 | 13 | `13-durable-state.md` | Inquiry store (memory, Postgres), turn lease, checkpointer, bounded history, retention | G2 | ⬜ | | Register `Source`, `InquiryDraft`, `DocType` for checkpoint deserialisation |
@@ -149,15 +149,15 @@ Nothing is blocked: each item has a working assumption implemented in a mock or 
 
 | Issue | Resolved in | Status |
 | --- | --- | --- |
-| Saudi landline rule expects 8 digits after +966; real numbers have 9 | 11c | ⬜ |
-| `write_fields` lists `mobile`/`landline` twice for `contact_number` | 11c | ⬜ |
-| `domain/draft_merge.py` unused | 11c | ⬜ |
-| `docs/eval-notes.md` first entry mentions forced tool choice | 11c | ⬜ |
-| Document uploads don't trigger an agent turn | 11c | ⬜ |
-| `OFF` (Office) unit code and `office` in seed data and FAQ | 11c | ⬜ |
-| Golden rules mention a `submit_inquiry` tool that doesn't exist | 11c | ⬜ |
-| `confirm_fields` can confirm values the user never saw | 11c | ⬜ |
-| Documents card has no inputs for VAT ID, National ID, National Address; CR ID not shown | 11c | ⬜ |
+| Saudi landline rule expects 8 digits after +966; real numbers have 9 | 11c | ✅ |
+| `write_fields` lists `mobile`/`landline` twice for `contact_number` | 11c | ✅ |
+| `domain/draft_merge.py` unused | 11c | ✅ |
+| `docs/eval-notes.md` first entry mentions forced tool choice | 11c | ✅ |
+| Document uploads don't trigger an agent turn | 11c | ✅ |
+| `OFF` (Office) unit code and `office` in seed data and FAQ | 11c | ✅ |
+| Golden rules mention a `submit_inquiry` tool that doesn't exist | 11c | ✅ |
+| `confirm_fields` can confirm values the user never saw | 11c | ✅ |
+| Documents card has no inputs for VAT ID, National ID, National Address; CR ID not shown | 11c | ✅ |
 | §7.1 flow diagrams are embedded at 96 ppi and can't be read; ask Cenomi for the source files | — | ⬜ |
 | No way to finish the inquiry when the model is down (L1 baseline) | Day 3 (form mode); hardened in 21 | ⬜ |
 | §7.15 notification content and the UX/UI design links aren't available; templates and pages are synthetic | Cenomi input | ⬜ |

@@ -188,7 +188,7 @@ def ready_to_submit_draft(app, *, cr_skipped: bool = True) -> InquiryDraft:
     return draft
 
 
-_REFERENCE_RE = re.compile(r"^GEO-(STR|MED|SPC|OFF)-\d{6}$")
+_REFERENCE_RE = re.compile(r"^GEO-(STR|MED|SPC)-\d{6}$")
 
 
 async def verify_contact(client: AsyncClient, app, session_id: str) -> list[tuple[str, dict]]:

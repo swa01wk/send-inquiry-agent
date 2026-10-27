@@ -147,10 +147,10 @@ SCRIPTS: dict[str, list[dict[str, Any]]] = {
         say("Thanks — company card below."),
         tc("update_draft", {"fields": [*COLLECT, *CONTACT]}, "l2"),
         tc("send_verification", {"resend": False}, "l3"),
-        say("Link and code sent — use the card below."),
-        say("Email confirmed — now enter the SMS code in the box."),
+        say("Use the verification card — open the link, then enter the SMS code in the box."),
         tc("request_documents", {}, "l4"),
-        say("Company Profile and Brand Profile are required to submit. Other documents are optional."),
+        say("Company Profile and Brand Profile are required. Other documents are optional."),
+        say("Thanks — optional documents can still be added; the review card is ready when you are."),
     ],
     "14-wants-person": [
         say("Our leasing team can follow up after you submit — happy to keep going here."),
@@ -211,10 +211,7 @@ SCRIPTS: dict[str, list[dict[str, Any]]] = {
             "Company Profile and Brand Profile are required. "
             "CR, VAT, ID, address and articles are optional."
         ),
-        say("After you verify your email and phone, upload both required PDFs — then we can review."),
-        say("Email confirmed — now enter the SMS code in the box."),
-        tc("show_review", {}, "p8"),
-        say("When you're ready, tick consent on the review card and submit."),
+        say("Thanks — optional documents can still be added; check the review card when you're ready."),
     ],
     "19-cr-chip": [say("Type your 10-digit CR number when you're ready.")],
     "20-formatting": [

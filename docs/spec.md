@@ -68,7 +68,7 @@ class InquiryDraft(BaseModel):
 | `last_name` | Last name | contact | str | yes | 1–50 chars |
 | `email` | Email | contact | str | yes | valid email |
 | `mobile` | Mobile | contact | str | one of | `+9665XXXXXXXX`, or any non-Saudi number in E.164 (`+` + 8–15 digits) |
-| `landline` | Office landline | contact | str | one of | `+966` + 8 digits, not starting with 5, or any non-Saudi number in E.164 |
+| `landline` | Office landline | contact | str | one of | `+966` + 8 or 9 digits, not starting with 5, or any non-Saudi number in E.164 |
 | `vat_number` | VAT number | documents | str | no | 15 digits, starts and ends with 3 |
 | `national_id_number` | National ID / Iqama | documents | str | no | 10 digits starting with 1 or 2 |
 | `national_address` | National address | documents | str | no | 5–250 chars |
@@ -118,7 +118,7 @@ All tools return a short factual string for the LLM. Tools that change state ret
 | `skip_cr` | — | Only after the user agreed to skip. `cr_status="skipped"`. |
 | `get_master_data` | `kind: str, city: str \| None` | Read-only lookup: `unit_types`, `sales_categories`, `cities`, `malls`, `lease_periods`, `rent_periods`. |
 | `update_draft` | `fields: list[{key, value, source: "user" \| "derived"}]` | Validate each; write valid ones (user → confirmed, derived → unconfirmed); return per-field errors. Emit a `confirm_fields` card listing newly written derived values. The LLM can't write `verified`, `default`, `email_verified`, `mobile_verified`, `terms_accepted`, `documents` or `reference`. |
-| `confirm_fields` | `keys: list[str]` | Mark those unconfirmed fields confirmed (only after the user agreed). Updates the existing confirm card. |
+| `confirm_fields` | `keys: list[str]` | Mark those unconfirmed fields confirmed (only after the user agreed and the key was on a confirm card shown before this turn). Skips others with `not_shown`. Updates the existing confirm card. |
 | `get_missing_fields` | — | Returns blockers from `can_submit` in plain words. |
 | `show_mall_picker` | `city: str` | Emits a `mall_picker` card with that city's malls and the current selection. |
 | `send_verification` | `resend: bool = False` | Requires `email` and a contact number. Emails a link via `EmailVerificationService.send_link` unless one already went to the current address; texts a code via `OtpService.send` when a mobile is given and no code went to it yet (`resend` forces both). Emits the `verification` card. |
@@ -142,6 +142,8 @@ There is no submit tool and no verify tool: both happen through UI actions, so t
 | `edit_field` | `{key, value}` | Validate; write as user, confirmed. Note: `field_edited <key>` |
 | `confirm_card` | `{card_id}` | Confirm all fields on that confirm card. Note: `fields_confirmed <keys>` |
 | `accept_and_submit` | `{terms_accepted: true}` | Set `terms_accepted`; run `can_submit`; if clear, `SubmitService.submit` → set `reference`, emit `success` card. Note: `submitted reference=<ref>` or `submit_blocked <blockers>` |
+| `documents_updated` | `{}` | Recompute required documents from the draft. Note: `documents_complete` or `documents_pending <doc_types>` |
+| `set_document_number` | `{key, value}` | Validate and write the document number field as user, confirmed. Note: `document_number_set <key>` or `document_number_invalid <key> <code>` |
 
 `[ui_event]` notes are appended as a `HumanMessage` whose content starts with `[ui_event]`. They are never shown in the chat UI. The system prompt tells the agent they are system notifications, not the user's words.
 
@@ -204,7 +206,7 @@ At the start of each turn the frontend clears the previous `quick_replies` chips
 | `confirm_fields` | `{title, fields:[{key, label, display, source, confirmed}], all_confirmed}` |
 | `mall_picker` | `{city:{id,label}, malls:[{id,name}], selected:[id], min_select:1, max_select:1}` |
 | `verification` | `{email:{masked, link_sent, verified, demo_token}, mobile:{masked, code_sent, verified, attempts_left, code_length:4} \| null, all_verified}` (`mobile` is null for a landline-only applicant; `demo_token` only when `EMAIL_LINK_DEMO`) |
-| `document_upload` | `{docs:[{doc_type,label,required,uploaded,file_name,size_bytes}], required_uploaded, required_total, allowed_extensions (dotted, e.g. `.pdf`), max_mb}` |
+| `document_upload` | `{docs:[{doc_type,label,required,uploaded,file_name,size_bytes}], numbers:[{key,label,value,editable,error}], required_uploaded, required_total, allowed_extensions (dotted, e.g. `.pdf`), max_mb}` |
 | `review` | `{groups:[{title, rows:[{key,label,display,source,confirmed,required}]}], documents:[...], checks:Checks, can_submit, terms_accepted, blockers:[str]}` |
 | `success` | `{reference, tracking_url, steps:[{label, detail, state}]}` |
 | `quick_replies` | `{options:[{label, text, action?: "send" \| "focus_input", placeholder?: string}]}` — default `action` is `send` |
@@ -233,14 +235,14 @@ Groups in order: company, brand, space, contact. Area shows as one row (`area`),
 | `SubmitService.submit(draft) -> reference` | `GEO-{unit code}-{6 random digits}`; stores the payload in memory; logs it |
 | `StatusService.get(reference)` | Known reference → `under_review`; else 404 |
 
-Unit codes: store `STR`, media `MED`, specialty `SPC`, office `OFF`.
+Unit codes: store `STR`, media `MED`, specialty `SPC`.
 
 ## 9. Seed data (`backend/app/data/`)
 
 `master_data.json` (sample data — replace with real Cenomi data later):
 ```json
 {
-  "unit_types": [{"id": "store", "label": "Store", "code": "STR"}, {"id": "media", "label": "Media", "code": "MED"}, {"id": "specialty", "label": "Specialty", "code": "SPC"}, {"id": "office", "label": "Office", "code": "OFF"}],
+  "unit_types": [{"id": "store", "label": "Store", "code": "STR"}, {"id": "media", "label": "Media", "code": "MED"}, {"id": "specialty", "label": "Specialty", "code": "SPC"}],
   "sales_categories": [{"id": "fnb_cafe", "label": "Food & Beverage · Café"}, {"id": "fnb_restaurant", "label": "Food & Beverage · Restaurant"}, {"id": "fashion", "label": "Fashion & Apparel"}, {"id": "beauty", "label": "Health & Beauty"}, {"id": "electronics", "label": "Electronics"}, {"id": "entertainment", "label": "Entertainment"}, {"id": "services", "label": "Services"}],
   "cities": [{"id": "riyadh", "label": "Riyadh"}, {"id": "jeddah", "label": "Jeddah"}, {"id": "dammam", "label": "Dammam"}],
   "malls": [

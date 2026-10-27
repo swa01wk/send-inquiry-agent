@@ -18,7 +18,7 @@ Requires `OPENAI_API_KEY` and `OPENAI_MODEL`. Target: all scenarios but at most 
 
 | Date | Result | Notes |
 | --- | --- | --- |
-| 2026-10-14 | **8/8** (multiple runs; one run 7/8) | Prompt “Tool use (critical)”; graph `invoke_tool_choice` forces `update_draft` / `skip_cr` / `verify_cr` when appropriate; eval auto-confirm only on user “yes/correct”. |
+| 2026-10-14 | **8/8** (multiple runs; one run 7/8) | Prompt “Tool use (critical)”; graph `invoke_tool_choice` forces `update_draft` / `skip_cr` / `verify_cr` when appropriate; eval auto-confirm only on user “yes/correct”. *(Correction, Oct 2026: the graph no longer uses forced tool choice; behaviour is prompt- and guard-driven.)* |
 | 2026-10-14 | **9/9** | After `fix/conversational-friendliness` verify pass: prompt tuned for mall ids + paired unit/sales category; sequential tool node fix for `get_master_data` + `update_draft` parallel calls. |
 | 2026-10-14 | **8/9** (13 off-topic: “offer to continue” check) | Same prompt; scenario 13 bot omitted “continue/inquiry” wording once — acceptable under target (≤1 fail). |
 | 2026-10-14 | **10/12** (live eval run 1) | Card attach/orphan fix, OTP hint, confirm_card scoping, Review selects, retraction logging, +3 eval scenarios. Failures: **4 many fields** (re-ask brand), **Hesitation** (model called `confirm_fields` on hesitation). |

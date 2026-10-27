@@ -70,7 +70,7 @@ def _askable(draft: InquiryDraft, bundle: Bundle) -> list[str]:
     """Missing fields the user has to tell us (excludes what we can infer)."""
     asks = [_label(k) for k in bundle.required if k not in _INFERRED and not _has_value(draft, k)]
     if bundle is BRAND_AND_SPACE and not _has_value(draft, FieldKey.UNIT_TYPE):
-        asks.append("what they sell and the kind of space (kiosk, shop, office, media)")
+        asks.append("what they sell and the kind of space (kiosk, shop, media)")
     if bundle is CONTACT and not _has_contact_number(draft):
         asks.append("Phone number")
     return asks

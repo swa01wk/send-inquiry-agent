@@ -12,7 +12,7 @@ from app.domain.models import FieldKey, InquiryDraft
 
 logger = logging.getLogger(__name__)
 
-_UNIT_CODES = ("STR", "MED", "SPC", "OFF")
+_UNIT_CODES = ("STR", "MED", "SPC")
 _DEFAULT_CODE = "STR"
 
 

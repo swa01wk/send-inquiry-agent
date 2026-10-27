@@ -18,6 +18,22 @@ _UNIT_DOUBT_RE = re.compile(
 )
 
 
+def key_shown_on_earlier_turn(
+    key: str,
+    confirm_card_keys: dict[str, list[str]],
+    confirm_card_turns: dict[str, int],
+    turn_index: int,
+) -> bool:
+    """True if the key was on a confirm card emitted before the current user turn."""
+    for card_id, listed in confirm_card_keys.items():
+        if key not in listed:
+            continue
+        shown_turn = confirm_card_turns.get(card_id)
+        if shown_turn is not None and shown_turn < turn_index:
+            return True
+    return False
+
+
 def keys_blocked_from_confirmation(user_text: str) -> frozenset[str]:
     """Field keys the user has not accepted; do not confirm these this turn."""
     stripped = user_text.strip()

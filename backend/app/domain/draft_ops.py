@@ -41,7 +41,6 @@ def write_fields(
             contact_kind, normalised = classified
             target = FieldKey.MOBILE if contact_kind == "mobile" else FieldKey.LANDLINE
             _apply_field(updated, target, normalised, source, written_keys, errors, master)
-            written_keys.append(target.value)
             continue
 
         try:
@@ -58,7 +57,15 @@ def write_fields(
     cross_errors = _cross_validate(updated, master)
     errors.update(cross_errors)
 
-    return updated, written_keys, errors
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for key in written_keys:
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(key)
+
+    return updated, deduped, errors
 
 
 def _apply_field(

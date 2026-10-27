@@ -17,11 +17,20 @@ class AgentState(TypedDict):
     phase: str
     cards_shown: list[str]
     confirm_card_keys: dict[str, list[str]]
+    confirm_card_turns: dict[str, int]
+    turn_index: int
     guard_retries: int
     retry_agent: NotRequired[bool]
 
 
-def initial_agent_state(*, session_id: str, draft: InquiryDraft, phase: str) -> AgentState:
+def initial_agent_state(
+    *,
+    session_id: str,
+    draft: InquiryDraft,
+    phase: str,
+    turn_index: int = 0,
+    confirm_card_turns: dict[str, int] | None = None,
+) -> AgentState:
     return AgentState(
         messages=[],
         session_id=session_id,
@@ -29,5 +38,7 @@ def initial_agent_state(*, session_id: str, draft: InquiryDraft, phase: str) -> 
         phase=phase,
         cards_shown=[],
         confirm_card_keys={},
+        confirm_card_turns=dict(confirm_card_turns or {}),
+        turn_index=turn_index,
         guard_retries=0,
     )

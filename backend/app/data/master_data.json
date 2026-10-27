@@ -2,8 +2,7 @@
   "unit_types": [
     {"id": "store", "label": "Store", "code": "STR"},
     {"id": "media", "label": "Media", "code": "MED"},
-    {"id": "specialty", "label": "Specialty", "code": "SPC"},
-    {"id": "office", "label": "Office", "code": "OFF"}
+    {"id": "specialty", "label": "Specialty", "code": "SPC"}
   ],
   "sales_categories": [
     {"id": "fnb_cafe", "label": "Food & Beverage · Café"},

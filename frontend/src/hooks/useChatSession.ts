@@ -168,24 +168,56 @@ export function useChatSession() {
     [dispatch, state.sessionId, state.status],
   )
 
+  const maybeNotifyDocumentsComplete = useCallback(
+    (beforeUploaded: number, beforeTotal: number, afterUploaded: number, afterTotal: number) => {
+      if (beforeUploaded < beforeTotal && afterUploaded >= afterTotal) {
+        void runStream({ type: 'action', action: 'documents_updated', payload: {} })
+      }
+    },
+    [runStream],
+  )
+
   const uploadDocumentForType = useCallback(
     async (docType: string, file: File) => {
       if (!state.sessionId) return
+      const beforeUploaded = state.draft?.checks.required_docs_uploaded ?? 0
+      const beforeTotal = state.draft?.checks.required_docs_total ?? 2
       const result = await uploadDocument(state.sessionId, docType, file)
       dispatch({ type: 'sse', event: { event: 'ui_card', data: result.card } })
       dispatch({ type: 'sse', event: { event: 'draft', data: result.draft } })
+      maybeNotifyDocumentsComplete(
+        beforeUploaded,
+        beforeTotal,
+        result.draft.checks.required_docs_uploaded,
+        result.draft.checks.required_docs_total,
+      )
     },
-    [dispatch, state.sessionId],
+    [dispatch, maybeNotifyDocumentsComplete, state.draft?.checks, state.sessionId],
   )
 
   const removeDocumentForType = useCallback(
     async (docType: string) => {
       if (!state.sessionId) return
+      const beforeUploaded = state.draft?.checks.required_docs_uploaded ?? 0
+      const beforeTotal = state.draft?.checks.required_docs_total ?? 2
       const result = await removeDocument(state.sessionId, docType)
       dispatch({ type: 'sse', event: { event: 'ui_card', data: result.card } })
       dispatch({ type: 'sse', event: { event: 'draft', data: result.draft } })
+      maybeNotifyDocumentsComplete(
+        beforeUploaded,
+        beforeTotal,
+        result.draft.checks.required_docs_uploaded,
+        result.draft.checks.required_docs_total,
+      )
     },
-    [dispatch, state.sessionId],
+    [dispatch, maybeNotifyDocumentsComplete, state.draft?.checks, state.sessionId],
+  )
+
+  const setDocumentNumber = useCallback(
+    (key: string, value: string) => {
+      sendAction('set_document_number', { key, value })
+    },
+    [sendAction],
   )
 
   const retry = useCallback(() => {
@@ -222,6 +254,7 @@ export function useChatSession() {
     editReviewField,
     uploadDocument: uploadDocumentForType,
     removeDocument: removeDocumentForType,
+    setDocumentNumber,
     retry,
     restart,
     isStreaming: state.status === 'streaming',
