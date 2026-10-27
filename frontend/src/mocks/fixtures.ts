@@ -408,6 +408,7 @@ export const verificationCardExample: UiCard = {
       link_sent: true,
       verified: false,
       demo_token: 'demo-token',
+      resend_available_at: null,
     },
     mobile: {
       masked: '+96655****4567',
@@ -415,6 +416,7 @@ export const verificationCardExample: UiCard = {
       verified: false,
       attempts_left: 3,
       code_length: 4,
+      resend_available_at: null,
     },
     all_verified: false,
   } satisfies VerificationPayload,

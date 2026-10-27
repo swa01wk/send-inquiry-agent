@@ -2,6 +2,7 @@ import { createContext, useContext, useReducer, type Dispatch, type ReactNode } 
 import { draftEmpty } from '../mocks/fixtures'
 import type {
   ChatRequest,
+  CreateSessionResponse,
   DraftSummary,
   Phase,
   QuickReplyOption,
@@ -48,7 +49,7 @@ export type ChatAction =
   | {
       type: 'sessionCreated'
       sessionId: string
-      messages: { id: string; role: 'assistant'; text: string }[]
+      messages: { id: string; role: 'assistant' | 'user'; text: string }[]
       cards: UiCard[]
       draft: DraftSummary
     }
@@ -296,18 +297,29 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
 interface ChatContextValue {
   state: ChatState
   dispatch: Dispatch<ChatAction>
+  initialSession: CreateSessionResponse | null
 }
 
 const ChatContext = createContext<ChatContextValue | null>(null)
 
-export function ChatProvider({ children }: { children: ReactNode }) {
+export function ChatProvider({
+  children,
+  initialSession,
+}: {
+  children: ReactNode
+  initialSession?: CreateSessionResponse | null
+}) {
   const [state, dispatch] = useReducer(chatReducer, {
     ...initialChatState,
     draft: draftEmpty,
     phase: draftEmpty.phase,
   })
 
-  return <ChatContext.Provider value={{ state, dispatch }}>{children}</ChatContext.Provider>
+  return (
+    <ChatContext.Provider value={{ state, dispatch, initialSession: initialSession ?? null }}>
+      {children}
+    </ChatContext.Provider>
+  )
 }
 
 export function useChatStore(): ChatContextValue {

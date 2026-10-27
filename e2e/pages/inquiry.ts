@@ -109,6 +109,29 @@ export class InquiryPage {
     await this.waitForTurnDone(doneBefore)
   }
 
+  /** Opens the verification link from the dev outbox (real email-link flow). */
+  async verifyEmailFromInbox(recipient: string) {
+    const messages = await this.fetchOutbox(recipient)
+    const msg = messages.find((m) => m.template === 'email_verification_link')
+    if (!msg?.links?.[0]) throw new Error('verification link not in outbox')
+    await this.page.goto(msg.links[0])
+    await expect(this.page.getByTestId('verify-page')).toBeVisible({ timeout: 30_000 })
+    await this.page.getByRole('button', { name: /continue your inquiry/i }).click()
+    await expect(this.page.getByRole('region', { name: /leasing assistant chat/i })).toBeVisible({
+      timeout: 60_000,
+    })
+    await expect(this.cards('verification')).toBeVisible({ timeout: 60_000 })
+  }
+
+  async fetchOutbox(to?: string) {
+    const url = new URL('http://127.0.0.1:8000/api/dev/outbox')
+    if (to) url.searchParams.set('to', to)
+    const res = await this.page.request.get(url.toString())
+    expect(res.ok()).toBeTruthy()
+    const body = (await res.json()) as { messages: { template: string; links: string[]; body: string }[] }
+    return body.messages
+  }
+
   /** Stands in for clicking the emailed link (the card's demo button, EMAIL_LINK_DEMO). */
   async verifyEmail() {
     const card = this.cards('verification')

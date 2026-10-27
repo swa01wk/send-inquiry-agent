@@ -33,6 +33,10 @@
   align-items: flex-start;
 }
 
+.singlePanel {
+  max-width: 720px;
+}
+
 @media (max-width: 919px) {
   .panels > * {
     flex: 1 1 100% !important;

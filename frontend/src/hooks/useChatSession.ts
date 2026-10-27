@@ -17,7 +17,7 @@ function friendlyStreamError(code: string, message: string): { code: string; mes
 }
 
 export function useChatSession() {
-  const { state, dispatch } = useChatStore()
+  const { state, dispatch, initialSession } = useChatStore()
   const abortRef = useRef<AbortController | null>(null)
 
   const runStream = useCallback(
@@ -79,7 +79,7 @@ export function useChatSession() {
     let cancelled = false
     ;(async () => {
       try {
-        const session = await createSession()
+        const session = initialSession ?? (await createSession())
         if (cancelled) return
         dispatch({
           type: 'sessionCreated',
@@ -106,7 +106,7 @@ export function useChatSession() {
       cancelled = true
       abortRef.current?.abort()
     }
-  }, [dispatch])
+  }, [dispatch, initialSession])
 
   useEffect(
     () => () => {

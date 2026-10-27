@@ -53,6 +53,8 @@ export interface VerificationEmail {
   verified: boolean
   /** Demo only: stands in for clicking the emailed link. */
   demo_token: string | null
+  /** ISO time while resend cooldown or hourly cap applies; else null. */
+  resend_available_at: string | null
 }
 
 export interface VerificationMobile {
@@ -61,6 +63,7 @@ export interface VerificationMobile {
   verified: boolean
   attempts_left: number
   code_length: number
+  resend_available_at: string | null
 }
 
 export interface VerificationPayload {
@@ -230,15 +233,53 @@ export type SseEvent =
   | { event: 'done'; data: { phase: Phase } }
   | { event: 'error'; data: { code: string; message: string } }
 
-export interface AssistantMessage {
+export interface TranscriptMessage {
   id: string
-  role: 'assistant'
+  role: 'assistant' | 'user'
   text: string
 }
 
 export interface CreateSessionResponse {
   session_id: string
-  messages: AssistantMessage[]
+  messages: TranscriptMessage[]
   cards: UiCard[]
   draft: DraftSummary
+}
+
+export interface VerifyEmailResponse {
+  status: 'verified'
+  session_id: string
+  email_masked: string | null
+  resume_token: string
+}
+
+export interface InquiryStatusStage {
+  key: string
+  label: string
+  state: StepState
+}
+
+export interface InquiryStatusResponse {
+  reference: string
+  status: 'under_review'
+  submitted_at: string
+  steps: InquiryStatusStage[]
+  stages: InquiryStatusStage[]
+  current_stage: string
+  owner_role: string
+  waiting_on_you: string[]
+  last_change: string | null
+}
+
+export interface OutboxMessage {
+  id: string
+  inquiry_id: string
+  channel: 'email' | 'sms'
+  to: string
+  template: string
+  kind: string
+  subject: string
+  body: string
+  links: string[]
+  created_at: string
 }
