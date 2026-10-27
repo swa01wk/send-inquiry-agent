@@ -135,6 +135,9 @@ export function DocumentChecklistCard({
                       }
                     }}
                   />
+                  {numberRow.error ? (
+                    <span className={shared.captionError}>{numberRow.error}</span>
+                  ) : null}
                 </label>
               ) : null}
               {rowErrors[doc.doc_type] ? (

@@ -68,10 +68,13 @@ async def test_set_document_number_valid_vat(client: AsyncClient, app) -> None:
 
 
 @pytest.mark.asyncio
-async def test_set_document_number_invalid_vat(client: AsyncClient, app) -> None:
+async def test_set_document_number_invalid_vat_shows_card_error_and_note_code(
+    client: AsyncClient,
+    app,
+) -> None:
     store = app.state.session_store
     session = await store.create()
-    await _chat(
+    events = await _chat(
         client,
         session.id,
         {
@@ -80,4 +83,76 @@ async def test_set_document_number_invalid_vat(client: AsyncClient, app) -> None
             "payload": {"key": "vat_number", "value": "100000000000001"},
         },
     )
+    cards = [data for name, data in events if name == "ui_card"]
+    doc_card = next(c for c in cards if c.get("card_type") == "document_upload")
+    vat_row = next(row for row in doc_card["payload"]["numbers"] if row["key"] == "vat_number")
+    assert vat_row["error"]
     assert session.draft.fields[FieldKey.VAT_NUMBER].value is None
+    snapshot = await app.state.graph.aget_state(
+        {"configurable": {"thread_id": session.id}},
+    )
+    notes = " ".join(
+        str(m.content)
+        for m in snapshot.values.get("messages", [])
+        if "[ui_event] document_number_invalid" in str(m.content)
+    )
+    assert "invalid_vat_number" in notes
+
+
+@pytest.mark.asyncio
+async def test_set_document_number_valid_vat_despite_unrelated_cross_field_error(
+    client: AsyncClient,
+    app,
+) -> None:
+    master = load_master_data()
+    store = app.state.session_store
+    session = await store.create()
+    draft = new_inquiry_draft()
+    draft, _, _ = write_fields(
+        draft,
+        [
+            (FieldKey.AREA_MIN.value, 30, Source.USER),
+            (FieldKey.AREA_MAX.value, 10, Source.USER),
+        ],
+        master=master,
+    )
+    session.draft = draft
+    vat = "300000000000003"
+    await _chat(
+        client,
+        session.id,
+        {
+            "type": "action",
+            "action": "set_document_number",
+            "payload": {"key": "vat_number", "value": vat},
+        },
+    )
+    assert session.draft.fields[FieldKey.VAT_NUMBER].value == vat
+
+
+@pytest.mark.asyncio
+async def test_set_document_number_rejects_disallowed_key(client: AsyncClient, app) -> None:
+    from app.agent.actions import handle_ui_action
+    from app.agent.runtime import AgentRuntime
+
+    store = app.state.session_store
+    session = await store.create()
+    runtime = AgentRuntime(
+        services=app.state.services,
+        master=load_master_data(),
+        settings=app.state.settings,
+    )
+    cr = await handle_ui_action(
+        "set_document_number",
+        {"key": "cr_number", "value": "1010123456"},
+        session,
+        runtime,
+    )
+    assert "document_number_invalid cr_number read_only" in cr.note.content
+    brand = await handle_ui_action(
+        "set_document_number",
+        {"key": "brand_name_en", "value": "Acme"},
+        session,
+        runtime,
+    )
+    assert "document_number_invalid brand_name_en unknown_field" in brand.note.content

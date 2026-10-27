@@ -90,10 +90,7 @@
     ]
   },
   {
-    "content": "Link and code sent — use the card below."
-  },
-  {
-    "content": "Email confirmed — now enter the SMS code in the box."
+    "content": "Use the verification card — open the link, then enter the SMS code in the box."
   },
   {
     "content": "",
@@ -107,6 +104,9 @@
     ]
   },
   {
-    "content": "Company Profile and Brand Profile are required to submit. Other documents are optional."
+    "content": "Company Profile and Brand Profile are required. Other documents are optional."
+  },
+  {
+    "content": "Thanks — optional documents can still be added; the review card is ready when you are."
   }
 ]

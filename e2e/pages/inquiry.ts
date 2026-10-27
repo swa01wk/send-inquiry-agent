@@ -136,10 +136,17 @@ export class InquiryPage {
   }
 
   async upload(docLabel: string, fileName: string) {
+    const doneBefore = await readDoneEventCount(this.page)
     await this.pickFile(docLabel, fileName)
     const card = this.page.getByTestId('document-checklist-card')
     const row = card.locator('div').filter({ hasText: docLabel }).first()
     await expect(row.getByText(/Uploaded/i)).toBeVisible({ timeout: 30_000 })
+    const header = card.getByText(/\d+ of \d+ required uploaded/)
+    const headerText = (await header.textContent()) ?? ''
+    const match = headerText.match(/(\d+) of (\d+) required uploaded/)
+    if (match && match[1] === match[2]) {
+      await this.waitForTurnDone(doneBefore)
+    }
   }
 
   async expectUploadError(docLabel: string, message: string) {

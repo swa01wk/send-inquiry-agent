@@ -95,8 +95,13 @@ def _mask_email(value: str | None) -> str | None:
     return f"{local[0]}***@{domain}"
 
 
-def _document_number_rows(draft: InquiryDraft) -> list[DocumentNumberRow]:
+def _document_number_rows(
+    draft: InquiryDraft,
+    *,
+    number_errors: dict[str, str] | None = None,
+) -> list[DocumentNumberRow]:
     rows: list[DocumentNumberRow] = []
+    errors = number_errors or {}
     for key in (
         FieldKey.CR_NUMBER,
         FieldKey.VAT_NUMBER,
@@ -113,7 +118,7 @@ def _document_number_rows(draft: InquiryDraft) -> list[DocumentNumberRow]:
                 label=definition.label,
                 value=display,
                 editable=key != FieldKey.CR_NUMBER,
-                error=None,
+                error=errors.get(key.value),
             ),
         )
     return rows
@@ -124,11 +129,12 @@ def document_upload_payload(
     master: MasterData,
     *,
     max_mb: int,
+    number_errors: dict[str, str] | None = None,
 ) -> DocumentUploadPayload:
     summary = build_draft_summary(draft, master)
     return DocumentUploadPayload(
         docs=summary.documents,
-        numbers=_document_number_rows(draft),
+        numbers=_document_number_rows(draft, number_errors=number_errors),
         required_uploaded=summary.checks.required_docs_uploaded,
         required_total=summary.checks.required_docs_total,
         allowed_extensions=dotted_allowed_extensions(),
@@ -142,8 +148,14 @@ def build_document_upload_card(
     *,
     max_mb: int,
     message_id: str | None = None,
+    number_errors: dict[str, str] | None = None,
 ) -> UiCard:
-    payload = document_upload_payload(draft, master, max_mb=max_mb)
+    payload = document_upload_payload(
+        draft,
+        master,
+        max_mb=max_mb,
+        number_errors=number_errors,
+    )
     return UiCard(
         card_id="documents",
         card_type="document_upload",

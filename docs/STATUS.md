@@ -149,15 +149,15 @@ Nothing is blocked: each item has a working assumption implemented in a mock or 
 
 | Issue | Resolved in | Status |
 | --- | --- | --- |
-| Saudi landline rule expects 8 digits after +966; real numbers have 9 | 11c | ⬜ |
-| `write_fields` lists `mobile`/`landline` twice for `contact_number` | 11c | ⬜ |
+| Saudi landline rule expects 8 digits after +966; real numbers have 9 | 11c | ✅ |
+| `write_fields` lists `mobile`/`landline` twice for `contact_number` | 11c | ✅ |
 | `domain/draft_merge.py` unused | 11c | ✅ |
-| `docs/eval-notes.md` first entry mentions forced tool choice | 11c | ⬜ |
-| Document uploads don't trigger an agent turn | 11c | ⬜ |
-| `OFF` (Office) unit code and `office` in seed data and FAQ | 11c | ⬜ |
-| Golden rules mention a `submit_inquiry` tool that doesn't exist | 11c | ⬜ |
-| `confirm_fields` can confirm values the user never saw | 11c | ⬜ |
-| Documents card has no inputs for VAT ID, National ID, National Address; CR ID not shown | 11c | ⬜ |
+| `docs/eval-notes.md` first entry mentions forced tool choice | 11c | ✅ |
+| Document uploads don't trigger an agent turn | 11c | ✅ |
+| `OFF` (Office) unit code and `office` in seed data and FAQ | 11c | ✅ |
+| Golden rules mention a `submit_inquiry` tool that doesn't exist | 11c | ✅ |
+| `confirm_fields` can confirm values the user never saw | 11c | ✅ |
+| Documents card has no inputs for VAT ID, National ID, National Address; CR ID not shown | 11c | ✅ |
 | §7.1 flow diagrams are embedded at 96 ppi and can't be read; ask Cenomi for the source files | — | ⬜ |
 | No way to finish the inquiry when the model is down (L1 baseline) | Day 3 (form mode); hardened in 21 | ⬜ |
 | §7.15 notification content and the UX/UI design links aren't available; templates and pages are synthetic | Cenomi input | ⬜ |

@@ -188,23 +188,6 @@
     "content": "Company Profile and Brand Profile are required. CR, VAT, ID, address and articles are optional."
   },
   {
-    "content": "After you verify your email and phone, upload both required PDFs — then we can review."
-  },
-  {
-    "content": "Email confirmed — now enter the SMS code in the box."
-  },
-  {
-    "content": "",
-    "tool_calls": [
-      {
-        "name": "show_review",
-        "args": {},
-        "id": "p8",
-        "type": "tool_call"
-      }
-    ]
-  },
-  {
-    "content": "When you're ready, tick consent on the review card and submit."
+    "content": "Thanks — optional documents can still be added; check the review card when you're ready."
   }
 ]
