@@ -36,6 +36,7 @@ from app.domain.models import FieldKey, InquiryDraft, Source
 from app.domain.rules import can_submit, contact_verified
 from app.domain.summary import build_draft_summary
 from app.domain.validation import validate_cr_number
+from app.policy.config import get_policy
 from app.services.errors import ReferenceNotFoundError
 
 PROTECTED_WRITE_KEYS = frozenset(
@@ -127,6 +128,26 @@ def verify_cr(
     result = rt.services.cr.verify(validated)
     draft = state["draft"]
     cards_shown = list(state["cards_shown"])
+
+    if result.exists and get_policy().existing_tenant_policy == "allow_inquiry":
+        # Requirements §7.1: existing tenants may raise an inquiry from this page.
+        # The tenant record prefill arrives with intake channels (step 21c).
+        updated, written, _errors = draft_ops.write_fields(
+            draft,
+            [(FieldKey.CR_NUMBER.value, validated, Source.USER)],
+            master=rt.master,
+        )
+        updated.cr_status = "new"
+        return _tool_result(
+            runtime,
+            draft=updated,
+            content=(
+                "CR number belongs to an existing Tenant Central account. Policy allows the "
+                "inquiry to continue: collect company name and address as usual."
+            ),
+            changed_keys=written,
+            cards_shown=cards_shown,
+        )
 
     if result.exists:
         updated = draft.model_copy(deep=True)
@@ -236,7 +257,8 @@ def get_master_data(
         malls = master.malls_in_city(city) if city else master.malls
         return json.dumps([m.model_dump() for m in malls])
     if kind == "unit_types":
-        return json.dumps([u.model_dump() for u in master.unit_types])
+        lines = get_policy().product_lines
+        return json.dumps([u.model_dump() for u in master.unit_types if u.id in lines])
     items = master._items_for_kind(kind)  # noqa: SLF001
     return json.dumps([i.model_dump() if hasattr(i, "model_dump") else dict(i) for i in items])
 
@@ -277,11 +299,13 @@ def update_draft(
                     f"{item.key}: mall_not_mentioned ({', '.join(mall_rejected)}); "
                     "use show_mall_picker for the city",
                 )
-            if len(accepted) > 1:
+            max_malls = get_policy().max_malls_per_inquiry
+            if len(accepted) > max_malls:
+                code = "one_mall_per_inquiry" if max_malls == 1 else "too_many_malls"
                 rejected.append(
-                    f"{item.key}: one_mall_per_inquiry ({', '.join(accepted)}); "
+                    f"{item.key}: {code} ({', '.join(accepted)}); "
                     "ask which mall to start with and say they can raise another "
-                    "inquiry for the other",
+                    "inquiry for the others",
                 )
                 continue
             if not accepted:

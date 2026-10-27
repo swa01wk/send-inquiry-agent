@@ -1,0 +1,44 @@
+# Business rules the agent enforces (docs/specs/l3-reliable-intake.md §3.7).
+#
+# Loaded and validated once at start-up (POLICY_PATH, default: this file). A file that
+# doesn't validate stops the app with a clear error. Change a rule here, not in code or
+# in the system prompt: validators, can_submit, cards and the prompt's "Rules in force"
+# block all read this file.
+
+# Product lines (unit type ids in master data). Requirements §1 and §7.1.1.
+product_lines: [store, media, specialty]
+
+# What happens when a CR already has a Tenant Central account (assumption 3).
+#   sign_in       — point the applicant to Sign In; no inquiry is created.
+#   allow_inquiry — the inquiry continues (requirements §7.1).
+existing_tenant_policy: sign_in
+
+# Malls one inquiry can cover (assumption 2). Another inquiry can follow for the rest.
+max_malls_per_inquiry: 1
+
+phone:
+  # Saudi numbers (+966) are always accepted. Other countries: "any", or a list of
+  # calling codes without "+", e.g. ["971", "973"] (assumption 4).
+  allowed_countries: any
+
+# How contact details are verified (assumption 1). The POC supports exactly these
+# values; other channels arrive with real providers.
+verification:
+  email: link
+  mobile: otp
+
+# Resend limits for the email link and the OTP (L3 §3.3; read from step 19).
+resend:
+  cooldown_seconds: 60
+  max_per_hour: 5
+
+# Documents (requirements §7.1.1 documents table). Every document type is listed once.
+documents:
+  required: [company_profile, brand_profile]
+  optional: [cr_certificate, vat_certificate, national_id, national_address, articles_of_association]
+
+# Same CR and mall as an open inquiry (L3 §3.12; read from step 21b): warn | block.
+duplicate_policy: warn
+
+# A follow-on inquiry reuses verified details for this many hours (L3 §3.11; step 21b).
+follow_on_reuse_hours: 24

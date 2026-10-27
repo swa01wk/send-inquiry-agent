@@ -5,13 +5,13 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 from app.domain.fields import (
-    DOCUMENT_DEFINITIONS,
     FIELD_BY_KEY,
     GROUP_ORDER,
     FieldGroup,
     display_area,
     display_lease,
     display_rent,
+    document_definitions,
 )
 from app.domain.master import MasterData
 from app.domain.models import FieldKey, InquiryDraft, Source
@@ -226,7 +226,10 @@ def build_draft_summary(
 
     documents: list[DraftDocumentRow] = []
     required_docs_uploaded = 0
-    for doc_type, label, required in DOCUMENT_DEFINITIONS:
+    required_docs_total = 0
+    for doc_type, label, required in document_definitions():
+        if required:
+            required_docs_total += 1
         ref = draft.documents.get(doc_type)
         uploaded = ref is not None
         if required and uploaded:
@@ -249,6 +252,7 @@ def build_draft_summary(
         mobile_verified=draft.mobile_verified,
         contact_verified=contact_verified(draft),
         required_docs_uploaded=required_docs_uploaded,
+        required_docs_total=required_docs_total,
         terms_accepted=draft.terms_accepted,
     )
 

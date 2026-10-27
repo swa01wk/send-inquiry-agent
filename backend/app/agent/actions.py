@@ -20,7 +20,7 @@ from app.api.cards import (
 from app.api.schemas import UiCard
 from app.domain import draft_ops
 from app.domain import validation as v
-from app.domain.fields import DOCUMENT_DEFINITIONS
+from app.domain.fields import document_definitions
 from app.domain.models import FieldKey, InquiryDraft, Source
 from app.domain.rules import can_submit, contact_verified
 from app.domain.summary import build_draft_summary
@@ -302,7 +302,7 @@ async def _documents_updated(
     draft = session.draft
     pending = [
         doc_type.value
-        for doc_type, _label, required in DOCUMENT_DEFINITIONS
+        for doc_type, _label, required in document_definitions()
         if required and doc_type not in draft.documents
     ]
     if not pending:

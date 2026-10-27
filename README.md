@@ -64,6 +64,8 @@ Test layers and when each must run: `docs/specs/testing-strategy.md`.
 | `UPLOAD_DIR` | backend | Local upload storage |
 | `SESSION_TTL_MINUTES` | backend | Default `120` |
 | `CORS_ORIGINS` | backend | Comma-separated frontend origins |
+| `POLICY_PATH` | backend | Business-rule policy file; default `backend/app/policy/policy.yaml` |
+| `MASTER_DATA_SOURCE` | backend | `seed` (default) or `cenomi` (stub) |
 | `VITE_API_BASE` | frontend | API origin |
 | `VITE_MOCK` | frontend | `1` = mock SSE, no backend |
 | `VITE_DEMO` | frontend | `1` = show **Restart** in chat header |

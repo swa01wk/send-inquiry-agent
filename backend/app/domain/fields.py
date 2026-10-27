@@ -10,6 +10,7 @@ from typing import Any
 from app.domain import validation as v
 from app.domain.master import MasterData
 from app.domain.models import DocType, FieldKey, InquiryDraft
+from app.policy.config import get_policy
 
 
 class FieldGroup(StrEnum):
@@ -260,15 +261,29 @@ GROUP_ORDER: list[FieldGroup] = [
     FieldGroup.CONTACT,
 ]
 
-DOCUMENT_DEFINITIONS: list[tuple[DocType, str, bool]] = [
-    (DocType.COMPANY_PROFILE, "Company Profile", True),
-    (DocType.BRAND_PROFILE, "Brand Profile", True),
-    (DocType.CR_CERTIFICATE, "CR certificate", False),
-    (DocType.VAT_CERTIFICATE, "VAT certificate", False),
-    (DocType.NATIONAL_ID, "National ID / Iqama", False),
-    (DocType.NATIONAL_ADDRESS, "National Address", False),
-    (DocType.ARTICLES_OF_ASSOCIATION, "Article of Association", False),
+# Display order and labels. Which documents are required comes from the policy
+# (app/policy/policy.yaml), via document_definitions().
+DOCUMENT_LABELS: list[tuple[DocType, str]] = [
+    (DocType.COMPANY_PROFILE, "Company Profile"),
+    (DocType.BRAND_PROFILE, "Brand Profile"),
+    (DocType.CR_CERTIFICATE, "CR certificate"),
+    (DocType.VAT_CERTIFICATE, "VAT certificate"),
+    (DocType.NATIONAL_ID, "National ID / Iqama"),
+    (DocType.NATIONAL_ADDRESS, "National Address"),
+    (DocType.ARTICLES_OF_ASSOCIATION, "Article of Association"),
 ]
+
+
+def document_definitions() -> list[tuple[DocType, str, bool]]:
+    """(doc_type, label, required) in display order, with `required` from the policy."""
+    documents = get_policy().documents
+    return [
+        (doc_type, label, documents.is_required(doc_type)) for doc_type, label in DOCUMENT_LABELS
+    ]
+
+
+def document_label(doc_type: DocType) -> str:
+    return next(label for dt, label in DOCUMENT_LABELS if dt == doc_type)
 
 
 def display_area(draft: InquiryDraft) -> str | None:

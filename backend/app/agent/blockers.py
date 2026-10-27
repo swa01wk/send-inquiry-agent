@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.domain.fields import DOCUMENT_DEFINITIONS, FIELD_BY_KEY
+from app.domain.fields import FIELD_BY_KEY, document_label
 from app.domain.models import Blocker, DocType, FieldKey
 
 
@@ -35,9 +35,7 @@ def blocker_message(blocker: Blocker) -> str:
     if token.startswith("missing_document:"):
         doc_type = token.split(":", 1)[1]
         try:
-            label = next(
-                label for dt, label, _req in DOCUMENT_DEFINITIONS if dt == DocType(doc_type)
-            )
+            label = document_label(DocType(doc_type))
             return f"Required document missing: {label}."
         except (StopIteration, ValueError):
             return f"Required document missing: {doc_type}."

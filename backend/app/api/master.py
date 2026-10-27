@@ -11,6 +11,7 @@ from app.api.errors import ApiError
 from app.api.limiter import limiter
 from app.api.schemas import MallResponse, MasterItemResponse, UnitTypeResponse
 from app.domain.master import MasterData
+from app.policy.config import get_policy
 
 router = APIRouter(prefix="/api/master", tags=["master"])
 
@@ -40,9 +41,11 @@ async def get_master_kind(
         )
 
     if kind == "unit_types":
+        lines = get_policy().product_lines
         return [
             UnitTypeResponse(id=item.id, label=item.label, code=item.code)
             for item in master.unit_types
+            if item.id in lines
         ]
     if kind == "malls":
         malls = master.malls_in_city(city) if city else master.malls

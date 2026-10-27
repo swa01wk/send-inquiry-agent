@@ -20,6 +20,8 @@ from app.api.limiter import limiter
 from app.api.master import router as master_router
 from app.api.sessions import router as sessions_router
 from app.config import Settings, get_settings
+from app.domain.master import configure_master_data, load_master_data
+from app.policy.config import PolicyError, install_policy, load_policy
 from app.services.container import build_services
 from app.sessions import SessionStore
 
@@ -31,6 +33,19 @@ def create_app(
     get_settings.cache_clear()
     cfg = settings or get_settings()
 
+    # Business rules and master data are loaded once, before anything can serve a
+    # request; a bad policy file stops the app here with a readable error.
+    policy = load_policy(cfg.policy_path)
+    configure_master_data(cfg.master_data_source)
+    master = load_master_data()
+    unknown_lines = [
+        line for line in policy.product_lines if line not in master.ids_for_kind("unit_types")
+    ]
+    if unknown_lines:
+        msg = f"Policy product_lines not in master data unit_types: {', '.join(unknown_lines)}"
+        raise PolicyError(msg)
+    install_policy(policy)
+
     def default_model_factory() -> BaseChatModel:
         if cfg.agent_mode == "scripted":
             return ScriptedChatModel(steps=[])
@@ -41,6 +56,7 @@ def create_app(
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.settings = cfg
+        app.state.policy = policy
         app.state.session_store = SessionStore(ttl_minutes=cfg.session_ttl_minutes)
         app.state.services = build_services(cfg)
         app.state.graph = build_graph(model_factory=chat_model_factory)

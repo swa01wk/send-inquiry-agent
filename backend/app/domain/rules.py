@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.domain.fields import DOCUMENT_DEFINITIONS, FIELD_BY_KEY, FieldGroup
+from app.domain.fields import FIELD_BY_KEY, FieldGroup, document_definitions
 from app.domain.models import Blocker, FieldKey, InquiryDraft, Phase, Source
 
 
@@ -74,7 +74,7 @@ def can_submit(draft: InquiryDraft) -> list[Blocker]:
 
     blockers.extend(verification_blockers(draft))
 
-    for doc_type, _label, required in DOCUMENT_DEFINITIONS:
+    for doc_type, _label, required in document_definitions():
         if required and doc_type not in draft.documents:
             blockers.append(Blocker.missing_document(doc_type))
 

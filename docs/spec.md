@@ -55,9 +55,9 @@ class InquiryDraft(BaseModel):
 | `company_address` | Company address | company | str | yes | 5–250 chars |
 | `brand_name_en` | Brand name (EN) | brand | str | yes | 1–80 chars, Latin script |
 | `brand_name_ar` | Brand name (AR) | brand | str | yes | 1–80 chars, contains Arabic script |
-| `unit_type` | Unit type | brand | enum id | yes | master `unit_types` |
+| `unit_type` | Unit type | brand | enum id | yes | master `unit_types` and a policy `product_lines` entry |
 | `sales_category` | Sales category | brand | enum id | yes | master `sales_categories` |
-| `malls` | Mall | space | list[mall id] | yes | exactly 1 (one mall per inquiry), in master `malls` |
+| `malls` | Mall | space | list[mall id] | yes | 1 to policy `max_malls_per_inquiry` (default 1: `one_mall_per_inquiry`; above 1: `too_many_malls`), in master `malls` |
 | `area_min` | Area min (sqm) | space | int | no | default 10, source default |
 | `area_max` | Area max (sqm) | space | int | no | default 25000, source default; 10 ≤ min ≤ max ≤ 25000 |
 | `rent_period` | Rent period | space | enum id | no | master `rent_periods`; required if rent given |
@@ -67,8 +67,8 @@ class InquiryDraft(BaseModel):
 | `first_name` | First name | contact | str | yes | 1–50 chars |
 | `last_name` | Last name | contact | str | yes | 1–50 chars |
 | `email` | Email | contact | str | yes | valid email |
-| `mobile` | Mobile | contact | str | one of | `+9665XXXXXXXX`, or any non-Saudi number in E.164 (`+` + 8–15 digits) |
-| `landline` | Office landline | contact | str | one of | `+966` + 8 or 9 digits, not starting with 5, or any non-Saudi number in E.164 |
+| `mobile` | Mobile | contact | str | one of | `+9665XXXXXXXX`, or a non-Saudi number in E.164 (`+` + 8–15 digits) from a country the policy allows (`phone_country_not_allowed`) |
+| `landline` | Office landline | contact | str | one of | `+966` + 8 or 9 digits, not starting with 5, or a non-Saudi number in E.164 from a country the policy allows |
 | `vat_number` | VAT number | documents | str | no | 15 digits, starts and ends with 3 |
 | `national_id_number` | National ID / Iqama | documents | str | no | 10 digits starting with 1 or 2 |
 | `national_address` | National address | documents | str | no | 5–250 chars |
@@ -134,7 +134,7 @@ There is no submit tool and no verify tool: both happen through UI actions, so t
 
 | Action | Payload | Backend does, then runs the graph with a `[ui_event]` note |
 | --- | --- | --- |
-| `select_malls` | `{mall_ids: list[str]}` | Validate (exactly one mall); write `malls` as user, confirmed. Note: `malls_selected: <name>` or `malls_invalid <code>` |
+| `select_malls` | `{mall_ids: list[str]}` | Validate (1 to `max_malls_per_inquiry` malls); write `malls` as user, confirmed. Note: `malls_selected: <name>` or `malls_invalid <code>` |
 | `verify_email` | `{token: str}` | `EmailVerificationService.verify`; valid only for the link sent to the current email. Sets `email_verified`. Note: `email_verified` (+ ` verification_complete` when nothing else is pending) or `email_link_invalid`. The token is never added to messages. |
 | `resend_email_link` | `{}` | New link to the current email (the old one stops working). Note: `email_link_resent` |
 | `submit_otp` | `{code: str}` | Only for the code sent to the current mobile. `OtpService.verify`; on success `mobile_verified=True`; on failure decrement attempts (0 → auto resend, reset to 3). Note: `mobile_verified` (+ ` verification_complete`), `otp_failed attempts_left=N`, `otp_resent` or `otp_not_sent`. The code is never added to messages. |
@@ -204,7 +204,7 @@ At the start of each turn the frontend clears the previous `quick_replies` chips
 | `card_type` | `payload` |
 | --- | --- |
 | `confirm_fields` | `{title, fields:[{key, label, display, source, confirmed}], all_confirmed}` |
-| `mall_picker` | `{city:{id,label}, malls:[{id,name}], selected:[id], min_select:1, max_select:1}` |
+| `mall_picker` | `{city:{id,label}, malls:[{id,name}], selected:[id], min_select:1, max_select}` (`max_select` = policy `max_malls_per_inquiry`, default 1) |
 | `verification` | `{email:{masked, link_sent, verified, demo_token}, mobile:{masked, code_sent, verified, attempts_left, code_length:4} \| null, all_verified}` (`mobile` is null for a landline-only applicant; `demo_token` only when `EMAIL_LINK_DEMO`) |
 | `document_upload` | `{docs:[{doc_type,label,required,uploaded,file_name,size_bytes}], numbers:[{key,label,value,editable,error}], required_uploaded, required_total, allowed_extensions (dotted, e.g. `.pdf`), max_mb}` |
 | `review` | `{groups:[{title, rows:[{key,label,display,source,confirmed,required}]}], documents:[...], checks:Checks, can_submit, terms_accepted, blockers:[str]}` |
@@ -237,26 +237,48 @@ Groups in order: company, brand, space, contact. Area shows as one row (`area`),
 
 Unit codes: store `STR`, media `MED`, specialty `SPC`.
 
-## 9. Seed data (`backend/app/data/`)
+## 9. Seed data and policy
 
-`master_data.json` (sample data — replace with real Cenomi data later):
+### Master data (`backend/app/data/master_data.json`)
+
+Generated by `backend/scripts/generate_master_data.py` (deterministic; `--check` fails if the committed file is stale). Synthetic until Cenomi supplies its own (assumption 6). Shape:
+
 ```json
 {
-  "unit_types": [{"id": "store", "label": "Store", "code": "STR"}, {"id": "media", "label": "Media", "code": "MED"}, {"id": "specialty", "label": "Specialty", "code": "SPC"}],
-  "sales_categories": [{"id": "fnb_cafe", "label": "Food & Beverage · Café"}, {"id": "fnb_restaurant", "label": "Food & Beverage · Restaurant"}, {"id": "fashion", "label": "Fashion & Apparel"}, {"id": "beauty", "label": "Health & Beauty"}, {"id": "electronics", "label": "Electronics"}, {"id": "entertainment", "label": "Entertainment"}, {"id": "services", "label": "Services"}],
-  "cities": [{"id": "riyadh", "label": "Riyadh"}, {"id": "jeddah", "label": "Jeddah"}, {"id": "dammam", "label": "Dammam"}],
+  "regions": [{"id": "central", "label": "Central", "label_ar": "المنطقة الوسطى"}, "… western, eastern"],
+  "unit_types": [{"id": "store", "label": "Store", "label_ar": "متجر", "code": "STR"}, "… media MED, specialty SPC"],
+  "sales_categories": [{"id": "fnb_cafe", "label": "Food & Beverage · Café", "label_ar": "أغذية ومشروبات · مقهى"}, "… 7 in all"],
+  "cities": [{"id": "riyadh", "label": "Riyadh", "label_ar": "الرياض", "region": "central"}, "… 8 in all"],
   "malls": [
-    {"id": "riyadh-mall-a", "name": "Riyadh Mall A", "city": "riyadh"}, {"id": "riyadh-mall-b", "name": "Riyadh Mall B", "city": "riyadh"},
-    {"id": "riyadh-mall-c", "name": "Riyadh Mall C", "city": "riyadh"}, {"id": "riyadh-mall-d", "name": "Riyadh Mall D", "city": "riyadh"},
-    {"id": "jeddah-mall-a", "name": "Jeddah Mall A", "city": "jeddah"}, {"id": "jeddah-mall-b", "name": "Jeddah Mall B", "city": "jeddah"},
-    {"id": "mall-of-arabia", "name": "Mall of Arabia", "city": "jeddah", "aliases": ["Arabia Mall"]},
-    {"id": "dammam-mall-a", "name": "Dammam Mall A", "city": "dammam"},
-    {"id": "mall-of-dhahran", "name": "Mall of Dhahran", "city": "dammam"}
+    {"id": "riyadh-mall-a", "name": "Riyadh Mall A", "name_ar": "الرياض مول أ", "city": "riyadh", "region": "central",
+     "aliases": ["مول الرياض أ", "الرياض مول ا"]},
+    "… 20 in all"
   ],
-  "lease_periods": [{"id": "1y", "label": "1 year"}, {"id": "2y", "label": "2 years"}, {"id": "3y", "label": "3 years"}, {"id": "5y", "label": "5 years"}],
-  "rent_periods": [{"id": "monthly", "label": "Monthly"}, {"id": "yearly", "label": "Yearly"}]
+  "lease_periods": [{"id": "1y", "label": "1 year", "label_ar": "سنة واحدة"}, "…"],
+  "rent_periods": [{"id": "monthly", "label": "Monthly", "label_ar": "شهري"}, "…"]
 }
 ```
+
+- **Ids are stable.** Today's ids (the 9 malls in Riyadh, Jeddah and Dammam, 3 cities, 7 categories) never change; new malls are in new cities (Buraidah, Makkah, Madinah, Al Khobar, Jubail).
+- **Matching.** Mall matching uses the English name, the Arabic name and every alias.
+- **Source.** `MasterDataSource` (`app/domain/master.py`): `SeedMasterDataSource` (this file) or `CenomiMasterDataSource` (stub until access; falls back to the seed), chosen by `MASTER_DATA_SOURCE`. Cached with a daily refresh; a failed refresh keeps the last good copy.
+- The REST endpoint `GET /api/master/{kind}` keeps its response shape (no Arabic fields) and lists only the policy's product lines.
+
+### Policy (`backend/app/policy/policy.yaml`)
+
+Business rules, validated at start-up into `PolicyConfig` (`app/policy/config.py`); a bad file stops the app with a readable error (`PolicyError`), and so does a product line missing from master data. Read by the validators, `can_submit`, the cards and `verify_cr`; rendered into the prompt as the "Rules in force" block (`prompts.rules_in_force`). Keys:
+
+| Key | Default | Read by |
+| --- | --- | --- |
+| `product_lines` | `[store, media, specialty]` | Unit type validator, `get_master_data`, `GET /api/master/unit_types` |
+| `existing_tenant_policy` | `sign_in` (`allow_inquiry`: an existing CR continues with `cr_status="new"`) | `verify_cr` |
+| `max_malls_per_inquiry` | `1` | `validate_malls`, `update_draft`, mall auto-fill, `mall_picker.max_select` |
+| `phone.allowed_countries` | `any` (or calling codes, e.g. `["971"]`; +966 always allowed) | Phone normalisers, `classify_contact_number` |
+| `verification` | `{email: link, mobile: otp}` (the only supported values) | Prompt block |
+| `resend` | `{cooldown_seconds: 60, max_per_hour: 5}` | Step 19 |
+| `documents.required` / `optional` | Company and Brand Profile required; the rest optional; every type listed once | `can_submit`, `documents_updated`, document card, review, draft checks |
+| `duplicate_policy` | `warn` | Step 21b |
+| `follow_on_reuse_hours` | `24` | Step 21b |
 
 `faq.json`: `[{id, question, keywords:[...], answer}]`, 8–10 entries (answers are placeholders marked `[to be confirmed]` where facts are unknown):
 process steps · review time · required documents · what a CR number is · what a VAT certificate is · what each unit type means · editing after submit · how to track an inquiry · why we verify the phone/email · what happens to uploaded documents.
@@ -278,6 +300,8 @@ process steps · review time · required documents · what a CR number is · wha
 | `CORS_ORIGINS` | `http://localhost:5173` |
 | `LOG_LEVEL` | `INFO` |
 | `AGENT_MODE` | `openai`; `scripted` runs `ScriptedChatModel` for the Playwright e2e suite (never set in a deployed environment) |
+| `POLICY_PATH` | — (the packaged `app/policy/policy.yaml`) |
+| `MASTER_DATA_SOURCE` | `seed` (`cenomi` is a stub that falls back to the seed) |
 
 Frontend: `VITE_API_BASE` (default `http://localhost:8000`), `VITE_MOCK` (`1` = run on fixtures), `VITE_E2E` (`1` = send the `X-Test-Scenario` header; e2e only).
 

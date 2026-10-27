@@ -32,6 +32,7 @@ from app.domain.models import DocType, FieldKey, InquiryDraft
 from app.domain.rules import can_submit, contact_verified
 from app.domain.summary import build_draft_summary
 from app.domain.validation import ALLOWED_EXTENSIONS
+from app.policy.config import get_policy
 from app.sessions import Session
 
 WELCOME_MESSAGE_1 = "Marhaba, and welcome to Cenomi Tenant Central! I'm your leasing assistant."
@@ -292,12 +293,13 @@ def build_mall_picker_card(
     malls = master.malls_in_city(city_id)
     selected_raw = draft.fields[FieldKey.MALLS].value
     selected = list(selected_raw) if isinstance(selected_raw, list) else []
+    max_malls = get_policy().max_malls_per_inquiry
     payload = MallPickerPayload(
         city=MallPickerCity(id=city_id, label=city_label),
         malls=[MallPickerMall(id=m.id, name=m.name) for m in malls],
-        selected=selected[:1],
+        selected=selected[:max_malls],
         min_select=1,
-        max_select=1,
+        max_select=max_malls,
     )
     return UiCard(
         card_id="malls",
