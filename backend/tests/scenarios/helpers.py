@@ -102,8 +102,9 @@ async def scenario_client(
     def factory() -> ScriptedChatModel:
         return ScriptedChatModel(steps=steps)
 
-    application = create_app(settings=settings, model_factory=factory)
-    application.state.settings = settings
+    cfg = settings.model_copy(update={"agent_mode": "scripted"})
+    application = create_app(settings=cfg, model_factory=factory)
+    application.state.settings = cfg
     application.state.session_store = SessionStore(ttl_minutes=settings.session_ttl_minutes)
     application.state.services = build_services(settings)
     application.state.graph = build_graph(model_factory=factory)
