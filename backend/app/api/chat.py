@@ -179,7 +179,8 @@ async def chat_stream(
                         item = _scoped(item, session)
                         observe(item)
                         yield _sse(item)
-                    turn_user_message = result.note
+                    note_content = str(result.note.content)
+                    turn_user_message = HumanMessage(content=f"{user_text}\n\n{note_content}")
                 elif intent in (
                     Intent.GENERAL_INQUIRY,
                     Intent.EXISTING_TENANT_NEW_SPACE,

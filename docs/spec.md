@@ -169,10 +169,10 @@ Before the agent graph runs on a typed message (not a UI action, not while the s
 | --- | --- |
 | `inquiry_intake` | Run the agent graph (default) |
 | `inquiry_status` | Run the agent graph (`get_inquiry_status` tool) |
-| `human_help` | `request_handoff` with `{reason: "user_asked"}` (handoff card + case), then run the graph with the `[ui_event] handoff_created …` note |
+| `human_help` | `request_handoff` with `{reason: "user_asked"}` (handoff card + case), then run the graph with one `HumanMessage`: the user's text plus the `[ui_event] handoff_created …` note |
 | `general_inquiry`, `existing_tenant_new_space`, `off_topic` | Short redirect reply from a small prompt with no write tools, streamed as `token` events, then `done` (no graph turn) |
 
-Rules (in order): a `GEO-{STR\|MED\|SPC}-{6 digits}` reference → `inquiry_status`; an explicit request for a person (English or Arabic) → `human_help`; with `existing_tenant_policy: sign_in`, an existing-CR number in the mock registry or phrasing about already leasing → `existing_tenant_new_space`. Otherwise a structured-output classifier (`ROUTER_MODEL`, default `OPENAI_MODEL`) returns `{intent, confidence}`. Below `ROUTER_MIN_CONFIDENCE` (default `0.6`), or when phase is not `gate` (mid-intake), the router defaults to `inquiry_intake`. Classifier and redirect calls use the gateway as service `llm`. Each decision is recorded as audit type `routing_decision` `{intent, via, confidence?}`.
+Rules (in order): a `GEO-{STR\|MED\|SPC}-{6 digits}` reference → `inquiry_status`; an explicit request for a person (English or Arabic; not a contact line like "call me on …") → `human_help`; with `existing_tenant_policy: sign_in`, only in phase `gate` and when the inquiry has no `reference` or `follow_on_of`, phrasing about already leasing → `existing_tenant_new_space`. Otherwise, only in phase `gate`, a structured-output classifier (`ROUTER_MODEL`, default `OPENAI_MODEL`) returns `{intent, confidence}`. Below `ROUTER_MIN_CONFIDENCE` (default `0.6`), or when phase is not `gate`, the router defaults to `inquiry_intake` without calling the classifier. In `AGENT_MODE=scripted`, rules apply and redirects use fixed copy (no classifier or redirect model). Classifier and redirect calls use the gateway as service `llm_router` (separate from the agent's `llm` budget). Each decision is recorded as audit type `routing_decision` `{intent, via, confidence?}`.
 
 ## 5. Guard node (deterministic)
 

@@ -213,6 +213,47 @@ describe('streaming and retraction', () => {
     expect(state.messages.find((m) => m.id === 'm2')?.cardIds).toEqual([])
   })
 
+  it('attaches a card without message_id to the last real assistant after a divider', () => {
+    let state: ChatState = {
+      ...initialChatState,
+      messages: [
+        { id: 'm1', role: 'assistant', text: 'Submitted', cardIds: [] },
+        {
+          id: 'divider-GEO-STR-111111',
+          role: 'assistant',
+          text: '',
+          cardIds: [],
+          variant: 'new_inquiry',
+        },
+      ],
+      cards: {},
+    }
+    state = reduceSse(state, {
+      event: 'ui_card',
+      data: {
+        card_id: 'confirm-2~2',
+        card_type: 'confirm_fields',
+        message_id: null,
+        payload: {
+          title: 'Same details',
+          fields: [
+            {
+              key: 'company_name',
+              label: 'Company name',
+              display: 'Acme',
+              source: 'verified',
+              confirmed: false,
+              evidence: null,
+            },
+          ],
+          all_confirmed: false,
+        },
+      },
+    })
+    expect(state.messages.find((m) => m.id === 'm1')?.cardIds).toEqual(['confirm-2~2'])
+    expect(state.messages.find((m) => m.id === 'divider-GEO-STR-111111')?.cardIds).toEqual([])
+  })
+
   it('inserts a New inquiry divider when follow_on_of changes', () => {
     let state: ChatState = {
       ...initialChatState,

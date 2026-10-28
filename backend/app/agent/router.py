@@ -1,7 +1,7 @@
 """Intent routing before the intake agent (L3 §3.5; step 21).
 
-Rules decide first; otherwise a small structured-output classifier. Mid-intake and
-low-confidence messages stay on the intake path.
+Rules decide first; otherwise a small structured-output classifier at the gate phase only.
+Mid-intake and low-confidence messages stay on the intake path.
 """
 
 from __future__ import annotations
@@ -14,6 +14,7 @@ from typing import Any, Literal, Protocol
 from pydantic import BaseModel, Field
 
 from app.agent.runtime import AgentRuntime
+from app.domain.models import Phase
 from app.domain.rules import compute_phase
 from app.domain.validation import normalise_digits
 from app.policy.config import get_policy
@@ -25,11 +26,9 @@ _HUMAN_HELP_RE = re.compile(
     r"\b("
     r"talk to (?:a |someone|somebody|a person|a human|an agent|customer service|support)|"
     r"speak to (?:a |someone|somebody|a person|a human|an agent|customer service|support)|"
-    r"call me|phone call|real person|human help|"
-    r"أبي (?:أتكلم|اكلم)|"
-    r"أبغى (?:أتكلم|اتكلم)|"
-    r"كلمني|"
-    r"موظف|"
+    r"real person|human help|"
+    r"أبي\s+(?:أتكلم|اكلم)\s+(?:مع\s+)?موظف|"
+    r"أبغى\s+(?:أتكلم|اتكلم)\s+(?:مع\s+)?موظف|"
     r"خدمة العملاء"
     r")\b",
     re.IGNORECASE,
@@ -96,16 +95,18 @@ def _rule_intent(text: str, session: Session) -> Intent | None:
     if _HUMAN_HELP_RE.search(normalised):
         return Intent.HUMAN_HELP
     policy = get_policy()
+    draft = session.draft
     if policy.existing_tenant_policy == "sign_in":
-        if _EXISTING_TENANT_LANG_RE.search(normalised):
-            return Intent.EXISTING_TENANT_NEW_SPACE
-        if session.draft.cr_status == "existing":
-            return Intent.EXISTING_TENANT_NEW_SPACE
+        if not draft.reference and not draft.follow_on_of and compute_phase(draft) == Phase.GATE:
+            if _EXISTING_TENANT_LANG_RE.search(normalised):
+                return Intent.EXISTING_TENANT_NEW_SPACE
+            if draft.cr_status == "existing":
+                return Intent.EXISTING_TENANT_NEW_SPACE
     return None
 
 
 def _mid_intake(session: Session) -> bool:
-    return compute_phase(session.draft) != "gate"
+    return compute_phase(session.draft) != Phase.GATE
 
 
 async def classify_intent(
@@ -115,7 +116,7 @@ async def classify_intent(
     runtime: AgentRuntime,
     session_id: str,
 ) -> ClassifierResult:
-    """Structured-output classifier (`ROUTER_MODEL`), via the gateway as service `llm`."""
+    """Structured-output classifier (`ROUTER_MODEL`), via the gateway as service `llm_router`."""
     from langchain_core.messages import HumanMessage, SystemMessage
     from langchain_openai import ChatOpenAI
     from pydantic import SecretStr
@@ -152,7 +153,7 @@ async def classify_intent(
 
     try:
         return await runtime.services.gateway.call(
-            "llm",
+            "llm_router",
             "route_classify",
             _invoke,
             inquiry_id=session_id,
@@ -180,6 +181,12 @@ async def route_message(
     if ruled is not None:
         return RouteDecision(intent=ruled, via="rule")
 
+    if _mid_intake(session):
+        return RouteDecision(intent=Intent.INQUIRY_INTAKE, via="fallback")
+
+    if runtime.settings.agent_mode == "scripted":
+        return RouteDecision(intent=Intent.INQUIRY_INTAKE, via="fallback")
+
     classify = classifier or _classifier_override
     status = _inquiry_status_label(session)
     if classify is not None:
@@ -188,7 +195,7 @@ async def route_message(
         result = await classify_intent(text, status, runtime=runtime, session_id=session.id)
 
     min_conf = runtime.settings.router_min_confidence
-    if result.confidence < min_conf or _mid_intake(session):
+    if result.confidence < min_conf:
         return RouteDecision(
             intent=Intent.INQUIRY_INTAKE,
             via="fallback",

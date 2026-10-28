@@ -67,7 +67,10 @@ export type ChatAction =
 
 function findLastAssistantMessageId(messages: ChatMessage[]): string | null {
   for (let i = messages.length - 1; i >= 0; i -= 1) {
-    if (messages[i].role === 'assistant') return messages[i].id
+    const message = messages[i]
+    if (message.role === 'assistant' && message.variant !== 'new_inquiry') {
+      return message.id
+    }
   }
   return null
 }

@@ -8,7 +8,6 @@ from collections.abc import AsyncIterator
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.agent.events import SseEvent
-from app.agent.model import get_chat_model
 from app.agent.router import Intent
 from app.agent.runtime import AgentRuntime
 from app.domain.rules import compute_phase
@@ -36,6 +35,27 @@ _REDIRECT_SYSTEM: dict[Intent, str] = {
     ),
 }
 
+_SCRIPTED_REDIRECT: dict[Intent, str] = {
+    Intent.GENERAL_INQUIRY: (
+        "General tenant questions are raised after you sign in to Tenant Central. "
+        "I'm here if you'd like to continue a new leasing inquiry in this chat."
+    ),
+    Intent.EXISTING_TENANT_NEW_SPACE: (
+        "If you're already a Cenomi tenant, sign in to Tenant Central and open "
+        "Leasing Opportunities to request another unit. I can also help you start "
+        "a brand-new leasing inquiry here."
+    ),
+    Intent.OFF_TOPIC: (
+        "I'm here to help with mall leasing inquiries. Tell me about your brand "
+        "and the space you're looking for whenever you're ready."
+    ),
+}
+
+_DEFAULT_FALLBACK = (
+    "I'm here to help with leasing inquiries for Cenomi malls. "
+    "Tell me about your brand and the space you're looking for whenever you're ready."
+)
+
 
 def _chunk_text(text: str, size: int = 24) -> list[str]:
     if not text:
@@ -49,35 +69,39 @@ async def stream_redirect_reply(
     session: Session,
     runtime: AgentRuntime,
 ) -> AsyncIterator[SseEvent]:
-    """Stream a redirect assistant bubble (gateway service `llm`, no tools)."""
+    """Stream a redirect assistant bubble (gateway service `llm_router`, no tools)."""
     system = _REDIRECT_SYSTEM.get(intent)
     if system is None:
         return
 
     message_id = f"m_{uuid.uuid4().hex[:10]}"
-    model = get_chat_model()
-    messages = [
-        SystemMessage(content=system),
-        HumanMessage(content=user_text),
-    ]
 
-    async def _invoke() -> str:
-        response = await model.ainvoke(messages)
-        content = response.content
-        return content if isinstance(content, str) else str(content)
+    if runtime.settings.agent_mode == "scripted":
+        reply = _SCRIPTED_REDIRECT.get(intent, _DEFAULT_FALLBACK)
+    else:
+        reply = _DEFAULT_FALLBACK
+        try:
+            from app.agent.model import get_chat_model
 
-    try:
-        reply = await runtime.services.gateway.call(
-            "llm",
-            "redirect",
-            _invoke,
-            inquiry_id=session.id,
-        )
-    except Exception:
-        reply = (
-            "I'm here to help with leasing inquiries for Cenomi malls. "
-            "Tell me about your brand and the space you're looking for whenever you're ready."
-        )
+            model = get_chat_model()
+            messages = [
+                SystemMessage(content=system),
+                HumanMessage(content=user_text),
+            ]
+
+            async def _invoke() -> str:
+                response = await model.ainvoke(messages)
+                content = response.content
+                return content if isinstance(content, str) else str(content)
+
+            reply = await runtime.services.gateway.call(
+                "llm_router",
+                "redirect",
+                _invoke,
+                inquiry_id=session.id,
+            )
+        except Exception:
+            reply = _SCRIPTED_REDIRECT.get(intent, _DEFAULT_FALLBACK)
 
     for piece in _chunk_text(reply.strip()):
         yield SseEvent(event="token", data={"message_id": message_id, "text": piece})
