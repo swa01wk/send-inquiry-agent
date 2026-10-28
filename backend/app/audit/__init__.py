@@ -44,6 +44,7 @@ ALLOWED_KEYS: dict[str, frozenset[str]] = {
     "follow_on_started": frozenset({"from_reference", "inquiry_seq", "reused_verification"}),
     "form_mode_entered": frozenset({"kind"}),
     "form_mode_left": frozenset(),
+    "routing_decision": frozenset({"intent", "via", "confidence"}),
 }
 
 # Never kept, whatever the event type says.

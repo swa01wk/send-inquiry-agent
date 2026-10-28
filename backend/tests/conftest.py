@@ -1,7 +1,7 @@
 import pytest
 from app.policy.config import get_policy, use_policy
 
-pytest_plugins = ["tests.api.conftest"]
+pytest_plugins = ["tests.api.conftest", "tests.agent.conftest"]
 
 
 @pytest.fixture(autouse=True)

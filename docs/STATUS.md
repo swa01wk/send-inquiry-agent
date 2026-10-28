@@ -12,7 +12,7 @@ The single place to see what's built, what's next and how the agent maps to the 
 
 **Status values:** ✅ Done · 🟡 In progress, or built at demo depth during the breadth days · ⬜ Not started · ⛔ Blocked · ➖ Waived (with reason)
 
-**Last updated:** 28 Oct 2026 · Day 2 backend PR
+**Last updated:** 28 Oct 2026 · Day 3 frontend and agent track
 
 ## 0. Delivery plan
 
@@ -22,7 +22,7 @@ The single place to see what's built, what's next and how the agent maps to the 
 | --- | --- | --- | --- | --- | --- | --- |
 | Day 1 | Tue 27 Oct | Foundation: 11c, harness, policy and master data | #24 harness; #26 card fix; #27 policy; #28 CI without Playwright; #29 live targets load `.env` | #25 (11c) | ✅ | Live checks recorded in `docs/eval-notes.md` |
 | Day 2 | Wed 28 Oct | Simulated Cenomi, verification by link, resume, submit once, tracking; L3 core: restart-safe store, audit log v0, thin gateway | Day 2 backend PR (#31) | Day 2 frontend track | ✅ | Verify/resume/status/dev inbox, resend countdown, S1 Playwright, prompt notes |
-| Day 3 | Thu 29 Oct | Routing, handoff, Arabic, follow-on; L3 core: form mode, evidence — every L3 capability at demo depth | Day 3 backend PR A (handoff, Arabic, follow-on, evidence); PR B (form mode, S2/S3/S13) | | 🟡 | Backend first; router, handoff in chat, follow-on UI and prompt from `prompts/breadth/day3-routing-arabic-follow-on.md` on top |
+| Day 3 | Thu 29 Oct | Routing, handoff, Arabic, follow-on; L3 core: form mode, evidence — every L3 capability at demo depth | Day 3 backend PR A (handoff, Arabic, follow-on, evidence); PR B (form mode, S2/S3/S13) | Day 3 frontend and agent track | 🟡 | Router, redirect, handoff card, follow-on divider, Arabic guard capture, prompt sync |
 | Day 4 | Fri 30 Oct | Review lifecycle, reviewer console with audit timeline, case assistant — L4 core | | | ⬜ | |
 | Day 5 | Mon 2 Nov | Yardi handover, reviewer assistant, intake channels; L5 core: clock, triggers, notification policy, "Needs attention", drafted reminders; demo | | | ⬜ | |
 | Sprint 1 | 3–16 Nov | M0 and L3 gates (incl. E10, intake channels); full test harness | | | ⬜ | |
@@ -58,8 +58,8 @@ Each step is one Cursor prompt in `prompts/` and normally one PR.
 | 18 | `18-integration-adapters.md` | Simulated Cenomi: mocks, scenario data, faults, notification outbox, dev inbox | E4, E7 | 🟡 | Day 2 backend PR (#31), Day 2 frontend | `/dev/inbox`, outbox API wired in e2e. Left: contract tests, `MOCK_LATENCY_MS`, sandbox/live stubs |
 | 19 | `19-email-link-resume.md` | Email-link verification, cross-device resume, resend limits | E3 | 🟡 | Day 2 backend PR (#31), Day 2 frontend | `/inquiry/verify`, resume hydrate, resend countdown. Left: "Continue later", card polling |
 | 20 | `20-status-page-notifications.md` | Submission email and SMS, tokenised status page | E4, E5 | 🟡 | Day 2 backend PR (#31), Day 2 frontend | Status page, success card tracking link. Left: retried failed sends |
-| 21 | `21-routing-handoff.md` | Intent router, redirect agent, human handoff, form mode when the model is down | E1 | 🟡 | Day 3 backend PR A | Built: `CallCentreService` mock (cases in the dev inbox), `request_handoff` action, `handoff` card, `CALL_CENTRE_*`. Day 3 PR B: form mode (`llm` faults, two failures → form mode, `form_mode` card, `cr_check`/`cr_skip`, phase-driven cards without the model, recovery), story S13. Left: router and redirect (frontend track), handoff card in the chat, the other handoff triggers (Sprint 1) |
-| 21b | `21b-arabic-follow-on-duplicates.md` | Arabic safety nets; follow-on inquiries; duplicate check | E8 | 🟡 | Day 3 backend PR A | Built: Arabic-Indic digits through every numeric rule, Arabic doubt for every derived field, `start_follow_on` (copy, reuse verification and profiles, card ids per inquiry, `follow_on_of`). Left: Arabic capture words in the guard and the follow-on divider and prompt (frontend track); duplicate check, follow-on from the tracking page, Arabic golden (Sprint 1) |
+| 21 | `21-routing-handoff.md` | Intent router, redirect agent, human handoff, form mode when the model is down | E1 | 🟡 | Day 3 backend PR A; Day 3 frontend and agent track | Built: handoff backend, form mode (PR B), `route_message` + redirect stream, `HandoffCard`, routing fixtures (≥ 90%). Left: other handoff triggers (Sprint 1), 60-message routing set |
+| 21b | `21b-arabic-follow-on-duplicates.md` | Arabic safety nets; follow-on inquiries; duplicate check | E8 | 🟡 | Day 3 backend PR A; Day 3 frontend and agent track | Built: digits, doubt, `start_follow_on`, Arabic capture in guard, follow-on divider + prompt. Left: duplicate check, follow-on from tracking page, Arabic golden (Sprint 1) |
 | 21c | `21c-intake-channels.md` | Call-centre assisted intake (§7.1.1 a2, §7.1.2 a2); existing tenants via Leasing Opportunities (§7.1.2 a1); public-page sign-in path (§7.1); `staff` source; contacts prefill and remove | E10, C1–C6 | ⬜ | | Added after the §7.1 review |
 | 22 | `22-l3-gate.md` | Stories S1–S13, KPI report, the L3 gate run (evidence built on Day 3) | E1–E10 | 🟡 | Day 2 frontend (S1), Day 3 PR B (S2, S3, S13) | Stories S1, S2, S3, S13 scripted; evidence for derived values (Day 3 PR A). Left: S4–S8, KPI report. Closes the L3 gate |
 | 23 | `23-lifecycle-core.md` | Case data, live L4 transitions, review routing, effects, Azure AD and Yardi mocks | X1, X2, X5, X7 | ⬜ | | |

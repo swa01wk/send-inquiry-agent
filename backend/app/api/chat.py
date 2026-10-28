@@ -14,6 +14,8 @@ from sse_starlette.sse import EventSourceResponse
 from app.agent.actions import handle_ui_action
 from app.agent.events import SseEvent, run_turn
 from app.agent.form_mode import form_mode_cards
+from app.agent.redirect import stream_redirect_reply
+from app.agent.router import Intent, record_routing_audit, route_message
 from app.agent.runtime import AgentRuntime
 from app.api.cards import remember_confirm_card_keys, scope_card_data
 from app.api.deps import get_services, get_session_store, get_settings
@@ -80,17 +82,28 @@ async def chat_stream(
     audit = services.audit
     before_draft = session.draft.model_copy(deep=True)
     action_events: list[SseEvent] = []
+    route_decision = None
     user_text: str | None = None
+    turn_user_message = HumanMessage(content="")
     user_message_id = f"u_{uuid.uuid4().hex[:10]}"
     if isinstance(body, ChatRequestMessage):
         user_text = body.text
-        user_message = HumanMessage(content=body.text)
+        turn_user_message = HumanMessage(content=body.text)
         audit.record(
             session.id,
             "user_message",
             actor="user",
             payload={"chars": len(body.text), "message_id": user_message_id},
         )
+        if not session.form_mode:
+            route_decision = await route_message(body.text, session, runtime)
+            record_routing_audit(
+                runtime,
+                session.id,
+                intent=route_decision.intent,
+                via=route_decision.via,
+                confidence=route_decision.confidence,
+            )
     else:
         try:
             result = await handle_ui_action(body.action, body.payload, session, runtime)
@@ -98,7 +111,7 @@ async def chat_stream(
             await store.end_turn(session_id)
             raise
         action_events = result.events
-        user_message = result.note
+        turn_user_message = result.note
         note = str(result.note.content).removeprefix("[ui_event]").strip()
         audit.record(
             session.id,
@@ -109,6 +122,7 @@ async def chat_stream(
         store.save(session)
 
     async def event_generator() -> AsyncIterator[dict[str, str]]:
+        nonlocal turn_user_message
         replies: dict[str, str] = {}
         removed: set[str] = set()
 
@@ -149,10 +163,36 @@ async def chat_stream(
                     SseEvent(event="done", data={"phase": compute_phase(session.draft).value})
                 )
                 return
+            if user_text is not None and route_decision is not None:
+                intent = route_decision.intent
+                if intent == Intent.HUMAN_HELP:
+                    session.add_message(user_message_id, "user", user_text)
+                    result = await handle_ui_action(
+                        "request_handoff",
+                        {"reason": "user_asked"},
+                        session,
+                        runtime,
+                    )
+                    for item in result.events:
+                        if item["event"] == "ui_card":
+                            remember_confirm_card_keys(session, UiCard.model_validate(item["data"]))
+                        item = _scoped(item, session)
+                        observe(item)
+                        yield _sse(item)
+                    turn_user_message = result.note
+                elif intent in (
+                    Intent.GENERAL_INQUIRY,
+                    Intent.EXISTING_TENANT_NEW_SPACE,
+                    Intent.OFF_TOPIC,
+                ):
+                    async for item in stream_redirect_reply(intent, user_text, session, runtime):
+                        observe(item)
+                        yield _sse(item)
+                    return
             async for item in run_turn(
                 graph,
                 session,
-                user_message,
+                turn_user_message,
                 runtime=runtime,
                 settings=settings,
             ):
@@ -160,7 +200,9 @@ async def chat_stream(
                 observe(item)
                 yield _sse(item)
         finally:
-            if user_text is not None:
+            if user_text is not None and not any(
+                m.get("id") == user_message_id for m in session.transcript
+            ):
                 session.add_message(user_message_id, "user", user_text)
             for message_id, text in replies.items():
                 if message_id not in removed and text.strip():

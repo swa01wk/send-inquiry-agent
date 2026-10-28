@@ -15,6 +15,8 @@ export interface ChatMessage {
   role: 'user' | 'assistant'
   text: string
   cardIds: string[]
+  /** Visual divider when a follow-on inquiry starts in the same chat. */
+  variant?: 'new_inquiry'
 }
 
 export type ChatStatus = 'idle' | 'streaming' | 'error'
@@ -197,12 +199,32 @@ function applySseEvent(state: ChatState, event: SseEvent): ChatState {
         awaitingReply: state.status === 'streaming',
       }
     }
-    case 'draft':
+    case 'draft': {
+      const prevFollowOn = state.draft?.follow_on_of ?? null
+      const nextFollowOn = event.data.follow_on_of ?? null
+      let messages = state.messages
+      if (nextFollowOn !== prevFollowOn && nextFollowOn !== null) {
+        const dividerId = `divider-${nextFollowOn}`
+        if (!messages.some((m) => m.id === dividerId)) {
+          messages = [
+            ...messages,
+            {
+              id: dividerId,
+              role: 'assistant',
+              text: '',
+              cardIds: [],
+              variant: 'new_inquiry',
+            },
+          ]
+        }
+      }
       return {
         ...state,
+        messages,
         draft: event.data,
         phase: event.data.phase,
       }
+    }
     case 'done':
       return {
         ...state,

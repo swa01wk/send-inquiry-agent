@@ -12,6 +12,7 @@ export type CardType =
   | 'success'
   | 'quick_replies'
   | 'form_mode'
+  | 'handoff'
 
 export type StepState = 'done' | 'current' | 'upcoming'
 
@@ -21,6 +22,16 @@ export interface ConfirmFieldRow {
   display: string | null
   source: Source | null
   confirmed: boolean
+  evidence: string | null
+}
+
+export interface HandoffPayload {
+  phone: string
+  email: string
+  hours: string
+  short_ref: string
+  case_id: string
+  reason: string
 }
 
 export interface ConfirmFieldsPayload {
@@ -208,6 +219,12 @@ export type UiCard =
       message_id: string | null
       payload: FormModePayload
     }
+  | {
+      card_id: string
+      card_type: 'handoff'
+      message_id: string | null
+      payload: HandoffPayload
+    }
 
 export type FormModeStep =
   'existing_account' | 'cr' | 'details' | 'verification' | 'documents' | 'review' | 'submitted'
@@ -249,6 +266,7 @@ export interface DraftSummary {
   checks: DraftChecks
   can_submit: boolean
   changed_keys: string[]
+  follow_on_of: string | null
 }
 
 export type ChatRequest =

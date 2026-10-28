@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   confirmFieldsCardExample,
+  draftEmpty,
   verificationCardExample,
   quickRepliesCardExample,
 } from '../mocks/fixtures'
@@ -41,6 +42,7 @@ describe('chatReducer', () => {
                 display: 'Acme',
                 source: 'verified',
                 confirmed: false,
+                evidence: null,
               },
             ],
             all_confirmed: false,
@@ -63,6 +65,7 @@ describe('chatReducer', () => {
               display: 'Acme',
               source: 'verified',
               confirmed: true,
+              evidence: null,
             },
           ],
           all_confirmed: true,
@@ -208,6 +211,20 @@ describe('streaming and retraction', () => {
     })
     expect(state.messages.find((m) => m.id === 'm1')?.cardIds).toEqual(['confirm-1'])
     expect(state.messages.find((m) => m.id === 'm2')?.cardIds).toEqual([])
+  })
+
+  it('inserts a New inquiry divider when follow_on_of changes', () => {
+    let state: ChatState = {
+      ...initialChatState,
+      draft: { ...draftEmpty, follow_on_of: null },
+    }
+    state = reduceSse(state, {
+      event: 'draft',
+      data: { ...draftEmpty, follow_on_of: 'GEO-STR-111111', phase: 'collecting' },
+    })
+    expect(
+      state.messages.some((m) => m.id === 'divider-GEO-STR-111111' && m.variant === 'new_inquiry'),
+    ).toBe(true)
   })
 
   it('reattaches an orphaned card to the next assistant message', () => {

@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     openai_api_key: str | None = Field(default=None, validation_alias="OPENAI_API_KEY")
     openai_model: str | None = Field(default=None, validation_alias="OPENAI_MODEL")
     openai_temperature: float = Field(default=0.6, validation_alias="OPENAI_TEMPERATURE")
+    router_model: str | None = Field(default=None, validation_alias="ROUTER_MODEL")
+    router_min_confidence: float = Field(default=0.6, validation_alias="ROUTER_MIN_CONFIDENCE")
 
     otp_mock_code: str = Field(default="1234", validation_alias="OTP_MOCK_CODE")
     # Mock inbox: the verification card carries the link token so a demo button can
