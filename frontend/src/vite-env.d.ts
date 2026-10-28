@@ -6,6 +6,7 @@ interface ImportMetaEnv {
   readonly VITE_DEMO?: string
   readonly VITE_E2E?: string
   readonly VITE_DEV_TOOLS?: string
+  readonly VITE_REVIEWER_CONSOLE?: string
 }
 
 interface ImportMeta {

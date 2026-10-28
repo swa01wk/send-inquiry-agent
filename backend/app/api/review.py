@@ -119,6 +119,17 @@ class CaseDetail(BaseModel):
     reupload_doc_types: list[dict[str, str]]
 
 
+class YardiCompanyOut(BaseModel):
+    id: str
+    name: str
+
+
+class YardiBrandOut(BaseModel):
+    id: str
+    name: str
+    source: str
+
+
 class ActionRequest(BaseModel):
     action: str
     payload: dict[str, Any] = Field(default_factory=dict)
@@ -275,6 +286,31 @@ async def get_case(
     master: MasterData = Depends(get_master_data),
 ) -> CaseDetail:
     return _detail(services, _case_for(services, case_id, reviewer), reviewer, master)
+
+
+@router.get("/yardi/companies", response_model=list[YardiCompanyOut])
+async def search_yardi_companies(
+    q: str = Query(default="", max_length=120),
+    _reviewer: Reviewer = Depends(current_reviewer),
+    services: ServiceContainer = Depends(get_services),
+) -> list[YardiCompanyOut]:
+    """Active Yardi companies by the first word of the name: the options for `relink_company`."""
+    return [YardiCompanyOut(id=c.id, name=c.name) for c in services.yardi.search_companies(q)]
+
+
+@router.get("/yardi/companies/{company_id}/brands", response_model=list[YardiBrandOut])
+async def yardi_brands(
+    company_id: str,
+    _reviewer: Reviewer = Depends(current_reviewer),
+    services: ServiceContainer = Depends(get_services),
+) -> list[YardiBrandOut]:
+    """That company's brands (previous leases and proposals): the options for `relink_brand`."""
+    if services.yardi.company(company_id) is None:
+        raise ApiError(404, "company_not_found", "Unknown Yardi company.")
+    return [
+        YardiBrandOut(id=b.id, name=b.name, source=b.source)
+        for b in services.yardi.brands_for_company(company_id)
+    ]
 
 
 @router.get("/cases/{case_id}/documents/{file_id}")
