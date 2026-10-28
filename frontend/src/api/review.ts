@@ -153,7 +153,11 @@ export class ReviewApiError extends Error {
   }
 }
 
-async function request<T>(path: string, reviewerId: string | null, init: RequestInit = {}) {
+async function request(
+  path: string,
+  reviewerId: string | null,
+  init: RequestInit = {},
+): Promise<Response> {
   const headers: Record<string, string> = { ...(init.headers as Record<string, string>) }
   if (reviewerId) headers['X-Reviewer-Id'] = reviewerId
   const res = await fetch(`${API_BASE}${path}`, { ...init, headers })
