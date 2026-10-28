@@ -25,9 +25,26 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - name: Install backend deps
         run: cd backend && uv sync
-      - name: Checks (ruff, mypy)
-        run: make check-be
+      # Same as `make check-be`, one step each so a failure names its tool; mypy errors are
+      # also printed as annotations.
+      - name: Ruff
+        run: cd backend && uv run ruff check app tests && uv run ruff format --check app tests
+      - name: Mypy
+        if: success() || failure()
+        run: |
+          cd backend
+          set +e
+          uv run mypy app 2>&1 | tee mypy.log
+          status=${PIPESTATUS[0]}
+          grep -E "^app/.*: error:" mypy.log | head -40 | while IFS= read -r line; do
+            file=${line%%:*}
+            rest=${line#*:}
+            lineno=${rest%%:*}
+            echo "::error file=backend/${file},line=${lineno},title=mypy::${line}"
+          done
+          exit $status
       - name: Tests (pytest, incl. AGENT-DET)
+        if: success() || failure()
         # Same as `make test-be`; failing tests are also printed as annotations.
         run: |
           cd backend
