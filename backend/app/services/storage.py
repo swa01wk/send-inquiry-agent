@@ -85,3 +85,12 @@ class MockStorageService:
             return
         for path in session_dir.glob(f"{file_id}.*"):
             path.unlink(missing_ok=True)
+
+    def path_for(self, session_ids: list[str], file_id: str) -> Path | None:
+        """Where a stored file is, looking in each session's folder (reviewer download)."""
+        if not file_id.isalnum():
+            return None
+        for session_id in session_ids:
+            for path in (self._upload_dir / session_id).glob(f"{file_id}.*"):
+                return path
+        return None

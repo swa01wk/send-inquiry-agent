@@ -1,0 +1,91 @@
+{
+  "companies": [
+    {
+      "id": "YC-1001",
+      "name": "Bean Street Trading Co.",
+      "active": true,
+      "brands": [
+        {
+          "id": "YB-2001",
+          "name": "Bean Street",
+          "source": "lease"
+        },
+        {
+          "id": "YB-2002",
+          "name": "Bean Street Express",
+          "source": "proposal"
+        }
+      ]
+    },
+    {
+      "id": "YC-1002",
+      "name": "Bean Street Holding",
+      "active": true,
+      "brands": [
+        {
+          "id": "YB-2003",
+          "name": "Bean Street Roasters",
+          "source": "proposal"
+        }
+      ]
+    },
+    {
+      "id": "YC-1003",
+      "name": "Bean & Leaf Trading",
+      "active": false,
+      "brands": [
+        {
+          "id": "YB-2004",
+          "name": "Leaf Tea",
+          "source": "lease"
+        }
+      ]
+    },
+    {
+      "id": "YC-1101",
+      "name": "Fawaz Alhokair Trading Co.",
+      "active": true,
+      "brands": [
+        {
+          "id": "YB-2101",
+          "name": "Zara Home",
+          "source": "lease"
+        },
+        {
+          "id": "YB-2102",
+          "name": "Massimo Dutti",
+          "source": "lease"
+        },
+        {
+          "id": "YB-2103",
+          "name": "Stradivarius",
+          "source": "proposal"
+        }
+      ]
+    },
+    {
+      "id": "YC-1102",
+      "name": "Fawaz Retail Group",
+      "active": true,
+      "brands": [
+        {
+          "id": "YB-2104",
+          "name": "Lefties",
+          "source": "lease"
+        }
+      ]
+    },
+    {
+      "id": "YC-1201",
+      "name": "Acme Trading LLC",
+      "active": true,
+      "brands": [
+        {
+          "id": "YB-2201",
+          "name": "Acme Kids",
+          "source": "lease"
+        }
+      ]
+    }
+  ]
+}

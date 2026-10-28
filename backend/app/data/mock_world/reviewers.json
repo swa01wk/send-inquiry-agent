@@ -1,0 +1,168 @@
+{
+  "reviewers": [
+    {
+      "id": "rlm_store-central",
+      "kind": "reviewer",
+      "name": "Faisal Al Qahtani",
+      "email": "faisal.alqahtani@cenomi.example",
+      "role": "rlm_store",
+      "regions": [
+        "central"
+      ],
+      "manager": false
+    },
+    {
+      "id": "rlm_store-western",
+      "kind": "reviewer",
+      "name": "Huda Al Harbi",
+      "email": "huda.alharbi@cenomi.example",
+      "role": "rlm_store",
+      "regions": [
+        "western"
+      ],
+      "manager": false
+    },
+    {
+      "id": "rlm_store-eastern",
+      "kind": "reviewer",
+      "name": "Majed Al Dossary",
+      "email": "majed.aldossary@cenomi.example",
+      "role": "rlm_store",
+      "regions": [
+        "eastern"
+      ],
+      "manager": false
+    },
+    {
+      "id": "rplm_media-central",
+      "kind": "reviewer",
+      "name": "Noura Al Saud",
+      "email": "noura.alsaud@cenomi.example",
+      "role": "rplm_media",
+      "regions": [
+        "central"
+      ],
+      "manager": false
+    },
+    {
+      "id": "rplm_media-western",
+      "kind": "reviewer",
+      "name": "Khalid Bakr",
+      "email": "khalid.bakr@cenomi.example",
+      "role": "rplm_media",
+      "regions": [
+        "western"
+      ],
+      "manager": false
+    },
+    {
+      "id": "rplm_media-eastern",
+      "kind": "reviewer",
+      "name": "Reem Al Ghamdi",
+      "email": "reem.alghamdi@cenomi.example",
+      "role": "rplm_media",
+      "regions": [
+        "eastern"
+      ],
+      "manager": false
+    },
+    {
+      "id": "rplm_specialty-central",
+      "kind": "reviewer",
+      "name": "Yousef Al Otaibi",
+      "email": "yousef.alotaibi@cenomi.example",
+      "role": "rplm_specialty",
+      "regions": [
+        "central"
+      ],
+      "manager": false
+    },
+    {
+      "id": "rplm_specialty-western",
+      "kind": "reviewer",
+      "name": "Lama Hassan",
+      "email": "lama.hassan@cenomi.example",
+      "role": "rplm_specialty",
+      "regions": [
+        "western"
+      ],
+      "manager": false
+    },
+    {
+      "id": "rplm_specialty-eastern",
+      "kind": "reviewer",
+      "name": "Saad Al Mutairi",
+      "email": "saad.almutairi@cenomi.example",
+      "role": "rplm_specialty",
+      "regions": [
+        "eastern"
+      ],
+      "manager": false
+    },
+    {
+      "id": "rlm_store-manager",
+      "kind": "reviewer",
+      "name": "Abdulaziz Al Shehri",
+      "email": "abdulaziz.alshehri@cenomi.example",
+      "role": "rlm_store",
+      "regions": [
+        "central",
+        "western",
+        "eastern"
+      ],
+      "manager": true
+    },
+    {
+      "id": "rplm_media-manager",
+      "kind": "reviewer",
+      "name": "Mona Al Zahrani",
+      "email": "mona.alzahrani@cenomi.example",
+      "role": "rplm_media",
+      "regions": [
+        "central",
+        "western",
+        "eastern"
+      ],
+      "manager": true
+    },
+    {
+      "id": "rplm_specialty-manager",
+      "kind": "reviewer",
+      "name": "Tariq Al Malki",
+      "email": "tariq.almalki@cenomi.example",
+      "role": "rplm_specialty",
+      "regions": [
+        "central",
+        "western",
+        "eastern"
+      ],
+      "manager": true
+    },
+    {
+      "id": "customer-care-1",
+      "kind": "staff",
+      "name": "Sami Al Anazi",
+      "email": "sami.alanazi@cenomi.example",
+      "role": "customer_care",
+      "regions": [
+        "central",
+        "western",
+        "eastern"
+      ],
+      "manager": false
+    },
+    {
+      "id": "guest-service-1",
+      "kind": "staff",
+      "name": "Dana Al Rashid",
+      "email": "dana.alrashid@cenomi.example",
+      "role": "guest_service",
+      "regions": [
+        "central",
+        "western",
+        "eastern"
+      ],
+      "manager": false
+    }
+  ]
+}

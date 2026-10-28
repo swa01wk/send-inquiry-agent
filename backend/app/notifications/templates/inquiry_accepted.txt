@@ -1,0 +1,12 @@
+kind: information
+channel: email
+subject: Your inquiry $reference is approved
+---
+Hello $first_name,
+
+Your leasing inquiry for $brand at $mall is approved. Your details go to the leasing
+team's system, and the proposal stage comes next.
+
+Follow your inquiry: $case_url
+
+Cenomi Tenant Central

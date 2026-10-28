@@ -17,6 +17,15 @@ CONTEXT = {
     "reason_label": "The applicant asked to speak to someone",
     "summary": "Stage: verifying.",
     "contact_name": "Sara Ali",
+    "reviewer_name": "Faisal Al Qahtani",
+    "console_url": "http://localhost:5173/review/cases/GEO-STR-123456",
+    "case_url": "http://localhost:5173/inquiry/case?t=c",
+    "documents": "- Brand Profile",
+    "remarks": "The brand profile is from 2019.",
+    "after_rejection": "You can raise a new inquiry at any time.",
+    "role_label": "Company Admin",
+    "accept_url": "http://localhost:8000/api/dev/identity/accept/inv_1",
+    "request_label": "sales data",
 }
 
 

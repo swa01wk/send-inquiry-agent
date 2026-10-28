@@ -1,0 +1,16 @@
+kind: information
+channel: email
+subject: Your Cenomi leasing inquiry $reference
+---
+Hello $first_name,
+
+Thank you for your interest in leasing with Cenomi. After review, we're not able to take
+your inquiry for $brand at $mall further at this time.
+
+The leasing team's note: $remarks
+
+$after_rejection
+
+See your inquiry: $case_url
+
+Cenomi Tenant Central

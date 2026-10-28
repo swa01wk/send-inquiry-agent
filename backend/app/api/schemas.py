@@ -19,6 +19,9 @@ CardType = Literal[
     "quick_replies",
     "handoff",
     "form_mode",
+    "case_status",
+    "contacts",
+    "sales_data_upload",
 ]
 
 StepState = Literal["done", "current", "upcoming"]
@@ -118,6 +121,11 @@ class DocumentNumberRow(BaseModel):
 
 
 class DocumentUploadPayload(BaseModel):
+    # "reupload": after a reviewer's request, only `requested_doc_types` are shown and the
+    # card's button is Resubmit (`resubmit_documents`), L4 §3.5.
+    mode: Literal["intake", "reupload"] = "intake"
+    requested_doc_types: list[str] = Field(default_factory=list)
+    remarks: str | None = None
     docs: list[DraftDocumentRow]
     numbers: list[DocumentNumberRow] = Field(default_factory=list)
     required_uploaded: int
@@ -196,6 +204,66 @@ class FormModePayload(BaseModel):
     can_skip_cr: bool = False
 
 
+class CaseRequestRow(BaseModel):
+    id: str
+    kind: Literal["reupload", "contacts", "sales_data"]
+    label: str
+    remarks: str
+    doc_types: list[str] = Field(default_factory=list)
+    requested_at: datetime
+
+
+class CaseStatusPayload(BaseModel):
+    """Where the case stands (L4 §3.5): stage, owner as a role, last change, open requests."""
+
+    reference: str
+    status: str
+    stage: str  # submitted | first_review | second_review | outcome
+    stage_label: str
+    owner_role: str
+    last_change: datetime
+    open_requests: list[CaseRequestRow] = Field(default_factory=list)
+    outcome: Literal["approved", "rejected"] | None = None
+    outcome_remarks: str | None = None
+    next_step: str
+
+
+class ContactRow(BaseModel):
+    role: str
+    label: str
+    required: bool
+    first_name: str | None = None
+    last_name: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    source: str | None = None
+    confirmed: bool = False
+    same_as_primary: bool = False
+
+
+class ContactsPayload(BaseModel):
+    """Contacts being collected for a contacts request; Send = `submit_contacts`."""
+
+    request_id: str | None
+    remarks: str | None
+    rows: list[ContactRow]
+    can_submit: bool
+    blockers: list[str] = Field(default_factory=list)
+
+
+class SalesDataPayload(BaseModel):
+    """One file for a sales-data request; upload with doc_type=sales_data, Send =
+    `submit_sales_data`."""
+
+    request_id: str | None
+    remarks: str | None
+    uploaded: bool
+    file_name: str | None = None
+    size_bytes: int | None = None
+    allowed_extensions: list[str]
+    max_mb: int
+
+
 class QuickReplyOption(BaseModel):
     label: str
     text: str
@@ -256,7 +324,7 @@ class InquiryStatusStep(BaseModel):
 
 class InquiryStatusResponse(BaseModel):
     reference: str
-    status: Literal["under_review"]
+    status: Literal["under_review", "approved", "sent_to_yardi", "rejected"]
     submitted_at: datetime
     steps: list[InquiryStatusStep]
     # Day 2 (L3 §3.4): the stages, who holds the inquiry (a role), what waits on the applicant.

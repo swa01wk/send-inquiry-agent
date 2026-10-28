@@ -1,0 +1,15 @@
+kind: information
+channel: email
+subject: New inquiry $reference in your queue
+---
+Hello $reviewer_name,
+
+A new leasing inquiry is waiting for first review in your queue.
+
+Reference: $reference
+Brand: $brand
+Mall: $mall
+
+Open the case: $console_url
+
+Cenomi Tenant Central

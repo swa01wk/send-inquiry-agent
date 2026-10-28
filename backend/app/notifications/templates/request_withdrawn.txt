@@ -1,0 +1,12 @@
+kind: information
+channel: email
+subject: Request withdrawn for $reference
+---
+Hello $first_name,
+
+The leasing team withdrew their request for $request_label on your inquiry for $brand.
+Nothing more is needed from you for it.
+
+Follow your inquiry: $case_url
+
+Cenomi Tenant Central

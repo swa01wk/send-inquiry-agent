@@ -55,6 +55,12 @@ class DocType(StrEnum):
     NATIONAL_ID = "national_id"
     NATIONAL_ADDRESS = "national_address"
     ARTICLES_OF_ASSOCIATION = "articles_of_association"
+    # Requested by the reviewer at second review (L4 §3.5); not an intake document.
+    SALES_DATA = "sales_data"
+
+
+# Document types collected after submission, never in the intake checklist.
+NON_INTAKE_DOC_TYPES = frozenset({DocType.SALES_DATA})
 
 
 class Phase(StrEnum):

@@ -75,9 +75,10 @@ class DocumentsPolicy(_Strict):
 
     @model_validator(mode="after")
     def _each_type_once(self) -> DocumentsPolicy:
-        from app.domain.models import DocType  # local: avoids an import cycle
+        # Local import: avoids an import cycle with app.domain.
+        from app.domain.models import NON_INTAKE_DOC_TYPES, DocType
 
-        known = {d.value for d in DocType}
+        known = {d.value for d in DocType if d not in NON_INTAKE_DOC_TYPES}
         listed = [*self.required, *self.optional]
         unknown = sorted({d for d in listed if d not in known})
         if unknown:
@@ -100,6 +101,41 @@ class DocumentsPolicy(_Strict):
         return str(doc_type) in self.required
 
 
+ReviewRoleName = Literal["rlm_store", "rplm_media", "rplm_specialty"]
+ContactRoleName = Literal[
+    "authorized_signatory",
+    "billing_contact",
+    "leasing_manager",
+    "financial_controller",
+    "company_admin",
+]
+
+
+def _required_contacts() -> list[ContactRoleName]:
+    return ["authorized_signatory", "billing_contact"]
+
+
+def _optional_contacts() -> list[ContactRoleName]:
+    return ["leasing_manager", "financial_controller", "company_admin"]
+
+
+def _review_routing() -> dict[str, ReviewRoleName]:
+    return {"store": "rlm_store", "media": "rplm_media", "specialty": "rplm_specialty"}
+
+
+class SecondLevelContacts(_Strict):
+    required: list[ContactRoleName] = Field(default_factory=_required_contacts)
+    optional: list[ContactRoleName] = Field(default_factory=_optional_contacts)
+
+    @model_validator(mode="after")
+    def _each_role_once(self) -> SecondLevelContacts:
+        listed = [*self.required, *self.optional]
+        if len(set(listed)) != len(listed):
+            msg = "second_level_contacts: each role once"
+            raise ValueError(msg)
+        return self
+
+
 class PolicyConfig(_Strict):
     product_lines: list[str] = Field(min_length=1)
     existing_tenant_policy: Literal["sign_in", "allow_inquiry"] = "sign_in"
@@ -110,6 +146,19 @@ class PolicyConfig(_Strict):
     documents: DocumentsPolicy
     duplicate_policy: Literal["warn", "block"] = "warn"
     follow_on_reuse_hours: int = Field(default=24, ge=0, le=24 * 30)
+    # ---- Review lifecycle (L4) ---------------------------------------------------------
+    # Product line → reviewer role; the queue's region is the mall's region.
+    review_routing: dict[str, ReviewRoleName] = Field(default_factory=_review_routing)
+    second_level_contacts: SecondLevelContacts = SecondLevelContacts()
+    rejection_categories: list[str] = Field(
+        default_factory=lambda: ["incomplete_documents", "not_a_fit", "no_space", "other"]
+    )
+    after_rejection: str = (
+        "You can raise a new inquiry at any time, for example with updated documents or "
+        "for another mall."
+    )
+    require_contacts_before_approval: bool = True
+    auto_request_contacts_after_first_approval: bool = True
 
     @field_validator("product_lines")
     @classmethod
@@ -118,6 +167,14 @@ class PolicyConfig(_Strict):
             msg = "product_lines: each product line once"
             raise ValueError(msg)
         return value
+
+    @model_validator(mode="after")
+    def _every_line_routed(self) -> PolicyConfig:
+        unrouted = sorted(set(self.product_lines) - set(self.review_routing))
+        if unrouted:
+            msg = f"review_routing: no reviewer role for {', '.join(unrouted)}"
+            raise ValueError(msg)
+        return self
 
     def with_changes(self, **changes: Any) -> PolicyConfig:
         """A validated copy with some values changed (tests and tooling)."""

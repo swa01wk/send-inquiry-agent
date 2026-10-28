@@ -187,7 +187,11 @@ async def test_submit_once_notifies_and_tracks(client, app) -> None:
     assert notes[-1] == f"[ui_event] submitted reference={reference} (repeat)"
     assert len(app.state.services.submit.submissions) == 1
 
-    outbox = app.state.services.notifications.messages()
+    outbox = [
+        m
+        for m in app.state.services.notifications.messages()
+        if m["to"] in (EMAIL, MOBILE)  # the case's review_assigned goes to the reviewers
+    ]
     assert sorted(m["template"] for m in outbox) == ["submission_email", "submission_sms"]
     assert all(reference in m["body"] for m in outbox)
 

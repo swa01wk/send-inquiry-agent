@@ -44,6 +44,10 @@ ALLOWED_KEYS: dict[str, frozenset[str]] = {
     "follow_on_started": frozenset({"from_reference", "inquiry_seq", "reused_verification"}),
     "form_mode_entered": frozenset({"kind"}),
     "form_mode_left": frozenset(),
+    # Review lifecycle (L4)
+    "case_created": frozenset({"session"}),
+    "case_transition": frozenset({"event", "from_status", "to_status", "by", "outcome"}),
+    "effect_run": frozenset({"effect", "event", "outcome"}),
     "routing_decision": frozenset({"intent", "via", "confidence"}),
 }
 

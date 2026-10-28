@@ -1,0 +1,13 @@
+kind: action_required
+channel: email
+subject: Estimated sales data needed for $reference
+---
+Hello $first_name,
+
+The leasing team would like your estimated sales data for $brand at $mall.
+$remarks
+
+Upload one file here:
+$case_url
+
+Cenomi Tenant Central

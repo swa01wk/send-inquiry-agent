@@ -7,6 +7,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Form, Request, UploadFile
 
 from app.api.cards import build_document_upload_card, parse_doc_type, scope_card_data
+from app.api.case_cards import build_reupload_card, build_sales_data_card
 from app.api.deps import get_master_data, get_services, get_session_store, get_settings
 from app.api.errors import ApiError
 from app.api.limiter import limiter
@@ -19,6 +20,7 @@ from app.api.schemas import (
 from app.config import Settings
 from app.domain import draft_ops
 from app.domain.master import MasterData
+from app.domain.models import NON_INTAKE_DOC_TYPES, DocType
 from app.domain.summary import build_draft_summary
 from app.domain.validation import validate_document_extension, validate_document_size
 from app.gateway import GatewayError
@@ -60,6 +62,9 @@ async def upload_document(
         raise ApiError(400, size_err.code, size_err.message)
 
     session = await store.touch(session_id)
+    if parsed in NON_INTAKE_DOC_TYPES and session.mode != "case":
+        # Sales data is only taken for a reviewer's request after submission (L4 §3.5).
+        raise ApiError(400, "unknown_doc_type", "That document type isn't recognised.")
 
     try:
         ref = services.gateway.call_sync(
@@ -96,14 +101,7 @@ async def upload_document(
         raise ApiError(400, val_err.code, val_err.message)
 
     session.draft = updated
-    card = _scoped(
-        build_document_upload_card(
-            session.draft,
-            master,
-            max_mb=settings.max_upload_mb,
-        ),
-        session,
-    )
+    card = _scoped(_card_for(session, services, master, settings, parsed), session)
     _remember(session, card)
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
     services.audit.record(
@@ -151,14 +149,7 @@ async def delete_document(
         services.storage.delete(session_id, parsed, existing.file_id)
 
     session.draft = draft_ops.remove_document(session.draft, parsed)
-    card = _scoped(
-        build_document_upload_card(
-            session.draft,
-            master,
-            max_mb=settings.max_upload_mb,
-        ),
-        session,
-    )
+    card = _scoped(_card_for(session, services, master, settings, parsed), session)
     _remember(session, card)
     services.audit.record(
         session_id, "document_removed", actor="user", payload={"doc_type": parsed.value}
@@ -166,6 +157,31 @@ async def delete_document(
     store.save(session)
     draft = build_draft_summary(session.draft, master, changed_keys=[])
     return DeleteDocumentResponse(card=card, draft=draft)
+
+
+def _card_for(
+    session: Session,
+    services: ServiceContainer,
+    master: MasterData,
+    settings: Settings,
+    doc_type: DocType,
+) -> UiCard:
+    """The card the upload belongs to: the intake checklist, or in a case chat the
+    re-upload or sales-data card for the open request (L4 §3.5)."""
+    case = (
+        services.cases.get(session.case_id) if session.mode == "case" and session.case_id else None
+    )
+    if case is not None:
+        if doc_type == DocType.SALES_DATA:
+            return build_sales_data_card(
+                session.draft, case.open_request("sales_data"), max_mb=settings.max_upload_mb
+            )
+        request = case.open_request("reupload")
+        if request is not None:
+            return build_reupload_card(
+                session.draft, request, master, max_mb=settings.max_upload_mb
+            )
+    return build_document_upload_card(session.draft, master, max_mb=settings.max_upload_mb)
 
 
 def _scoped(card: UiCard, session: Session) -> UiCard:

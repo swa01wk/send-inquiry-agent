@@ -1,0 +1,12 @@
+kind: action_required
+channel: email
+subject: Your invitation to Cenomi Tenant Central
+---
+Hello $first_name,
+
+You've been invited to Cenomi Tenant Central for $brand, with the role: $role_label.
+
+Accept your invitation and set up your account:
+$accept_url
+
+Cenomi Tenant Central

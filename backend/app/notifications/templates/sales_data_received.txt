@@ -1,0 +1,11 @@
+kind: information
+channel: email
+subject: Sales data received for $reference
+---
+Hello $reviewer_name,
+
+The applicant uploaded estimated sales data for $reference ($brand).
+
+Open the case: $console_url
+
+Cenomi Tenant Central

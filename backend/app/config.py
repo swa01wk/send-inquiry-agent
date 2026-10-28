@@ -74,6 +74,14 @@ class Settings(BaseSettings):
         default="seed",
         validation_alias="MASTER_DATA_SOURCE",
     )
+    # ---- Review lifecycle (L4) ----------------------------------------------------------
+    # The reviewer console and /api/review/* (mock integrations only).
+    reviewer_console: bool = Field(default=False, validation_alias="REVIEWER_CONSOLE")
+    # Attempts to send an approved lead to Yardi before the case is flagged for operations.
+    yardi_max_attempts: int = Field(default=3, ge=1, le=10, validation_alias="YARDI_MAX_ATTEMPTS")
+    # The backend's own address, for links that hit the API (the mock Azure AD accept link).
+    public_api_url: str = Field(default="http://localhost:8000", validation_alias="PUBLIC_API_URL")
+    case_ttl_days: int = Field(default=30, validation_alias="CASE_TTL_DAYS")
     # Testing only: treat the model as unavailable, so every turn runs in form mode (L3 §3.14).
     form_mode: bool = Field(default=False, validation_alias="FORM_MODE")
     agent_mode: Literal["openai", "scripted"] = Field(

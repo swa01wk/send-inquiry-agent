@@ -1,0 +1,15 @@
+kind: action_required
+channel: email
+subject: Please re-upload documents for $reference
+---
+Hello $first_name,
+
+Our leasing team reviewed your inquiry for $brand at $mall and needs a new version of:
+$documents
+
+Their note: $remarks
+
+Upload the documents here (you won't need to fill anything in again):
+$case_url
+
+Cenomi Tenant Central
