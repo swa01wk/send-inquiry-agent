@@ -6,7 +6,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, Request, UploadFile
 
-from app.api.cards import build_document_upload_card, parse_doc_type
+from app.api.cards import build_document_upload_card, parse_doc_type, scope_card_data
 from app.api.deps import get_master_data, get_services, get_session_store, get_settings
 from app.api.errors import ApiError
 from app.api.limiter import limiter
@@ -96,10 +96,13 @@ async def upload_document(
         raise ApiError(400, val_err.code, val_err.message)
 
     session.draft = updated
-    card = build_document_upload_card(
-        session.draft,
-        master,
-        max_mb=settings.max_upload_mb,
+    card = _scoped(
+        build_document_upload_card(
+            session.draft,
+            master,
+            max_mb=settings.max_upload_mb,
+        ),
+        session,
     )
     _remember(session, card)
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
@@ -142,14 +145,19 @@ async def delete_document(
 
     session = await store.touch(session_id)
     existing = session.draft.documents.get(parsed)
-    if existing is not None:
+    if existing is not None and existing.copied_from is None:
+        # A document reused from an earlier inquiry (follow-on) still belongs to that
+        # inquiry: only this inquiry's reference to it is removed.
         services.storage.delete(session_id, parsed, existing.file_id)
 
     session.draft = draft_ops.remove_document(session.draft, parsed)
-    card = build_document_upload_card(
-        session.draft,
-        master,
-        max_mb=settings.max_upload_mb,
+    card = _scoped(
+        build_document_upload_card(
+            session.draft,
+            master,
+            max_mb=settings.max_upload_mb,
+        ),
+        session,
     )
     _remember(session, card)
     services.audit.record(
@@ -158,6 +166,12 @@ async def delete_document(
     store.save(session)
     draft = build_draft_summary(session.draft, master, changed_keys=[])
     return DeleteDocumentResponse(card=card, draft=draft)
+
+
+def _scoped(card: UiCard, session: Session) -> UiCard:
+    """The card id for the chat's current inquiry (follow-on inquiries, L3 §3.11)."""
+    scoped: UiCard = UiCard.model_validate(scope_card_data(card.model_dump(), session.inquiry_seq))
+    return scoped
 
 
 def _remember(session: Session, card: UiCard) -> None:

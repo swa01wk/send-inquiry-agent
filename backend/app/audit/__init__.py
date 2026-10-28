@@ -26,7 +26,9 @@ ALLOWED_KEYS: dict[str, frozenset[str]] = {
     "user_message": frozenset({"chars", "message_id"}),
     "ui_action": frozenset({"action", "outcome"}),
     "tool_called": frozenset({"layer", "name", "outcome", "latency_ms"}),
-    "field_written": frozenset({"key", "source", "confirmed", "value_sha256", "display"}),
+    "field_written": frozenset(
+        {"key", "source", "confirmed", "value_sha256", "display", "evidence"}
+    ),
     "field_confirmed": frozenset({"keys", "via"}),
     "guard_verdict": frozenset({"rule", "retried", "retractions"}),
     "card_shown": frozenset({"card_type", "card_id"}),
@@ -38,6 +40,8 @@ ALLOWED_KEYS: dict[str, frozenset[str]] = {
     "submit_result": frozenset({"submit_key", "outcome", "reference", "repeat"}),
     "notification_sent": frozenset({"template", "channel", "outcome", "message_id"}),
     "error": frozenset({"where", "kind"}),
+    "handoff_created": frozenset({"reason", "case_id", "created", "via"}),
+    "follow_on_started": frozenset({"from_reference", "inquiry_seq", "reused_verification"}),
 }
 
 # Never kept, whatever the event type says.

@@ -9,6 +9,7 @@ from app.audit import AuditLog
 from app.config import Settings
 from app.gateway import FaultPlan, Gateway
 from app.notifications import MockNotificationService
+from app.services.call_centre import CallCentreService, MockCallCentreService
 from app.services.cr import CrService, MockCrService
 from app.services.email_verification import (
     EmailVerificationService,
@@ -33,6 +34,7 @@ class ServiceContainer:
     gateway: Gateway
     audit: AuditLog
     resend: ResendLimiter
+    call_centre: CallCentreService
 
 
 def build_services(settings: Settings) -> ServiceContainer:
@@ -66,4 +68,9 @@ def build_services(settings: Settings) -> ServiceContainer:
         gateway=Gateway(faults=FaultPlan.parse(settings.mock_faults), audit=audit),
         audit=audit,
         resend=ResendLimiter(data_dir),
+        call_centre=MockCallCentreService(
+            notifications=notifications,
+            inbox_email=settings.call_centre_email,
+            data_dir=data_dir,
+        ),
     )

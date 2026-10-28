@@ -55,6 +55,8 @@ class Session:
     # What the user saw: [{id, role: "user"|"assistant", text}] and the latest card per id.
     transcript: list[dict[str, str]] = field(default_factory=list)
     cards: dict[str, dict[str, Any]] = field(default_factory=dict)
+    # Which inquiry of this chat is current: 1, then 2, 3… for follow-on inquiries (L3 §3.11).
+    inquiry_seq: int = 1
 
     def add_message(self, message_id: str, role: str, text: str) -> None:
         self.transcript.append({"id": message_id, "role": role, "text": text})
@@ -84,6 +86,7 @@ class Session:
             "script_step": self.script_step,
             "transcript": self.transcript,
             "cards": self.cards,
+            "inquiry_seq": self.inquiry_seq,
         }
 
     @classmethod
@@ -102,6 +105,7 @@ class Session:
             script_step=int(raw.get("script_step", 0)),
             transcript=list(raw.get("transcript", [])),
             cards=dict(raw.get("cards", {})),
+            inquiry_seq=int(raw.get("inquiry_seq", 1)),
         )
 
 

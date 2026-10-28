@@ -54,6 +54,16 @@ class Settings(BaseSettings):
     email_link_ttl_hours: int = Field(default=72, validation_alias="EMAIL_LINK_TTL_HOURS")
     resume_ttl_days: int = Field(default=7, validation_alias="RESUME_TTL_DAYS")
     track_ttl_days: int = Field(default=365, validation_alias="TRACK_TTL_DAYS")
+    # Human handoff (L3 §3.6): what the handoff card shows, and where mock cases are sent.
+    # Placeholders until Cenomi confirms the real call-centre details.
+    call_centre_phone: str = Field(default="+966 11 000 0000", validation_alias="CALL_CENTRE_PHONE")
+    call_centre_email: str = Field(
+        default="leasing-callcentre@example.com", validation_alias="CALL_CENTRE_EMAIL"
+    )
+    call_centre_hours: str = Field(
+        default="Sunday to Thursday, 9 am to 5 pm (Riyadh time)",
+        validation_alias="CALL_CENTRE_HOURS",
+    )
 
     # Business-rule policy file (L3 §3.7); empty = the packaged app/policy/policy.yaml.
     policy_path: str | None = Field(default=None, validation_alias="POLICY_PATH")

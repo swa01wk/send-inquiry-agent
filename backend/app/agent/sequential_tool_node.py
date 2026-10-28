@@ -26,6 +26,7 @@ def _apply_command(
     cards_shown = list(state["cards_shown"])
     confirm_card_keys = dict(state.get("confirm_card_keys", {}))
     confirm_card_turns = dict(state.get("confirm_card_turns", {}))
+    inquiry_seq = int(state.get("inquiry_seq", 1))
     new_messages: list[BaseMessage] = []
 
     for item in items:
@@ -39,6 +40,8 @@ def _apply_command(
                 confirm_card_keys = dict(update["confirm_card_keys"])
             if "confirm_card_turns" in update:
                 confirm_card_turns = dict(update["confirm_card_turns"])
+            if "inquiry_seq" in update:
+                inquiry_seq = int(update["inquiry_seq"])
             for message in update.get("messages", []):
                 if isinstance(message, ToolMessage):
                     new_messages.append(message)
@@ -55,6 +58,7 @@ def _apply_command(
         "cards_shown": cards_shown,
         "confirm_card_keys": confirm_card_keys,
         "confirm_card_turns": confirm_card_turns,
+        "inquiry_seq": inquiry_seq,
         "messages": [*state["messages"], *new_messages],
     }
 
@@ -90,6 +94,7 @@ def build_sequential_tool_node(tools: list[Any]) -> Any:
             "cards_shown": working["cards_shown"],
             "confirm_card_keys": working.get("confirm_card_keys", {}),
             "confirm_card_turns": working.get("confirm_card_turns", {}),
+            "inquiry_seq": working.get("inquiry_seq", state.get("inquiry_seq", 1)),
             "messages": working["messages"][len(state["messages"]) :],
         }
 

@@ -1,0 +1,20 @@
+kind: action_required
+channel: email
+subject: Call-centre case $case_id: $brand ($short_ref)
+---
+A leasing applicant needs a person.
+
+Case: $case_id
+Inquiry: $short_ref
+Reason: $reason_label
+
+Applicant: $contact_name
+Brand: $brand
+Mall: $mall
+
+Where they are:
+$summary
+
+Open the case in the Tenant Admin Platform to continue the same inquiry with them.
+
+Cenomi Tenant Central

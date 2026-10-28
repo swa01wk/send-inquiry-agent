@@ -11,13 +11,19 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Request
 
 from app.agent.runtime import AgentRuntime
-from app.api.cards import VERIFICATION_CARD_ID, _mask_email
+from app.api.cards import (
+    VERIFICATION_CARD_ID,
+    _mask_email,
+    scope_card_data,
+    scoped_card_id,
+)
 from app.api.deps import get_services, get_session_store
 from app.api.deps import get_settings as get_settings_dep
 from app.api.errors import ApiError
 from app.api.limiter import limiter
 from app.api.schemas import VerifyEmailRequest, VerifyEmailResponse
 from app.config import Settings, get_settings
+from app.domain import draft_ops
 from app.domain.master import load_master_data
 from app.domain.models import FieldKey
 from app.gateway import GatewayError
@@ -88,11 +94,15 @@ async def verify_email_link(
 
     draft = session.draft.model_copy(deep=True)
     draft.email_verified = True
+    draft_ops.stamp_verified(draft)
     session.draft = draft
     # Refresh the saved card so a resumed chat shows the email as verified.
-    previous = session.cards.get(VERIFICATION_CARD_ID)
+    card_key = scoped_card_id(VERIFICATION_CARD_ID, session.inquiry_seq)
+    previous = session.cards.get(card_key)
     runtime = AgentRuntime(services=services, master=load_master_data(), settings=settings)
-    card = runtime.verification_card(draft, session.id).model_dump()
+    card = scope_card_data(
+        runtime.verification_card(draft, session.id).model_dump(), session.inquiry_seq
+    )
     if previous is not None:
         card["message_id"] = previous.get("message_id")
     session.remember_card(card)

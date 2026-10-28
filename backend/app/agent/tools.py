@@ -9,11 +9,15 @@ from langchain_core.messages import HumanMessage, ToolMessage
 from langchain_core.tools import tool
 from langgraph.prebuilt.tool_node import InjectedState, ToolRuntime
 from langgraph.types import Command
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.agent.blockers import format_blockers
 from app.agent.brand_infer import fill_brands_from_user_message
-from app.agent.confirm_policy import key_shown_on_earlier_turn, keys_blocked_from_confirmation
+from app.agent.confirm_policy import (
+    expresses_general_doubt,
+    key_shown_on_earlier_turn,
+    keys_blocked_from_confirmation,
+)
 from app.agent.context import message_context
 from app.agent.mall_match import (
     fill_mentioned_malls,
@@ -36,7 +40,7 @@ from app.api.schemas import UiCard
 from app.domain import draft_ops
 from app.domain import validation as v
 from app.domain.faq import search_faq as faq_search
-from app.domain.models import FieldKey, InquiryDraft, Source
+from app.domain.models import EVIDENCE_MAX_CHARS, FieldKey, InquiryDraft, Source
 from app.domain.rules import can_submit, contact_verified
 from app.domain.summary import build_draft_summary
 from app.domain.validation import validate_cr_number
@@ -60,6 +64,58 @@ class DraftFieldUpdate(BaseModel):
     key: str
     value: object
     source: Literal["user", "derived"]
+    evidence: str | None = Field(
+        default=None,
+        description=(
+            "Only for source=derived: the user's own words the value was derived from, "
+            f"quoted exactly (at most {EVIDENCE_MAX_CHARS} characters), e.g. "
+            "'specialty coffee kiosk'. The user sees it on the confirm card."
+        ),
+    )
+
+
+_QUOTE_STRIP = " \t\n\"'“”‘’«».,;:!?؟،"
+
+
+def _normalise_quote(text: str) -> str:
+    return " ".join(v.normalise_digits(text).casefold().split()).strip(_QUOTE_STRIP)
+
+
+def _user_words(state: AgentState) -> str:
+    """Everything the user typed in this conversation (UI notes excluded), normalised."""
+    parts: list[str] = []
+    for message in state["messages"]:
+        if not isinstance(message, HumanMessage):
+            continue
+        content = message.content
+        text = content if isinstance(content, str) else str(content)
+        if not text.startswith("[ui_event]"):
+            parts.append(text)
+    return _normalise_quote(" \n ".join(parts))
+
+
+def _evidence_for(
+    fields: list[DraftFieldUpdate], state: AgentState
+) -> tuple[dict[str, str], list[str]]:
+    """Evidence for derived entries that really quotes the user (L3 §3.9).
+
+    A quote the user never wrote is dropped (the value is still saved), so the confirm
+    card never shows words put in the user's mouth.
+    """
+    kept: dict[str, str] = {}
+    dropped: list[str] = []
+    said = _user_words(state)
+    for item in fields:
+        if item.source != "derived" or not item.evidence or not item.evidence.strip():
+            continue
+        quote = " ".join(item.evidence.split()).strip(_QUOTE_STRIP)
+        if len(quote) > EVIDENCE_MAX_CHARS:
+            quote = quote[:EVIDENCE_MAX_CHARS].rsplit(" ", 1)[0]
+        if quote and _normalise_quote(quote) in said:
+            kept[item.key] = quote
+        else:
+            dropped.append(item.key)
+    return kept, dropped
 
 
 def _emit_draft(draft: InquiryDraft, changed_keys: list[str], runtime: ToolRuntime) -> None:
@@ -355,7 +411,10 @@ def update_draft(
         msg = "No fields written. " + "; ".join(rejected)
         return _tool_result(runtime, draft=draft, content=msg)
 
-    updated, written, errors = draft_ops.write_fields(draft, entries, master=rt.master)
+    evidence, evidence_dropped = _evidence_for(fields, state)
+    updated, written, errors = draft_ops.write_fields(
+        draft, entries, master=rt.master, evidence=evidence
+    )
     updated, brands_filled = fill_brands_from_user_message(updated, user_text)
     for key in brands_filled:
         if key not in written:
@@ -420,6 +479,10 @@ def update_draft(
         parts.append("Errors: " + "; ".join(f"{k}: {v.message}" for k, v in errors.items()))
     if rejected:
         parts.append("Rejected: " + "; ".join(rejected))
+    if evidence_dropped:
+        parts.append(
+            "Evidence ignored (not the user's exact words): " + ", ".join(evidence_dropped) + "."
+        )
     return _tool_result(
         runtime,
         draft=updated,
@@ -439,7 +502,7 @@ def _last_user_text(state: AgentState) -> str:
         text = content if isinstance(content, str) else str(content)
         if text.startswith("[ui_event]"):
             continue
-        return text
+        return v.normalise_digits(text)
     return ""
 
 
@@ -453,7 +516,11 @@ def confirm_fields(
     rt = runtime_from_config(runtime.config)
     draft = state["draft"]
     cards_shown = list(state["cards_shown"])
-    blocked = keys_blocked_from_confirmation(_last_user_text(state))
+    user_text = _last_user_text(state)
+    blocked = keys_blocked_from_confirmation(user_text)
+    if expresses_general_doubt(user_text):
+        # "Hmm, not sure" / «مو متأكد» doubts whatever was just asked: confirm nothing.
+        blocked = blocked | frozenset(keys)
     confirm_card_keys = dict(state.get("confirm_card_keys", {}))
     confirm_card_turns = dict(state.get("confirm_card_turns", {}))
     turn_index = state.get("turn_index", 0)
@@ -807,8 +874,11 @@ def get_inquiry_status(
 ) -> str:
     """Look up inquiry status by reference number."""
     rt = runtime_from_config(runtime.config)
-    own = state["draft"].reference
-    if reference.strip().upper() != (own or "").upper():
+    draft = state["draft"]
+    # This chat's own inquiries: the current one and, after a follow-on, the earlier one.
+    owned = {ref.upper(): ref for ref in (draft.reference, draft.follow_on_of) if ref}
+    own = owned.get(reference.strip().upper())
+    if own is None:
         # A reference alone must not expose an applicant's case (L3 §3.4).
         return (
             "For privacy, only this conversation's own inquiry can be looked up here. "
@@ -828,6 +898,115 @@ def get_inquiry_status(
     )
 
 
+@tool
+def start_follow_on(
+    state: Annotated[AgentState, InjectedState],
+    runtime: ToolRuntime,
+    mall_id: str | None = None,
+) -> Command[Any]:
+    """Start another inquiry for a different mall, only after this one was submitted.
+
+    Company, brand, unit type, sales category and contact are copied for the user to
+    confirm in one card, and the Company and Brand Profiles are reused. Pass mall_id
+    only for a mall the user named; then ask only for anything still missing (the mall,
+    if not given, and any space details).
+    """
+    rt = runtime_from_config(runtime.config)
+    draft = state["draft"]
+    reference = draft.reference
+    if not reference:
+        return _tool_result(
+            runtime,
+            draft=draft,
+            content=(
+                "No submitted inquiry yet, so there is nothing to follow on from. One mall "
+                "per inquiry: finish and submit this one, then start another for the next mall."
+            ),
+        )
+    previous_malls = draft.fields[FieldKey.MALLS].value
+    previous_ids = [str(m) for m in previous_malls] if isinstance(previous_malls, list) else []
+    mall_note = ""
+    accepted: list[str] = []
+    if mall_id:
+        if mall_id in previous_ids:
+            return _tool_result(
+                runtime,
+                draft=draft,
+                content=(
+                    f"{mall_id} is the mall of {reference}, already submitted. Ask which other "
+                    "mall they'd like."
+                ),
+            )
+        accepted, refused = filter_mall_ids([mall_id], [], _last_user_text(state), rt.master)
+        if refused:
+            mall_note = (
+                f" Mall not saved ({mall_id}: not named by the user or unknown); ask which "
+                "mall, or use show_mall_picker for the city."
+            )
+
+    policy = get_policy()
+    new_draft, copied, reused = draft_ops.follow_on_draft(
+        draft, reuse_hours=policy.follow_on_reuse_hours
+    )
+    changed = list(copied)
+    if accepted:
+        new_draft, written, _errors = draft_ops.write_fields(
+            new_draft, [(FieldKey.MALLS.value, accepted, Source.USER)], master=rt.master
+        )
+        changed.extend(written)
+
+    inquiry_seq = int(state.get("inquiry_seq", 1)) + 1
+    card_id = allocate_confirm_card_id([])
+    card = build_confirm_fields_card(
+        new_draft,
+        rt.master,
+        copied,
+        card_id=card_id,
+        title=f"Same details as {reference}",
+    )
+    _emit_draft(new_draft, changed, runtime)
+    _emit_card(card, runtime)
+    rt.services.audit.record(
+        state["session_id"],
+        "follow_on_started",
+        actor="agent",
+        payload={
+            "from_reference": reference,
+            "inquiry_seq": inquiry_seq,
+            "reused_verification": reused,
+        },
+    )
+
+    mall_text = (
+        f"for {rt.master.label_for('malls', accepted[0]) or accepted[0]}"
+        if accepted
+        else "with no mall yet"
+    )
+    verification = (
+        "The contact is still verified (verified recently, unchanged)."
+        if reused
+        else "The contact needs verifying again (send_verification after they confirm)."
+    )
+    content = (
+        f"follow_on_started from={reference}. A new inquiry {mall_text} is now current. "
+        f"Company, brand, unit type, sales category and contact are on one card titled "
+        f"'Same details as {reference}' for the user to confirm; Company Profile and Brand "
+        f"Profile are reused. {verification} Ask only for what's still missing: "
+        f"{'' if accepted else 'the mall, '}any space details."
+        f"{mall_note}"
+    )
+    return Command(
+        update={
+            "draft": new_draft,
+            "cards_shown": [card_id],
+            "confirm_card_keys": {card_id: list(copied)},
+            "confirm_card_turns": {card_id: state["turn_index"]},
+            "inquiry_seq": inquiry_seq,
+            "messages": [ToolMessage(content=content, tool_call_id=runtime.tool_call_id or "")],
+        }
+    )
+
+
 TOOLS = [
     verify_cr,
     skip_cr,
@@ -842,4 +1021,5 @@ TOOLS = [
     suggest_replies,
     search_faq,
     get_inquiry_status,
+    start_follow_on,
 ]

@@ -17,6 +17,7 @@ CardType = Literal[
     "review",
     "success",
     "quick_replies",
+    "handoff",
 ]
 
 StepState = Literal["done", "current", "upcoming"]
@@ -52,6 +53,8 @@ class ConfirmFieldRow(BaseModel):
     display: str | None
     source: str | None
     confirmed: bool
+    # Derived values: the user's words the value came from ("from: '…'", L3 §3.9).
+    evidence: str | None = None
 
 
 class ConfirmFieldsPayload(BaseModel):
@@ -155,6 +158,17 @@ class SuccessPayload(BaseModel):
     reference: str
     tracking_url: str
     steps: list[SuccessStep]
+
+
+class HandoffPayload(BaseModel):
+    """A person is reachable (L3 §3.6): the call centre's details and the inquiry's ref."""
+
+    phone: str
+    email: str
+    hours: str
+    short_ref: str
+    case_id: str
+    reason: str
 
 
 class QuickReplyOption(BaseModel):

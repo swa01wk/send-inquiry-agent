@@ -10,13 +10,16 @@ from langchain_core.messages import HumanMessage
 
 from app.agent.context import message_context
 from app.agent.events import SseEvent
+from app.agent.handoff import start_handoff
 from app.agent.runtime import AgentRuntime
 from app.api.cards import (
+    HANDOFF_CARD_ID,
     build_confirm_fields_card,
     build_document_upload_card,
     build_review_card,
     build_success_card,
     remember_confirm_card_keys,
+    split_card_id,
 )
 from app.api.schemas import UiCard
 from app.domain import draft_ops
@@ -74,6 +77,7 @@ async def handle_ui_action(
         "accept_and_submit": _accept_and_submit,
         "documents_updated": _documents_updated,
         "set_document_number": _set_document_number,
+        "request_handoff": _request_handoff,
     }
     handler = handlers.get(action)
     if handler is None:
@@ -172,6 +176,7 @@ async def _verify_email(
             events=_verification_events(session, draft, runtime, []),
         )
     draft.email_verified = True
+    draft_ops.stamp_verified(draft)
     session.draft = draft
     _audit(runtime, session, "verification_result", channel="email", result="verified")
     return ActionResult(
@@ -225,7 +230,7 @@ async def _submit_otp(
     runtime: AgentRuntime,
 ) -> ActionResult:
     """Mobile OTP. The code never reaches the LLM; only the outcome does."""
-    code = str(payload.get("code", ""))
+    code = v.normalise_digits(str(payload.get("code", ""))).strip()
     draft = session.draft.model_copy(deep=True)
     mobile = draft.fields[FieldKey.MOBILE].value
     if not mobile or draft.otp_sent_to != str(mobile):
@@ -247,6 +252,7 @@ async def _submit_otp(
 
     if verified:
         draft.mobile_verified = True
+        draft_ops.stamp_verified(draft)
         session.draft = draft
         _audit(runtime, session, "verification_result", channel="sms", result="verified")
         return ActionResult(
@@ -367,9 +373,13 @@ async def _confirm_card(
     session: Session,
     runtime: AgentRuntime,
 ) -> ActionResult:
-    card_id = payload.get("card_id")
-    if not isinstance(card_id, str):
+    raw_card_id = payload.get("card_id")
+    if not isinstance(raw_card_id, str):
         return ActionResult(note=HumanMessage(content="[ui_event] confirm_failed"))
+    card_id, card_seq = split_card_id(raw_card_id)
+    if card_seq != session.inquiry_seq:
+        # A card from an earlier inquiry in this chat (follow-on): it can't change this one.
+        return ActionResult(note=HumanMessage(content="[ui_event] confirm_failed stale_card"))
     listed = session.confirm_card_keys.get(card_id)
     if not listed:
         return ActionResult(note=HumanMessage(content="[ui_event] confirm_failed"))
@@ -476,7 +486,7 @@ async def _accept_and_submit(
         return ActionResult(
             note=HumanMessage(content="[ui_event] submit_blocked terms_not_accepted"),
         )
-    submit_key = f"inq:{session.id}:v1"
+    submit_key = submit_idempotency_key(session)
 
     # Submit once (M0 §7.2 at Day 2 depth): a second press shows the same reference.
     if session.draft.reference:
@@ -559,6 +569,40 @@ async def _accept_and_submit(
         ],
         changed_keys=["reference", "terms_accepted"],
     )
+
+
+def submit_idempotency_key(session: Session) -> str:
+    """One key per inquiry: `inq:<session>:v1`, then v2, v3… for follow-on inquiries."""
+    return f"inq:{session.id}:v{session.inquiry_seq}"
+
+
+async def _request_handoff(
+    payload: dict[str, Any],
+    session: Session,
+    runtime: AgentRuntime,
+) -> ActionResult:
+    """Hand the inquiry to a person (L3 §3.6): call-centre case plus the handoff card.
+
+    Needs no model, so form mode's "Ask us to call you" uses it too. The router's
+    `human_help` intent can call `handle_ui_action("request_handoff", …)` directly.
+    """
+    reason = payload.get("reason")
+    if reason not in ("user_asked", "model_unavailable"):
+        reason = "user_asked"
+    recent = [m["text"] for m in session.transcript if m.get("role") == "user"]
+    result = await start_handoff(
+        session_id=session.id,
+        inquiry_seq=session.inquiry_seq,
+        draft=session.draft,
+        recent_user_messages=recent,
+        reason=str(reason),
+        runtime=runtime,
+    )
+    events: list[SseEvent] = []
+    if result.card is not None:
+        session.cards_shown.add(HANDOFF_CARD_ID)
+        events.append(_card_event(session, result.card))
+    return ActionResult(note=HumanMessage(content=result.note), events=events)
 
 
 def tracking_url(runtime: AgentRuntime, session_id: str, reference: str) -> str:

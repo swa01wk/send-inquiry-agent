@@ -22,7 +22,7 @@ The single place to see what's built, what's next and how the agent maps to the 
 | --- | --- | --- | --- | --- | --- | --- |
 | Day 1 | Tue 27 Oct | Foundation: 11c, harness, policy and master data | #24 harness; #26 card fix; #27 policy; #28 CI without Playwright; #29 live targets load `.env` | #25 (11c) | ✅ | Live checks recorded in `docs/eval-notes.md` |
 | Day 2 | Wed 28 Oct | Simulated Cenomi, verification by link, resume, submit once, tracking; L3 core: restart-safe store, audit log v0, thin gateway | Day 2 backend PR (#31) | Day 2 frontend track | ✅ | Verify/resume/status/dev inbox, resend countdown, S1 Playwright, prompt notes |
-| Day 3 | Thu 29 Oct | Routing, handoff, Arabic, follow-on; L3 core: form mode, evidence — every L3 capability at demo depth | | | ⬜ | |
+| Day 3 | Thu 29 Oct | Routing, handoff, Arabic, follow-on; L3 core: form mode, evidence — every L3 capability at demo depth | Day 3 backend PR A (handoff, Arabic, follow-on, evidence); PR B (form mode, S2/S3/S13) | | 🟡 | Backend first; router, handoff in chat, follow-on UI and prompt from `prompts/breadth/day3-routing-arabic-follow-on.md` on top |
 | Day 4 | Fri 30 Oct | Review lifecycle, reviewer console with audit timeline, case assistant — L4 core | | | ⬜ | |
 | Day 5 | Mon 2 Nov | Yardi handover, reviewer assistant, intake channels; L5 core: clock, triggers, notification policy, "Needs attention", drafted reminders; demo | | | ⬜ | |
 | Sprint 1 | 3–16 Nov | M0 and L3 gates (incl. E10, intake channels); full test harness | | | ⬜ | |
@@ -58,8 +58,8 @@ Each step is one Cursor prompt in `prompts/` and normally one PR.
 | 18 | `18-integration-adapters.md` | Simulated Cenomi: mocks, scenario data, faults, notification outbox, dev inbox | E4, E7 | 🟡 | Day 2 backend PR (#31), Day 2 frontend | `/dev/inbox`, outbox API wired in e2e. Left: contract tests, `MOCK_LATENCY_MS`, sandbox/live stubs |
 | 19 | `19-email-link-resume.md` | Email-link verification, cross-device resume, resend limits | E3 | 🟡 | Day 2 backend PR (#31), Day 2 frontend | `/inquiry/verify`, resume hydrate, resend countdown. Left: "Continue later", card polling |
 | 20 | `20-status-page-notifications.md` | Submission email and SMS, tokenised status page | E4, E5 | 🟡 | Day 2 backend PR (#31), Day 2 frontend | Status page, success card tracking link. Left: retried failed sends |
-| 21 | `21-routing-handoff.md` | Intent router, redirect agent, human handoff, form mode when the model is down | E1 | ⬜ | | |
-| 21b | `21b-arabic-follow-on-duplicates.md` | Arabic safety nets; follow-on inquiries; duplicate check | E8 | ⬜ | | |
+| 21 | `21-routing-handoff.md` | Intent router, redirect agent, human handoff, form mode when the model is down | E1 | 🟡 | Day 3 backend PR A | Built: `CallCentreService` mock (cases in the dev inbox), `request_handoff` action, `handoff` card, `CALL_CENTRE_*`. Left: router and redirect (frontend track), handoff card in the chat, the other handoff triggers (Sprint 1), form mode (PR B) |
+| 21b | `21b-arabic-follow-on-duplicates.md` | Arabic safety nets; follow-on inquiries; duplicate check | E8 | 🟡 | Day 3 backend PR A | Built: Arabic-Indic digits through every numeric rule, Arabic doubt for every derived field, `start_follow_on` (copy, reuse verification and profiles, card ids per inquiry, `follow_on_of`). Left: Arabic capture words in the guard and the follow-on divider and prompt (frontend track); duplicate check, follow-on from the tracking page, Arabic golden (Sprint 1) |
 | 21c | `21c-intake-channels.md` | Call-centre assisted intake (§7.1.1 a2, §7.1.2 a2); existing tenants via Leasing Opportunities (§7.1.2 a1); public-page sign-in path (§7.1); `staff` source; contacts prefill and remove | E10, C1–C6 | ⬜ | | Added after the §7.1 review |
 | 22 | `22-l3-gate.md` | Stories S1–S13, KPI report, the L3 gate run (evidence built on Day 3) | E1–E10 | ⬜ | | Closes the L3 gate |
 | 23 | `23-lifecycle-core.md` | Case data, live L4 transitions, review routing, effects, Azure AD and Yardi mocks | X1, X2, X5, X7 | ⬜ | | |
@@ -104,15 +104,15 @@ Summary by workflow. Line-by-line coverage of every statement in §7.1, §7.1.1 
 | L2 | All form paths conversational with no field loss | v1; parity goldens (12) | 🟡 |
 | L2 | Clear handoff to the original transaction | 21; call-centre continuation (21c) | ⬜ |
 | L3 | 1 Intent detection and routing | 16 (supervisor), 21 (router) | ⬜ |
-| L3 | 2 Multi-field extraction | v1; Arabic in 21b; evidence in 22 | 🟡 |
+| L3 | 2 Multi-field extraction | v1; Arabic digits and doubt (Day 3); evidence for derived values on the confirm card and in the audit (Day 3) | 🟡 |
 | L3 | 3 Entity resolution | v1 mall and category matching; Arabic mall names and aliases matched (17) | 🟡 |
-| L3 | 4 Verified context reuse | v1 CR prefill; follow-on inquiries in 21b | 🟡 |
+| L3 | 4 Verified context reuse | v1 CR prefill; follow-on inquiries reuse verified details (Day 3, 21b) | 🟡 |
 | L3 | 5 Adaptive slot filling | v1 bundles; documents-complete turn in 11c | 🟡 |
 | L3 | 6 Deterministic validation | v1; "confirm only what was shown" in 11c; policy in 17 | 🟡 |
 | L3 | 7 Durable drafts and resume | 13, 19 (Day 2: JSON snapshots, resume by link) | 🟡 |
 | L3 | 8 Explicit review and consent | v1 | ✅ |
 | L3 | 9 Reliable tool and API execution | 14, 18 (Day 2: thin gateway, submit once) | 🟡 |
-| L3 | 10 Audit and recovery | 15, 18, 21 (Day 2: audit log v0, faults end in clear notes) | 🟡 |
+| L3 | 10 Audit and recovery | 15, 18, 21 (Day 2: audit log v0, faults end in clear notes; Day 3: handoff to the call centre with a case, `handoff_created` audit) | 🟡 |
 | L4 | 1 Outcome framing | 25 | ⬜ |
 | L4 | 2 Structured context assembly | 24 (case brief) | ⬜ |
 | L4 | 3 Grounded derivation and prefill | Day 3 evidence (22), 26 (reuse primary contact), 21c (tenant-record prefill) | ⬜ |
