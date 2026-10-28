@@ -440,3 +440,37 @@ async def test_effects_run_once_and_a_failure_never_rolls_back(life) -> None:
     await run_effects(_runtime(app), case, event)
     await run_effects(_runtime(app), _case(app, reference), event)
     assert len(outbox(app, APPLICANT, "inquiry_rejected")) == 1
+
+
+async def test_reviewer_relinks_the_yardi_company_and_brand(life) -> None:
+    client, app = life
+    reference = await submit_case(client, app)
+    headers = {"X-Reviewer-Id": STORE_CENTRAL}
+    assert (await client.get("/api/review/yardi/companies?q=Bean")).status_code == 401
+
+    found = await client.get("/api/review/yardi/companies?q=Bean Street", headers=headers)
+    assert found.status_code == 200
+    ids = [c["id"] for c in found.json()]
+    assert "YC-1001" in ids and "YC-1002" in ids
+    brands = await client.get("/api/review/yardi/companies/YC-1001/brands", headers=headers)
+    assert [b["id"] for b in brands.json()] == ["YB-2001", "YB-2002"]
+    missing = await client.get("/api/review/yardi/companies/YC-0000/brands", headers=headers)
+    assert missing.status_code == 404
+
+    # Relinking is a second-review action.
+    early = await act(client, STORE_CENTRAL, reference, "relink_company", company_id="YC-1001")
+    assert early.status_code == 409
+    await _approve_first(client, app, reference)
+    detail = (await client.get(f"/api/review/cases/{reference}", headers=headers)).json()
+    assert {"relink_company", "relink_brand"} <= set(detail["legal_actions"])
+
+    unknown = await act(client, STORE_CENTRAL, reference, "relink_company", company_id="YC-0000")
+    assert unknown.status_code == 400
+    linked = await act(client, STORE_CENTRAL, reference, "relink_company", company_id="YC-1001")
+    assert linked.status_code == 200, linked.text
+    other = await act(client, STORE_CENTRAL, reference, "relink_brand", brand_id="YB-2003")
+    assert other.status_code == 400  # YC-1002's brand
+    branded = await act(client, STORE_CENTRAL, reference, "relink_brand", brand_id="YB-2001")
+    assert branded.json()["brief"]["yardi"]["company_id"] == "YC-1001"
+    assert branded.json()["brief"]["yardi"]["brand_id"] == "YB-2001"
+    assert _case(app, reference).yardi.brand_id == "YB-2001"

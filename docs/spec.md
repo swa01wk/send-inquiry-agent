@@ -447,6 +447,8 @@ Contacts being collected live on the case session (`Session.contacts_draft`); `w
 | GET | `/api/review/cases?waiting_on=` | Queue `[{reference, brand, company, mall, product_line, region, status, stage_label, waiting_on, age_days, last_change, open_requests, possible_duplicate, follow_on_of, needs_operations}]` |
 | GET | `/api/review/cases/{reference}` | `{brief: CaseBrief, timeline:[{at, actor, type, summary}], legal_actions, approval_blockers, rejection_categories, reupload_doc_types}` |
 | GET | `/api/review/cases/{reference}/documents/{file_id}` | The file |
+| GET | `/api/review/yardi/companies?q=` | Active Yardi companies by the first word of the name `[{id, name}]`: the options for `relink_company` |
+| GET | `/api/review/yardi/companies/{company_id}/brands` | `[{id, name, source}]` (`lease` \| `proposal`): the options for `relink_brand`. 404 `company_not_found` |
 | POST | `/api/review/cases/{reference}/actions` | `{action, payload}` → the updated detail. Actions: `request_reupload {doc_types, remarks}`, `reject {remarks, reason_category?}`, `approve_first`, `request_contacts {remarks?}`, `request_sales_data {remarks?}`, `withdraw_request {kind}`, `relink_company {company_id}`, `relink_brand {brand_id}`, `remove_contact {role}`, `approve`. Errors: 400 `unknown_action` / `invalid_payload`, 403 `not_in_queue` / `not_allowed`, 409 `illegal_transition` |
 
 **Case brief** (`domain/case_brief.py`, deterministic): applicant, company, brand, product line, mall, region, CR status, every field with source, confirmation and evidence, verification, documents with replaced versions, sales data, contacts, requests, decisions, follow-on, Yardi link, stage ages, and a next-decision checklist from the policy.
