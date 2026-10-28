@@ -29,6 +29,7 @@ const baseDraft = (): DraftSummary => ({
   },
   can_submit: false,
   changed_keys: [],
+  follow_on_of: null,
 })
 
 const docCard =

@@ -1,0 +1,35 @@
+{"text": "We want a kiosk at Riyadh Mall A", "intent": "inquiry_intake", "phase": "gate"}
+{"text": "Hi, I'm looking to lease space for a café", "intent": "inquiry_intake", "phase": "gate"}
+{"text": "What's happening with GEO-SPC-123456?", "intent": "inquiry_status", "phase": "gate"}
+{"text": "Can I talk to someone?", "intent": "human_help", "phase": "gate"}
+{"text": "Please call me back", "intent": "human_help", "phase": "collecting"}
+{"text": "أبغى أتكلم مع موظف", "intent": "human_help", "phase": "gate"}
+{"text": "We already lease two stores and want a third unit", "intent": "existing_tenant_new_space", "phase": "gate"}
+{"text": "Our CR is 1010000000 and we need another shop", "intent": "existing_tenant_new_space", "phase": "gate"}
+{"text": "I have a question about signage rules in the mall", "intent": "general_inquiry", "phase": "gate"}
+{"text": "What are your policies on subleasing?", "intent": "general_inquiry", "phase": "gate"}
+{"text": "Write me a poem about the moon", "intent": "off_topic", "phase": "gate"}
+{"text": "Tell me a joke", "intent": "off_topic", "phase": "gate"}
+{"text": "Bean Street Trading, specialty coffee kiosk, 30 sqm at Jeddah Mall B", "intent": "inquiry_intake", "phase": "collecting"}
+{"text": "Ahmed Ali, ahmed@example.com, 0501234567", "intent": "inquiry_intake", "phase": "collecting"}
+{"text": "What documents do I need?", "intent": "inquiry_intake", "phase": "collecting"}
+{"text": "Status of GEO-STR-100001 please", "intent": "inquiry_status", "phase": "review"}
+{"text": "GEO-MED-654321 — any update?", "intent": "inquiry_status", "phase": "submitted"}
+{"text": "نبي متجر ثاني في مول ثاني", "intent": "existing_tenant_new_space", "phase": "gate"}
+{"text": "عندنا فرع ونبي وحدة إضافية", "intent": "existing_tenant_new_space", "phase": "gate"}
+{"text": "كشك قهوة في الرياض مول أ", "intent": "inquiry_intake", "phase": "gate"}
+{"text": "متجر نظارات في جدة مول ب", "intent": "inquiry_intake", "phase": "gate"}
+{"text": "مطعم ~45 متر في الدمام", "intent": "inquiry_intake", "phase": "gate"}
+{"text": "Can you help with my electricity bill?", "intent": "off_topic", "phase": "gate"}
+{"text": "I need general information about tenant complaints", "intent": "general_inquiry", "phase": "gate"}
+{"text": "Speak to customer service please", "intent": "human_help", "phase": "verifying"}
+{"text": "We are an existing tenant looking for more space", "intent": "existing_tenant_new_space", "phase": "gate"}
+{"text": "Salam, new brand inquiry for a boutique", "intent": "inquiry_intake", "phase": "gate"}
+{"text": "How do I track GEO-STR-555555?", "intent": "inquiry_status", "phase": "gate"}
+{"text": "My reference is geo-str-777777", "intent": "inquiry_status", "phase": "gate"}
+{"text": "Actually we're already on Tenant Central — need another mall", "intent": "existing_tenant_new_space", "phase": "gate"}
+{"text": "What unit types do you have?", "intent": "inquiry_intake", "phase": "collecting"}
+{"text": "Thanks, that's correct", "intent": "inquiry_intake", "phase": "collecting"}
+{"text": "خدمة العملاء لو سمحت", "intent": "human_help", "phase": "documents"}
+{"text": "Translate this paragraph to French", "intent": "off_topic", "phase": "gate"}
+{"text": "Question about parking permits for staff", "intent": "general_inquiry", "phase": "gate"}

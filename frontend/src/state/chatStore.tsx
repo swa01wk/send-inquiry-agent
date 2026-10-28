@@ -15,6 +15,8 @@ export interface ChatMessage {
   role: 'user' | 'assistant'
   text: string
   cardIds: string[]
+  /** Visual divider when a follow-on inquiry starts in the same chat. */
+  variant?: 'new_inquiry'
 }
 
 export type ChatStatus = 'idle' | 'streaming' | 'error'
@@ -65,7 +67,10 @@ export type ChatAction =
 
 function findLastAssistantMessageId(messages: ChatMessage[]): string | null {
   for (let i = messages.length - 1; i >= 0; i -= 1) {
-    if (messages[i].role === 'assistant') return messages[i].id
+    const message = messages[i]
+    if (message.role === 'assistant' && message.variant !== 'new_inquiry') {
+      return message.id
+    }
   }
   return null
 }
@@ -197,12 +202,32 @@ function applySseEvent(state: ChatState, event: SseEvent): ChatState {
         awaitingReply: state.status === 'streaming',
       }
     }
-    case 'draft':
+    case 'draft': {
+      const prevFollowOn = state.draft?.follow_on_of ?? null
+      const nextFollowOn = event.data.follow_on_of ?? null
+      let messages = state.messages
+      if (nextFollowOn !== prevFollowOn && nextFollowOn !== null) {
+        const dividerId = `divider-${nextFollowOn}`
+        if (!messages.some((m) => m.id === dividerId)) {
+          messages = [
+            ...messages,
+            {
+              id: dividerId,
+              role: 'assistant',
+              text: '',
+              cardIds: [],
+              variant: 'new_inquiry',
+            },
+          ]
+        }
+      }
       return {
         ...state,
+        messages,
         draft: event.data,
         phase: event.data.phase,
       }
+    }
     case 'done':
       return {
         ...state,

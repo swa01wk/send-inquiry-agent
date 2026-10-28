@@ -35,6 +35,7 @@ SERVICES = (
     "storage",
     "call_centre",
     "llm",
+    "llm_router",
 )
 
 DEFAULT_TIMEOUTS_S: dict[str, float] = {
@@ -47,6 +48,7 @@ DEFAULT_TIMEOUTS_S: dict[str, float] = {
     "storage": 10.0,
     "call_centre": 5.0,
     "llm": 60.0,
+    "llm_router": 60.0,
 }
 
 T = TypeVar("T")

@@ -1,0 +1,43 @@
+.layout {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lead {
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.contactRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.contactLink {
+  font-size: var(--font-size-md);
+  font-weight: 500;
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.contactLink:hover {
+  text-decoration: underline;
+}
+
+.hours,
+.ref,
+.caseId {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.45;
+}
+
+.caseId {
+  font-weight: 500;
+  color: var(--color-text-primary);
+}

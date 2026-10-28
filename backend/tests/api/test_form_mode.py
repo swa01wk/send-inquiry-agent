@@ -16,7 +16,12 @@ EMAIL = "sara@beanstreet.example"
 
 @pytest.fixture
 def settings(tmp_path: Path) -> Settings:
-    return Settings(upload_dir=str(tmp_path / "uploads"), max_upload_mb=5, dev_tools=True)
+    return Settings(
+        upload_dir=str(tmp_path / "uploads"),
+        max_upload_mb=5,
+        dev_tools=True,
+        agent_mode="scripted",
+    )
 
 
 @pytest.fixture

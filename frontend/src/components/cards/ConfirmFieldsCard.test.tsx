@@ -23,4 +23,29 @@ describe('ConfirmFieldsCard', () => {
     await user.click(screen.getByRole('button', { name: /looks right/i }))
     expect(onConfirm).toHaveBeenCalled()
   })
+
+  it('shows evidence under derived values when set', () => {
+    if (confirmFieldsCardExample.card_type !== 'confirm_fields') throw new Error('bad fixture')
+    render(
+      <ConfirmFieldsCard
+        cardId="confirm-evidence"
+        payload={{
+          ...confirmFieldsCardExample.payload,
+          fields: [
+            {
+              key: 'unit_type',
+              label: 'Unit type',
+              display: 'Specialty',
+              source: 'derived',
+              confirmed: false,
+              evidence: 'specialty coffee kiosk',
+            },
+          ],
+          all_confirmed: false,
+        }}
+        onConfirm={() => {}}
+      />,
+    )
+    expect(screen.getByText("from: 'specialty coffee kiosk'")).toBeInTheDocument()
+  })
 })

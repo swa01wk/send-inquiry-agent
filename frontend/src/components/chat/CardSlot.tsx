@@ -3,6 +3,7 @@ import type { ChatCardActions } from '../cards/cardActions'
 import { ConfirmFieldsCard } from '../cards/ConfirmFieldsCard'
 import { DocumentChecklistCard } from '../cards/DocumentChecklistCard'
 import { FormModeCard } from '../cards/FormModeCard'
+import { HandoffCard } from '../cards/HandoffCard'
 import { MallPickerCard } from '../cards/MallPickerCard'
 import { ReviewCard } from '../cards/ReviewCard'
 import { SuccessCard } from '../cards/SuccessCard'
@@ -77,6 +78,7 @@ export function CardSlot({ card, actions, focusOnMount = false }: CardSlotProps)
           onCallMe={() => actions.sendAction('request_handoff', { reason: 'model_unavailable' })}
         />
       ) : null}
+      {card.card_type === 'handoff' ? <HandoffCard payload={card.payload} /> : null}
       {card.card_type === 'quick_replies' ? null : null}
     </div>
   )

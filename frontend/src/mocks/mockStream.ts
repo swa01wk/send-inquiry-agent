@@ -302,6 +302,7 @@ export async function replayMockChat(
               display,
               source,
               confirmed,
+              evidence: null,
             })),
           all_confirmed: false,
         },

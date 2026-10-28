@@ -79,6 +79,14 @@ export function MessageList({
           )
         }
 
+        if (message.variant === 'new_inquiry') {
+          return (
+            <div key={message.id} className={styles.divider} role="separator">
+              New inquiry
+            </div>
+          )
+        }
+
         const showAvatar = !prev || prev.role !== 'assistant'
         const cardIds = message.cardIds.filter((id) => cards[id])
 

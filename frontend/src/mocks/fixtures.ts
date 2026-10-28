@@ -228,6 +228,7 @@ export const draftEmpty: DraftSummary = {
   },
   can_submit: false,
   changed_keys: [],
+  follow_on_of: null,
 }
 
 export const draftMidway: DraftSummary = {
@@ -280,6 +281,7 @@ export const draftMidway: DraftSummary = {
   },
   can_submit: false,
   changed_keys: ['company_name', 'company_address'],
+  follow_on_of: null,
 }
 
 export const draftComplete: DraftSummary = {
@@ -345,6 +347,7 @@ export const draftComplete: DraftSummary = {
   },
   can_submit: true,
   changed_keys: [],
+  follow_on_of: null,
 }
 
 export const confirmFieldsCardExample: UiCard = {
@@ -360,6 +363,7 @@ export const confirmFieldsCardExample: UiCard = {
         display: '1010123456',
         source: 'user',
         confirmed: true,
+        evidence: null,
       },
       {
         key: 'company_name',
@@ -367,6 +371,7 @@ export const confirmFieldsCardExample: UiCard = {
         display: 'Bean Street Trading Co.',
         source: 'verified',
         confirmed: false,
+        evidence: null,
       },
       {
         key: 'company_address',
@@ -374,6 +379,7 @@ export const confirmFieldsCardExample: UiCard = {
         display: 'King Fahd Road, Al Olaya, Riyadh',
         source: 'verified',
         confirmed: false,
+        evidence: null,
       },
     ],
     all_confirmed: false,

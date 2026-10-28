@@ -76,7 +76,8 @@ _CR_NUMBER_RE = re.compile(r"\b(?!05)\d{10}\b")
 _DATA_HINT_RE = re.compile(
     r"(@[\w-]+\.|\+?966|\+[1-9](?:[\s-]?\d){7,14}\b|\b05\d{8}\b|\b\d{10}\b|\b(LLC|Ltd|Trading|Co\.)\b|"
     r"\bmall\s+[a-z]\b|\b(kiosk|boutique|restaurant|caf[eé]|coffee|store|shop)\b|"
-    r"\b\d+\s*(sqm|sq\.?\s*m|square)\b|\b\d+\s*(k|,000)\b)",
+    r"\b\d+\s*(sqm|sq\.?\s*m|square)\b|\b\d+\s*(k|,000)\b|"
+    r"كشك|متجر|مطعم|مقهى|مول)",
     re.IGNORECASE,
 )
 _QUESTION_START_RE = re.compile(
@@ -179,7 +180,8 @@ def _is_bulk_inquiry_message(text: str) -> bool:
         return False
     return bool(
         re.search(
-            r"\b(LLC|Ltd|Trading|caf[eé]|kiosk|restaurant|mall|street)\b",
+            r"\b(LLC|Ltd|Trading|caf[eé]|kiosk|restaurant|mall|street)\b|"
+            r"كشك|متجر|مطعم|مقهى|مول",
             text,
             re.IGNORECASE,
         )
