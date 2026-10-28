@@ -79,6 +79,8 @@ def create_app(
         )
         app.state.services = build_services(cfg)
         app.state.graph = build_graph(model_factory=chat_model_factory)
+        # Placeholder until the dedicated case graph lands (Day 4 step 2).
+        app.state.case_graph = build_graph(model_factory=chat_model_factory)
         yield
 
     app = FastAPI(title="Send Inquiry Agent", lifespan=lifespan)

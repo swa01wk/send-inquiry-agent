@@ -49,6 +49,7 @@ async def life(tmp_path: Path) -> AsyncIterator[tuple[AsyncClient, Any]]:
     application.state.session_store = SessionStore(ttl_minutes=120)
     application.state.services = build_services(settings)
     application.state.graph = build_graph(model_factory=factory)
+    application.state.case_graph = build_graph(model_factory=factory)
     transport = ASGITransport(app=application)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client, application
