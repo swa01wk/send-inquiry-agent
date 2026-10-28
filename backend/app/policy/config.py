@@ -111,13 +111,21 @@ ContactRoleName = Literal[
 ]
 
 
+def _required_contacts() -> list[ContactRoleName]:
+    return ["authorized_signatory", "billing_contact"]
+
+
+def _optional_contacts() -> list[ContactRoleName]:
+    return ["leasing_manager", "financial_controller", "company_admin"]
+
+
+def _review_routing() -> dict[str, ReviewRoleName]:
+    return {"store": "rlm_store", "media": "rplm_media", "specialty": "rplm_specialty"}
+
+
 class SecondLevelContacts(_Strict):
-    required: list[ContactRoleName] = Field(
-        default_factory=lambda: ["authorized_signatory", "billing_contact"]
-    )
-    optional: list[ContactRoleName] = Field(
-        default_factory=lambda: ["leasing_manager", "financial_controller", "company_admin"]
-    )
+    required: list[ContactRoleName] = Field(default_factory=_required_contacts)
+    optional: list[ContactRoleName] = Field(default_factory=_optional_contacts)
 
     @model_validator(mode="after")
     def _each_role_once(self) -> SecondLevelContacts:
@@ -140,13 +148,7 @@ class PolicyConfig(_Strict):
     follow_on_reuse_hours: int = Field(default=24, ge=0, le=24 * 30)
     # ---- Review lifecycle (L4) ---------------------------------------------------------
     # Product line → reviewer role; the queue's region is the mall's region.
-    review_routing: dict[str, ReviewRoleName] = Field(
-        default_factory=lambda: {
-            "store": "rlm_store",
-            "media": "rplm_media",
-            "specialty": "rplm_specialty",
-        }
-    )
+    review_routing: dict[str, ReviewRoleName] = Field(default_factory=_review_routing)
     second_level_contacts: SecondLevelContacts = SecondLevelContacts()
     rejection_categories: list[str] = Field(
         default_factory=lambda: ["incomplete_documents", "not_a_fit", "no_space", "other"]

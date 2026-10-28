@@ -239,7 +239,7 @@ def _rejected(case: Case, event: WorkflowEvent, actor: Actor, now: datetime) -> 
     categories = get_policy().rejection_categories
     if category is not None and category not in categories:
         raise _invalid("Unknown reason category.")
-    level = "first" if case.status == S.FIRST_REVIEW else "second"
+    level: Literal["first", "second"] = "first" if case.status == S.FIRST_REVIEW else "second"
     case.decisions.append(
         Decision(
             level=level,
