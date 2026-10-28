@@ -399,7 +399,13 @@ async def _confirm_card(
         if field.source in (Source.DERIVED, Source.VERIFIED) and not field.confirmed:
             keys.append(key_str)
     if not keys:
-        return ActionResult(note=HumanMessage(content="[ui_event] confirm_failed"))
+        # Everything on the card is already confirmed (often the agent confirmed it from
+        # the user's "yes" a moment earlier). Not a failure: refresh the card and say so.
+        card = build_confirm_fields_card(session.draft, runtime.master, listed, card_id=card_id)
+        return ActionResult(
+            note=HumanMessage(content="[ui_event] fields_already_confirmed"),
+            events=[_card_event(session, card)],
+        )
     draft = draft_ops.confirm(session.draft, keys)
     session.draft = draft
     events: list[SseEvent] = [_draft_event(draft, runtime, keys)]
