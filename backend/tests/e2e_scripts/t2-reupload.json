@@ -1,33 +1,5 @@
 [
   {
-    "content": "",
-    "tool_calls": [
-      {
-        "name": "get_case_status",
-        "args": {},
-        "id": "t2-status",
-        "type": "tool_call"
-      }
-    ]
-  },
-  {
-    "content": "Here's where your inquiry stands."
-  },
-  {
-    "content": "",
-    "tool_calls": [
-      {
-        "name": "request_reupload_documents",
-        "args": {},
-        "id": "t2-reupload",
-        "type": "tool_call"
-      }
-    ]
-  },
-  {
-    "content": "The leasing team asked for a new Brand Profile — the note is on the card. Upload it, then press Resubmit."
-  },
-  {
     "content": "Thanks, your documents are back with the leasing team for first review."
   }
 ]

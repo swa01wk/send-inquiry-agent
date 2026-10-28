@@ -204,16 +204,6 @@ async def run_turn(
         state["case_id"] = session.case_id
         state["contacts_draft"] = list(session.contacts_draft)
 
-    # T2 e2e: resubmit is the scripted turn that confirms receipt (no chat before it).
-    if (
-        settings
-        and settings.agent_mode == "scripted"
-        and session.test_scenario == "t2-reupload"
-        and session.mode == "case"
-        and "documents_resubmitted" in _text_of(user_input)
-    ):
-        session.script_step = 4
-
     config = _graph_config(session, runtime, settings=settings)
     before = await graph.aget_state(config)
     prior_count = len((before.values or {}).get("messages", []))

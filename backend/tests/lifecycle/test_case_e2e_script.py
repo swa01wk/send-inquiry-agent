@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from tests.lifecycle.conftest import APPLICANT, STORE_CENTRAL, act, outbox, submit_case, token_from
-from tests.scenarios.helpers import chat_message
+from tests.scenarios.helpers import chat_action, token_text, upload_document
 
 T2_SCENARIO_HEADER = {"X-Test-Scenario": "t2-reupload"}
 
@@ -46,7 +46,7 @@ async def test_case_open_stores_e2e_script_from_header(life) -> None:
     assert session.script_step == 0
 
 
-async def test_case_chat_replays_t2_script_steps(life) -> None:
+async def test_case_chat_replays_t2_script_after_resubmit(life) -> None:
     client, app = life
     _reference, token = await _open_reupload_case(client, app)
     opened = await client.post(
@@ -56,14 +56,13 @@ async def test_case_chat_replays_t2_script_steps(life) -> None:
     )
     session_id = opened.json()["session_id"]
 
-    events = await chat_message(client, session_id, "What do I need to do?")
-    tokens = "".join(data["text"] for name, data in events if name == "token")
-    assert "here's where your inquiry stands" in tokens.lower()
-    session = await app.state.session_store.get(session_id)
-    assert session.script_step == 2
+    uploaded = await upload_document(
+        client, session_id, "brand_profile", "brand_2026.pdf", b"%PDF-new"
+    )
+    assert uploaded["status_code"] == 200
 
-    events = await chat_message(client, session_id, "Show me the upload card.")
-    tokens = "".join(data["text"] for name, data in events if name == "token")
-    assert "brand profile" in tokens.lower()
+    events = await chat_action(client, session_id, "resubmit_documents")
+    tokens = token_text(events).lower()
+    assert "thanks, your documents are back with the leasing team for first review." in tokens
     session = await app.state.session_store.get(session_id)
-    assert session.script_step == 4
+    assert session.script_step == 1

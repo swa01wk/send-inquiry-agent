@@ -166,7 +166,7 @@ def test_request_reupload_documents_emits_card(
     upload_events = [e for e in events if e["data"]["card_type"] == "document_upload"]
     payload = upload_events[0]["data"]["payload"]
     assert payload["mode"] == "reupload"
-    assert "brand_profile" in result.update["messages"][0].content
+    assert "Brand Profile" in result.update["messages"][0].content
     after = agent_runtime.services.cases.get(seeded_case.id)
     assert after is not None
     assert _snapshot(after) == before

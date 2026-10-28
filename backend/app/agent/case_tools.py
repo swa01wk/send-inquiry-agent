@@ -137,7 +137,7 @@ def request_reupload_documents(
     _emit_card(card, runtime)
     return _tool_message(
         runtime,
-        f"Re-upload card shown for: {', '.join(d.value for d in request.doc_types)}.",
+        f"Re-upload card shown for: {', '.join(document_label(d) for d in request.doc_types)}.",
     )
 
 

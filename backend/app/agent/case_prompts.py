@@ -11,6 +11,7 @@ from langchain_core.messages import SystemMessage
 from app.agent.runtime import AgentRuntime
 from app.agent.state import AgentState
 from app.api.case_cards import _STAGE_LABELS
+from app.domain.fields import document_label
 from app.policy.config import get_policy
 from app.services.status import REQUEST_LABELS, _from_case
 from app.workflow.models import Case, TenantContact
@@ -64,11 +65,17 @@ def build_case_system_message(state: AgentState, runtime: AgentRuntime) -> Syste
     if case is not None:
         status = _from_case(case)
         stage_label = _STAGE_LABELS.get(status.current_stage, status.current_stage)
-        open_lines = [
-            f"  - {REQUEST_LABELS[r.kind]}: {r.remarks}"
-            for r in case.requests
-            if r.status == "open"
-        ]
+        open_lines: list[str] = []
+        for request in case.requests:
+            if request.status != "open":
+                continue
+            label = REQUEST_LABELS[request.kind]
+            doc_labels = ", ".join(document_label(d) for d in request.doc_types)
+            line = f"  - {label}"
+            if doc_labels:
+                line += f" ({doc_labels})"
+            line += f": {request.remarks}"
+            open_lines.append(line)
         open_text = "\n".join(open_lines) if open_lines else "  - none"
         status_block = (
             f"Reference {case.reference}\n"
