@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import type { ChatCardActions } from '../cards/cardActions'
 import { ConfirmFieldsCard } from '../cards/ConfirmFieldsCard'
 import { DocumentChecklistCard } from '../cards/DocumentChecklistCard'
+import { FormModeCard } from '../cards/FormModeCard'
 import { MallPickerCard } from '../cards/MallPickerCard'
 import { ReviewCard } from '../cards/ReviewCard'
 import { SuccessCard } from '../cards/SuccessCard'
@@ -67,6 +68,15 @@ export function CardSlot({ card, actions, focusOnMount = false }: CardSlotProps)
         />
       ) : null}
       {card.card_type === 'success' ? <SuccessCard payload={card.payload} /> : null}
+      {card.card_type === 'form_mode' ? (
+        <FormModeCard
+          payload={card.payload}
+          onCheckCr={(crNumber) => actions.sendAction('cr_check', { cr_number: crNumber })}
+          onSkipCr={() => actions.sendAction('cr_skip', {})}
+          onSaveField={(key, value) => actions.editReviewField(key, value)}
+          onCallMe={() => actions.sendAction('request_handoff', { reason: 'model_unavailable' })}
+        />
+      ) : null}
       {card.card_type === 'quick_replies' ? null : null}
     </div>
   )

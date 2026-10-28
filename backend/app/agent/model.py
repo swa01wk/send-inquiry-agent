@@ -15,6 +15,27 @@ from pydantic import Field, PrivateAttr, SecretStr
 from app.config import get_settings
 
 
+class ModelUnavailable(Exception):
+    """The chat model failed twice in one turn (L3 §3.14): the session goes to form mode."""
+
+    def __init__(self, kind: str) -> None:
+        super().__init__(f"model unavailable: {kind}")
+        self.kind = kind  # "timeout" | "unavailable"
+
+
+def model_error_kind(exc: BaseException) -> str | None:
+    """`timeout` / `unavailable` for a failed call to the model provider; None for a bug.
+
+    Provider and network errors (openai, httpx) mean the model is unreachable; anything
+    else is our own error and must surface as one.
+    """
+    module = type(exc).__module__ or ""
+    if not module.startswith(("openai", "httpx", "httpcore")):
+        return None
+    name = type(exc).__name__.lower()
+    return "timeout" if "timeout" in name else "unavailable"
+
+
 def get_chat_model() -> ChatOpenAI:
     settings = get_settings()
     api_key, model = settings.require_openai()

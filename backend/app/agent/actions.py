@@ -9,11 +9,13 @@ from typing import Any
 from langchain_core.messages import HumanMessage
 
 from app.agent.context import message_context
+from app.agent.cr_check import apply_cr_result
 from app.agent.events import SseEvent
 from app.agent.handoff import start_handoff
 from app.agent.runtime import AgentRuntime
 from app.api.cards import (
     HANDOFF_CARD_ID,
+    allocate_confirm_card_id,
     build_confirm_fields_card,
     build_document_upload_card,
     build_review_card,
@@ -78,6 +80,8 @@ async def handle_ui_action(
         "documents_updated": _documents_updated,
         "set_document_number": _set_document_number,
         "request_handoff": _request_handoff,
+        "cr_check": _cr_check,
+        "cr_skip": _cr_skip,
     }
     handler = handlers.get(action)
     if handler is None:
@@ -568,6 +572,64 @@ async def _accept_and_submit(
             _draft_event(draft, runtime, ["reference", "terms_accepted"]),
         ],
         changed_keys=["reference", "terms_accepted"],
+    )
+
+
+async def _cr_check(
+    payload: dict[str, Any],
+    session: Session,
+    runtime: AgentRuntime,
+) -> ActionResult:
+    """The CR check from a card (form mode, L3 §3.14): same rules as the `verify_cr` tool."""
+    validated = v.validate_cr_number(str(payload.get("cr_number", "")))
+    if isinstance(validated, v.ValidationError):
+        return ActionResult(note=HumanMessage(content=f"[ui_event] cr_invalid {validated.code}"))
+    if session.draft.cr_status != "unknown":
+        return ActionResult(note=HumanMessage(content="[ui_event] cr_already_done"))
+    try:
+        result = runtime.services.gateway.call_sync(
+            "cr", "verify", runtime.services.cr.verify, validated, inquiry_id=session.id
+        )
+    except GatewayError as err:
+        return ActionResult(note=HumanMessage(content=f"[ui_event] {err.note}"))
+    outcome = apply_cr_result(session.draft, validated, result, runtime.master)
+    if outcome.errors:
+        return ActionResult(note=HumanMessage(content="[ui_event] cr_invalid prefill_error"))
+    session.draft = outcome.draft
+    events: list[SseEvent] = [_draft_event(outcome.draft, runtime, outcome.changed)]
+    if outcome.confirm_keys:
+        card_id = allocate_confirm_card_id(sorted(session.cards_shown))
+        session.cards_shown.add(card_id)
+        card = build_confirm_fields_card(
+            outcome.draft,
+            runtime.master,
+            outcome.confirm_keys,
+            card_id=card_id,
+            title="From your CR — please confirm",
+        )
+        events.append(_card_event(session, card))
+    return ActionResult(
+        note=HumanMessage(content=f"[ui_event] cr_checked {outcome.kind}"),
+        events=events,
+        changed_keys=outcome.changed,
+    )
+
+
+async def _cr_skip(
+    payload: dict[str, Any],
+    session: Session,
+    runtime: AgentRuntime,
+) -> ActionResult:
+    del payload
+    if session.draft.cr_status != "unknown":
+        return ActionResult(note=HumanMessage(content="[ui_event] cr_already_done"))
+    draft = session.draft.model_copy(deep=True)
+    draft.cr_status = "skipped"
+    session.draft = draft
+    return ActionResult(
+        note=HumanMessage(content="[ui_event] cr_skipped"),
+        events=[_draft_event(draft, runtime, ["cr_status"])],
+        changed_keys=["cr_status"],
     )
 
 

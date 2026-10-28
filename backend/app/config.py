@@ -72,6 +72,8 @@ class Settings(BaseSettings):
         default="seed",
         validation_alias="MASTER_DATA_SOURCE",
     )
+    # Testing only: treat the model as unavailable, so every turn runs in form mode (L3 §3.14).
+    form_mode: bool = Field(default=False, validation_alias="FORM_MODE")
     agent_mode: Literal["openai", "scripted"] = Field(
         default="openai",
         validation_alias="AGENT_MODE",

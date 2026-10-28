@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from typing import Any
 
@@ -13,13 +14,53 @@ from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import tools_condition
 
 from app.agent.guard import after_guard, guard_node
-from app.agent.model import get_chat_model
+from app.agent.model import ModelUnavailable, get_chat_model, model_error_kind
 from app.agent.prompts import build_system_message
-from app.agent.runtime import runtime_from_config
+from app.agent.runtime import AgentRuntime, runtime_from_config
 from app.agent.sequential_tool_node import build_sequential_tool_node
 from app.agent.state import AgentState
 from app.agent.tools import TOOLS
 from app.domain.rules import compute_phase
+from app.gateway import GatewayError
+
+logger = logging.getLogger(__name__)
+
+
+MODEL_ATTEMPTS = 2
+
+
+def _invoke_model(
+    chat_model: Any,
+    messages: list[Any],
+    config: RunnableConfig,
+    runtime: AgentRuntime,
+    session_id: str,
+) -> Any:
+    """Call the model through the gateway; two failures in a row → ModelUnavailable.
+
+    `FORM_MODE=true` (testing) treats the model as down without calling it. Faults for
+    tests come from `MOCK_FAULTS` / `X-Mock-Faults` with service `llm`.
+    """
+    if runtime.settings.form_mode:
+        raise ModelUnavailable("unavailable")
+    kind = "unavailable"
+    for _attempt in range(MODEL_ATTEMPTS):
+        try:
+            return runtime.services.gateway.call_sync(
+                "llm", "invoke", chat_model.invoke, messages, config=config, inquiry_id=session_id
+            )
+        except GatewayError as err:
+            if err.kind == "invalid":
+                # A ValueError from our own code is a bug, not an outage: surface it.
+                raise err.__cause__ or err from None
+            kind = "timeout" if err.kind == "timeout" else "unavailable"
+        except Exception as exc:
+            provider_kind = model_error_kind(exc)
+            if provider_kind is None:
+                raise
+            logger.warning("model call failed (%s): %s", provider_kind, type(exc).__name__)
+            kind = provider_kind
+    raise ModelUnavailable(kind)
 
 
 def build_graph(
@@ -39,7 +80,9 @@ def build_graph(
         )
         # No forced tool choice: questions like "which malls are in Riyadh?" must get an
         # answer, not a forced save. The guard catches the rare missed save instead.
-        response = chat_model.invoke([system, *state["messages"]], config=config)
+        response = _invoke_model(
+            chat_model, [system, *state["messages"]], config, runtime, state["session_id"]
+        )
         phase = compute_phase(state["draft"]).value
         return {"messages": [response], "phase": phase, "retry_agent": False}
 
