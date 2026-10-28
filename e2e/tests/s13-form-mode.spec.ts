@@ -18,7 +18,11 @@ test.describe('Story S13 @scripted', () => {
 
     const form = inquiry.cards('form_mode')
     await expect(form).toBeVisible({ timeout: 60_000 })
-    await expect(page.getByText(/assistant isn't available right now/i)).toBeVisible()
+    await expect(
+      page
+        .getByTestId('bot-bubble-text')
+        .filter({ hasText: /assistant isn't available right now/i }),
+    ).toBeVisible()
     await expect(form.getByRole('button', { name: /ask us to call you/i })).toBeVisible()
 
     await inquiry.formSkipCr()
