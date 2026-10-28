@@ -1,0 +1,78 @@
+.shell {
+  padding: 16px;
+}
+
+.ref {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-bottom: 4px;
+}
+
+.stage {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0 0 8px;
+}
+
+.meta {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin: 0 0 12px;
+  line-height: 1.45;
+}
+
+.sectionTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 12px 0 6px;
+}
+
+.requestList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.requestItem {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--color-muted-fill);
+  border: 1px solid var(--color-divider);
+}
+
+.requestLabel {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.requestRemarks {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin: 4px 0 0;
+  line-height: 1.4;
+}
+
+.outcomeApproved {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-success-fg);
+}
+
+.outcomeRejected {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-pending-fg);
+}
+
+.nextStep {
+  font-size: 14px;
+  color: var(--color-text);
+  margin: 12px 0 0;
+  line-height: 1.45;
+}

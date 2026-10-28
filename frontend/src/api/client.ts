@@ -131,6 +131,19 @@ export async function resumeSession(token: string): Promise<CreateSessionRespons
   return res.json() as Promise<CreateSessionResponse>
 }
 
+export async function openCase(token: string): Promise<CreateSessionResponse> {
+  const res = await fetch(`${API_BASE}/api/cases/open`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  })
+  if (!res.ok) {
+    const err = await parseError(res)
+    throw Object.assign(new Error(err.message), { code: err.code })
+  }
+  return res.json() as Promise<CreateSessionResponse>
+}
+
 export async function fetchInquiryStatus(
   reference: string,
   trackToken: string,

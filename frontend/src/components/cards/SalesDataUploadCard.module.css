@@ -1,0 +1,84 @@
+.shell {
+  padding: 12px 16px 16px;
+}
+
+.header {
+  padding-bottom: 8px;
+}
+
+.title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.remarks {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin: 6px 0 0;
+  line-height: 1.4;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--color-divider);
+}
+
+.info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.statusOk {
+  font-size: 13px;
+  color: var(--color-success-fg);
+}
+
+.statusMuted {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.actionWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 88px;
+}
+
+.hiddenInput {
+  display: none;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--color-divider);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.footer {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  padding-top: 8px;
+}
+
+.footerActions {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-divider);
+}

@@ -13,6 +13,9 @@ export type CardType =
   | 'quick_replies'
   | 'form_mode'
   | 'handoff'
+  | 'case_status'
+  | 'contacts'
+  | 'sales_data_upload'
 
 export type StepState = 'done' | 'current' | 'upcoming'
 
@@ -103,10 +106,66 @@ export interface DocumentNumberRow {
 }
 
 export interface DocumentUploadPayload {
+  mode: 'intake' | 'reupload'
+  requested_doc_types: string[]
+  remarks: string | null
   docs: DraftDocumentRow[]
   numbers?: DocumentNumberRow[]
   required_uploaded: number
   required_total: number
+  allowed_extensions: string[]
+  max_mb: number
+}
+
+export interface CaseRequestRow {
+  id: string
+  kind: 'reupload' | 'contacts' | 'sales_data'
+  label: string
+  remarks: string
+  doc_types: string[]
+  requested_at: string
+}
+
+export interface CaseStatusPayload {
+  reference: string
+  status: string
+  stage: 'submitted' | 'first_review' | 'second_review' | 'outcome'
+  stage_label: string
+  owner_role: string
+  last_change: string
+  open_requests: CaseRequestRow[]
+  outcome: 'approved' | 'rejected' | null
+  outcome_remarks: string | null
+  next_step: string
+}
+
+export interface ContactRow {
+  role: string
+  label: string
+  required: boolean
+  first_name: string | null
+  last_name: string | null
+  email: string | null
+  phone: string | null
+  source: Source | null
+  confirmed: boolean
+  same_as_primary: boolean
+}
+
+export interface ContactsPayload {
+  request_id: string | null
+  remarks: string | null
+  rows: ContactRow[]
+  can_submit: boolean
+  blockers: string[]
+}
+
+export interface SalesDataPayload {
+  request_id: string | null
+  remarks: string | null
+  uploaded: boolean
+  file_name: string | null
+  size_bytes: number | null
   allowed_extensions: string[]
   max_mb: number
 }
@@ -224,6 +283,24 @@ export type UiCard =
       card_type: 'handoff'
       message_id: string | null
       payload: HandoffPayload
+    }
+  | {
+      card_id: string
+      card_type: 'case_status'
+      message_id: string | null
+      payload: CaseStatusPayload
+    }
+  | {
+      card_id: string
+      card_type: 'contacts'
+      message_id: string | null
+      payload: ContactsPayload
+    }
+  | {
+      card_id: string
+      card_type: 'sales_data_upload'
+      message_id: string | null
+      payload: SalesDataPayload
     }
 
 export type FormModeStep =

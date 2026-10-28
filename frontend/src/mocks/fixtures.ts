@@ -433,6 +433,9 @@ export const documentUploadCardExample: UiCard = {
   card_type: 'document_upload',
   message_id: 'm_26',
   payload: {
+    mode: 'intake',
+    requested_doc_types: [],
+    remarks: null,
     docs: draftMidway.documents,
     required_uploaded: 0,
     required_total: 2,

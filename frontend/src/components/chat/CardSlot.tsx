@@ -1,7 +1,10 @@
 import { useEffect, useRef } from 'react'
 import type { ChatCardActions } from '../cards/cardActions'
+import { CaseStatusCard } from '../cards/CaseStatusCard'
 import { ConfirmFieldsCard } from '../cards/ConfirmFieldsCard'
+import { ContactsCard } from '../cards/ContactsCard'
 import { DocumentChecklistCard } from '../cards/DocumentChecklistCard'
+import { SalesDataUploadCard } from '../cards/SalesDataUploadCard'
 import { FormModeCard } from '../cards/FormModeCard'
 import { HandoffCard } from '../cards/HandoffCard'
 import { MallPickerCard } from '../cards/MallPickerCard'
@@ -59,6 +62,22 @@ export function CardSlot({ card, actions, focusOnMount = false }: CardSlotProps)
           onUpload={actions.uploadDocument}
           onRemove={actions.removeDocument}
           onSetNumber={actions.setDocumentNumber}
+          onResubmit={() => actions.sendAction('resubmit_documents', {})}
+        />
+      ) : null}
+      {card.card_type === 'case_status' ? <CaseStatusCard payload={card.payload} /> : null}
+      {card.card_type === 'contacts' ? (
+        <ContactsCard
+          payload={card.payload}
+          onSubmit={() => actions.sendAction('submit_contacts', {})}
+        />
+      ) : null}
+      {card.card_type === 'sales_data_upload' ? (
+        <SalesDataUploadCard
+          payload={card.payload}
+          onUpload={actions.uploadDocument}
+          onRemove={actions.removeDocument}
+          onSubmit={() => actions.sendAction('submit_sales_data', {})}
         />
       ) : null}
       {card.card_type === 'review' ? (
