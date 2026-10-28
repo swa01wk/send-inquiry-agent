@@ -59,6 +59,11 @@ class Session:
     inquiry_seq: int = 1
     # The model failed twice in a turn: the user finishes in the cards (L3 §3.14).
     form_mode: bool = False
+    # "case": a chat opened from a link after submission, answering the case's requests
+    # (L4 §3.5). `case_id` is the reference; `contacts_draft` the contacts being collected.
+    mode: str = "intake"
+    case_id: str | None = None
+    contacts_draft: list[dict[str, Any]] = field(default_factory=list)
 
     def add_message(self, message_id: str, role: str, text: str) -> None:
         self.transcript.append({"id": message_id, "role": role, "text": text})
@@ -90,6 +95,9 @@ class Session:
             "cards": self.cards,
             "inquiry_seq": self.inquiry_seq,
             "form_mode": self.form_mode,
+            "mode": self.mode,
+            "case_id": self.case_id,
+            "contacts_draft": self.contacts_draft,
         }
 
     @classmethod
@@ -110,6 +118,9 @@ class Session:
             cards=dict(raw.get("cards", {})),
             inquiry_seq=int(raw.get("inquiry_seq", 1)),
             form_mode=bool(raw.get("form_mode", False)),
+            mode=str(raw.get("mode", "intake")),
+            case_id=raw.get("case_id"),
+            contacts_draft=list(raw.get("contacts_draft", [])),
         )
 
 
@@ -158,14 +169,22 @@ class SessionStore:
 
     # ---- lifecycle ------------------------------------------------------------
 
-    async def create(self) -> Session:
+    async def create(
+        self,
+        *,
+        draft: InquiryDraft | None = None,
+        mode: str = "intake",
+        case_id: str | None = None,
+    ) -> Session:
         session_id = str(uuid.uuid4())
         now = datetime.now(tz=UTC)
         session = Session(
             id=session_id,
-            draft=new_inquiry_draft(),
+            draft=draft if draft is not None else new_inquiry_draft(),
             created_at=now,
             last_seen=now,
+            mode=mode,
+            case_id=case_id,
         )
         async with self._meta_lock:
             self._register(session)

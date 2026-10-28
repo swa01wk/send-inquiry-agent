@@ -1,0 +1,12 @@
+kind: information
+channel: email
+subject: Documents re-uploaded for $reference
+---
+Hello $reviewer_name,
+
+The applicant re-uploaded the requested documents for $reference ($brand). The case is
+back in first review.
+
+Open the case: $console_url
+
+Cenomi Tenant Central

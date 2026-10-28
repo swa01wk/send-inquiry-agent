@@ -42,3 +42,31 @@ duplicate_policy: warn
 
 # A follow-on inquiry reuses verified details for this many hours (L3 §3.11; step 21b).
 follow_on_reuse_hours: 24
+
+# ---- Review lifecycle (L4 §3.2–3.5) ---------------------------------------------------
+# Product line → first- and second-level reviewer role (requirements §7.1.1 b). The queue's
+# region is the mall's region in master data (assumption L4 A5).
+review_routing:
+  store: rlm_store
+  media: rplm_media
+  specialty: rplm_specialty
+
+# Additional tenant contacts requested at second review (requirements §7.1.1 c).
+second_level_contacts:
+  required: [authorized_signatory, billing_contact]
+  optional: [leasing_manager, financial_controller, company_admin]
+
+# Reviewers pick one when rejecting (synthetic list, L4 A8; feeds L5 insights).
+rejection_categories: [incomplete_documents, not_a_fit, no_space, other]
+
+# Told to the applicant after a rejection.
+after_rejection: >-
+  You can raise a new inquiry at any time, for example with updated documents or for
+  another mall.
+
+# Final approval needs the required contacts (above).
+require_contacts_before_approval: true
+
+# First-level approval opens a contacts request automatically (requirements §7.1.1 b,
+# "on contact creation"; L4 A10).
+auto_request_contacts_after_first_approval: true

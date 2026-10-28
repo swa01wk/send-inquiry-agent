@@ -1,0 +1,15 @@
+kind: information
+channel: email
+subject: Your inquiry $reference passed first review
+---
+Hello $first_name,
+
+Good news: your inquiry for $brand at $mall passed first review and is now a lead in
+second review with the leasing team.
+
+You'll receive an invitation to Tenant Central. The team may also ask for more company
+contacts or estimated sales data; you'll get a link for each.
+
+Follow your inquiry: $case_url
+
+Cenomi Tenant Central

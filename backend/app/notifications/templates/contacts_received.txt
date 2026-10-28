@@ -1,0 +1,11 @@
+kind: information
+channel: email
+subject: Contacts received for $reference
+---
+Hello $reviewer_name,
+
+The applicant sent the requested company contacts for $reference ($brand).
+
+Open the case: $console_url
+
+Cenomi Tenant Central

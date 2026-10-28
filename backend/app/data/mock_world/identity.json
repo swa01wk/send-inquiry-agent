@@ -1,0 +1,6 @@
+{
+  "accounts": [
+    "existing.tenant@zarahome.example",
+    "admin@acme.example"
+  ]
+}

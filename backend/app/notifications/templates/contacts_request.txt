@@ -1,0 +1,15 @@
+kind: action_required
+channel: email
+subject: Company contacts needed for $reference
+---
+Hello $first_name,
+
+To continue with your inquiry for $brand, the leasing team needs your company contacts:
+the Authorized Signatory and the Billing Contact (a Leasing Manager, Financial Controller
+or Company Admin can be added too).
+$remarks
+
+Add them here, in a couple of messages:
+$case_url
+
+Cenomi Tenant Central

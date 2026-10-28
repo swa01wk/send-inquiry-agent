@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import functools
+import logging
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -23,17 +24,29 @@ from app.api.cards import (
     remember_confirm_card_keys,
     split_card_id,
 )
+from app.api.case_cards import (
+    build_case_status_card,
+    build_contacts_card,
+    build_reupload_card,
+    replaced_since,
+)
 from app.api.schemas import UiCard
 from app.domain import draft_ops
 from app.domain import validation as v
 from app.domain.fields import document_definitions
-from app.domain.models import FieldKey, InquiryDraft, Source
+from app.domain.models import DocType, FieldKey, InquiryDraft, Source
 from app.domain.rules import can_submit, contact_verified
 from app.domain.summary import build_draft_summary
 from app.domain.validation import validate_malls
 from app.gateway import GatewayError
 from app.security import tokens
 from app.sessions import Session
+from app.workflow.contacts import confirm_contacts, contacts_blockers
+from app.workflow.machine import USER, IllegalTransition
+from app.workflow.models import Case, TenantContact, WorkflowEvent
+from app.workflow.service import apply_event, create_case
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -82,6 +95,9 @@ async def handle_ui_action(
         "request_handoff": _request_handoff,
         "cr_check": _cr_check,
         "cr_skip": _cr_skip,
+        "resubmit_documents": _resubmit_documents,
+        "submit_contacts": _submit_contacts,
+        "submit_sales_data": _submit_sales_data,
     }
     handler = handlers.get(action)
     if handler is None:
@@ -569,6 +585,17 @@ async def _accept_and_submit(
     )
     link = tracking_url(runtime, session.id, reference)
     await _send_submission_notices(runtime, session, draft, reference, link)
+    # The review lifecycle starts (L4): the case is created and routed to its queue.
+    try:
+        await create_case(
+            runtime,
+            session_id=session.id,
+            inquiry_seq=session.inquiry_seq,
+            draft=draft,
+            reference=reference,
+        )
+    except Exception:  # the submission stands; the case can be created again on retry
+        logger.exception("case creation failed for %s", reference)
     success = build_success_card(reference, tracking_url=link)
     session.cards_shown.add("success")
     return ActionResult(
@@ -636,6 +663,133 @@ async def _cr_skip(
         note=HumanMessage(content="[ui_event] cr_skipped"),
         events=[_draft_event(draft, runtime, ["cr_status"])],
         changed_keys=["cr_status"],
+    )
+
+
+# ---- Case actions (after submission, L4 §3.5): the applicant answers a request -------
+
+
+def _case_for(session: Session, runtime: AgentRuntime) -> Case | None:
+    if session.mode != "case" or not session.case_id:
+        return None
+    return runtime.services.cases.get(session.case_id)
+
+
+def _case_events(session: Session, runtime: AgentRuntime, case: Case) -> list[SseEvent]:
+    return [_card_event(session, build_case_status_card(case))]
+
+
+async def _apply_user_event(
+    runtime: AgentRuntime, case: Case, name: str, payload: dict[str, Any]
+) -> tuple[Case | None, str | None]:
+    try:
+        updated = await apply_event(
+            runtime, case.id, WorkflowEvent(name=name, payload=payload), USER
+        )
+    except IllegalTransition as exc:
+        return None, exc.message
+    return updated, None
+
+
+async def _resubmit_documents(
+    payload: dict[str, Any],
+    session: Session,
+    runtime: AgentRuntime,
+) -> ActionResult:
+    """Every requested document replaced after the request → `documents_resubmitted`."""
+    del payload
+    case = _case_for(session, runtime)
+    request = case.open_request("reupload") if case else None
+    if case is None or request is None:
+        return ActionResult(note=HumanMessage(content="[ui_event] resubmit_blocked no_request"))
+    missing = [
+        d.value
+        for d in request.doc_types
+        if not replaced_since(session.draft, d, request.requested_at)
+    ]
+    if missing:
+        card = build_reupload_card(
+            session.draft, request, runtime.master, max_mb=runtime.settings.max_upload_mb
+        )
+        return ActionResult(
+            note=HumanMessage(content=f"[ui_event] resubmit_blocked {' '.join(missing)}"),
+            events=[_card_event(session, card)],
+        )
+    documents = {
+        d.value: session.draft.documents[d].model_dump(mode="json") for d in request.doc_types
+    }
+    updated, error = await _apply_user_event(
+        runtime, case, "documents_resubmitted", {"documents": documents}
+    )
+    if updated is None:
+        return ActionResult(note=HumanMessage(content=f"[ui_event] resubmit_blocked {error}"))
+    return ActionResult(
+        note=HumanMessage(content="[ui_event] documents_resubmitted"),
+        events=_case_events(session, runtime, updated),
+    )
+
+
+async def _submit_contacts(
+    payload: dict[str, Any],
+    session: Session,
+    runtime: AgentRuntime,
+) -> ActionResult:
+    """Send contacts: pressing Send on the contacts card accepts what it shows (each value
+    was on the card), then the required roles are checked → `contacts_provided`."""
+    del payload
+    case = _case_for(session, runtime)
+    request = case.open_request("contacts") if case else None
+    if case is None or request is None:
+        return ActionResult(note=HumanMessage(content="[ui_event] contacts_blocked no_request"))
+    contacts = confirm_contacts([TenantContact.model_validate(c) for c in session.contacts_draft])
+    blockers = contacts_blockers(contacts)
+    if blockers:
+        card = build_contacts_card(contacts, request)
+        return ActionResult(
+            note=HumanMessage(content=f"[ui_event] contacts_blocked {' '.join(blockers)}"),
+            events=[_card_event(session, card)],
+        )
+    updated, error = await _apply_user_event(
+        runtime,
+        case,
+        "contacts_provided",
+        {"contacts": [c.model_dump(mode="json") for c in contacts]},
+    )
+    if updated is None:
+        return ActionResult(note=HumanMessage(content=f"[ui_event] contacts_blocked {error}"))
+    session.contacts_draft = [c.model_dump(mode="json") for c in contacts]
+    return ActionResult(
+        note=HumanMessage(content="[ui_event] contacts_submitted"),
+        events=[
+            _card_event(session, build_contacts_card(contacts, None)),
+            *_case_events(session, runtime, updated),
+        ],
+    )
+
+
+async def _submit_sales_data(
+    payload: dict[str, Any],
+    session: Session,
+    runtime: AgentRuntime,
+) -> ActionResult:
+    del payload
+    case = _case_for(session, runtime)
+    request = case.open_request("sales_data") if case else None
+    if case is None or request is None:
+        return ActionResult(note=HumanMessage(content="[ui_event] sales_data_blocked no_request"))
+    ref = session.draft.documents.get(DocType.SALES_DATA)
+    if ref is None or ref.uploaded_at <= request.requested_at:
+        return ActionResult(
+            note=HumanMessage(content="[ui_event] sales_data_blocked missing_file"),
+        )
+    updated, error = await _apply_user_event(
+        runtime, case, "sales_data_provided", {"document": ref.model_dump(mode="json")}
+    )
+    if updated is None:
+        return ActionResult(note=HumanMessage(content=f"[ui_event] sales_data_blocked {error}"))
+    return ActionResult(
+        note=HumanMessage(content="[ui_event] sales_data_submitted"),
+        events=_case_events(session, runtime, updated),
     )
 
 

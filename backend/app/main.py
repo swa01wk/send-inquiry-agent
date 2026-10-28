@@ -12,6 +12,7 @@ from slowapi.middleware import SlowAPIMiddleware
 
 from app.agent.graph import build_graph
 from app.agent.model import ScriptedChatModel, get_chat_model
+from app.api.cases import router as cases_router
 from app.api.chat import router as chat_router
 from app.api.dev import router as dev_router
 from app.api.documents import router as documents_router
@@ -19,6 +20,7 @@ from app.api.errors import register_exception_handlers
 from app.api.inquiries import router as inquiries_router
 from app.api.limiter import limiter
 from app.api.master import router as master_router
+from app.api.review import router as review_router
 from app.api.sessions import router as sessions_router
 from app.api.verifications import router as verifications_router
 from app.config import Settings, get_settings
@@ -54,6 +56,9 @@ def create_app(
         msg = f"Policy product_lines not in master data unit_types: {', '.join(unknown_lines)}"
         raise PolicyError(msg)
     install_policy(policy)
+    if cfg.reviewer_console and cfg.integrations != "mock":
+        msg = "REVIEWER_CONSOLE=true is only allowed with INTEGRATIONS=mock (it's a dev tool)."
+        raise RuntimeError(msg)
     if cfg.dev_tools and cfg.integrations != "mock":
         msg = "DEV_TOOLS=true is only allowed with INTEGRATIONS=mock (the outbox is dev data)."
         raise RuntimeError(msg)
@@ -99,6 +104,9 @@ def create_app(
     app.include_router(master_router)
     app.include_router(inquiries_router)
     app.include_router(verifications_router)
+    app.include_router(cases_router)
+    if cfg.reviewer_console:
+        app.include_router(review_router)
     if cfg.dev_tools:
         app.include_router(dev_router)
 

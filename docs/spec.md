@@ -355,6 +355,10 @@ process steps · review time · required documents · what a CR number is · wha
 | `PUBLIC_BASE_URL` | `http://localhost:5173` (links in emails and SMS) |
 | `RESUME_TOKEN_SECRET` | `dev-only-change-me` (signs verification, resume and tracking links; set a real secret outside dev) |
 | `EMAIL_LINK_TTL_HOURS` / `RESUME_TTL_DAYS` / `TRACK_TTL_DAYS` | `72` / `7` / `365` |
+| `REVIEWER_CONSOLE` | `false`; `true` mounts `/api/review/*` (refused unless `INTEGRATIONS=mock`) |
+| `YARDI_MAX_ATTEMPTS` | `3` (then the case is flagged for operations) |
+| `PUBLIC_API_URL` | `http://localhost:8000` (links that hit the API, e.g. the mock Azure AD accept link) |
+| `CASE_TTL_DAYS` | `30` (case links) |
 | `FORM_MODE` | `false`; `true` (testing) treats the model as unavailable, so every turn runs in form mode |
 | `CALL_CENTRE_PHONE` / `CALL_CENTRE_EMAIL` / `CALL_CENTRE_HOURS` | `+966 11 000 0000` / `leasing-callcentre@example.com` / `Sunday to Thursday, 9 am to 5 pm (Riyadh time)` — placeholders until Cenomi confirms; shown on the `handoff` card; mock cases are emailed to `CALL_CENTRE_EMAIL` |
 
@@ -386,3 +390,69 @@ Test layers and when each runs: `docs/specs/testing-strategy.md`.
 | `make gate` | `ci`, `eval-live`, `e2e-live` |
 
 CI: `.github/workflows/ci.yml` runs `backend` (`check-be`, `test-be`) and `frontend` (`check-fe`, `test-fe`) on every PR and push to `main`. Playwright runs locally (`make e2e-int`, `make e2e-live`; Playwright flags via `ARGS=…`), or in CI on demand from `e2e.yml` (`suite: scripted | live`). Nightly live runs need the repository variable `NIGHTLY_LIVE=true`. Step 11d (B1) adds `e2e-fe`, coverage, `scripts/` linting and the `eval-live` job.
+
+## 13. Review lifecycle (L4, Day 4)
+
+Contracts for [L4](specs/l4-outcome-assistance.md) at Day 4 depth. Code: `backend/app/workflow/` (models, machine, service, effects, store, contacts), `app/domain/case_brief.py`, `app/domain/payload.py`, `app/api/review.py`, `app/api/cases.py`, `app/api/case_cards.py`.
+
+**Case** (`workflow/models.py`, one per submitted inquiry, keyed by its reference; JSON snapshots in `<DATA_DIR>/cases/`): `status` (`CaseStatus`: draft, submitting, submitted, first_review, reupload_requested, second_review, approved, sent_to_yardi, rejected, abandoned, redirected), `draft` (the inquiry as submitted; re-uploads replace documents), `review_queue {product_line, region, role}`, `requests [{id, kind: reupload|contacts|sales_data, status: open|fulfilled|withdrawn, doc_types, remarks, requested_by, requested_at, closed_at}]`, `decisions [{level, outcome, remarks, reason_category, by, at}]`, `tenant_contacts [TenantContact]` (`FieldValue` per name, email, mobile, landline; `same_as_primary`), `sales_data`, `document_history`, `onboarding.invitations`, `yardi {company_id, brand_id, lead_ref, sent_at, attempts, needs_operations}`, `events` (applied transitions), `effects_done`, `case_session_id`. Created on submit (audit `case_created`) and routed at once.
+
+**State machine** (`workflow/machine.py`): `transition(case, event, actor=, now=)` is pure and implements every row of M0 §6; it raises `IllegalTransition(code)` with `illegal_transition`, `not_allowed`, `not_in_queue` or `invalid_payload`. Reviewer events need a reviewer whose role and regions match `review_queue`. `legal_events(case, actor)` lists what an actor can do now (the console's actions). `workflow/service.apply_event` is the only way a case changes: transition, save, audit `case_transition {event, from_status, to_status, by, outcome}` (refusals too), then effects.
+
+**Routing:** policy `review_routing` maps the unit type to a role (store → `rlm_store`, media → `rplm_media`, specialty → `rplm_specialty`); the region is the mall's region in master data.
+
+**Effects** (`workflow/effects.py`, inline, keyed `(case, event seq, effect)`, audit `effect_run`; a failure is audited and never rolls back the transition):
+
+| Event | Effects |
+| --- | --- |
+| `routed` | `review_assigned` → the queue's reviewers |
+| `reupload_requested` | `reupload_request` → applicant, with a case link for the request |
+| `documents_resubmitted` | `reupload_received` → reviewers |
+| `rejected` | `inquiry_rejected` → applicant (remarks, policy `after_rejection`) |
+| `approved_first` | Azure AD invite of the primary contact (role `primary_contact`) unless `has_account`; `first_level_approved`; a system `contacts_requested` when policy `auto_request_contacts_after_first_approval` |
+| `contacts_requested` / `sales_data_requested` | `contacts_request` / `sales_data_request` → applicant, with a case link |
+| `contacts_provided` / `sales_data_provided` | `contacts_received` / `sales_data_received` → reviewers |
+| `request_withdrawn` | `request_withdrawn` → applicant |
+| `approved` | invite each additional contact without an account (role = contact role); `inquiry_accepted`; `send_lead` to Yardi (`lead:<reference>`), each failure a `yardi_failed` event, up to `YARDI_MAX_ATTEMPTS`, then `needs_operations` |
+
+**Applicant actions** (case chats only, §4 table style):
+
+| Action | Payload | Does | Note |
+| --- | --- | --- | --- |
+| `resubmit_documents` | `{}` | Every requested document re-uploaded after the request → `documents_resubmitted` | `documents_resubmitted`, or `resubmit_blocked <doc_types>` (the re-upload card is re-sent) |
+| `submit_contacts` | `{}` | Pressing Send accepts the values on the contacts card (`confirm_contacts`); required roles complete → `contacts_provided` | `contacts_submitted`, or `contacts_blocked <reasons>` |
+| `submit_sales_data` | `{}` | A `sales_data` file uploaded after the request → `sales_data_provided` | `sales_data_submitted`, or `sales_data_blocked missing_file` |
+
+Contacts being collected live on the case session (`Session.contacts_draft`); `workflow/contacts.write_contacts(current, entries, primary_draft)` is the deterministic writer for the case agent's `update_contacts` tool (entries `{role, first_name?, last_name?, email?, contact_number?, same_as_primary?, source?}`; "that's me" copies the primary contact as `verified`, unconfirmed; Arabic digits normalised). `contacts_blockers` lists `missing_contact:<role>`, `incomplete_contact:<role>`, `unconfirmed_contact:<role>`.
+
+**Case links:** token purpose `case` (subject the reference, `data.r` the request id, `CASE_TTL_DAYS`); links `<PUBLIC_BASE_URL>/inquiry/case?t=…`. `POST /api/cases/open {token}` accepts a `case` or `track` token, reopens the case's chat (`Session.mode = "case"`, `case_id`) or starts one seeded with the submitted inquiry, adds a short assistant message, and returns the `POST /api/sessions` shape with a `case_status` card and the card for each open request. 400 `token_invalid` / `token_expired`; 404 `inquiry_not_found`.
+
+**Cards:**
+
+| `card_type` | `payload` |
+| --- | --- |
+| `case_status` | `{reference, status, stage: submitted\|first_review\|second_review\|outcome, stage_label, owner_role, last_change, open_requests:[{id, kind, label, remarks, doc_types, requested_at}], outcome: approved\|rejected\|null, outcome_remarks, next_step}` (card id `case_status`) |
+| `document_upload` | gains `mode: "intake"\|"reupload"`, `requested_doc_types`, `remarks`; in re-upload mode `docs` lists only the requested types and `uploaded` means uploaded after the request; the button is Resubmit (`resubmit_documents`) |
+| `contacts` | `{request_id, remarks, rows:[{role, label, required, first_name, last_name, email, phone, source, confirmed, same_as_primary}], can_submit, blockers}` (card id `contacts`) |
+| `sales_data_upload` | `{request_id, remarks, uploaded, file_name, size_bytes, allowed_extensions, max_mb}`; upload with `doc_type=sales_data` (card id `sales_data`) |
+
+**Documents:** `DocType.sales_data` exists only for case chats (`POST …/documents` with it in an intake chat is 400 `unknown_doc_type`); it isn't in the intake checklist or the policy's document lists. In a case chat, an upload returns the re-upload or sales-data card.
+
+**Reviewer console API** (`REVIEWER_CONSOLE=true`, `INTEGRATIONS=mock`; header `X-Reviewer-Id`, unknown → 401; a case outside the reviewer's queue → 404):
+
+| Method | Path | Response |
+| --- | --- | --- |
+| GET | `/api/review/reviewers` | Reviewers for the mock sign-in `[{id, name, role, regions, manager}]` |
+| GET | `/api/review/me` | The signed-in reviewer |
+| GET | `/api/review/cases?waiting_on=` | Queue `[{reference, brand, company, mall, product_line, region, status, stage_label, waiting_on, age_days, last_change, open_requests, possible_duplicate, follow_on_of, needs_operations}]` |
+| GET | `/api/review/cases/{reference}` | `{brief: CaseBrief, timeline:[{at, actor, type, summary}], legal_actions, approval_blockers, rejection_categories, reupload_doc_types}` |
+| GET | `/api/review/cases/{reference}/documents/{file_id}` | The file |
+| POST | `/api/review/cases/{reference}/actions` | `{action, payload}` → the updated detail. Actions: `request_reupload {doc_types, remarks}`, `reject {remarks, reason_category?}`, `approve_first`, `request_contacts {remarks?}`, `request_sales_data {remarks?}`, `withdraw_request {kind}`, `relink_company {company_id}`, `relink_brand {brand_id}`, `remove_contact {role}`, `approve`. Errors: 400 `unknown_action` / `invalid_payload`, 403 `not_in_queue` / `not_allowed`, 409 `illegal_transition` |
+
+**Case brief** (`domain/case_brief.py`, deterministic): applicant, company, brand, product line, mall, region, CR status, every field with source, confirmation and evidence, verification, documents with replaced versions, sales data, contacts, requests, decisions, follow-on, Yardi link, stage ages, and a next-decision checklist from the policy.
+
+**Services:** `ReviewerDirectory` (`data/mock_world/reviewers.json`: a reviewer per role × region, a manager per role, call-centre and guest-service staff), `IdentityService` (`invite(email, role, context)` sends `azure_ad_invitation` with an accept link `<PUBLIC_API_URL>/api/dev/identity/accept/{id}`; `has_account`; `status`; `accept`; seeded accounts in `data/mock_world/identity.json`), `YardiService` (`search_companies` by the first word, active only; `brands_for_company`; `send_lead(payload, idempotency_key)` → `YL-NNNNNN`; `data/mock_world/yardi.json`). Gateway services `identity`, `yardi`.
+
+**Status page:** `GET /api/inquiries/{reference}?t=` follows the case: `status` is `under_review`, `approved`, `sent_to_yardi` or `rejected`; stages Submitted → First review → Lead — second review → Outcome; `owner_role` from the queue; `waiting_on_you` lists open requests ("Re-upload documents", "Add company contacts", "Upload estimated sales data").
+
+**Policy:** `review_routing`, `second_level_contacts {required, optional}`, `rejection_categories`, `after_rejection`, `require_contacts_before_approval`, `auto_request_contacts_after_first_approval`.

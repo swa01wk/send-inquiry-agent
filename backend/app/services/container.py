@@ -15,11 +15,15 @@ from app.services.email_verification import (
     EmailVerificationService,
     MockEmailVerificationService,
 )
+from app.services.identity import IdentityService, MockIdentityService
 from app.services.otp import MockOtpService, OtpService
 from app.services.resend import ResendLimiter
+from app.services.reviewers import ReviewerDirectory
 from app.services.status import MockStatusService, StatusService
 from app.services.storage import MockStorageService, StorageService
 from app.services.submit import MockSubmitService, SubmitService
+from app.services.yardi import MockYardiService
+from app.workflow.store import CaseStore
 
 
 @dataclass(frozen=True)
@@ -35,6 +39,10 @@ class ServiceContainer:
     audit: AuditLog
     resend: ResendLimiter
     call_centre: CallCentreService
+    cases: CaseStore
+    reviewers: ReviewerDirectory
+    identity: IdentityService
+    yardi: MockYardiService
 
 
 def build_services(settings: Settings) -> ServiceContainer:
@@ -48,6 +56,7 @@ def build_services(settings: Settings) -> ServiceContainer:
     audit = AuditLog(data_dir)
     notifications = MockNotificationService(data_dir)
     submit = MockSubmitService(data_dir)
+    cases = CaseStore(data_dir)
     upload_dir = Path(settings.upload_dir)
     upload_dir.mkdir(parents=True, exist_ok=True)
     max_bytes = settings.max_upload_mb * 1024 * 1024
@@ -63,7 +72,7 @@ def build_services(settings: Settings) -> ServiceContainer:
         ),
         storage=MockStorageService(upload_dir=upload_dir, max_bytes=max_bytes),
         submit=submit,
-        status=MockStatusService(submit_service=submit),
+        status=MockStatusService(submit_service=submit, cases=cases),
         notifications=notifications,
         gateway=Gateway(faults=FaultPlan.parse(settings.mock_faults), audit=audit),
         audit=audit,
@@ -73,4 +82,12 @@ def build_services(settings: Settings) -> ServiceContainer:
             inbox_email=settings.call_centre_email,
             data_dir=data_dir,
         ),
+        cases=cases,
+        reviewers=ReviewerDirectory(),
+        identity=MockIdentityService(
+            notifications=notifications,
+            public_api_url=settings.public_api_url,
+            data_dir=data_dir,
+        ),
+        yardi=MockYardiService(data_dir),
     )

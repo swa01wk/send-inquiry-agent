@@ -28,6 +28,19 @@ TEMPLATE_NAMES = (
     "submission_email",
     "submission_sms",
     "call_centre_case",
+    # Review lifecycle (L4 §3.4)
+    "review_assigned",
+    "reupload_request",
+    "reupload_received",
+    "inquiry_rejected",
+    "azure_ad_invitation",
+    "first_level_approved",
+    "contacts_request",
+    "contacts_received",
+    "sales_data_request",
+    "sales_data_received",
+    "request_withdrawn",
+    "inquiry_accepted",
 )
 Channel = Literal["email", "sms"]
 Kind = Literal["information", "action_required"]
@@ -78,7 +91,13 @@ def load_template(name: str) -> MessageTemplate:
 
 
 # Used when the inquiry doesn't have the value yet (e.g. a link sent before the name).
-DEFAULTS: dict[str, str] = {"first_name": "there", "brand": "your brand", "mall": "a Cenomi mall"}
+DEFAULTS: dict[str, str] = {
+    "first_name": "there",
+    "brand": "your brand",
+    "mall": "a Cenomi mall",
+    "remarks": "",
+    "reviewer_name": "there",
+}
 
 
 def render(name: str, context: dict[str, Any]) -> tuple[MessageTemplate, str, str]:

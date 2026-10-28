@@ -8,6 +8,8 @@ Purposes:
 - ``verify_email``: the emailed verification link. Single use (the nonce is consumed).
 - ``resume``: reopen an inquiry in the chat on any device.
 - ``track``: the private tracking page for a submitted reference.
+- ``case``: a request link after submission (re-upload, contacts, sales data); subject is
+  the reference, ``data.r`` the request id (L4 §3.5, §3.9).
 """
 
 from __future__ import annotations
@@ -21,7 +23,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Literal
 
-Purpose = Literal["verify_email", "resume", "track"]
+Purpose = Literal["verify_email", "resume", "track", "case"]
 
 
 class TokenError(Exception):
