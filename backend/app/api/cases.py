@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request
 
+from app.agent.e2e_scripts import resolve_e2e_scenario
 from app.agent.runtime import AgentRuntime
 from app.api.case_cards import build_case_status_card, request_cards
 from app.api.deps import get_master_data, get_services, get_session_store
@@ -76,6 +77,12 @@ async def open_case(
     if case is None:
         raise ApiError(404, "inquiry_not_found", "We couldn't find that inquiry.")
     session, created = await _case_session(store, case)
+    if settings.agent_mode == "scripted":
+        scenario = resolve_e2e_scenario(request.headers.get("X-Test-Scenario"))
+        if scenario and (created or not session.test_scenario):
+            session.test_scenario = scenario
+            if created:
+                session.script_step = 0
     if created:
         case.case_session_id = session.id
         services.cases.save(case)

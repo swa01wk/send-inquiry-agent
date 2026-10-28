@@ -7,6 +7,7 @@ from collections.abc import Callable
 from typing import Any
 
 from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
@@ -63,23 +64,20 @@ def _invoke_model(
     raise ModelUnavailable(kind)
 
 
-def build_graph(
-    model_factory: Callable[[], BaseChatModel] | None = None,
+def build_agent_graph(
+    *,
+    tools: list[Any],
+    system_for_turn: Callable[[AgentState, RunnableConfig], SystemMessage],
+    guard_node_fn: Callable[[AgentState, RunnableConfig], dict[str, Any]],
+    model_factory: Callable[[], BaseChatModel],
 ) -> CompiledStateGraph[AgentState, None, AgentState, AgentState]:
-    factory = model_factory or get_chat_model
-    default_model = factory().bind_tools(TOOLS)
+    default_model = model_factory().bind_tools(tools)
 
     def agent_node(state: AgentState, config: RunnableConfig) -> dict[str, Any]:
         runtime = runtime_from_config(config)
         configurable = config.get("configurable") or {}
         chat_model = configurable.get("bound_chat_model") or default_model
-        system = build_system_message(
-            state["draft"],
-            runtime.master,
-            state["cards_shown"],
-        )
-        # No forced tool choice: questions like "which malls are in Riyadh?" must get an
-        # answer, not a forced save. The guard catches the rare missed save instead.
+        system = system_for_turn(state, config)
         response = _invoke_model(
             chat_model, [system, *state["messages"]], config, runtime, state["session_id"]
         )
@@ -87,12 +85,11 @@ def build_graph(
         return {"messages": [response], "phase": phase, "retry_agent": False}
 
     def guard_wrapper(state: AgentState, config: RunnableConfig) -> dict[str, Any]:
-        runtime = runtime_from_config(config)
-        return guard_node(state, runtime=runtime)
+        return guard_node_fn(state, config)
 
     graph = StateGraph(AgentState)
     graph.add_node("agent", agent_node)
-    graph.add_node("tools", build_sequential_tool_node(TOOLS))
+    graph.add_node("tools", build_sequential_tool_node(tools))
     graph.add_node("guard", guard_wrapper)
 
     graph.add_edge(START, "agent")
@@ -101,3 +98,27 @@ def build_graph(
     graph.add_conditional_edges("guard", after_guard, {"agent": "agent", "__end__": END})
 
     return graph.compile(checkpointer=MemorySaver())
+
+
+def build_graph(
+    model_factory: Callable[[], BaseChatModel] | None = None,
+) -> CompiledStateGraph[AgentState, None, AgentState, AgentState]:
+    factory = model_factory or get_chat_model
+
+    def system_for_turn(state: AgentState, config: RunnableConfig) -> SystemMessage:
+        runtime = runtime_from_config(config)
+        return build_system_message(
+            state["draft"],
+            runtime.master,
+            state["cards_shown"],
+        )
+
+    def guard(state: AgentState, config: RunnableConfig) -> dict[str, Any]:
+        return guard_node(state, runtime=runtime_from_config(config))
+
+    return build_agent_graph(
+        tools=TOOLS,
+        system_for_turn=system_for_turn,
+        guard_node_fn=guard,
+        model_factory=factory,
+    )

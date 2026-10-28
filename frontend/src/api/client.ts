@@ -131,10 +131,22 @@ export async function resumeSession(token: string): Promise<CreateSessionRespons
   return res.json() as Promise<CreateSessionResponse>
 }
 
+function e2eCaseScenarioFromUrl(): string | undefined {
+  if (typeof window === 'undefined') return undefined
+  const params = new URLSearchParams(window.location.search)
+  return params.get('e2eCaseScenario') ?? undefined
+}
+
 export async function openCase(token: string): Promise<CreateSessionResponse> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (E2E_MODE) {
+    const scenario = e2eCaseScenarioFromUrl()
+    if (scenario) headers['X-Test-Scenario'] = scenario
+  }
+
   const res = await fetch(`${API_BASE}/api/cases/open`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ token }),
   })
   if (!res.ok) {

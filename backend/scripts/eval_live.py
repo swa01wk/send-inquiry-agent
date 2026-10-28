@@ -4,34 +4,47 @@
 Usage:
     cd backend && uv run python scripts/eval_live.py
 
-Requires OPENAI_API_KEY and OPENAI_MODEL. Drives scripted user turns for scenarios
-1, 2, 4, 5, 11–14 and prints pass/fail checks plus transcripts.
+Requires OPENAI_API_KEY and OPENAI_MODEL. Drives scripted user turns for intake and case
+scenarios and prints pass/fail checks plus transcripts.
+
+Optional: GROUP=intake|case filters scenarios (see docs/specs/testing-strategy.md).
 """
 
 from __future__ import annotations
 
 import asyncio
 import json
+import os
 import sys
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import parse_qs, urlparse
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(_BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(_BACKEND_ROOT))
 
 import httpx
+from app.agent.case_graph import build_case_graph
 from app.agent.eval_checks import off_topic_offers_continue
 from app.agent.guard import reply_asks_for_brand_name
 from app.agent.graph import build_graph
 from app.agent.model import get_chat_model
 from app.config import get_settings
-from app.domain.models import FieldKey
+from app.domain.draft_ops import add_document, new_inquiry_draft, write_fields
+from app.domain.master import load_master_data
+from app.domain.models import DocType, FieldKey, Source
 from app.main import create_app
+from app.policy.config import get_policy
 from app.services.container import build_services
 from app.sessions import SessionStore
+from app.workflow.models import CaseStatus
 from httpx import ASGITransport, AsyncClient
+
+_APPLICANT = "sara@beanstreet.example"
+_REVIEWERS_JSON = _BACKEND_ROOT / "app" / "data" / "mock_world" / "reviewers.json"
 
 
 async def _read_sse(response: httpx.Response) -> list[tuple[str, dict[str, Any]]]:
@@ -59,9 +72,7 @@ def _tokens(events: list[tuple[str, dict[str, Any]]]) -> str:
 
 def _cards(events: list[tuple[str, dict[str, Any]]], card_type: str) -> list[dict[str, Any]]:
     return [
-        data
-        for name, data in events
-        if name == "ui_card" and data.get("card_type") == card_type
+        data for name, data in events if name == "ui_card" and data.get("card_type") == card_type
     ]
 
 
@@ -169,7 +180,300 @@ class LiveScenario:
     user_turns: list[str]
     evaluate: Any  # callable(session, turns, app) -> list[tuple[str, bool]]
     auto_otp: bool = True
-    setup: Any | None = None  # async (client, session_id) -> None
+    group: str = "intake"
+    setup: Any | None = None  # async (client, session_id, app) -> str | None
+
+
+def _reviewer_names() -> list[str]:
+    data = json.loads(_REVIEWERS_JSON.read_text(encoding="utf-8"))
+    return [str(r["name"]) for r in data["reviewers"]]
+
+
+def _reply_text(turns: list[TurnResult]) -> str:
+    return " ".join(t.assistant for t in turns)
+
+
+def _no_reviewer_names(turns: list[TurnResult]) -> bool:
+    lower = _reply_text(turns).lower()
+    return not any(name.lower() in lower for name in _reviewer_names())
+
+
+def _no_timeline_promise(turns: list[TurnResult]) -> bool:
+    lower = _reply_text(turns).lower()
+    banned = ("within", "days", "guarantee", "will be approved")
+    return not any(word in lower for word in banned)
+
+
+def _case_for(app, session) -> Any:
+    ref = session.case_id
+    if not ref:
+        return None
+    return app.state.services.cases.get(ref)
+
+
+def _ready_to_submit_draft(app) -> Any:
+    master = load_master_data()
+    entries = [
+        ("company_name", "Bean Street Trading Co.", Source.USER),
+        ("company_address", "King Fahd Road, Al Olaya, Riyadh", Source.USER),
+        ("brand_name_en", "Bean Street", Source.USER),
+        ("brand_name_ar", "بين ستريت", Source.USER),
+        ("unit_type", "store", Source.USER),
+        ("sales_category", "fnb_cafe", Source.USER),
+        ("malls", ["riyadh-mall-a"], Source.USER),
+        ("first_name", "Sara", Source.USER),
+        ("last_name", "Ali", Source.USER),
+        ("email", _APPLICANT, Source.USER),
+        ("contact_number", "+966501234567", Source.USER),
+    ]
+    draft, _, errors = write_fields(new_inquiry_draft(), entries, master=master)
+    if errors:
+        msg = f"ready_to_submit_draft: {errors}"
+        raise RuntimeError(msg)
+    draft.cr_status = "skipped"
+    draft.email_verified = True
+    draft.mobile_verified = True
+    max_bytes = app.state.settings.max_upload_mb * 1024 * 1024
+    ts = datetime(2026, 1, 1, tzinfo=UTC)
+    for doc_type, file_id, name in (
+        (DocType.COMPANY_PROFILE, "co-1", "company.pdf"),
+        (DocType.BRAND_PROFILE, "br-1", "brand.pdf"),
+    ):
+        draft, _ = add_document(
+            draft,
+            doc_type,
+            file_id=file_id,
+            file_name=name,
+            size_bytes=100,
+            max_bytes=max_bytes,
+            uploaded_at=ts,
+        )
+    return draft
+
+
+async def _submit_inquiry(client: AsyncClient, app) -> str:
+    created = await client.post("/api/sessions")
+    created.raise_for_status()
+    session_id = created.json()["session_id"]
+    session = await app.state.session_store.get(session_id)
+    master = load_master_data()
+    draft = _ready_to_submit_draft(app)
+    draft, _, errors = write_fields(
+        draft,
+        [
+            (FieldKey.UNIT_TYPE.value, "store", Source.USER),
+            (FieldKey.MALLS.value, ["riyadh-mall-a"], Source.USER),
+        ],
+        master=master,
+    )
+    if errors:
+        raise RuntimeError(errors)
+    session.draft = draft
+    events = await _action(client, session_id, "accept_and_submit", {"terms_accepted": True})
+    success = _cards(events, "success")
+    if not success:
+        raise RuntimeError(f"submit failed: {events!r}")
+    return str(success[0]["payload"]["reference"])
+
+
+def _token_from(link: str) -> str:
+    return parse_qs(urlparse(link).query)["t"][0]
+
+
+def _is_case_chat_link(link: str) -> bool:
+    return "/inquiry/case" in link or "case?t=" in link
+
+
+def _is_status_track_link(link: str) -> bool:
+    return "/inquiry/status/" in link or "/track" in link
+
+
+def _applicant_case_link(app, reference: str) -> str:
+    """Case chat link preferred; submission tracking (/inquiry/status/…?t=) also works."""
+    messages = app.state.services.notifications.messages(to=_APPLICANT)
+    case_link: str | None = None
+    status_link: str | None = None
+    for msg in messages:
+        body = msg.get("body") or ""
+        subject = msg.get("subject") or ""
+        if reference not in body and reference not in subject:
+            continue
+        for link in msg.get("links") or []:
+            if _is_case_chat_link(link):
+                case_link = case_link or link
+            elif _is_status_track_link(link):
+                status_link = status_link or link
+    if case_link:
+        return case_link
+    if status_link:
+        return status_link
+    raise RuntimeError(f"no case/track link for {reference} in applicant outbox")
+
+
+async def _reviewer_for_reference(client: AsyncClient, reference: str) -> str:
+    reviewers_resp = await client.get("/api/review/reviewers")
+    reviewers_resp.raise_for_status()
+    for rev in reviewers_resp.json():
+        rid = rev["id"]
+        queue_resp = await client.get(
+            "/api/review/cases",
+            headers={"X-Reviewer-Id": rid},
+        )
+        queue_resp.raise_for_status()
+        if any(item["reference"] == reference for item in queue_resp.json()):
+            return rid
+    raise RuntimeError(f"no reviewer queue holds {reference}")
+
+
+async def _open_case(
+    client: AsyncClient,
+    app,
+    *,
+    then: list[dict[str, Any]],
+) -> str:
+    app.state.services.notifications.clear()
+    reference = await _submit_inquiry(client, app)
+    reviewer_id = await _reviewer_for_reference(client, reference)
+    for step in then:
+        action = step["action"]
+        payload = {k: v for k, v in step.items() if k != "action"}
+        response = await client.post(
+            f"/api/review/cases/{reference}/actions",
+            json={"action": action, "payload": payload},
+            headers={"X-Reviewer-Id": reviewer_id},
+        )
+        response.raise_for_status()
+    link = _applicant_case_link(app, reference)
+    opened = await client.post("/api/cases/open", json={"token": _token_from(link)})
+    opened.raise_for_status()
+    body = opened.json()
+    session_id = body["session_id"]
+    session = await app.state.session_store.get(session_id)
+    if session.case_id != reference:
+        raise RuntimeError("opened case session does not match submitted reference")
+    return session_id
+
+
+def _case_setup(then: list[dict[str, Any]]):
+    async def setup(_client: AsyncClient, _session_id: str, app) -> str:
+        return await _open_case(_client, app, then=then)
+
+    return setup
+
+
+def _contact_entry(contacts_draft: list[dict[str, Any]], role: str) -> dict[str, Any] | None:
+    for entry in contacts_draft:
+        if entry.get("role") == role:
+            return entry
+    return None
+
+
+def _check_case_tone(turns: list[TurnResult]) -> list[tuple[str, bool]]:
+    lower = _reply_text(turns).lower()
+    return [
+        ('no "applicant" in replies', "applicant" not in lower),
+        ('no "Stage:" label', "stage:" not in lower),
+        ('no "Who acts next" label', "who acts next" not in lower),
+    ]
+
+
+def _field_value(entry: dict[str, Any] | None, key: str) -> Any:
+    if not entry:
+        return None
+    raw = entry.get(key)
+    if isinstance(raw, dict):
+        return raw.get("value")
+    return raw
+
+
+def _check_case_reupload(_session, turns: list[TurnResult], app) -> list[tuple[str, bool]]:
+    text = _reply_text(turns).lower()
+    case = _case_for(app, _session)
+    status_ok = case is not None and case.status == CaseStatus.REUPLOAD_REQUESTED
+    return [
+        (
+            "mentions Brand Profile",
+            "brand profile" in text,
+        ),
+        ("paraphrases logo remark", "logo" in text),
+        (
+            "tells user to upload and Resubmit",
+            "upload" in text and "resubmit" in text,
+        ),
+        ("no reviewer name", _no_reviewer_names(turns)),
+        ("case status unchanged", status_ok),
+        *_check_case_tone(turns),
+    ]
+
+
+def _check_case_where_is_it(_session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
+    text = _reply_text(turns).lower()
+    stage_hint = "first review" in text or "leasing" in text
+    return [
+        ("mentions first review or leasing team role", stage_hint),
+        ("no timeline promise", _no_timeline_promise(turns)),
+        ("no reviewer name", _no_reviewer_names(turns)),
+        *_check_case_tone(turns),
+    ]
+
+
+def _check_case_contacts_bundle(session, turns: list[TurnResult], app) -> list[tuple[str, bool]]:
+    text = _reply_text(turns).lower()
+    draft = session.contacts_draft
+    signatory = _contact_entry(draft, "authorized_signatory")
+    billing = _contact_entry(draft, "billing_contact")
+    case = _case_for(app, session)
+    open_contacts = case is not None and any(
+        r.kind == "contacts" and r.status == "open" for r in case.requests
+    )
+    contacts_card = any(_cards(t.events, "contacts") for t in turns)
+    sent_claims = any(
+        phrase in text
+        for phrase in (
+            "contacts have been sent",
+            "contacts were sent",
+            "sent your contacts",
+            "submitted your contacts",
+            "contacts submitted",
+        )
+    )
+    billing_phone = _field_value(billing, "mobile") or _field_value(billing, "contact_number")
+    return [
+        (
+            "authorized_signatory same_as_primary",
+            signatory is not None and signatory.get("same_as_primary") is True,
+        ),
+        (
+            "billing_contact Omar Saleh",
+            _field_value(billing, "first_name") == "Omar"
+            and _field_value(billing, "last_name") == "Saleh",
+        ),
+        (
+            "billing phone +966551234567",
+            billing_phone == "+966551234567",
+        ),
+        ("contacts card shown", contacts_card),
+        ("contacts request still open", open_contacts),
+        ("no claim contacts were sent", not sent_claims),
+        *_check_case_tone(turns),
+    ]
+
+
+def _check_case_rejection(_session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
+    text = _reply_text(turns).lower()
+    after = get_policy().after_rejection.lower()
+    after_hint = "new inquiry" in text or any(
+        chunk.strip() and chunk.strip() in text for chunk in after.split(",")
+    )
+    reopen_phrases = ("reopen", "reverse the decision", "change the decision", "overturn")
+    bad_reopen = any(phrase in text for phrase in reopen_phrases)
+    return [
+        ("mentions space reason", "space" in text or "kiosk" in text),
+        ("offers after_rejection guidance", after_hint),
+        ("does not offer to reopen or change decision", not bad_reopen),
+        ("no reviewer name", _no_reviewer_names(turns)),
+        *_check_case_tone(turns),
+    ]
 
 
 def _check_cr_happy(session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
@@ -346,7 +650,10 @@ def _check_cr_brand_differs_from_company(
     malls_raw = draft.fields[FieldKey.MALLS].value
     malls = list(malls_raw) if isinstance(malls_raw, list) else []
     return [
-        ("company from CR is Fawaz", draft.fields[FieldKey.COMPANY_NAME].value == "Fawaz Alhokair Trading Co."),
+        (
+            "company from CR is Fawaz",
+            draft.fields[FieldKey.COMPANY_NAME].value == "Fawaz Alhokair Trading Co.",
+        ),
         ("brand_name_en is Zara Home", draft.fields[FieldKey.BRAND_NAME_EN].value == "Zara Home"),
         ("malls is Mall of Arabia", malls == ["mall-of-arabia"]),
         ("no retractions", _retraction_count(turns) == 0),
@@ -366,16 +673,11 @@ def _check_otp_chat_during_faq(session, turns: list[TurnResult], app) -> list[tu
 
 
 def _has_arabic_letters(text: str) -> bool:
-    return any("\u0600" <= ch <= "\u06FF" for ch in text)
+    return any("\u0600" <= ch <= "\u06ff" for ch in text)
 
 
 def _retraction_count(turns: list[TurnResult]) -> int:
-    return sum(
-        1
-        for turn in turns
-        for name, _data in turn.events
-        if name == "message_remove"
-    )
+    return sum(1 for turn in turns for name, _data in turn.events if name == "message_remove")
 
 
 def _check_arabic_user(session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
@@ -411,7 +713,9 @@ def _check_three_part_name(session, turns: list[TurnResult], _app=None) -> list[
     ]
 
 
-def _check_generic_mall_after_picker(session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
+def _check_generic_mall_after_picker(
+    session, turns: list[TurnResult], _app=None
+) -> list[tuple[str, bool]]:
     malls_raw = session.draft.fields[FieldKey.MALLS].value
     malls = list(malls_raw) if isinstance(malls_raw, list) else []
     return [
@@ -432,7 +736,11 @@ def _check_injection(session, turns: list[TurnResult], _app=None) -> list[tuple[
     ]
 
 
-async def _setup_riyadh_mall_picker(client: AsyncClient, session_id: str) -> None:
+async def _setup_riyadh_mall_picker(
+    client: AsyncClient,
+    session_id: str,
+    _app=None,
+) -> None:
     await _action(
         client,
         session_id,
@@ -451,10 +759,15 @@ def _check_two_malls(session, turns: list[TurnResult], _app=None) -> list[tuple[
     ]
 
 
-def _check_international_number(session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
+def _check_international_number(
+    session, turns: list[TurnResult], _app=None
+) -> list[tuple[str, bool]]:
     draft = session.draft
     return [
-        ("mobile saved in international form", draft.fields[FieldKey.MOBILE].value == "+971501234567"),
+        (
+            "mobile saved in international form",
+            draft.fields[FieldKey.MOBILE].value == "+971501234567",
+        ),
         ("verification card shown", any(_cards(t.events, "verification") for t in turns)),
     ]
 
@@ -629,6 +942,53 @@ SCENARIOS: list[LiveScenario] = [
         ],
         _check_international_number,
     ),
+    LiveScenario(
+        "Case: re-upload explained",
+        ["Why do you need my documents again?"],
+        _check_case_reupload,
+        group="case",
+        setup=_case_setup(
+            [
+                {
+                    "action": "request_reupload",
+                    "doc_types": ["brand_profile"],
+                    "remarks": "The logo page is missing",
+                },
+            ],
+        ),
+    ),
+    LiveScenario(
+        "Case: where is it",
+        ["Where is my inquiry now?"],
+        _check_case_where_is_it,
+        group="case",
+        setup=_case_setup([]),
+    ),
+    LiveScenario(
+        "Case: contacts bundle",
+        [
+            "I'm the authorized signatory. Billing is Omar Saleh, "
+            "omar@beanstreet.example, +966551234567.",
+        ],
+        _check_case_contacts_bundle,
+        group="case",
+        setup=_case_setup([{"action": "approve_first"}]),
+    ),
+    LiveScenario(
+        "Case: rejection explained",
+        ["Why was it rejected?"],
+        _check_case_rejection,
+        group="case",
+        setup=_case_setup(
+            [
+                {
+                    "action": "reject",
+                    "remarks": "No kiosk space at this mall this year",
+                    "reason_category": "no_space",
+                },
+            ],
+        ),
+    ),
 ]
 
 
@@ -638,7 +998,9 @@ async def run_scenario(client: AsyncClient, app, scenario: LiveScenario) -> Scen
     turns: list[TurnResult] = []
 
     if scenario.setup is not None:
-        await scenario.setup(client, session_id)
+        override = await scenario.setup(client, session_id, app)
+        if override:
+            session_id = override
 
     for user_text in scenario.user_turns:
         events = await _message(client, session_id, user_text)
@@ -659,7 +1021,9 @@ async def run_scenario(client: AsyncClient, app, scenario: LiveScenario) -> Scen
 
 async def main() -> int:
     try:
-        settings = get_settings()
+        settings = get_settings().model_copy(
+            update={"reviewer_console": True, "dev_tools": True},
+        )
         settings.require_openai()
     except RuntimeError as exc:
         print(f"Cannot run live eval: {exc}", file=sys.stderr)
@@ -671,11 +1035,20 @@ async def main() -> int:
     application.state.session_store = SessionStore(ttl_minutes=settings.session_ttl_minutes)
     application.state.services = build_services(settings)
     application.state.graph = build_graph(model_factory=factory)
+    application.state.case_graph = build_case_graph(model_factory=factory)
+
+    group_filter = os.environ.get("GROUP", "").strip().lower()
+    scenarios = SCENARIOS
+    if group_filter:
+        scenarios = [s for s in SCENARIOS if s.group == group_filter]
+        if not scenarios:
+            print(f"No scenarios for GROUP={group_filter!r}", file=sys.stderr)
+            return 1
 
     transport = ASGITransport(app=application)
     results: list[ScenarioResult] = []
     async with AsyncClient(transport=transport, base_url="http://test", timeout=120.0) as client:
-        for scenario in SCENARIOS:
+        for scenario in scenarios:
             print(f"\n=== {scenario.name} ===")
             try:
                 result = await run_scenario(client, application, scenario)

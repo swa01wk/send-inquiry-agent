@@ -209,7 +209,7 @@ Errors: `{"error": {"code": str, "message": str}}` with 4xx/5xx.
 {"type": "action", "action": "select_malls", "payload": {"mall_ids": ["riyadh-mall-a"]}}
 ```
 
-Test hooks: when `AGENT_MODE=scripted`, `POST /api/sessions` accepts an `X-Test-Scenario` header naming a script in `backend/tests/e2e_scripts/`; the session then replays that script. It also accepts `X-Mock-Faults` (`service:kind[:count],…`; services `cr`, `email`, `otp`, `notifications`, `submit`, `status`, `storage`, `call_centre`, `llm` (the chat model); kinds `timeout`, `unavailable`, `rejected`) for faults in that session only; a bad spec is 400 `bad_mock_faults`. Both headers are ignored in `openai` mode.
+Test hooks: when `AGENT_MODE=scripted`, `POST /api/sessions` and `POST /api/cases/open` accept an `X-Test-Scenario` header naming a script in `backend/tests/e2e_scripts/`; the session then replays that script (intake tools on inquiry sessions, case tools on case-mode sessions). Unknown or missing headers leave `test_scenario` unset. It also accepts `X-Mock-Faults` (`service:kind[:count],…`; services `cr`, `email`, `otp`, `notifications`, `submit`, `status`, `storage`, `call_centre`, `llm` (the chat model); kinds `timeout`, `unavailable`, `rejected`) for faults in that session only; a bad spec is 400 `bad_mock_faults`. Both headers are ignored in `openai` mode.
 
 Unknown session → 404 `session_not_found`. Sessions expire after 2 hours idle; a signed link (verification, resume) reaches an idle session again. A connected system that fails surfaces as 503 `<service>_<kind>`. Rate limits: 30 chat requests/min per session, 60/min per IP → 429 `rate_limited`.
 

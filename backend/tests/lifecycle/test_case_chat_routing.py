@@ -6,6 +6,7 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 import pytest
+from app.agent.case_graph import build_case_graph
 from app.agent.graph import build_graph
 from app.agent.model import ScriptedChatModel
 from tests.lifecycle.conftest import APPLICANT, outbox, submit_case, token_from
@@ -21,7 +22,7 @@ async def test_case_session_chat_skips_router_and_uses_case_graph(life, monkeypa
         return ScriptedChatModel(steps=[{"content": "Case assistant reply."}])
 
     intake_graph = build_graph(model_factory=factory)
-    case_graph = build_graph(model_factory=factory)
+    case_graph = build_case_graph(model_factory=factory)
     app.state.graph = intake_graph
     app.state.case_graph = case_graph
 

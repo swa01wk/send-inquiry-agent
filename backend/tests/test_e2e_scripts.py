@@ -4,10 +4,11 @@ import json
 from pathlib import Path
 
 import pytest
+from app.agent.case_tools import CASE_TOOLS
 from app.agent.e2e_scripts import list_e2e_script_names, load_e2e_script_steps
 from app.agent.tools import TOOLS
 
-_TOOL_NAMES = {t.name for t in TOOLS}
+_TOOL_NAMES = {t.name for t in TOOLS} | {t.name for t in CASE_TOOLS}
 _SCRIPTS_DIR = Path(__file__).resolve().parent / "e2e_scripts"
 
 
