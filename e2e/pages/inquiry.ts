@@ -198,7 +198,10 @@ export class InquiryPage {
     } else {
       await control.fill(value)
     }
-    const row = card.locator('[data-testid^="form-mode-field-"]').filter({ has: control })
+    // `has` takes a page-rooted locator, queried inside each row.
+    const row = card
+      .locator('[data-testid^="form-mode-field-"]')
+      .filter({ has: this.page.getByLabel(label, { exact: true }) })
     const doneBefore = await readDoneEventCount(this.page)
     await row.getByRole('button', { name: 'Save' }).click()
     await this.waitForTurnDone(doneBefore)
