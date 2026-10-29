@@ -30,6 +30,7 @@ class AgentState(TypedDict):
     channel: NotRequired[str]
     assisted: NotRequired[bool]
     tenant_id: NotRequired[str | None]
+    existing_cr_choice: NotRequired[str | None]
 
 
 def initial_agent_state(

@@ -211,6 +211,21 @@ async def test_application_link_hands_the_inquiry_to_the_applicant(life) -> None
     ]
 
 
+async def test_sign_in_choice_blocks_the_application_link(life) -> None:
+    client, app = life
+    session_id = await new_assisted(client, scenario="c1-existing-cr-sign-in")
+    await chat_message(
+        client,
+        session_id,
+        "The caller gave CR 1010000000 for a specialty kiosk at Riyadh Mall A",
+    )
+    events = await chat_action(client, session_id, "existing_cr_choice", {"choice": "sign_in"})
+    assert ui_cards(events, "send_link") == []
+    session = await app.state.session_store.get(session_id)
+    assert session.existing_cr_choice == "sign_in"
+    assert session.closed == "redirected_to_sign_in"
+
+
 async def test_assisted_e2e_script_existing_cr_then_send_link(life) -> None:
     client, app = life
     session_id = await new_assisted(client, scenario="c1-existing-cr")

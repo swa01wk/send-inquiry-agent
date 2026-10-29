@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { fetchDevOutbox } from "../support/outbox";
+import { advanceClockToLocalHour } from "../support/stories";
 import {
   APPLICANT_EMAIL,
   reviewerFor,
@@ -86,20 +87,35 @@ test.describe("Needs attention (L5) @scripted", () => {
     await advanceFromDevPage(page, "+24 h");
     expect(await countTemplate(request, "applicant_reminder")).toBe(0); // waits for approval
 
-    await page.goto(`/review?as=${encodeURIComponent(reviewer.id)}`);
-    await page.getByTestId("attention-link").click();
+    await page.goto(
+      `/review/attention?as=${encodeURIComponent(reviewer.id)}&e2eScenario=r2-tenant-reminder`,
+    );
     const reminder = page.getByTestId(
       `attention-applicant_reminder-${reference}`,
     );
     await expect(reminder.getByLabel("Reminder to the applicant")).toHaveValue(
       /company contacts/,
     );
+    await reminder.getByTestId("attention-draft-assistant").click();
+    const draftCard = reminder.getByTestId("attention-assistant-draft");
+    await expect(draftCard).toBeVisible({ timeout: 60_000 });
+    await reminder.getByTestId("attention-use-draft").click();
+    await expect(reminder.getByLabel("Reminder to the applicant")).toHaveValue(
+      /contacts/,
+    );
+
+    await advanceClockToLocalHour(request, 23);
     await reminder.getByRole("button", { name: "Approve and send" }).click();
-    const status = page.getByRole("status");
-    await expect(status).toBeVisible();
-    if ((await status.textContent())?.includes("held until")) {
-      await advanceFromDevPage(page, "To morning (08:00)"); // approved during quiet hours
-    }
+    await expect(reminder.getByTestId("attention-held")).toContainText(
+      "held until",
+    );
+    expect(
+      (await fetchDevOutbox(request, APPLICANT_EMAIL)).filter(
+        (m) => m.template === "applicant_reminder",
+      ),
+    ).toHaveLength(0);
+
+    await advanceFromDevPage(page, "To morning (08:00)");
     const sent = (await fetchDevOutbox(request, APPLICANT_EMAIL)).filter(
       (m) => m.template === "applicant_reminder",
     );

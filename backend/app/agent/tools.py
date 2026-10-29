@@ -967,6 +967,16 @@ def show_application_link(
 ) -> Command[Any]:
     """Assisted mode: show the Send application link card once the basic info is complete.
     The executive presses the button; this tool never sends anything."""
+    if state.get("assisted") and state.get("existing_cr_choice") == "sign_in":
+        return _tool_result(
+            runtime,
+            draft=state["draft"],
+            content=(
+                "The executive asked the caller to sign in; there's no application link "
+                "for this inquiry."
+            ),
+            cards_shown=list(state["cards_shown"]),
+        )
     draft = state["draft"]
     card = build_send_link_card(draft)
     _emit_card(card, runtime)

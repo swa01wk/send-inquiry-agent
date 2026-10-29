@@ -231,6 +231,7 @@ async def run_turn(
     state["channel"] = session.channel
     state["assisted"] = session.assisted
     state["tenant_id"] = session.tenant_id
+    state["existing_cr_choice"] = session.existing_cr_choice
     turn_start_draft = session.draft.model_copy(deep=True)
 
     config = _graph_config(session, runtime, settings=settings)

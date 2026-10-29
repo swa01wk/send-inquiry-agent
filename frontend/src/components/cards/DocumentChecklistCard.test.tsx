@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { documentUploadCardExample } from '../../mocks/fixtures'
@@ -33,6 +33,22 @@ describe('DocumentChecklistCard', () => {
     fireEvent.change(input, { target: { files: [bad] } })
     expect(await screen.findByText(/file type isn't supported/i)).toBeInTheDocument()
     expect(onUpload).not.toHaveBeenCalled()
+  })
+
+  it('tags each document row with doc-row and doc-status', () => {
+    if (documentUploadCardExample.card_type !== 'document_upload') throw new Error('bad fixture')
+    render(
+      <DocumentChecklistCard
+        payload={documentUploadCardExample.payload}
+        onUpload={async () => undefined}
+        onRemove={async () => undefined}
+        onSetNumber={() => undefined}
+      />,
+    )
+    for (const doc of documentUploadCardExample.payload.docs) {
+      const row = screen.getByTestId(`doc-row-${doc.doc_type}`)
+      expect(within(row).getByTestId('doc-status')).toHaveTextContent('Not uploaded')
+    }
   })
 
   it('calls upload for valid file', async () => {
@@ -168,7 +184,9 @@ describe('DocumentChecklistCard', () => {
       />,
     )
 
-    expect(screen.getByText('On file')).toBeInTheDocument()
+    const row = screen.getByTestId('doc-row-company_profile')
+    expect(row).toBeInTheDocument()
+    expect(within(row).getByTestId('doc-status')).toHaveTextContent('On file')
     expect(screen.queryByText(/Uploaded ·/)).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /replace/i }))
     const input = document.querySelector('input[type="file"]') as HTMLInputElement

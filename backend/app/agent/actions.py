@@ -931,6 +931,10 @@ async def _send_application_link(
     del payload
     if not session.assisted:
         return ActionResult(note=HumanMessage(content="[ui_event] link_blocked not_assisted"))
+    if session.existing_cr_choice == "sign_in":
+        return ActionResult(
+            note=HumanMessage(content="[ui_event] link_blocked redirected_to_sign_in")
+        )
     card = build_send_link_card(session.draft, sent_to=session.link_sent_to)
     if not card.payload["can_send"]:
         missing = ", ".join(card.payload["missing"])
@@ -999,6 +1003,7 @@ async def _existing_cr_choice(
     tenant = runtime.services.tenants.get_by_cr(str(cr_number))
     company = tenant.company_name if tenant else None
     if choice == "sign_in":
+        session.existing_cr_choice = "sign_in"
         session.closed = "redirected_to_sign_in"
         _audit(
             runtime,
@@ -1015,6 +1020,7 @@ async def _existing_cr_choice(
         )
     if choice != "continue" or tenant is None:
         return ActionResult(note=HumanMessage(content="[ui_event] cr_choice_failed no_record"))
+    session.existing_cr_choice = "continue"
     draft, written = prefill_from_tenant(session.draft, tenant, runtime.master)
     draft, documents = attach_documents_on_file(runtime, session.id, draft, tenant)
     session.draft = draft

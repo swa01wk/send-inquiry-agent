@@ -124,6 +124,7 @@ export class InquiryPage {
     await this.waitForTurnDone(doneBefore);
   }
 
+  /** Waits until the SSE stream finishes the current turn (message or card action). */
   async waitForTurnDone(doneBefore: number) {
     await expect
       .poll(() => readDoneEventCount(this.page), {
@@ -201,12 +202,21 @@ export class InquiryPage {
     await this.waitForTurnDone(doneBefore);
   }
 
-  async pickFile(docLabel: string, fileName: string) {
+  private async docRow(docLabel: string): Promise<Locator> {
     const card = this.page.getByTestId("document-checklist-card");
-    const row = card.locator("div").filter({ hasText: docLabel }).first();
+    const row = card
+      .locator('[data-testid^="doc-row-"]')
+      .filter({ hasText: docLabel });
+    await expect(row).toHaveCount(1);
+    return row;
+  }
+
+  async pickFile(docLabel: string, fileName: string) {
+    const row = await this.docRow(docLabel);
+    const uploadBtn = row.getByRole("button", { name: /Upload|Replace/i });
     const [chooser] = await Promise.all([
       this.page.waitForEvent("filechooser"),
-      row.getByRole("button", { name: "Upload" }).click(),
+      uploadBtn.click(),
     ]);
     await chooser.setFiles(path.join(fixtures, fileName));
   }
@@ -214,9 +224,11 @@ export class InquiryPage {
   async upload(docLabel: string, fileName: string) {
     const doneBefore = await readDoneEventCount(this.page);
     await this.pickFile(docLabel, fileName);
+    const row = await this.docRow(docLabel);
+    await expect(row.getByTestId("doc-status")).toContainText("Uploaded", {
+      timeout: 30_000,
+    });
     const card = this.page.getByTestId("document-checklist-card");
-    const row = card.locator("div").filter({ hasText: docLabel }).first();
-    await expect(row.getByText(/Uploaded/i)).toBeVisible({ timeout: 30_000 });
     const header = card.getByText(/\d+ of \d+ required uploaded/);
     const headerText = (await header.textContent()) ?? "";
     const match = headerText.match(/(\d+) of (\d+) required uploaded/);
@@ -243,8 +255,7 @@ export class InquiryPage {
   }
 
   async expectUploadError(docLabel: string, message: string) {
-    const card = this.page.getByTestId("document-checklist-card");
-    const row = card.locator("div").filter({ hasText: docLabel }).first();
+    const row = await this.docRow(docLabel);
     await expect(row.getByText(message)).toBeVisible();
   }
 
@@ -375,6 +386,10 @@ export class InquiryPage {
     if (type === "basic_info_review")
       return this.page.getByTestId("basic-info-review-card");
     if (type === "send_link") return this.page.getByTestId("send-link-card");
+    if (type === "existing_cr_choice")
+      return this.page.getByTestId("existing-cr-choice-card");
+    if (type === "sign_in_prompt")
+      return this.page.getByTestId("sign-in-prompt-card");
     return this.page.locator(`[data-card-type="${type}"]`);
   }
 

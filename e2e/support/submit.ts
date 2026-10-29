@@ -9,8 +9,26 @@ import {
 
 const API = "http://127.0.0.1:8000";
 
+async function ensureDocumentReady(
+  inquiry: InquiryPage,
+  docLabel: string,
+  fileName: string,
+) {
+  const card = inquiry.cards("document_upload");
+  const row = card
+    .locator('[data-testid^="doc-row-"]')
+    .filter({ hasText: docLabel });
+  await expect(row).toHaveCount(1);
+  const status = row.getByTestId("doc-status");
+  const text = ((await status.textContent()) ?? "").trim();
+  if (text === "On file" || text.startsWith("Uploaded")) return;
+  await inquiry.upload(docLabel, fileName);
+}
+
 export const APPLICANT_EMAIL = "sara@beanstreet.example";
 export const APPLICANT_MOBILE = "+966501234567";
+
+export type ContactOutbox = { email: string; mobile: string };
 
 /** The S1 scripted path (`scenario` must be a script in `backend/tests/e2e_scripts/`, e.g.
  * `s1-happy-path`) to a submitted inquiry, without per-turn checks. Returns the reference. */
@@ -48,6 +66,10 @@ export async function submitScriptedInquiry(
 export async function completeApplicationLinkFlow(
   inquiry: InquiryPage,
   request: APIRequestContext,
+  contact: ContactOutbox = {
+    email: APPLICANT_EMAIL,
+    mobile: APPLICANT_MOBILE,
+  },
 ): Promise<string> {
   await expect(inquiry.cards("basic_info_review")).toBeVisible({
     timeout: 60_000,
@@ -58,13 +80,13 @@ export async function completeApplicationLinkFlow(
   ).toBeVisible();
   await expect(inquiry.cards("verification")).toBeVisible({ timeout: 60_000 });
   await inquiry.enterCode(
-    smsOtpCode(await fetchDevOutbox(request, APPLICANT_MOBILE)),
+    smsOtpCode(await fetchDevOutbox(request, contact.mobile)),
   );
   await expect(inquiry.cards("document_upload")).toBeVisible({
     timeout: 90_000,
   });
-  await inquiry.upload("Company Profile", "company_profile.pdf");
-  await inquiry.upload("Brand Profile", "brand_profile.pdf");
+  await ensureDocumentReady(inquiry, "Company Profile", "company_profile.pdf");
+  await ensureDocumentReady(inquiry, "Brand Profile", "brand_profile.pdf");
   await expect(inquiry.cards("review")).toBeVisible({ timeout: 60_000 });
   await inquiry.acceptAndSubmit();
   await expect(inquiry.cards("success")).toBeVisible({ timeout: 60_000 });

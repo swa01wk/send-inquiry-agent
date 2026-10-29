@@ -113,8 +113,13 @@ export function DocumentChecklistCard({
       {docs.map((doc) => {
         const uploading = uploadingType === doc.doc_type
         const numberRow = numberForDoc(doc.doc_type, numbers)
+        const statusText = doc.on_file
+          ? 'On file'
+          : doc.uploaded && doc.file_name
+            ? `Uploaded · ${doc.file_name}${doc.size_bytes != null ? ` · ${formatFileSize(doc.size_bytes)}` : ''}`
+            : 'Not uploaded'
         return (
-          <div key={doc.doc_type} className={styles.row}>
+          <div key={doc.doc_type} className={styles.row} data-testid={`doc-row-${doc.doc_type}`}>
             <div className={styles.info}>
               <div className={styles.labelRow}>
                 <span className={styles.docLabel}>{doc.label}</span>
@@ -122,12 +127,11 @@ export function DocumentChecklistCard({
                   {doc.required ? 'Required' : 'Optional'}
                 </span>
               </div>
-              <span className={doc.uploaded ? styles.statusOk : styles.statusMuted}>
-                {doc.on_file
-                  ? 'On file'
-                  : doc.uploaded && doc.file_name
-                    ? `Uploaded · ${doc.file_name}${doc.size_bytes != null ? ` · ${formatFileSize(doc.size_bytes)}` : ''}`
-                    : 'Not uploaded'}
+              <span
+                className={doc.uploaded ? styles.statusOk : styles.statusMuted}
+                data-testid="doc-status"
+              >
+                {statusText}
               </span>
               {!isReupload && numberRow ? (
                 <label className={styles.numberField}>

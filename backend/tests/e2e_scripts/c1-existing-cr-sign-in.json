@@ -1,0 +1,21 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "verify_cr",
+        "args": {
+          "cr_number": "1010000000"
+        },
+        "id": "c1sv1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Ask them to sign in on Tenant Central, or choose Continue for you to fill the inquiry from their tenant record."
+  },
+  {
+    "content": "They'll sign in on Tenant Central — no application link from this chat."
+  }
+]
