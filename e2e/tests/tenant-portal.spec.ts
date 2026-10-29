@@ -19,8 +19,10 @@ test.describe('Tenant Central (existing tenant) @scripted', () => {
     await unit.getByRole('button', { name: 'Raise inquiry' }).click()
 
     // The chat opens in existing-tenant mode: greeted by name, details from the record.
-    await expect(page.getByText(/Welcome back, Layla/)).toBeVisible({ timeout: 30_000 })
-    await expect(page.getByText(/Oasis Coffee Company's details/)).toBeVisible()
+    // The sr-only live region repeats the same text for screen readers.
+    const greeting = page.getByTestId('bot-bubble-text').filter({ hasText: /Welcome back, Layla/ })
+    await expect(greeting).toBeVisible({ timeout: 30_000 })
+    await expect(greeting).toContainText("Oasis Coffee Company's details")
 
     await page.goto('/tenant/inquiries')
     await expect(page.getByTestId('my-inquiries-empty')).toBeVisible()
