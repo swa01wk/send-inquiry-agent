@@ -36,28 +36,38 @@ export async function submitScriptedInquiry(
   page: Page,
   request: APIRequestContext,
   scenario: string,
+  beat?: (page: Page) => Promise<void>,
 ): Promise<string> {
   const inquiry = new InquiryPage(page);
   await inquiry.open(scenario);
   await inquiry.say("1010123456");
+  if (beat) await beat(page);
   await inquiry.confirmCard();
+  if (beat) await beat(page);
   await inquiry.say(
     "Bean Street kiosk Riyadh Mall A 30 sqm Sara Ali sara@beanstreet.example 0501234567",
   );
+  if (beat) await beat(page);
   await inquiry.confirmCard();
+  if (beat) await beat(page);
   await expect(inquiry.cards("verification")).toBeVisible({ timeout: 60_000 });
+  if (beat) await beat(page);
   await inquiry.verifyEmailFromInbox(APPLICANT_EMAIL);
   await inquiry.enterCode(
     smsOtpCode(await fetchDevOutbox(request, APPLICANT_MOBILE)),
   );
+  if (beat) await beat(page);
   await expect(inquiry.cards("document_upload")).toBeVisible({
     timeout: 90_000,
   });
+  if (beat) await beat(page);
   await inquiry.upload("Company Profile", "company_profile.pdf");
   await inquiry.upload("Brand Profile", "brand_profile.pdf");
   await expect(inquiry.cards("review")).toBeVisible({ timeout: 60_000 });
+  if (beat) await beat(page);
   await inquiry.acceptAndSubmit();
   await expect(inquiry.cards("success")).toBeVisible({ timeout: 60_000 });
+  if (beat) await beat(page);
 
   return referenceFromReviewAssigned(await fetchDevOutbox(request));
 }
@@ -70,26 +80,35 @@ export async function completeApplicationLinkFlow(
     email: APPLICANT_EMAIL,
     mobile: APPLICANT_MOBILE,
   },
+  beat?: (page: Page) => Promise<void>,
 ): Promise<string> {
+  const page = inquiry.page;
   await expect(inquiry.cards("basic_info_review")).toBeVisible({
     timeout: 60_000,
   });
+  if (beat) await beat(page);
   await inquiry.proceedBasicInfo();
   await expect(
     inquiry.cards("basic_info_review").getByText("Basic information confirmed"),
   ).toBeVisible();
+  if (beat) await beat(page);
   await expect(inquiry.cards("verification")).toBeVisible({ timeout: 60_000 });
+  if (beat) await beat(page);
   await inquiry.enterCode(
     smsOtpCode(await fetchDevOutbox(request, contact.mobile)),
   );
+  if (beat) await beat(page);
   await expect(inquiry.cards("document_upload")).toBeVisible({
     timeout: 90_000,
   });
+  if (beat) await beat(page);
   await ensureDocumentReady(inquiry, "Company Profile", "company_profile.pdf");
   await ensureDocumentReady(inquiry, "Brand Profile", "brand_profile.pdf");
   await expect(inquiry.cards("review")).toBeVisible({ timeout: 60_000 });
+  if (beat) await beat(page);
   await inquiry.acceptAndSubmit();
   await expect(inquiry.cards("success")).toBeVisible({ timeout: 60_000 });
+  if (beat) await beat(page);
   return inquiry.successReference();
 }
 

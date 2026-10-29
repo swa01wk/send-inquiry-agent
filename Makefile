@@ -5,8 +5,11 @@
 .PHONY: dev demo dev-backend dev-frontend \
 	check check-be check-fe lint \
 	test test-be test-fe test-agent \
-	e2e e2e-int e2e-demo e2e-demo-headed e2e-live e2e-report eval-live \
+	e2e e2e-int e2e-demo e2e-demo-headed e2e-demo-step e2e-live e2e-report eval-live \
 	ci ci-remote gate
+
+SLOW_MO ?= 800
+DEMO_PAUSE ?= 2500
 
 # ---- Run ---------------------------------------------------------------
 
@@ -68,7 +71,10 @@ e2e-demo:
 	$(E2E_DEPS) && CI=1 npm run test:demo -- $(ARGS)
 
 e2e-demo-headed:
-	$(E2E_DEPS) && CI=1 E2E_SLOW_MO=400 npm run test:demo -- --headed $(ARGS)
+	$(E2E_DEPS) && CI=1 E2E_SLOW_MO=$(SLOW_MO) E2E_DEMO_PAUSE_MS=$(DEMO_PAUSE) npm run test:demo -- --headed $(ARGS)
+
+e2e-demo-step:
+	$(E2E_DEPS) && CI=1 E2E_SLOW_MO=$(SLOW_MO) E2E_DEMO_PAUSE_MS=$(DEMO_PAUSE) E2E_DEMO_STEP=1 npm run test:demo -- --headed $(ARGS)
 
 e2e: e2e-int
 

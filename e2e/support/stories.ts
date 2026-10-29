@@ -6,6 +6,7 @@ import {
 } from "@playwright/test";
 import { InquiryPage } from "../pages/inquiry";
 import { A2_CALL_CENTRE_TURNS, C1_EXISTING_CR_TURN } from "./channelScripts";
+import type { DemoBeat } from "./demoPace";
 import {
   clearDevOutbox,
   completeVerifyLink,
@@ -70,12 +71,15 @@ export async function staffSendApplicationLink(
   request: APIRequestContext,
   applicantEmail: string = APPLICANT_EMAIL,
   applicantScenario = "a2-applicant",
+  beat?: DemoBeat,
 ): Promise<string> {
   await expect(staffChat.cards("send_link")).toBeVisible({ timeout: 60_000 });
+  if (beat) await beat(staffChat.page);
   await staffChat.sendApplicationLink();
   await expect(
     staffChat.cards("send_link").getByText(/Link sent to/i),
   ).toBeVisible();
+  if (beat) await beat(staffChat.page);
 
   await expect
     .poll(async () =>
@@ -103,6 +107,7 @@ export async function completeApplicationFromLink(
     mobile: APPLICANT_MOBILE,
   },
   onApplicantReady?: (page: Page) => Promise<void>,
+  beat?: DemoBeat,
 ): Promise<string> {
   const viewport = viewportPage.viewportSize();
   const applicantContext = await browser.newContext(
@@ -113,7 +118,12 @@ export async function completeApplicationFromLink(
     const applicant = new InquiryPage(applicantPage);
     await applicant.openApplicationVerifyLink(verifyPath);
     if (onApplicantReady) await onApplicantReady(applicantPage);
-    return await completeApplicationLinkFlow(applicant, request, contact);
+    return await completeApplicationLinkFlow(
+      applicant,
+      request,
+      contact,
+      beat,
+    );
   } finally {
     await applicantContext.close();
   }
@@ -148,6 +158,7 @@ export async function raiseTenantInquiry(
   opportunityId: string,
   scenario: string,
   welcomePattern?: RegExp,
+  beat?: DemoBeat,
 ): Promise<{ inquiry: InquiryPage; reference: string }> {
   await clearDevOutbox(page.request);
 
@@ -178,18 +189,23 @@ export async function raiseTenantInquiry(
     await expect(
       page.getByTestId("bot-bubble-text").filter({ hasText: welcomePattern }),
     ).toBeVisible({ timeout: 30_000 });
+    if (beat) await beat(page);
   }
 
   await expect(inquiry.cards("basic_info_review")).toBeVisible({
     timeout: 60_000,
   });
+  if (beat) await beat(page);
   await inquiry.proceedBasicInfo();
   await expect(
     inquiry.cards("basic_info_review").getByText("Basic information confirmed"),
   ).toBeVisible();
+  if (beat) await beat(page);
   await expect(inquiry.cards("review")).toBeVisible({ timeout: 60_000 });
+  if (beat) await beat(page);
   await inquiry.acceptAndSubmit();
   await expect(inquiry.cards("success")).toBeVisible({ timeout: 60_000 });
+  if (beat) await beat(page);
   const reference = await inquiry.successReference();
   return { inquiry, reference };
 }
@@ -260,9 +276,15 @@ function outboxRowsForReference(
 export async function runL5AttentionFlow(
   page: Page,
   request: APIRequestContext,
+  beat?: DemoBeat,
 ): Promise<void> {
   await request.post(`${API}/api/dev/reset`);
-  const reference = await submitScriptedInquiry(page, request, "s1-happy-path");
+  const reference = await submitScriptedInquiry(
+    page,
+    request,
+    "s1-happy-path",
+    beat,
+  );
   const reviewer = await reviewerFor(request, reference);
 
   const emailsForRef = async (template: string) =>
@@ -281,6 +303,7 @@ export async function runL5AttentionFlow(
   await expect(
     page.getByTestId(`attention-stalled_review-${reference}`),
   ).toBeVisible();
+  if (beat) await beat(page);
 
   await advanceClockFromDevPage(page, "+48 h");
   expect(await emailsForRef("review_escalated")).toHaveLength(1);
@@ -291,6 +314,7 @@ export async function runL5AttentionFlow(
   await expect(
     page.getByTestId(`attention-escalation-${reference}`),
   ).toBeVisible();
+  if (beat) await beat(page);
 
   await page.goto(`/review?as=${encodeURIComponent(reviewer.id)}`);
   await page
@@ -301,6 +325,7 @@ export async function runL5AttentionFlow(
   await expect(page.getByTestId("case-stage")).toHaveText(
     "Lead — second review",
   );
+  if (beat) await beat(page);
   await advanceClockFromDevPage(page, "+48 h");
   await advanceClockFromDevPage(page, "+24 h");
   expect(
@@ -318,20 +343,24 @@ export async function runL5AttentionFlow(
   await expect(reminder.getByLabel("Reminder to the applicant")).toHaveValue(
     /company contacts/,
   );
+  if (beat) await beat(page);
   await reminder.getByTestId("attention-draft-assistant").click();
   await expect(reminder.getByTestId("attention-assistant-draft")).toBeVisible({
     timeout: 60_000,
   });
+  if (beat) await beat(page);
   await reminder.getByTestId("attention-use-draft").click();
   await expect(reminder.getByLabel("Reminder to the applicant")).toHaveValue(
     /contacts/,
   );
+  if (beat) await beat(page);
 
   await advanceClockToLocalHour(request, 23);
   await reminder.getByRole("button", { name: "Approve and send" }).click();
   await expect(reminder.getByTestId("attention-held")).toContainText(
     "held until",
   );
+  if (beat) await beat(page);
   expect(
     (await fetchDevOutbox(request, APPLICANT_EMAIL)).filter(
       (m) => m.template === "applicant_reminder",
