@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import uuid
 from typing import Annotated, Any, Literal
 
@@ -14,7 +15,9 @@ from app.agent.runtime import runtime_from_config
 from app.agent.state import AgentState
 from app.api.schemas import UiCard
 from app.domain.case_brief import build_case_brief, format_case_brief_text
-from app.workflow.models import Case
+from app.domain.fields import document_label
+from app.proactive.engine import default_reminder_text
+from app.workflow.models import Case, CaseRequest
 
 NOTE_KIND = Literal[
     "reupload_remarks",
@@ -31,12 +34,15 @@ NOTE_ACTION: dict[str, str] = {
     "tenant_reminder": "",
 }
 
+_PROMISE_WORDS = ("within", "days", "guarantee", "approved")
+
 __all__ = [
     "REVIEWER_TOOLS",
     "get_case_brief",
     "search_yardi_companies",
     "list_company_brands",
     "draft_reviewer_note",
+    "reminder_check",
 ]
 
 
@@ -79,6 +85,57 @@ def _tool_message(runtime: ToolRuntime, content: str) -> Command[Any]:
 def _first_word(name: str) -> str:
     words = name.strip().split()
     return words[0].lower().strip(".,&") if words else ""
+
+
+def _open_requests(case: Case) -> list[CaseRequest]:
+    return [r for r in case.requests if r.status == "open"]
+
+
+def _reviewer_name_tokens(reviewer_names: list[str]) -> set[str]:
+    tokens: set[str] = set()
+    for name in reviewer_names:
+        parts = name.strip().split()
+        if not parts:
+            continue
+        tokens.add(parts[0].lower())
+        if len(parts) > 1:
+            tokens.add(parts[-1].lower())
+    return tokens
+
+
+def reminder_check(text: str, case: Case, reviewer_names: list[str]) -> str | None:
+    """Return a short failure reason if the draft fails L5 §3.5 checks, else None."""
+    open_requests = _open_requests(case)
+    if not open_requests:
+        return None
+
+    lower = text.lower()
+    for request in open_requests:
+        if request.kind == "reupload":
+            for doc_type in request.doc_types:
+                label = document_label(doc_type)
+                if label.lower() not in lower:
+                    return "a document label was missing"
+        elif request.kind == "contacts":
+            if not re.search(r"\bcontact\b", text, re.IGNORECASE):
+                return "the draft did not name contacts"
+        elif request.kind == "sales_data":
+            if not re.search(r"\bsales\b", text, re.IGNORECASE):
+                return "the draft did not name sales data"
+
+    for word in _PROMISE_WORDS:
+        if re.search(rf"\b{re.escape(word)}\b", text, re.IGNORECASE):
+            return "the draft contained a promise or timeline"
+
+    for token in _reviewer_name_tokens(reviewer_names):
+        if re.search(rf"\b{re.escape(token)}\b", text, re.IGNORECASE):
+            return "the draft named a reviewer"
+
+    return None
+
+
+def _fallback_reminder_text(case: Case) -> str:
+    return "\n\n".join(default_reminder_text(case, r) for r in _open_requests(case))
 
 
 def _draft_text(kind: NOTE_KIND, points: list[str]) -> str:
@@ -181,11 +238,23 @@ def draft_reviewer_note(
     runtime: ToolRuntime,
 ) -> Command[Any]:
     """Draft remarks for a reviewer action form (does not send anything)."""
-    if _case(state, runtime) is None:
+    case = _case(state, runtime)
+    if case is None:
         return _tool_message(runtime, "No case linked to this thread.")
+    if kind == "tenant_reminder":
+        if not _open_requests(case):
+            return _tool_message(runtime, "There is nothing open to remind the applicant about.")
     if not points:
         return _tool_message(runtime, "Provide at least one point for the draft.")
     text = _draft_text(kind, points)
+    tool_content = text
+    if kind == "tenant_reminder":
+        rt = runtime_from_config(runtime.config)
+        names = [r.name for r in rt.services.reviewers.all()]
+        failure = reminder_check(text, case, names)
+        if failure:
+            text = _fallback_reminder_text(case)
+            tool_content = f"Used the standard reminder: {failure}."
     action = NOTE_ACTION[kind]
     _emit_suggestion(
         runtime,
@@ -194,7 +263,7 @@ def draft_reviewer_note(
         payload={"remarks": text},
         text=text,
     )
-    return _tool_message(runtime, text)
+    return _tool_message(runtime, tool_content)
 
 
 REVIEWER_TOOLS = [

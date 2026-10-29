@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   approveAttention,
   dismissAttention,
   listAttention,
+  streamReviewerAssistant,
   type AttentionItem,
   type AttentionList,
 } from '../api/review'
+import { StreamAbortError } from '../api/stream'
+import type { UiCard } from '../types/contracts'
 import { PageShell } from '../components/layout/PageShell'
 import { useReviewerId } from './reviewerSession'
 import styles from './review.module.css'
@@ -24,7 +27,14 @@ function formatTime(iso: string): string {
   })
 }
 
+function isTenantReminderSuggestion(
+  card: UiCard,
+): card is Extract<UiCard, { card_type: 'reviewer_suggestion' }> {
+  return card.card_type === 'reviewer_suggestion' && card.payload.kind === 'tenant_reminder'
+}
+
 interface ItemCardProps {
+  reviewerId: string
   item: AttentionItem
   reasons: string[]
   busy: boolean
@@ -32,10 +42,20 @@ interface ItemCardProps {
   onDismiss: (item: AttentionItem, reason: string) => void
 }
 
-function ItemCard({ item, reasons, busy, onApprove, onDismiss }: ItemCardProps) {
+function ItemCard({ reviewerId, item, reasons, busy, onApprove, onDismiss }: ItemCardProps) {
   const [text, setText] = useState(item.text ?? '')
   const [reason, setReason] = useState('')
+  const [assistantDraft, setAssistantDraft] = useState<string | null>(null)
+  const [drafting, setDrafting] = useState(false)
+  const [draftError, setDraftError] = useState<string | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
   const isReminder = item.trigger === 'applicant_reminder'
+
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort()
+    }
+  }, [])
   const tag =
     item.trigger === 'escalation'
       ? styles.tagApplicant
@@ -73,6 +93,56 @@ function ItemCard({ item, reasons, busy, onApprove, onDismiss }: ItemCardProps) 
           <div className={styles.buttonRow}>
             <button
               type="button"
+              className={styles.secondaryBtn}
+              data-testid="attention-draft-assistant"
+              disabled={busy || drafting}
+              onClick={() => {
+                void (async () => {
+                  setDraftError(null)
+                  setAssistantDraft(null)
+                  setDrafting(true)
+                  abortRef.current?.abort()
+                  const controller = new AbortController()
+                  abortRef.current = controller
+                  const label = item.request_label ?? 'request'
+                  let sawSuggestion = false
+                  try {
+                    await streamReviewerAssistant(
+                      reviewerId,
+                      item.reference,
+                      `Draft a tenant_reminder for the open ${label} on this case.`,
+                      (event) => {
+                        if (event.event === 'ui_card' && isTenantReminderSuggestion(event.data)) {
+                          sawSuggestion = true
+                          const remarks = event.data.payload.payload.remarks
+                          setAssistantDraft(
+                            typeof remarks === 'string' ? remarks : event.data.payload.text,
+                          )
+                        }
+                      },
+                      controller.signal,
+                    )
+                    if (!sawSuggestion) {
+                      setDraftError("The assistant couldn't draft this one; edit the text above.")
+                    }
+                  } catch (err) {
+                    if (
+                      err instanceof StreamAbortError ||
+                      (err instanceof DOMException && err.name === 'AbortError')
+                    ) {
+                      return
+                    }
+                    setDraftError("The assistant couldn't draft this one; edit the text above.")
+                  } finally {
+                    setDrafting(false)
+                  }
+                })()
+              }}
+            >
+              {drafting ? 'Drafting…' : 'Draft with the assistant'}
+            </button>
+            <button
+              type="button"
               className={styles.primaryBtn}
               disabled={busy || !text.trim()}
               onClick={() => onApprove(item, text.trim() === (item.text ?? '') ? undefined : text)}
@@ -80,6 +150,20 @@ function ItemCard({ item, reasons, busy, onApprove, onDismiss }: ItemCardProps) 
               Approve and send
             </button>
           </div>
+          {assistantDraft ? (
+            <div className={styles.suggestionCard} data-testid="attention-assistant-draft">
+              <p className={styles.suggestionText}>{assistantDraft}</p>
+              <button
+                type="button"
+                className={styles.secondaryBtn}
+                data-testid="attention-use-draft"
+                onClick={() => setText(assistantDraft)}
+              >
+                Use
+              </button>
+            </div>
+          ) : null}
+          {draftError ? <p className={styles.muted}>{draftError}</p> : null}
         </>
       ) : null}
       {item.status === 'held' && item.send_after ? (
@@ -199,6 +283,7 @@ export function AttentionPage() {
         {data?.items.map((item) => (
           <ItemCard
             key={item.id}
+            reviewerId={reviewerId}
             item={item}
             reasons={data.dismiss_reasons}
             busy={busy}
