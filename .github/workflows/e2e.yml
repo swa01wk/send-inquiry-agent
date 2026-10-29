@@ -4,16 +4,22 @@ name: e2e
 # suites locally instead (installing browsers in CI took most of each run).
 #   Run workflow → suite "scripted": the INT layer (@scripted), desktop Chrome + mobile WebKit.
 #   Run workflow → suite "live": the E2E-LIVE layer (@live), real model.
+#   Run workflow → suite "eval": AGENT-LIVE (`make eval-live`).
 # Nightly live runs are opt-in: set the repository variable NIGHTLY_LIVE=true (model cost).
 
 on:
   workflow_dispatch:
     inputs:
       suite:
-        description: Which Playwright suite to run
+        description: Which suite to run
         type: choice
-        options: [scripted, live]
+        options: [scripted, live, eval]
         default: scripted
+      group:
+        description: eval-live scenario group (eval suite only)
+        type: choice
+        options: [intake, case, channels, all]
+        default: intake
   schedule:
     - cron: '30 21 * * *' # 03:00 IST / 00:30 Asia/Riyadh
 
@@ -85,3 +91,43 @@ jobs:
           path: |
             e2e/playwright-report/
             e2e/results/
+
+  eval-live:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && inputs.suite == 'eval') ||
+      (github.event_name == 'schedule' && vars.NIGHTLY_LIVE == 'true')
+    runs-on: ubuntu-latest
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_MODEL: ${{ vars.OPENAI_MODEL || secrets.OPENAI_MODEL }}
+      EVAL_REPEATS: "3"
+      EVAL_TOLERANCE: "5"
+    steps:
+      - name: Check OpenAI settings
+        run: |
+          missing=0
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "::error::OPENAI_API_KEY is empty. Add it as a repository secret."
+            missing=1
+          fi
+          if [ -z "$OPENAI_MODEL" ]; then
+            echo "::error::OPENAI_MODEL is empty. Add it as a repository variable or secret."
+            missing=1
+          fi
+          exit $missing
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Install backend deps
+        run: cd backend && uv sync
+      - name: AGENT-LIVE eval
+        run: |
+          GROUP=""
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.group }}" != "all" ]; then
+            GROUP="${{ inputs.group }}"
+          fi
+          make eval-live GROUP="$GROUP"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-live-results
+          path: backend/eval-results/

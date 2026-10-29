@@ -10,7 +10,11 @@ export default defineConfig({
   retries: process.env.E2E_LIVE ? 1 : 0,
   timeout: 90_000,
   workers: 1,
-  reporter: [['html', { open: 'never' }], ['list']],
+  reporter: [
+    ['html', { open: 'never' }],
+    ['list'],
+    ...(process.env.E2E_LIVE ? [['./reporters/liveSummary.ts'] as const] : []),
+  ],
   use: {
     baseURL,
     trace: 'retain-on-failure',
