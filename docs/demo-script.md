@@ -1,5 +1,7 @@
 # Demo script — Send Inquiry Agent
 
+Rehearse: `make e2e-demo` (or `make e2e-demo-headed` to watch).
+
 Use with `make demo` (SMS code **1234**; the email link is a demo button). The **self-service happy path** below is ~5 minutes. The **§A3 walkthrough** and **§A4 L3–L5 beats** need mock integrations, the reviewer console, and (for restart) `DATA_DIR` — see [Setup for lifecycle demos](#setup-for-lifecycle-demos).
 
 **Full user story (Sara):** [demo-queries.md](./demo-queries.md). **Coverage map:** [DELIVERY-PLAN.md](./DELIVERY-PLAN.md) §A3 (workflows) and §A4 (L3–L5 core).

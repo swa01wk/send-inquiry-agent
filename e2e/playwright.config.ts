@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 
 const baseURL = process.env.E2E_BASE_URL ?? 'http://localhost:5173'
+const slowMo = Number(process.env.E2E_SLOW_MO ?? 0)
 
 export default defineConfig({
   testDir: './tests',
@@ -15,6 +16,7 @@ export default defineConfig({
     trace: 'retain-on-failure',
     video: 'retain-on-failure',
     screenshot: 'only-on-failure',
+    ...(slowMo > 0 ? { launchOptions: { slowMo } } : {}),
   },
   projects: [
     { name: 'desktop-chrome', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } },

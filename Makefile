@@ -5,7 +5,7 @@
 .PHONY: dev demo dev-backend dev-frontend \
 	check check-be check-fe lint \
 	test test-be test-fe test-agent \
-	e2e e2e-int e2e-live e2e-report eval-live \
+	e2e e2e-int e2e-demo e2e-demo-headed e2e-live e2e-report eval-live \
 	ci ci-remote gate
 
 # ---- Run ---------------------------------------------------------------
@@ -62,6 +62,13 @@ E2E_DEPS = cd e2e && ([ -d node_modules ] || npm ci) && npx playwright install c
 # INT: Playwright, real frontend + backend, scripted agent (@scripted suites).
 e2e-int:
 	$(E2E_DEPS) && CI=1 npm run test:scripted -- $(ARGS)
+
+# Full demo-script rehearsal (@demo; desktop only; not part of e2e-int).
+e2e-demo:
+	$(E2E_DEPS) && CI=1 npm run test:demo -- $(ARGS)
+
+e2e-demo-headed:
+	$(E2E_DEPS) && CI=1 E2E_SLOW_MO=400 npm run test:demo -- --headed $(ARGS)
 
 e2e: e2e-int
 

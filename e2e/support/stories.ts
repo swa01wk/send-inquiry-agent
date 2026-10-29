@@ -17,6 +17,8 @@ import {
   APPLICANT_EMAIL,
   APPLICANT_MOBILE,
   completeApplicationLinkFlow,
+  reviewerFor,
+  submitScriptedInquiry,
   type ContactOutbox,
 } from "./submit";
 
@@ -231,4 +233,204 @@ function hoursUntilLocalHour(
   let diffHours = targetHour - h;
   if (diffHours <= 0) diffHours += 24;
   return diffHours - m / 60 - s / 3600;
+}
+
+/** Advance the simulated clock from `/dev` (runs proactive tick). */
+export async function advanceClockFromDevPage(
+  page: Page,
+  button: "+24 h" | "+48 h" | "To morning (08:00)",
+): Promise<void> {
+  await page.goto("/dev");
+  await expect(page.getByTestId("dev-clock")).not.toHaveText("Loading…");
+  await page.getByRole("button", { name: button }).click();
+  await expect(page.getByTestId("dev-message")).toBeVisible();
+}
+
+function outboxRowsForReference(
+  messages: Awaited<ReturnType<typeof fetchDevOutbox>>,
+  template: string,
+  reference: string,
+) {
+  return messages.filter(
+    (m) => m.template === template && m.body.includes(reference),
+  );
+}
+
+/** L5 beats on a single fresh inquiry (reset first); asserts only on that reference. */
+export async function runL5AttentionFlow(
+  page: Page,
+  request: APIRequestContext,
+): Promise<void> {
+  await request.post(`${API}/api/dev/reset`);
+  const reference = await submitScriptedInquiry(page, request, "s1-happy-path");
+  const reviewer = await reviewerFor(request, reference);
+
+  const emailsForRef = async (template: string) =>
+    outboxRowsForReference(await fetchDevOutbox(request), template, reference);
+
+  await advanceClockFromDevPage(page, "+48 h");
+  expect(await emailsForRef("review_stalled")).toHaveLength(1);
+
+  await page.goto("/dev");
+  await page
+    .getByTestId("dev-reviewers")
+    .getByRole("link", { name: reviewer.name })
+    .click();
+  await expect(page.getByTestId("attention-badge")).toHaveText("1");
+  await page.getByTestId("attention-link").click();
+  await expect(
+    page.getByTestId(`attention-stalled_review-${reference}`),
+  ).toBeVisible();
+
+  await advanceClockFromDevPage(page, "+48 h");
+  expect(await emailsForRef("review_escalated")).toHaveLength(1);
+  await page.goto("/dev");
+  const managerId = `${reviewer.id.split("-")[0]}-manager`;
+  await page.locator(`a[href="/review?as=${managerId}"]`).click();
+  await page.getByTestId("attention-link").click();
+  await expect(
+    page.getByTestId(`attention-escalation-${reference}`),
+  ).toBeVisible();
+
+  await page.goto(`/review?as=${encodeURIComponent(reviewer.id)}`);
+  await page
+    .getByTestId(`queue-row-${reference}`)
+    .getByRole("link", { name: reference })
+    .click();
+  await page.getByRole("button", { name: "Approve first level" }).click();
+  await expect(page.getByTestId("case-stage")).toHaveText(
+    "Lead — second review",
+  );
+  await advanceClockFromDevPage(page, "+48 h");
+  await advanceClockFromDevPage(page, "+24 h");
+  expect(
+    (await fetchDevOutbox(request)).filter(
+      (m) => m.template === "applicant_reminder",
+    ),
+  ).toHaveLength(0);
+
+  await page.goto(
+    `/review/attention?as=${encodeURIComponent(reviewer.id)}&e2eScenario=r2-tenant-reminder`,
+  );
+  const reminder = page.getByTestId(
+    `attention-applicant_reminder-${reference}`,
+  );
+  await expect(reminder.getByLabel("Reminder to the applicant")).toHaveValue(
+    /company contacts/,
+  );
+  await reminder.getByTestId("attention-draft-assistant").click();
+  await expect(reminder.getByTestId("attention-assistant-draft")).toBeVisible({
+    timeout: 60_000,
+  });
+  await reminder.getByTestId("attention-use-draft").click();
+  await expect(reminder.getByLabel("Reminder to the applicant")).toHaveValue(
+    /contacts/,
+  );
+
+  await advanceClockToLocalHour(request, 23);
+  await reminder.getByRole("button", { name: "Approve and send" }).click();
+  await expect(reminder.getByTestId("attention-held")).toContainText(
+    "held until",
+  );
+  expect(
+    (await fetchDevOutbox(request, APPLICANT_EMAIL)).filter(
+      (m) => m.template === "applicant_reminder",
+    ),
+  ).toHaveLength(0);
+
+  await advanceClockFromDevPage(page, "To morning (08:00)");
+  const sent = (await fetchDevOutbox(request, APPLICANT_EMAIL)).filter(
+    (m) => m.template === "applicant_reminder",
+  );
+  expect(sent).toHaveLength(1);
+  expect(sent[0].links.some((l) => l.includes("/inquiry/case?t="))).toBe(true);
+}
+
+/** Every persona link on `/dev` opens the expected surface in one click. */
+export async function assertDevPersonasOpenInOneClick(
+  page: Page,
+): Promise<void> {
+  await page.goto("/dev");
+  await expect(page.getByTestId("dev-home")).toBeVisible();
+  await expect(page.getByTestId("dev-clock")).not.toHaveText("Loading…");
+
+  await page.getByRole("link", { name: /Applicant chat/i }).click();
+  await expect(
+    page.getByRole("region", { name: /leasing assistant chat/i }),
+  ).toBeVisible({ timeout: 60_000 });
+  await page.goto("/dev");
+
+  await page.getByRole("link", { name: /Dev inbox/i }).click();
+  await expect(page.getByTestId("dev-inbox-page")).toBeVisible();
+  await page.goto("/dev");
+
+  await page.getByRole("link", { name: /Needs attention/i }).click();
+  await expect(
+    page
+      .getByTestId("attention-page")
+      .or(page.getByRole("link", { name: /Sign in as a reviewer/i })),
+  ).toBeVisible({ timeout: 30_000 });
+  await page.goto("/dev");
+
+  const staffCount = await page
+    .getByTestId("dev-staff")
+    .getByRole("link")
+    .count();
+  for (let i = 0; i < staffCount; i++) {
+    await page.goto("/dev");
+    await page.getByTestId("dev-staff").getByRole("link").nth(i).click();
+    await expect(page.getByTestId("callcentre-signed-in")).toBeVisible();
+  }
+
+  const tenantCount = await page
+    .getByTestId("dev-tenants")
+    .getByRole("link")
+    .count();
+  for (let i = 0; i < tenantCount; i++) {
+    await page.goto("/dev");
+    await page.getByTestId("dev-tenants").getByRole("link").nth(i).click();
+    await expect(page.getByTestId("tenant-signed-in")).toBeVisible();
+  }
+
+  const reviewerCount = await page
+    .getByTestId("dev-reviewers")
+    .getByRole("link")
+    .count();
+  for (let i = 0; i < reviewerCount; i++) {
+    await page.goto("/dev");
+    await page.getByTestId("dev-reviewers").getByRole("link").nth(i).click();
+    await expect(page.getByTestId("signed-in-reviewer")).toBeVisible();
+  }
+}
+
+/** Confirm **Reset demo** on `/dev` and wait for the success message. */
+export async function resetDemoFromDevPage(page: Page): Promise<void> {
+  await page.goto("/dev");
+  await page.getByRole("button", { name: "Reset demo" }).click();
+  await page.getByRole("button", { name: "Yes, reset everything" }).click();
+  await expect(page.getByTestId("dev-message")).toContainText(/reset/i);
+}
+
+/** After reset: empty queue, attention, tenant inquiries and dev inbox. */
+export async function assertCleanAfterDemoReset(page: Page): Promise<void> {
+  await page.goto("/dev/inbox");
+  await expect(page.getByText("No messages yet.")).toBeVisible();
+
+  await page.goto("/dev");
+  const firstReviewer = page
+    .getByTestId("dev-reviewers")
+    .getByRole("link")
+    .first();
+  await firstReviewer.click();
+  await expect(page.getByTestId("queue-empty")).toBeVisible();
+  await page.getByTestId("attention-link").click();
+  await expect(page.getByTestId("attention-empty")).toBeVisible();
+
+  await page.goto("/dev");
+  await page
+    .getByTestId("dev-tenants")
+    .getByRole("link", { name: /Oasis Coffee Company/ })
+    .click();
+  await page.goto("/tenant/inquiries");
+  await expect(page.getByTestId("my-inquiries-empty")).toBeVisible();
 }
