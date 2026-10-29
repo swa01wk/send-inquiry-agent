@@ -23,7 +23,7 @@ async function parseError(res: Response): Promise<{ code: string; message: strin
   return { code: 'request_failed', message: 'Request failed' }
 }
 
-function e2eScenarioFromUrl(): string | undefined {
+export function e2eScenarioFromUrl(): string | undefined {
   if (typeof window === 'undefined') return undefined
   return new URLSearchParams(window.location.search).get('e2eScenario') ?? undefined
 }

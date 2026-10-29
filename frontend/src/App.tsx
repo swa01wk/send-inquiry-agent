@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import { DEV_TOOLS, REVIEWER_CONSOLE, TENANT_PORTAL } from './config'
+import { CallCentrePage } from './callcentre/CallCentrePage'
+import { CALLCENTRE_CONSOLE, DEV_TOOLS, REVIEWER_CONSOLE, TENANT_PORTAL } from './config'
 import { CasePage } from './pages/CasePage'
 import { ChatHomePage } from './pages/ChatHomePage'
 import { DevHomePage } from './pages/DevHomePage'
@@ -29,6 +30,7 @@ function App() {
           <Route path="/review/cases/:reference" element={<ReviewCasePage />} />
         ) : null}
         {REVIEWER_CONSOLE ? <Route path="/review/attention" element={<AttentionPage />} /> : null}
+        {CALLCENTRE_CONSOLE ? <Route path="/callcentre" element={<CallCentrePage />} /> : null}
         {TENANT_PORTAL ? <Route path="/tenant" element={<TenantHomePage />} /> : null}
         {TENANT_PORTAL ? (
           <Route path="/tenant/opportunities" element={<TenantOpportunitiesPage />} />
