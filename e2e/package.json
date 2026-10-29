@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "test": "playwright test",
+    "test:demo": "playwright test --grep @demo --project=desktop-chrome",
     "test:scripted": "playwright test --grep @scripted",
     "test:live": "playwright test --grep @live",
     "report": "playwright show-report"

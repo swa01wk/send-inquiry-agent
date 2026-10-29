@@ -1,0 +1,25 @@
+.layout {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.emailLine {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.missing {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.sentLine {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-success-fg);
+  font-weight: 500;
+}

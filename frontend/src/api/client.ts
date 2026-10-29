@@ -23,7 +23,7 @@ async function parseError(res: Response): Promise<{ code: string; message: strin
   return { code: 'request_failed', message: 'Request failed' }
 }
 
-function e2eScenarioFromUrl(): string | undefined {
+export function e2eScenarioFromUrl(): string | undefined {
   if (typeof window === 'undefined') return undefined
   return new URLSearchParams(window.location.search).get('e2eScenario') ?? undefined
 }
@@ -106,9 +106,15 @@ export async function uploadDocument(
 }
 
 export async function verifyEmailLink(token: string): Promise<VerifyEmailResponse> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (E2E_MODE) {
+    const scenario = e2eScenarioFromUrl()
+    if (scenario) headers['X-Test-Scenario'] = scenario
+  }
+
   const res = await fetch(`${API_BASE}/api/verifications/email`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ token }),
   })
   if (!res.ok) {

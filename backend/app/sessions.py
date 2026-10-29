@@ -78,6 +78,8 @@ class Session:
     complete_nonce: str | None = None
     # Why this chat ended without a submission, e.g. "redirected_to_sign_in".
     closed: str | None = None
+    # Assisted mode, existing CR: which option the executive chose on the card (§3.2).
+    existing_cr_choice: str | None = None
 
     @property
     def assisted(self) -> bool:
@@ -123,6 +125,7 @@ class Session:
             "link_sent_to": self.link_sent_to,
             "complete_nonce": self.complete_nonce,
             "closed": self.closed,
+            "existing_cr_choice": self.existing_cr_choice,
         }
 
     @classmethod
@@ -153,6 +156,7 @@ class Session:
             link_sent_to=raw.get("link_sent_to"),
             complete_nonce=raw.get("complete_nonce"),
             closed=raw.get("closed"),
+            existing_cr_choice=raw.get("existing_cr_choice"),
         )
 
 

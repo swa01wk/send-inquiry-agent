@@ -1,0 +1,16 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "show_review",
+        "args": {},
+        "id": "a1e1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Everything from your Tenant Central account is on the review card — submit when you're ready."
+  }
+]

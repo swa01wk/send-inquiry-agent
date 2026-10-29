@@ -53,7 +53,11 @@ export function assertNoDuplicateConfirmCards(events: CapturedLike[]) {
   const keysByCard = new Map<string, Set<string>>()
   for (const e of events) {
     if (e.event !== 'ui_card') continue
-    const data = e.data as { card_type?: string; card_id?: string; payload?: { fields?: { key: string }[] } }
+    const data = e.data as {
+      card_type?: string
+      card_id?: string
+      payload?: { fields?: { key: string }[] }
+    }
     if (data.card_type !== 'confirm_fields' || !data.card_id) continue
     const set = keysByCard.get(data.card_id) ?? new Set<string>()
     for (const f of data.payload?.fields ?? []) set.add(f.key)

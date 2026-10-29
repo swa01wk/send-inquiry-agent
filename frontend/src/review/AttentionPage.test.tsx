@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as review from '../api/review'
+import type { SseEvent } from '../types/contracts'
 import { AttentionPage } from './AttentionPage'
 import { attentionList, reminderItem, stalledItem } from './fixtures'
 
@@ -43,6 +44,45 @@ describe('AttentionPage', () => {
       '/review/cases/GEO-STR-123456',
     )
     expect(screen.getByTestId('attention-counts')).toHaveTextContent('2 open')
+  })
+
+  it('drafts with the assistant, Use fills the textarea, and does not approve', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(review, 'listAttention').mockResolvedValue(attentionList([reminderItem()]))
+    const approve = vi.spyOn(review, 'approveAttention')
+    vi.spyOn(review, 'streamReviewerAssistant').mockImplementation(
+      async (_reviewerId, _ref, text, onEvent) => {
+        expect(text).toContain('Add company contacts')
+        const card: SseEvent = {
+          event: 'ui_card',
+          data: {
+            card_id: 's-rem',
+            card_type: 'reviewer_suggestion',
+            message_id: 'm1',
+            payload: {
+              kind: 'tenant_reminder',
+              action: '',
+              payload: {
+                remarks: 'Friendly reminder: please add your company contacts.',
+              },
+              text: 'Friendly reminder: please add your company contacts.',
+            },
+          },
+        }
+        onEvent(card)
+        return 'ok'
+      },
+    )
+    renderPage()
+    const card = await screen.findByTestId('attention-applicant_reminder-GEO-STR-123456')
+    await user.click(within(card).getByTestId('attention-draft-assistant'))
+    const draft = await within(card).findByTestId('attention-assistant-draft')
+    expect(draft).toHaveTextContent('Friendly reminder: please add your company contacts.')
+    await user.click(within(card).getByTestId('attention-use-draft'))
+    expect(within(card).getByLabelText('Reminder to the applicant')).toHaveValue(
+      'Friendly reminder: please add your company contacts.',
+    )
+    expect(approve).not.toHaveBeenCalled()
   })
 
   it('approves a reminder as drafted, without sending the unchanged text', async () => {

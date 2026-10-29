@@ -1,0 +1,18 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "search_yardi_companies",
+        "args": {
+          "name": "Bean Street Trading"
+        },
+        "id": "r1y1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Here are the matching Yardi companies — use a suggestion if one fits."
+  }
+]

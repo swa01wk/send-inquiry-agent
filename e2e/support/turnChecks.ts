@@ -20,7 +20,9 @@ export async function finishA11y(inquiry: InquiryPage, projectName: string) {
     .include('section[aria-label="Leasing assistant chat"]')
     .disableRules(['scrollable-region-focusable'])
     .analyze()
-  const serious = results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')
+  const serious = results.violations.filter(
+    (v) => v.impact === 'serious' || v.impact === 'critical',
+  )
   expect(serious, 'no serious axe violations').toEqual([])
   if (projectName === 'mobile') {
     const overflow = await inquiry.page.evaluate(

@@ -11,6 +11,7 @@ from app.agent.reviewer_tools import (
     draft_reviewer_note,
     get_case_brief,
     list_company_brands,
+    reminder_check,
     search_yardi_companies,
 )
 from app.agent.runtime import AgentRuntime
@@ -18,8 +19,9 @@ from app.agent.state import initial_agent_state
 from app.domain.draft_ops import new_inquiry_draft
 from app.domain.models import DocType, DocumentRef, FieldKey
 from app.domain.rules import compute_phase
+from app.proactive.engine import default_reminder_text
 from app.workflow.machine import SYSTEM, Actor, transition
-from app.workflow.models import Case, CaseStatus, ReviewQueue, WorkflowEvent
+from app.workflow.models import Case, CaseRequest, CaseStatus, ReviewQueue, WorkflowEvent
 from tests.agent.conftest import make_tool_runtime
 
 T0 = datetime(2026, 10, 30, 9, tzinfo=UTC)
@@ -157,6 +159,114 @@ def test_list_company_brands(agent_runtime, reviewer_state, seeded_case, stream_
     after = agent_runtime.services.cases.get(seeded_case.id)
     assert after is not None
     assert _snapshot(after) == before
+
+
+def _case_with_open_contacts(agent_runtime: AgentRuntime, case: Case) -> Case:
+    case.requests.append(
+        CaseRequest(
+            id="req-contacts",
+            kind="contacts",
+            status="open",
+            requested_by="rlm_store-central",
+            requested_at=T0,
+            remarks="Need billing details.",
+        )
+    )
+    agent_runtime.services.cases.save(case)
+    return case
+
+
+def _reviewer_names(agent_runtime: AgentRuntime) -> list[str]:
+    return [r.name for r in agent_runtime.services.reviewers.all()]
+
+
+def test_reminder_check_accepts_a_clean_draft(agent_runtime, seeded_case) -> None:
+    case = _case_with_open_contacts(agent_runtime, seeded_case)
+    text = (
+        "Reminder — action needed on your inquiry:\n"
+        "• Please send your company contact details for billing."
+    )
+    assert reminder_check(text, case, _reviewer_names(agent_runtime)) is None
+
+
+def test_reminder_check_accepts_company_contacts_plural(agent_runtime, seeded_case) -> None:
+    case = _case_with_open_contacts(agent_runtime, seeded_case)
+    text = "Reminder — action needed on your inquiry:\n• Please send your company contacts."
+    assert reminder_check(text, case, _reviewer_names(agent_runtime)) is None
+
+
+def test_reminder_check_flags_missing_document_label(agent_runtime, seeded_case) -> None:
+    case = seeded_case
+    case.requests.append(
+        CaseRequest(
+            id="req-reupload",
+            kind="reupload",
+            status="open",
+            doc_types=[DocType.BRAND_PROFILE],
+            requested_by="rlm_store-central",
+            requested_at=T0,
+            remarks="Logo page missing.",
+        )
+    )
+    agent_runtime.services.cases.save(case)
+    text = "Reminder — action needed:\n• Please upload something else."
+    reason = reminder_check(text, case, _reviewer_names(agent_runtime))
+    assert reason == "a document label was missing"
+
+
+def test_reminder_check_flags_promises_and_reviewer_names(agent_runtime, seeded_case) -> None:
+    case = _case_with_open_contacts(agent_runtime, seeded_case)
+    names = _reviewer_names(agent_runtime)
+    base = "Reminder:\n• Please send contact details."
+    assert reminder_check(f"{base} We will reply within 3 days.", case, names) == (
+        "the draft contained a promise or timeline"
+    )
+    assert reminder_check(f"{base} Your case will be approved soon.", case, names) == (
+        "the draft contained a promise or timeline"
+    )
+    assert reminder_check(f"{base} Regards, Faisal.", case, names) == "the draft named a reviewer"
+
+
+def test_draft_reviewer_note_tenant_reminder_falls_back_on_failed_check(
+    agent_runtime, reviewer_state, seeded_case, stream_events
+):
+    case = _case_with_open_contacts(agent_runtime, seeded_case)
+    events, writer = stream_events
+    runtime = make_tool_runtime(state=reviewer_state, agent_runtime=agent_runtime, writer=writer)
+    result = draft_reviewer_note.invoke(
+        {
+            "kind": "tenant_reminder",
+            "points": ["Faisal will approve this within 3 days."],
+            "state": reviewer_state,
+            "runtime": runtime,
+        }
+    )
+    msg = result.update["messages"][0].content
+    assert msg.startswith("Used the standard reminder:")
+    expected = default_reminder_text(case, case.requests[-1])
+    cards = _suggestion_cards(events)
+    assert len(cards) == 1
+    card = cards[0]["payload"]
+    assert card["kind"] == "tenant_reminder"
+    assert card["action"] == ""
+    assert card["payload"]["remarks"] == expected
+
+
+def test_draft_reviewer_note_tenant_reminder_with_no_open_request(
+    agent_runtime, reviewer_state, seeded_case, stream_events
+):
+    events, writer = stream_events
+    runtime = make_tool_runtime(state=reviewer_state, agent_runtime=agent_runtime, writer=writer)
+    result = draft_reviewer_note.invoke(
+        {
+            "kind": "tenant_reminder",
+            "points": ["Please respond."],
+            "state": reviewer_state,
+            "runtime": runtime,
+        }
+    )
+    assert "nothing open" in result.update["messages"][0].content.lower()
+    assert not _suggestion_cards(events)
 
 
 def test_draft_reviewer_note_emits_card(agent_runtime, reviewer_state, seeded_case, stream_events):

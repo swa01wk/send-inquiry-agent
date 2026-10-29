@@ -38,12 +38,16 @@ test.describe('Story S13 @scripted', () => {
     await inquiry.formSave('Mobile or landline', '0501234567')
     await inquiry.pickMallStartingWith('Riyadh Mall A')
 
-    await expect(inquiry.cards('verification')).toBeVisible({ timeout: 60_000 })
+    await expect(inquiry.cards('verification')).toBeVisible({
+      timeout: 60_000,
+    })
     await inquiry.verifyEmail()
     const sms = latestByTemplate(await fetchDevOutbox(request, MOBILE), 'sms_otp')
     await inquiry.enterCode(sms!.body.match(/\b(\d{4})\b/)![1])
 
-    await expect(inquiry.cards('document_upload')).toBeVisible({ timeout: 60_000 })
+    await expect(inquiry.cards('document_upload')).toBeVisible({
+      timeout: 60_000,
+    })
     await inquiry.upload('Company Profile', 'company_profile.pdf')
     await inquiry.upload('Brand Profile', 'brand_profile.pdf')
     await inquiry.acceptAndSubmit()

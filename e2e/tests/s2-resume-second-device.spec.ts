@@ -46,7 +46,9 @@ test.describe('Story S2 @scripted', () => {
       expect(code).toBeTruthy()
       await second.enterCode(code!)
 
-      await expect(second.cards('document_upload')).toBeVisible({ timeout: 90_000 })
+      await expect(second.cards('document_upload')).toBeVisible({
+        timeout: 90_000,
+      })
       await second.upload('Company Profile', 'company_profile.pdf')
       await second.upload('Brand Profile', 'brand_profile.pdf')
       await second.acceptAndSubmit()

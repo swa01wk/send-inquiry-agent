@@ -17,4 +17,9 @@ describe('SourceBadge', () => {
     render(<SourceBadge source="derived" confirmed />)
     expect(screen.getByText('Suggested · confirmed')).toBeInTheDocument()
   })
+
+  it('renders staff source', () => {
+    render(<SourceBadge source="staff" confirmed={false} />)
+    expect(screen.getByText('From the call centre')).toBeInTheDocument()
+  })
 })

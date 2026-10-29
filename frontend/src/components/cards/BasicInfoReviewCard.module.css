@@ -1,0 +1,81 @@
+.layout {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-brand);
+}
+
+.startedBy {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.doneLine {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-success-fg);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.rowLabel {
+  flex: none;
+  width: 130px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.rowValue {
+  flex: 1;
+  min-width: 120px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.rowValueEmpty {
+  composes: rowValue;
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.editRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  flex: 1;
+  min-width: 200px;
+}
+
+.editInput {
+  flex: 1;
+  min-width: 140px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-control);
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.missing {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}

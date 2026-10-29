@@ -67,7 +67,9 @@ test.describe('Mistakes and changes @scripted', () => {
     await afterTurnChecks(inquiry)
     await inquiry.verifyEmail()
     await inquiry.enterCode('1234')
-    await expect(inquiry.cards('document_upload')).toBeVisible({ timeout: 90_000 })
+    await expect(inquiry.cards('document_upload')).toBeVisible({
+      timeout: 90_000,
+    })
     await inquiry.pickFile('Company Profile', 'notes.txt')
     await inquiry.expectUploadError('Company Profile', "That file type isn't supported.")
     await inquiry.pickFile('Company Profile', 'too_big.pdf')
@@ -87,7 +89,9 @@ test.describe('Mistakes and changes @scripted', () => {
     await inquiry.say('1010123456')
     await afterTurnChecks(inquiry)
     await expect
-      .poll(async () => countRetractions(await inquiry.events()), { timeout: 10_000 })
+      .poll(async () => countRetractions(await inquiry.events()), {
+        timeout: 10_000,
+      })
       .toBe(1)
     await finishA11y(inquiry, testInfo.project.name)
   })

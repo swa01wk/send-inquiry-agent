@@ -9,11 +9,12 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Header, Query
+from fastapi import APIRouter, Depends, Header, Query, Request
 from pydantic import BaseModel
 
 from app.agent.actions import tracking_url
 from app.agent.channels import attach_documents_on_file
+from app.agent.e2e_scripts import resolve_e2e_scenario
 from app.agent.runtime import AgentRuntime
 from app.api.channel_cards import build_basic_info_card
 from app.api.deps import get_master_data, get_services, get_session_store
@@ -141,6 +142,7 @@ async def list_opportunities(
 
 @router.post("/opportunities/{opportunity_id}/inquiry", response_model=CreateSessionResponse)
 async def raise_inquiry(
+    request: Request,
     opportunity_id: str,
     body: RaiseInquiryBody,
     tenant: Tenant = Depends(current_tenant),
@@ -159,6 +161,11 @@ async def raise_inquiry(
     session = await store.create(
         channel="existing_tenant", created_by=tenant.id, tenant_id=tenant.id
     )
+    if settings.agent_mode == "scripted":
+        resolved = resolve_e2e_scenario(request.headers.get("X-Test-Scenario"))
+        if resolved:
+            session.test_scenario = resolved
+            session.script_step = 0
     draft, written = prefill_from_tenant(session.draft, tenant, master, brand_id=body.brand_id)
     draft, chosen, _errors = draft_ops.write_fields(
         draft,

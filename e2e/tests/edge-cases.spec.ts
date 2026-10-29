@@ -69,6 +69,12 @@ test.describe('Edge cases @scripted', () => {
     await afterTurnChecks(inquiry)
     const reply = await inquiry.lastReply()
     expect(reply.toLowerCase()).toMatch(/sign in/)
+    const signInCard = inquiry.cards('sign_in_prompt')
+    await expect(signInCard).toBeVisible({ timeout: 60_000 })
+    const signInLink = signInCard.getByRole('link', {
+      name: 'Sign in to Tenant Central',
+    })
+    await expect(signInLink).toHaveAttribute('href', /\/tenant\/?$/)
     const draft = await inquiry.draft()
     expect(draft.can_submit).toBe(false)
     await finishA11y(inquiry, testInfo.project.name)

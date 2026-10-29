@@ -65,7 +65,9 @@ test.describe('Story T1 @scripted', () => {
       await expect(
         applicantPage.getByRole('region', { name: /leasing assistant chat/i }),
       ).toBeVisible({ timeout: 60_000 })
-      await expect(applicant.cards('case_status')).toBeVisible({ timeout: 60_000 })
+      await expect(applicant.cards('case_status')).toBeVisible({
+        timeout: 60_000,
+      })
 
       await applicant.say(
         "I'm the signatory; billing is Omar Saleh, omar@beanstreet.example, +966551234567",
@@ -73,7 +75,9 @@ test.describe('Story T1 @scripted', () => {
       await expect(applicant.lastReply()).resolves.toContain(
         'Authorized Signatory and Omar Saleh as Billing Contact',
       )
-      await expect(applicant.cards('contacts')).toBeVisible({ timeout: 60_000 })
+      await expect(applicant.cards('contacts')).toBeVisible({
+        timeout: 60_000,
+      })
       const contactsCard = applicant.cards('contacts')
       await expect(contactsCard.getByText('Authorized Signatory', { exact: true })).toBeVisible()
       await expect(contactsCard.getByText('Billing Contact', { exact: true })).toBeVisible()
@@ -87,7 +91,10 @@ test.describe('Story T1 @scripted', () => {
       await reviewerPage.reload()
       await expect(reviewerPage.getByTestId('approval-blockers')).toHaveCount(0)
       await expect(reviewerPage.getByTestId('action-approve')).toBeVisible()
-      await reviewerPage.getByTestId('action-approve').getByRole('button', { name: 'Approve' }).click()
+      await reviewerPage
+        .getByTestId('action-approve')
+        .getByRole('button', { name: 'Approve' })
+        .click()
       await expect(reviewerPage.getByTestId('case-stage')).toHaveText('Approved and sent to Yardi')
       await expect(reviewerPage.getByTestId('timeline')).toContainText(/lead/i)
 
@@ -104,7 +111,11 @@ test.describe('Story T1 @scripted', () => {
 
       await applicantPage.goto(trackHref!)
       await expect(applicantPage.getByTestId('inquiry-status-page')).toBeVisible()
-      await expect(applicantPage.getByText(/Approved — your details are with the leasing team for a proposal/i)).toBeVisible()
+      await expect(
+        applicantPage.getByText(
+          /Approved — your details are with the leasing team for a proposal/i,
+        ),
+      ).toBeVisible()
     } finally {
       await reviewerContext.close()
       await applicantContext.close()

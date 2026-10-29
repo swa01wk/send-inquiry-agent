@@ -88,7 +88,9 @@ test.describe('Basics @scripted', () => {
       await afterTurnChecks(inquiry)
     }
     const repliesBeforeCoffee = await inquiry.allReplies()
-    expect(repliesBeforeCoffee.some((r) => /Company Profile/i.test(r) && /Brand Profile/i.test(r))).toBeTruthy()
+    expect(
+      repliesBeforeCoffee.some((r) => /Company Profile/i.test(r) && /Brand Profile/i.test(r)),
+    ).toBeTruthy()
     for (const r of repliesBeforeCoffee.slice(0, 3)) {
       expect(r.toLowerCase()).not.toContain('coffee')
     }
@@ -107,7 +109,9 @@ test.describe('Basics @scripted', () => {
     expect(fieldDisplay(draftMid, 'unit_type')).toMatch(/store/i)
     await inquiry.verifyEmail()
     await inquiry.enterCode('1234')
-    await expect(inquiry.cards('document_upload')).toBeVisible({ timeout: 90_000 })
+    await expect(inquiry.cards('document_upload')).toBeVisible({
+      timeout: 90_000,
+    })
     await inquiry.upload('Company Profile', 'company_profile.pdf')
     await inquiry.upload('Brand Profile', 'brand_profile.pdf')
     await expect(inquiry.cards('review')).toBeVisible({ timeout: 60_000 })

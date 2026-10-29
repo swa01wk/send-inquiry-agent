@@ -55,8 +55,12 @@ test.describe('Story T2 @scripted', () => {
       await expect(
         applicantPage.getByRole('region', { name: /leasing assistant chat/i }),
       ).toBeVisible({ timeout: 60_000 })
-      await expect(applicant.cards('case_status')).toBeVisible({ timeout: 60_000 })
-      await expect(applicant.cards('document_upload')).toBeVisible({ timeout: 60_000 })
+      await expect(applicant.cards('case_status')).toBeVisible({
+        timeout: 60_000,
+      })
+      await expect(applicant.cards('document_upload')).toBeVisible({
+        timeout: 60_000,
+      })
 
       const uploadCard = applicant.cards('document_upload')
       await expect(uploadCard).toHaveAttribute('data-mode', 'reupload')

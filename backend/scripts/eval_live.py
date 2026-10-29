@@ -7,7 +7,7 @@ Usage:
 Requires OPENAI_API_KEY and OPENAI_MODEL. Drives scripted user turns for intake and case
 scenarios and prints pass/fail checks plus transcripts.
 
-Optional: GROUP=intake|case filters scenarios (see docs/specs/testing-strategy.md).
+Optional: GROUP=intake|case|channels filters scenarios (see docs/specs/testing-strategy.md).
 """
 
 from __future__ import annotations
@@ -15,6 +15,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import sys
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -30,7 +31,7 @@ import httpx
 from app.agent.case_graph import build_case_graph
 from app.agent.eval_checks import off_topic_offers_continue
 from app.agent.guard import reply_asks_for_brand_name
-from app.agent.graph import build_graph
+from app.agent.graph import build_assisted_graph, build_graph
 from app.agent.model import get_chat_model
 from app.config import get_settings
 from app.domain.draft_ops import add_document, new_inquiry_draft, write_fields
@@ -772,6 +773,175 @@ def _check_international_number(
     ]
 
 
+async def _setup_callcentre_inquiry(
+    client: AsyncClient,
+    _session_id: str,
+    _app=None,
+) -> str:
+    created = await client.post(
+        "/api/callcentre/inquiries",
+        headers={"X-Staff-Id": "customer-care-1"},
+    )
+    created.raise_for_status()
+    return str(created.json()["session_id"])
+
+
+async def _setup_tenant_two_brands(
+    client: AsyncClient,
+    _session_id: str,
+    _app=None,
+) -> str:
+    created = await client.post(
+        "/api/tenant/opportunities/OPP-101/inquiry",
+        json={},
+        headers={"X-Tenant-Id": "T-1002"},
+    )
+    created.raise_for_status()
+    return str(created.json()["session_id"])
+
+
+def _assisted_forbidden_phrase(text: str) -> bool:
+    lower = text.lower()
+    banned = (
+        "otp",
+        "one-time",
+        "verification code",
+        "sms code",
+        "4-digit",
+        "four-digit",
+        "terms and conditions",
+        "accept the terms",
+        "tick the box",
+        "upload",
+        "document",
+    )
+    if any(word in lower for word in banned):
+        return True
+    if "verification" in lower and "verified" not in lower:
+        return True
+    if "code" in lower and "postcode" not in lower and "zip code" not in lower:
+        return True
+    return False
+
+
+def _your_company_phrase(text: str) -> bool:
+    lower = text.lower()
+    return any(
+        phrase in lower
+        for phrase in (
+            "your company",
+            "your brand",
+            "your business",
+            "your cr",
+            "your commercial",
+        )
+    )
+
+
+def _assisted_thanks_contact_by_name(text: str) -> bool:
+    return bool(
+        re.search(
+            r"\b(thanks|thank you|hi|hello)[,!]?\s+sara\b(?!['\u2019]s)",
+            text,
+            re.IGNORECASE,
+        )
+    )
+
+
+def _check_channels_dictated_caller(
+    _session,
+    turns: list[TurnResult],
+    _app=None,
+) -> list[tuple[str, bool]]:
+    all_text = _reply_text(turns)
+    last_events = turns[-1].events if turns else []
+    return [
+        (
+            "no reply greets or thanks the contact by first name",
+            not any(_assisted_thanks_contact_by_name(t.assistant) for t in turns),
+        ),
+        ('no "your … company/brand" phrasing', not _your_company_phrase(all_text)),
+        (
+            "no verification/docs/terms asks",
+            not any(_assisted_forbidden_phrase(t.assistant) for t in turns),
+        ),
+        (
+            "no verification card",
+            not any(_cards(t.events, "verification") for t in turns),
+        ),
+        (
+            "send_link card on last turn",
+            bool(_cards(last_events, "send_link")),
+        ),
+    ]
+
+
+def _check_channels_existing_tenant_brand_ask(
+    _session,
+    turns: list[TurnResult],
+    _app=None,
+) -> list[tuple[str, bool]]:
+    if len(turns) < 1:
+        return [("first turn present", False)]
+    first = turns[0].assistant
+    lower = first.lower()
+    detail_asks = (
+        "company name",
+        "cr number",
+        "commercial registration",
+        "email address",
+        "phone number",
+        "mobile number",
+        "contact number",
+    )
+    return [
+        ("asks which brand", "brand" in lower),
+        ("names Noor Fashion", "noor fashion" in lower),
+        ("names Noor Beauty", "noor beauty" in lower),
+        ("at most one question", first.count("?") <= 1),
+        ("no verification ask", "verification" not in lower and "otp" not in lower),
+        ("no company/contact re-ask", not any(phrase in lower for phrase in detail_asks)),
+    ]
+
+
+def _check_channels_existing_tenant_brand_set(
+    session,
+    turns: list[TurnResult],
+    _app=None,
+) -> list[tuple[str, bool]]:
+    brand = session.draft.fields[FieldKey.BRAND_NAME_EN].value
+    category = session.draft.fields[FieldKey.SALES_CATEGORY].value
+    checks = _check_channels_existing_tenant_brand_ask(_session=session, turns=turns[:1])
+    checks.append(("brand_name_en is Noor Beauty", brand == "Noor Beauty"))
+    checks.append(("sales_category from TB-3 (beauty)", category == "beauty"))
+    if len(turns) >= 2:
+        second = turns[1].assistant.lower()
+        mall_city_ask = any(
+            phrase in second
+            for phrase in (
+                "which mall",
+                "what mall",
+                "which city",
+                "what city",
+                "where would you",
+                "where do you want",
+            )
+        )
+        sell_ask = any(
+            phrase in second
+            for phrase in (
+                "what do you sell",
+                "what will you sell",
+                "what products",
+                "what kind of store",
+                "tell me about your brand",
+            )
+        )
+        checks.append(("turn 2 no mall or city ask", not mall_city_ask))
+        checks.append(("turn 2 no what-they-sell ask", not sell_ask))
+    return checks
+
+
 SCENARIOS: list[LiveScenario] = [
     LiveScenario(
         "C condensation with brief, natural answers",
@@ -989,6 +1159,29 @@ SCENARIOS: list[LiveScenario] = [
             ],
         ),
     ),
+    LiveScenario(
+        "channels: dictated caller",
+        [
+            "The caller doesn't have their CR to hand — skip it for now.",
+            "Company is Bean Street Trading Co., Olaya Street, Riyadh. Brand Bean Street, "
+            "a specialty coffee kiosk at Riyadh Mall A.",
+            "Sara Ali, sara@beanstreet.example, 0501234567.",
+        ],
+        _check_channels_dictated_caller,
+        auto_otp=False,
+        group="channels",
+        setup=_setup_callcentre_inquiry,
+    ),
+    LiveScenario(
+        "channels: existing tenant, two brands",
+        [
+            "Thanks, the details look right.",
+            "It's for Noor Beauty.",
+        ],
+        _check_channels_existing_tenant_brand_set,
+        group="channels",
+        setup=_setup_tenant_two_brands,
+    ),
 ]
 
 
@@ -1022,7 +1215,12 @@ async def run_scenario(client: AsyncClient, app, scenario: LiveScenario) -> Scen
 async def main() -> int:
     try:
         settings = get_settings().model_copy(
-            update={"reviewer_console": True, "dev_tools": True},
+            update={
+                "reviewer_console": True,
+                "dev_tools": True,
+                "callcentre_console": True,
+                "tenant_portal": True,
+            },
         )
         settings.require_openai()
     except RuntimeError as exc:
@@ -1036,6 +1234,7 @@ async def main() -> int:
     application.state.services = build_services(settings)
     application.state.graph = build_graph(model_factory=factory)
     application.state.case_graph = build_case_graph(model_factory=factory)
+    application.state.assisted_graph = build_assisted_graph(model_factory=factory)
 
     group_filter = os.environ.get("GROUP", "").strip().lower()
     scenarios = SCENARIOS

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { documentUploadCardExample } from '../../mocks/fixtures'
@@ -33,6 +33,22 @@ describe('DocumentChecklistCard', () => {
     fireEvent.change(input, { target: { files: [bad] } })
     expect(await screen.findByText(/file type isn't supported/i)).toBeInTheDocument()
     expect(onUpload).not.toHaveBeenCalled()
+  })
+
+  it('tags each document row with doc-row and doc-status', () => {
+    if (documentUploadCardExample.card_type !== 'document_upload') throw new Error('bad fixture')
+    render(
+      <DocumentChecklistCard
+        payload={documentUploadCardExample.payload}
+        onUpload={async () => undefined}
+        onRemove={async () => undefined}
+        onSetNumber={() => undefined}
+      />,
+    )
+    for (const doc of documentUploadCardExample.payload.docs) {
+      const row = screen.getByTestId(`doc-row-${doc.doc_type}`)
+      expect(within(row).getByTestId('doc-status')).toHaveTextContent('Not uploaded')
+    }
   })
 
   it('calls upload for valid file', async () => {
@@ -74,6 +90,7 @@ describe('DocumentChecklistCard', () => {
           uploaded: true,
           file_name: 'brand.pdf',
           size_bytes: 1000,
+          on_file: false,
         },
         {
           doc_type: 'company_profile',
@@ -82,6 +99,7 @@ describe('DocumentChecklistCard', () => {
           uploaded: false,
           file_name: null,
           size_bytes: null,
+          on_file: false,
         },
       ],
       required_uploaded: 1,
@@ -133,5 +151,47 @@ describe('DocumentChecklistCard', () => {
     const crInput = screen.getByTestId('doc-number-cr_number')
     expect(crInput).toHaveAttribute('readonly')
     expect(crInput).toHaveValue('1010123456')
+  })
+
+  it('shows On file and Replace for tenant documents on file', async () => {
+    const user = userEvent.setup()
+    const onUpload = vi.fn().mockResolvedValue(undefined)
+    if (documentUploadCardExample.card_type !== 'document_upload') throw new Error('bad fixture')
+
+    const payload = {
+      ...documentUploadCardExample.payload,
+      docs: [
+        {
+          doc_type: 'company_profile',
+          label: 'Company Profile',
+          required: true,
+          uploaded: true,
+          file_name: 'on-record.pdf',
+          size_bytes: 500,
+          on_file: true,
+        },
+      ],
+      required_uploaded: 1,
+      required_total: 1,
+    }
+
+    render(
+      <DocumentChecklistCard
+        payload={payload}
+        onUpload={onUpload}
+        onRemove={async () => undefined}
+        onSetNumber={() => undefined}
+      />,
+    )
+
+    const row = screen.getByTestId('doc-row-company_profile')
+    expect(row).toBeInTheDocument()
+    expect(within(row).getByTestId('doc-status')).toHaveTextContent('On file')
+    expect(screen.queryByText(/Uploaded ·/)).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /replace/i }))
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    const ok = new File(['pdf'], 'new.pdf', { type: 'application/pdf' })
+    await user.upload(input, ok)
+    await waitFor(() => expect(onUpload).toHaveBeenCalledWith('company_profile', ok))
   })
 })

@@ -21,6 +21,31 @@ export class InquiryPage {
   }
 
   /** `faults` sets X-Mock-Faults for this session (scripted mode), e.g. `submit:timeout:1`. */
+  /** Chat is ready after resume (call centre, tenant portal, verify link). */
+  async waitForChatReady() {
+    await expect(this.page.getByRole('region', { name: /leasing assistant chat/i })).toBeVisible({
+      timeout: 60_000,
+    })
+    const box = this.page.getByRole('textbox', { name: 'Message' })
+    await expect(box).toBeEnabled({ timeout: 120_000 })
+    const fromWindow = await this.page.evaluate(() => {
+      const w = window as Window & { __e2eSessionId?: string }
+      return w.__e2eSessionId ?? null
+    })
+    if (fromWindow) this.sessionId = fromWindow
+    await clearCapturedEvents(this.page)
+  }
+
+  /** Opens a `complete_application` verify link and continues into the chat. */
+  async openApplicationVerifyLink(linkPath: string) {
+    await this.page.goto(linkPath)
+    await expect(this.page.getByTestId('verify-page')).toBeVisible({
+      timeout: 30_000,
+    })
+    await this.page.getByRole('button', { name: /continue your inquiry/i }).click()
+    await this.waitForChatReady()
+  }
+
   async open(scenario?: string, options: { faults?: string } = {}) {
     if (scenario) {
       await this.page.route('**/api/sessions', async (route) => {
@@ -37,8 +62,17 @@ export class InquiryPage {
       })
     }
     const sessionIds: string[] = []
-    const onResponse = async (response: { url: () => string; request: () => { method: () => string }; ok: () => boolean; json: () => Promise<unknown> }) => {
-      if (!response.url().includes('/api/sessions') || response.request().method() !== 'POST' || !response.ok()) {
+    const onResponse = async (response: {
+      url: () => string
+      request: () => { method: () => string }
+      ok: () => boolean
+      json: () => Promise<unknown>
+    }) => {
+      if (
+        !response.url().includes('/api/sessions') ||
+        response.request().method() !== 'POST' ||
+        !response.ok()
+      ) {
         return
       }
       const body = (await response.json()) as { session_id: string }
@@ -48,7 +82,10 @@ export class InquiryPage {
     const url = scenario ? `/?e2eScenario=${encodeURIComponent(scenario)}` : '/'
     await this.page.goto(url)
     await expect
-      .poll(() => sessionIds.length, { timeout: 120_000, message: 'session create response' })
+      .poll(() => sessionIds.length, {
+        timeout: 120_000,
+        message: 'session create response',
+      })
       .toBeGreaterThan(0)
     await expect
       .poll(
@@ -81,6 +118,7 @@ export class InquiryPage {
     await this.waitForTurnDone(doneBefore)
   }
 
+  /** Waits until the SSE stream finishes the current turn (message or card action). */
   async waitForTurnDone(doneBefore: number) {
     await expect
       .poll(() => readDoneEventCount(this.page), {
@@ -117,7 +155,9 @@ export class InquiryPage {
     const msg = messages.find((m) => m.template === 'email_verification_link')
     if (!msg?.links?.[0]) throw new Error('verification link not in outbox')
     await this.page.goto(msg.links[0])
-    await expect(this.page.getByTestId('verify-page')).toBeVisible({ timeout: 30_000 })
+    await expect(this.page.getByTestId('verify-page')).toBeVisible({
+      timeout: 30_000,
+    })
     await this.page.getByRole('button', { name: /continue your inquiry/i }).click()
     await expect(this.page.getByRole('region', { name: /leasing assistant chat/i })).toBeVisible({
       timeout: 60_000,
@@ -130,7 +170,9 @@ export class InquiryPage {
     if (to) url.searchParams.set('to', to)
     const res = await this.page.request.get(url.toString())
     expect(res.ok()).toBeTruthy()
-    const body = (await res.json()) as { messages: { template: string; links: string[]; body: string }[] }
+    const body = (await res.json()) as {
+      messages: { template: string; links: string[]; body: string }[]
+    }
     return body.messages
   }
 
@@ -150,22 +192,28 @@ export class InquiryPage {
     await this.waitForTurnDone(doneBefore)
   }
 
-  async pickFile(docLabel: string, fileName: string) {
+  private async docRow(docLabel: string): Promise<Locator> {
     const card = this.page.getByTestId('document-checklist-card')
-    const row = card.locator('div').filter({ hasText: docLabel }).first()
-    const [chooser] = await Promise.all([
-      this.page.waitForEvent('filechooser'),
-      row.getByRole('button', { name: 'Upload' }).click(),
-    ])
+    const row = card.locator('[data-testid^="doc-row-"]').filter({ hasText: docLabel })
+    await expect(row).toHaveCount(1)
+    return row
+  }
+
+  async pickFile(docLabel: string, fileName: string) {
+    const row = await this.docRow(docLabel)
+    const uploadBtn = row.getByRole('button', { name: /Upload|Replace/i })
+    const [chooser] = await Promise.all([this.page.waitForEvent('filechooser'), uploadBtn.click()])
     await chooser.setFiles(path.join(fixtures, fileName))
   }
 
   async upload(docLabel: string, fileName: string) {
     const doneBefore = await readDoneEventCount(this.page)
     await this.pickFile(docLabel, fileName)
+    const row = await this.docRow(docLabel)
+    await expect(row.getByTestId('doc-status')).toContainText('Uploaded', {
+      timeout: 30_000,
+    })
     const card = this.page.getByTestId('document-checklist-card')
-    const row = card.locator('div').filter({ hasText: docLabel }).first()
-    await expect(row.getByText(/Uploaded/i)).toBeVisible({ timeout: 30_000 })
     const header = card.getByText(/\d+ of \d+ required uploaded/)
     const headerText = (await header.textContent()) ?? ''
     const match = headerText.match(/(\d+) of (\d+) required uploaded/)
@@ -192,15 +240,16 @@ export class InquiryPage {
   }
 
   async expectUploadError(docLabel: string, message: string) {
-    const card = this.page.getByTestId('document-checklist-card')
-    const row = card.locator('div').filter({ hasText: docLabel }).first()
+    const row = await this.docRow(docLabel)
     await expect(row.getByText(message)).toBeVisible()
   }
 
   /** Form mode (L3 §3.14): skip the CR from the form-mode card. */
   async formSkipCr() {
     const doneBefore = await readDoneEventCount(this.page)
-    await this.cards('form_mode').getByRole('button', { name: /skip for now/i }).click()
+    await this.cards('form_mode')
+      .getByRole('button', { name: /skip for now/i })
+      .click()
     await this.waitForTurnDone(doneBefore)
   }
 
@@ -210,7 +259,9 @@ export class InquiryPage {
     const control = card.getByLabel(label, { exact: true })
     const tag = await control.evaluate((el) => el.tagName.toLowerCase())
     if (tag === 'select') {
-      await expect(control.locator(`option[value="${value}"]`)).toHaveCount(1, { timeout: 10_000 })
+      await expect(control.locator(`option[value="${value}"]`)).toHaveCount(1, {
+        timeout: 10_000,
+      })
       await control.selectOption(value)
     } else {
       await control.fill(value)
@@ -234,6 +285,20 @@ export class InquiryPage {
     await this.waitForTurnDone(doneBefore)
   }
 
+  async proceedBasicInfo() {
+    const card = this.cards('basic_info_review')
+    const doneBefore = await readDoneEventCount(this.page)
+    await card.getByRole('button', { name: 'Proceed' }).click()
+    await this.waitForTurnDone(doneBefore)
+  }
+
+  async sendApplicationLink() {
+    const card = this.cards('send_link')
+    const doneBefore = await readDoneEventCount(this.page)
+    await card.getByRole('button', { name: 'Send application link' }).click()
+    await this.waitForTurnDone(doneBefore)
+  }
+
   async acceptAndSubmit() {
     const review = this.cards('review')
     await expect(review).toBeVisible({ timeout: 60_000 })
@@ -241,6 +306,15 @@ export class InquiryPage {
     const doneBefore = await readDoneEventCount(this.page)
     await review.getByRole('button', { name: 'Submit inquiry' }).click()
     await this.waitForTurnDone(doneBefore)
+  }
+
+  async successReference(): Promise<string> {
+    const card = this.cards('success')
+    await expect(card).toBeVisible({ timeout: 60_000 })
+    const text = await card.innerText()
+    const match = text.match(/GEO-(STR|MED|SPC)-\d{6}/)
+    if (!match) throw new Error('reference not on success card')
+    return match[0]
   }
 
   /** Waits until the newest bot bubble shows text; WebKit can read empty right after a turn. */
@@ -265,7 +339,9 @@ export class InquiryPage {
     return bubbles.evaluateAll((els) =>
       els.map((el) => {
         const blocks = Array.from(el.querySelectorAll('p, li'))
-        const parts = blocks.length ? blocks.map((b) => b.textContent ?? '') : [el.textContent ?? '']
+        const parts = blocks.length
+          ? blocks.map((b) => b.textContent ?? '')
+          : [el.textContent ?? '']
         return parts.join('\n').trim()
       }),
     )
@@ -285,12 +361,18 @@ export class InquiryPage {
     if (type === 'form_mode') return this.page.getByTestId('form-mode-card')
     if (type === 'case_status') return this.page.getByTestId('case-status-card')
     if (type === 'contacts') return this.page.getByTestId('contacts-card')
+    if (type === 'basic_info_review') return this.page.getByTestId('basic-info-review-card')
+    if (type === 'send_link') return this.page.getByTestId('send-link-card')
+    if (type === 'existing_cr_choice') return this.page.getByTestId('existing-cr-choice-card')
+    if (type === 'sign_in_prompt') return this.page.getByTestId('sign-in-prompt-card')
     return this.page.locator(`[data-card-type="${type}"]`)
   }
 
   async draft(): Promise<Record<string, unknown>> {
     expect(this.sessionId).toBeTruthy()
-    const res = await this.page.request.get(`http://127.0.0.1:8000/api/sessions/${this.sessionId}/draft`)
+    const res = await this.page.request.get(
+      `http://127.0.0.1:8000/api/sessions/${this.sessionId}/draft`,
+    )
     expect(res.ok()).toBeTruthy()
     return res.json()
   }
@@ -298,5 +380,4 @@ export class InquiryPage {
   async events(): Promise<CapturedSseEvent[]> {
     return readCapturedEvents(this.page)
   }
-
 }

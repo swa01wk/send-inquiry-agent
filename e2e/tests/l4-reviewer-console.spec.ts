@@ -17,10 +17,7 @@ test.describe('Reviewer console @scripted', () => {
     await page.getByLabel('Reviewer').selectOption(reviewer.id)
     await page.getByRole('button', { name: 'Sign in' }).click()
     await expect(page.getByTestId('signed-in-reviewer')).toContainText(reviewer.name)
-    await page
-      .getByTestId(`queue-row-${reference}`)
-      .getByRole('link', { name: reference })
-      .click()
+    await page.getByTestId(`queue-row-${reference}`).getByRole('link', { name: reference }).click()
 
     // First review: decide the first level, ask for a re-upload or reject.
     await expect(page.getByTestId('case-stage')).toHaveText('First review')
@@ -40,9 +37,7 @@ test.describe('Reviewer console @scripted', () => {
     await expect(page.getByTestId('case-stage')).toHaveText('Lead — second review')
     await expect(page.getByTestId('action-approve_first')).toHaveCount(0)
     await expect(page.getByTestId('action-approve')).toHaveCount(0)
-    await expect(page.getByTestId('approval-blockers')).toContainText(
-      'Contacts request still open',
-    )
+    await expect(page.getByTestId('approval-blockers')).toContainText('Contacts request still open')
     await expect(page.getByTestId('action-yardi')).toBeVisible()
     await expect(page.getByTestId('action-withdraw_request')).toBeVisible()
     const requests = page.getByTestId('action-requests')
