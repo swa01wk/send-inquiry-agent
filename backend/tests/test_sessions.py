@@ -3,6 +3,8 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from app.sessions import SessionNotFound, SessionStore
 
+pytestmark = pytest.mark.api
+
 
 @pytest.mark.asyncio
 async def test_session_create_get_touch():

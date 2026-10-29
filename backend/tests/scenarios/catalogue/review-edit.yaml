@@ -1,0 +1,6 @@
+id: review-edit
+layers:
+- agent_det
+model_steps:
+- content: I've updated your draft — take another look at the review card.
+title: Review edit

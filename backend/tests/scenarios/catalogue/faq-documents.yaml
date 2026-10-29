@@ -1,0 +1,14 @@
+id: faq-documents
+layers:
+- agent_det
+model_steps:
+- content: ''
+  tool_calls:
+  - name: search_faq
+    args:
+      query: required documents upload
+    id: s1
+    type: tool_call
+- content: Company Profile and Brand Profile are required; the rest are optional but
+    helpful.
+title: FAQ documents

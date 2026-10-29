@@ -1,0 +1,47 @@
+id: 09-changes-mind
+layers:
+- e2e_script
+model_steps:
+- content: ''
+  tool_calls:
+  - name: verify_cr
+    args:
+      cr_number: '1010123456'
+    id: i1
+    type: tool_call
+- content: Company saved — see the card.
+- content: ''
+  tool_calls:
+  - name: update_draft
+    args:
+      fields:
+      - key: brand_name_en
+        value: Bean Street
+        source: user
+      - key: brand_name_ar
+        value: بين ستريت
+        source: derived
+      - key: unit_type
+        value: specialty
+        source: derived
+      - key: sales_category
+        value: fnb_cafe
+        source: derived
+      - key: malls
+        value:
+        - riyadh-mall-a
+        source: user
+    id: i2
+    type: tool_call
+- content: Brand summary is in the card — confirm when ready.
+- content: ''
+  tool_calls:
+  - name: update_draft
+    args:
+      fields:
+      - key: unit_type
+        value: store
+        source: user
+    id: i3
+    type: tool_call
+- content: Updated to a full store — see the card.

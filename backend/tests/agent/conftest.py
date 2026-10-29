@@ -12,6 +12,8 @@ from app.domain.rules import compute_phase
 from app.services.container import build_services
 from langgraph.prebuilt.tool_node import ToolRuntime
 
+pytestmark = pytest.mark.agent
+
 
 @pytest.fixture
 def settings(tmp_path: Path) -> Settings:

@@ -30,7 +30,7 @@ dev-frontend:
 
 # BE: ruff (lint + format) and mypy --strict on app, tests, and scripts/.
 check-be:
-	cd backend && uv run ruff check app tests scripts && uv run ruff format --check app tests scripts && uv run mypy app
+	cd backend && uv run ruff check app tests scripts && uv run ruff format --check app tests scripts && uv run mypy app scripts
 
 # FE: ESLint, tsc, Prettier.
 check-fe:
@@ -44,7 +44,9 @@ lint: check
 
 # BE: the whole pytest suite (includes AGENT-DET).
 test-be:
-	cd backend && uv run pytest
+	cd backend && uv run pytest --cov=app --cov-report=term-missing:skip-covered && \
+	uv run coverage report --include='app/agent/*' --fail-under=85 && \
+	uv run coverage report --fail-under=85
 
 # FE: Vitest.
 test-fe:
@@ -55,7 +57,7 @@ test: test-be test-fe
 # AGENT-DET: tools, guard, actions, bundles and scenario scripts, scripted model only.
 # Moves to `pytest -m agent` when step 11d registers the markers (B1).
 test-agent:
-	cd backend && uv run pytest tests/agent tests/scenarios tests/test_e2e_scripts.py
+	cd backend && uv run pytest -m agent
 
 # Playwright runs locally before every PR (not in CI on PRs; testing strategy §6).
 # Deps install only when missing; pass Playwright flags with ARGS, e.g.

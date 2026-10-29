@@ -1,0 +1,12 @@
+id: 15-asks-price
+layers:
+- e2e_script
+model_steps:
+- content: ''
+  tool_calls:
+  - name: search_faq
+    args:
+      query: rent riyadh mall
+    id: m1
+    type: tool_call
+- content: I can't quote rent here, but we can continue your inquiry.

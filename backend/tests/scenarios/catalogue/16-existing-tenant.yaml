@@ -1,0 +1,12 @@
+id: 16-existing-tenant
+layers:
+- e2e_script
+model_steps:
+- content: ''
+  tool_calls:
+  - name: verify_cr
+    args:
+      cr_number: '1010000000'
+    id: n1
+    type: tool_call
+- content: This CR already has an account — please use Sign In on Tenant Central.

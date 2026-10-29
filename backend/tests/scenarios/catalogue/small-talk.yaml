@@ -1,0 +1,6 @@
+id: small-talk
+layers:
+- agent_det
+model_steps:
+- content: It's a busy season for new brands — what would you like to open with us?
+title: Small talk

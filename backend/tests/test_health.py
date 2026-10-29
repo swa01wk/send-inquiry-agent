@@ -2,6 +2,8 @@ import pytest
 from app.main import create_app
 from httpx import ASGITransport, AsyncClient
 
+pytestmark = pytest.mark.api
+
 
 @pytest.fixture
 def app():

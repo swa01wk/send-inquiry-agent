@@ -1,0 +1,54 @@
+id: many-fields-one-message
+layers:
+- agent_det
+model_steps:
+- content: ''
+  tool_calls:
+  - name: skip_cr
+    args: {}
+    id: s1
+    type: tool_call
+- content: Got it — share your company and brand details whenever you're ready.
+- content: ''
+  tool_calls:
+  - name: update_draft
+    args:
+      fields:
+      - key: company_name
+        value: Acme Trading LLC
+        source: user
+      - key: company_address
+        value: King Abdullah Road, Riyadh
+        source: user
+      - key: brand_name_en
+        value: Bean Street
+        source: user
+      - key: brand_name_ar
+        value: بين ستريت
+        source: derived
+      - key: unit_type
+        value: specialty
+        source: derived
+      - key: sales_category
+        value: fnb_cafe
+        source: derived
+      - key: malls
+        value:
+        - riyadh-mall-a
+        source: user
+      - key: first_name
+        value: Sara
+        source: user
+      - key: last_name
+        value: Ali
+        source: user
+      - key: email
+        value: sara@beanstreet.example
+        source: user
+      - key: contact_number
+        value: '+966501234567'
+        source: user
+    id: s2
+    type: tool_call
+- content: Great — I captured everything from your message.
+title: Many fields one message

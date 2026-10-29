@@ -1,0 +1,18 @@
+id: 20-formatting
+layers:
+- e2e_script
+model_steps:
+- content: ''
+  tool_calls:
+  - name: suggest_replies
+    args:
+      options:
+      - Got it
+    id: z0
+    type: tool_call
+- content: 'Here is a short list:
+
+
+    - First point
+
+    - Second point'

@@ -17,6 +17,7 @@ import json
 import os
 import re
 import sys
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -36,11 +37,11 @@ from app.agent.model import get_chat_model
 from app.config import get_settings
 from app.domain.draft_ops import add_document, new_inquiry_draft, write_fields
 from app.domain.master import load_master_data
-from app.domain.models import DocType, FieldKey, Source
+from app.domain.models import DocType, FieldKey, InquiryDraft, Source
 from app.main import create_app
 from app.policy.config import get_policy
 from app.services.container import build_services
-from app.sessions import SessionStore
+from app.sessions import Session, SessionStore
 from app.workflow.models import CaseStatus
 from httpx import ASGITransport, AsyncClient
 
@@ -93,6 +94,11 @@ class ScenarioResult:
     @property
     def passed(self) -> bool:
         return all(ok for _label, ok in self.checks)
+
+
+AppState = Any
+CheckFn = Callable[[Session, list[TurnResult], AppState], list[tuple[str, bool]]]
+SetupFn = Callable[[AsyncClient, str, AppState], Awaitable[str | None]]
 
 
 async def _chat(
@@ -179,10 +185,10 @@ async def _auto_cards(
 class LiveScenario:
     name: str
     user_turns: list[str]
-    evaluate: Any  # callable(session, turns, app) -> list[tuple[str, bool]]
+    evaluate: CheckFn
     auto_otp: bool = True
     group: str = "intake"
-    setup: Any | None = None  # async (client, session_id, app) -> str | None
+    setup: SetupFn | None = None
 
 
 def _reviewer_names() -> list[str]:
@@ -205,14 +211,14 @@ def _no_timeline_promise(turns: list[TurnResult]) -> bool:
     return not any(word in lower for word in banned)
 
 
-def _case_for(app, session) -> Any:
+def _case_for(app: AppState, session: Session) -> Any:
     ref = session.case_id
     if not ref:
         return None
     return app.state.services.cases.get(ref)
 
 
-def _ready_to_submit_draft(app) -> Any:
+def _ready_to_submit_draft(app: AppState) -> InquiryDraft:
     master = load_master_data()
     entries = [
         ("company_name", "Bean Street Trading Co.", Source.USER),
@@ -252,7 +258,7 @@ def _ready_to_submit_draft(app) -> Any:
     return draft
 
 
-async def _submit_inquiry(client: AsyncClient, app) -> str:
+async def _submit_inquiry(client: AsyncClient, app: AppState) -> str:
     created = await client.post("/api/sessions")
     created.raise_for_status()
     session_id = created.json()["session_id"]
@@ -278,7 +284,11 @@ async def _submit_inquiry(client: AsyncClient, app) -> str:
 
 
 def _token_from(link: str) -> str:
-    return parse_qs(urlparse(link).query)["t"][0]
+    tokens = parse_qs(urlparse(link).query).get("t")
+    if not tokens:
+        msg = f"no token in link: {link!r}"
+        raise ValueError(msg)
+    return tokens[0]
 
 
 def _is_case_chat_link(link: str) -> bool:
@@ -289,7 +299,7 @@ def _is_status_track_link(link: str) -> bool:
     return "/inquiry/status/" in link or "/track" in link
 
 
-def _applicant_case_link(app, reference: str) -> str:
+def _applicant_case_link(app: AppState, reference: str) -> str:
     """Case chat link preferred; submission tracking (/inquiry/status/…?t=) also works."""
     messages = app.state.services.notifications.messages(to=_APPLICANT)
     case_link: str | None = None
@@ -322,13 +332,13 @@ async def _reviewer_for_reference(client: AsyncClient, reference: str) -> str:
         )
         queue_resp.raise_for_status()
         if any(item["reference"] == reference for item in queue_resp.json()):
-            return rid
+            return str(rid)
     raise RuntimeError(f"no reviewer queue holds {reference}")
 
 
 async def _open_case(
     client: AsyncClient,
-    app,
+    app: AppState,
     *,
     then: list[dict[str, Any]],
 ) -> str:
@@ -348,15 +358,15 @@ async def _open_case(
     opened = await client.post("/api/cases/open", json={"token": _token_from(link)})
     opened.raise_for_status()
     body = opened.json()
-    session_id = body["session_id"]
+    session_id = str(body["session_id"])
     session = await app.state.session_store.get(session_id)
     if session.case_id != reference:
         raise RuntimeError("opened case session does not match submitted reference")
     return session_id
 
 
-def _case_setup(then: list[dict[str, Any]]):
-    async def setup(_client: AsyncClient, _session_id: str, app) -> str:
+def _case_setup(then: list[dict[str, Any]]) -> SetupFn:
+    async def setup(_client: AsyncClient, _session_id: str, app: AppState) -> str:
         return await _open_case(_client, app, then=then)
 
     return setup
@@ -387,7 +397,9 @@ def _field_value(entry: dict[str, Any] | None, key: str) -> Any:
     return raw
 
 
-def _check_case_reupload(_session, turns: list[TurnResult], app) -> list[tuple[str, bool]]:
+def _check_case_reupload(
+    _session: Session, turns: list[TurnResult], app: AppState
+) -> list[tuple[str, bool]]:
     text = _reply_text(turns).lower()
     case = _case_for(app, _session)
     status_ok = case is not None and case.status == CaseStatus.REUPLOAD_REQUESTED
@@ -407,7 +419,9 @@ def _check_case_reupload(_session, turns: list[TurnResult], app) -> list[tuple[s
     ]
 
 
-def _check_case_where_is_it(_session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
+def _check_case_where_is_it(
+    _session: Session, turns: list[TurnResult], _app: AppState | None = None
+) -> list[tuple[str, bool]]:
     text = _reply_text(turns).lower()
     stage_hint = "first review" in text or "leasing" in text
     return [
@@ -418,7 +432,9 @@ def _check_case_where_is_it(_session, turns: list[TurnResult], _app=None) -> lis
     ]
 
 
-def _check_case_contacts_bundle(session, turns: list[TurnResult], app) -> list[tuple[str, bool]]:
+def _check_case_contacts_bundle(
+    session: Session, turns: list[TurnResult], app: AppState
+) -> list[tuple[str, bool]]:
     text = _reply_text(turns).lower()
     draft = session.contacts_draft
     signatory = _contact_entry(draft, "authorized_signatory")
@@ -460,7 +476,9 @@ def _check_case_contacts_bundle(session, turns: list[TurnResult], app) -> list[t
     ]
 
 
-def _check_case_rejection(_session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
+def _check_case_rejection(
+    _session: Session, turns: list[TurnResult], _app: AppState | None = None
+) -> list[tuple[str, bool]]:
     text = _reply_text(turns).lower()
     after = get_policy().after_rejection.lower()
     after_hint = "new inquiry" in text or any(
@@ -477,7 +495,9 @@ def _check_case_rejection(_session, turns: list[TurnResult], _app=None) -> list[
     ]
 
 
-def _check_cr_happy(session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
+def _check_cr_happy(
+    session: Session, turns: list[TurnResult], _app: AppState | None = None
+) -> list[tuple[str, bool]]:
     draft = session.draft
     company = draft.fields[FieldKey.COMPANY_NAME].value
     confirmed = draft.fields[FieldKey.COMPANY_NAME].confirmed
@@ -490,7 +510,9 @@ def _check_cr_happy(session, turns: list[TurnResult], _app=None) -> list[tuple[s
     ]
 
 
-def _check_skip_cr(session, _turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
+def _check_skip_cr(
+    session: Session, _turns: list[TurnResult], _app: AppState | None = None
+) -> list[tuple[str, bool]]:
     draft = session.draft
     return [
         ("CR skipped", draft.cr_status == "skipped"),
@@ -499,7 +521,9 @@ def _check_skip_cr(session, _turns: list[TurnResult], _app=None) -> list[tuple[s
     ]
 
 
-def _check_many_fields(session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
+def _check_many_fields(
+    session: Session, turns: list[TurnResult], _app: AppState | None = None
+) -> list[tuple[str, bool]]:
     draft = session.draft
     keys = [
         FieldKey.BRAND_NAME_EN,
@@ -515,16 +539,20 @@ def _check_many_fields(session, turns: list[TurnResult], _app=None) -> list[tupl
     ]
 
 
-def _check_unit_correction(session, _turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
+def _check_unit_correction(
+    session: Session, _turns: list[TurnResult], _app: AppState | None = None
+) -> list[tuple[str, bool]]:
     field = session.draft.fields[FieldKey.UNIT_TYPE]
     return [
         ("unit type corrected", field.value == "store"),
-        ("written as user", field.source and field.source.value == "user"),
+        ("written as user", field.source == Source.USER),
         ("confirmed", field.confirmed is True),
     ]
 
 
-def _check_small_talk(_session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
+def _check_small_talk(
+    _session: Session, turns: list[TurnResult], _app: AppState | None = None
+) -> list[tuple[str, bool]]:
     last = turns[-1].assistant.lower() if turns else ""
     return [
         ("warm reply", len(last) > 10),
@@ -548,7 +576,9 @@ def _check_small_talk(_session, turns: list[TurnResult], _app=None) -> list[tupl
     ]
 
 
-def _check_faq(_session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
+def _check_faq(
+    _session: Session, turns: list[TurnResult], _app: AppState | None = None
+) -> list[tuple[str, bool]]:
     text = turns[-1].assistant if turns else ""
     return [
         (
@@ -562,7 +592,9 @@ def _check_faq(_session, turns: list[TurnResult], _app=None) -> list[tuple[str, 
     ]
 
 
-def _check_condensed(session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
+def _check_condensed(
+    session: Session, turns: list[TurnResult], _app: AppState | None = None
+) -> list[tuple[str, bool]]:
     """Brief, natural answers should still fill the inquiry in four typed turns."""
     draft = session.draft
     required = [
@@ -590,7 +622,9 @@ def _check_condensed(session, turns: list[TurnResult], _app=None) -> list[tuple[
     ]
 
 
-def _check_off_topic(_session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
+def _check_off_topic(
+    _session: Session, turns: list[TurnResult], _app: AppState | None = None
+) -> list[tuple[str, bool]]:
     text = turns[-1].assistant.lower() if turns else ""
     return [
         ("polite decline", "sorry" in text or "here to help" in text or "leasing" in text),
@@ -598,7 +632,9 @@ def _check_off_topic(_session, turns: list[TurnResult], _app=None) -> list[tuple
     ]
 
 
-def _check_hesitation(session, _turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
+def _check_hesitation(
+    session: Session, _turns: list[TurnResult], _app: AppState | None = None
+) -> list[tuple[str, bool]]:
     field = session.draft.fields[FieldKey.SALES_CATEGORY]
     return [
         ("sales_category still unconfirmed", field.confirmed is False),
@@ -606,7 +642,9 @@ def _check_hesitation(session, _turns: list[TurnResult], _app=None) -> list[tupl
     ]
 
 
-def _check_city_only(session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
+def _check_city_only(
+    session: Session, turns: list[TurnResult], _app: AppState | None = None
+) -> list[tuple[str, bool]]:
     malls_raw = session.draft.fields[FieldKey.MALLS].value
     malls = list(malls_raw) if isinstance(malls_raw, list) else []
     picker = any(_cards(t.events, "mall_picker") for t in turns)
@@ -616,7 +654,9 @@ def _check_city_only(session, turns: list[TurnResult], _app=None) -> list[tuple[
     ]
 
 
-def _check_country_mention(session, _turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
+def _check_country_mention(
+    session: Session, _turns: list[TurnResult], _app: AppState | None = None
+) -> list[tuple[str, bool]]:
     malls_raw = session.draft.fields[FieldKey.MALLS].value
     malls = list(malls_raw) if isinstance(malls_raw, list) else []
     return [
@@ -624,7 +664,9 @@ def _check_country_mention(session, _turns: list[TurnResult], _app=None) -> list
     ]
 
 
-def _check_unknown_mall(session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
+def _check_unknown_mall(
+    session: Session, turns: list[TurnResult], _app: AppState | None = None
+) -> list[tuple[str, bool]]:
     from app.domain.master import load_master_data
 
     malls_raw = session.draft.fields[FieldKey.MALLS].value
@@ -643,9 +685,9 @@ def _check_unknown_mall(session, turns: list[TurnResult], _app=None) -> list[tup
 
 
 def _check_cr_brand_differs_from_company(
-    session,
+    session: Session,
     turns: list[TurnResult],
-    _app=None,
+    _app: AppState | None = None,
 ) -> list[tuple[str, bool]]:
     draft = session.draft
     malls_raw = draft.fields[FieldKey.MALLS].value
@@ -661,7 +703,9 @@ def _check_cr_brand_differs_from_company(
     ]
 
 
-def _check_otp_chat_during_faq(session, turns: list[TurnResult], app) -> list[tuple[str, bool]]:
+def _check_otp_chat_during_faq(
+    session: Session, turns: list[TurnResult], app: AppState
+) -> list[tuple[str, bool]]:
     otp = app.state.services.otp
     links = app.state.services.email_verification
     code_count = otp.send_count(session.id) if hasattr(otp, "send_count") else 0
@@ -681,7 +725,9 @@ def _retraction_count(turns: list[TurnResult]) -> int:
     return sum(1 for turn in turns for name, _data in turn.events if name == "message_remove")
 
 
-def _check_arabic_user(session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
+def _check_arabic_user(
+    session: Session, turns: list[TurnResult], _app: AppState | None = None
+) -> list[tuple[str, bool]]:
     draft = session.draft
     required = [
         FieldKey.BRAND_NAME_EN,
@@ -704,7 +750,9 @@ def _check_arabic_user(session, turns: list[TurnResult], _app=None) -> list[tupl
     ]
 
 
-def _check_three_part_name(session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
+def _check_three_part_name(
+    session: Session, turns: list[TurnResult], _app: AppState | None = None
+) -> list[tuple[str, bool]]:
     draft = session.draft
     otp_shown = any(_cards(t.events, "verification") for t in turns)
     return [
@@ -715,7 +763,7 @@ def _check_three_part_name(session, turns: list[TurnResult], _app=None) -> list[
 
 
 def _check_generic_mall_after_picker(
-    session, turns: list[TurnResult], _app=None
+    session: Session, turns: list[TurnResult], _app: AppState | None = None
 ) -> list[tuple[str, bool]]:
     malls_raw = session.draft.fields[FieldKey.MALLS].value
     malls = list(malls_raw) if isinstance(malls_raw, list) else []
@@ -725,7 +773,9 @@ def _check_generic_mall_after_picker(
     ]
 
 
-def _check_injection(session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
+def _check_injection(
+    session: Session, turns: list[TurnResult], _app: AppState | None = None
+) -> list[tuple[str, bool]]:
     return [
         ("no reference set", session.draft.reference is None),
         ("no terms bypass", session.draft.terms_accepted is False),
@@ -740,7 +790,7 @@ def _check_injection(session, turns: list[TurnResult], _app=None) -> list[tuple[
 async def _setup_riyadh_mall_picker(
     client: AsyncClient,
     session_id: str,
-    _app=None,
+    _app: AppState | None = None,
 ) -> None:
     await _action(
         client,
@@ -750,7 +800,9 @@ async def _setup_riyadh_mall_picker(
     )
 
 
-def _check_two_malls(session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
+def _check_two_malls(
+    session: Session, turns: list[TurnResult], _app: AppState | None = None
+) -> list[tuple[str, bool]]:
     malls_raw = session.draft.fields[FieldKey.MALLS].value
     malls = list(malls_raw) if isinstance(malls_raw, list) else []
     last = turns[-1].assistant.lower() if turns else ""
@@ -761,7 +813,7 @@ def _check_two_malls(session, turns: list[TurnResult], _app=None) -> list[tuple[
 
 
 def _check_international_number(
-    session, turns: list[TurnResult], _app=None
+    session: Session, turns: list[TurnResult], _app: AppState | None = None
 ) -> list[tuple[str, bool]]:
     draft = session.draft
     return [
@@ -776,7 +828,7 @@ def _check_international_number(
 async def _setup_callcentre_inquiry(
     client: AsyncClient,
     _session_id: str,
-    _app=None,
+    _app: AppState | None = None,
 ) -> str:
     created = await client.post(
         "/api/callcentre/inquiries",
@@ -789,7 +841,7 @@ async def _setup_callcentre_inquiry(
 async def _setup_tenant_two_brands(
     client: AsyncClient,
     _session_id: str,
-    _app=None,
+    _app: AppState | None = None,
 ) -> str:
     created = await client.post(
         "/api/tenant/opportunities/OPP-101/inquiry",
@@ -849,9 +901,9 @@ def _assisted_thanks_contact_by_name(text: str) -> bool:
 
 
 def _check_channels_dictated_caller(
-    _session,
+    _session: Session,
     turns: list[TurnResult],
-    _app=None,
+    _app: AppState | None = None,
 ) -> list[tuple[str, bool]]:
     all_text = _reply_text(turns)
     last_events = turns[-1].events if turns else []
@@ -877,9 +929,9 @@ def _check_channels_dictated_caller(
 
 
 def _check_channels_existing_tenant_brand_ask(
-    _session,
+    _session: Session,
     turns: list[TurnResult],
-    _app=None,
+    _app: AppState | None = None,
 ) -> list[tuple[str, bool]]:
     if len(turns) < 1:
         return [("first turn present", False)]
@@ -905,9 +957,9 @@ def _check_channels_existing_tenant_brand_ask(
 
 
 def _check_channels_existing_tenant_brand_set(
-    session,
+    session: Session,
     turns: list[TurnResult],
-    _app=None,
+    _app: AppState | None = None,
 ) -> list[tuple[str, bool]]:
     brand = session.draft.fields[FieldKey.BRAND_NAME_EN].value
     category = session.draft.fields[FieldKey.SALES_CATEGORY].value
@@ -1188,7 +1240,9 @@ SCENARIOS: list[LiveScenario] = [
 ]
 
 
-async def run_scenario(client: AsyncClient, app, scenario: LiveScenario) -> ScenarioResult:
+async def run_scenario(
+    client: AsyncClient, app: AppState, scenario: LiveScenario
+) -> ScenarioResult:
     created = await client.post("/api/sessions")
     session_id = created.json()["session_id"]
     turns: list[TurnResult] = []

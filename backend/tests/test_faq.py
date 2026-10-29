@@ -1,4 +1,7 @@
+import pytest
 from app.domain.faq import search_faq
+
+pytestmark = pytest.mark.unit
 
 
 def test_faq_search_review_time():
