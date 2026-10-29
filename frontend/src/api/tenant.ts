@@ -1,4 +1,5 @@
-import { API_BASE } from '../config'
+import { API_BASE, E2E_MODE } from '../config'
+import { e2eScenarioFromUrl } from './client'
 import type { CreateSessionResponse } from '../types/contracts'
 
 /** Simulated Tenant Central (spec §15): every call carries the mock tenant identity. */
@@ -72,12 +73,18 @@ export async function raiseInquiry(
   opportunityId: string,
   brandId?: string,
 ): Promise<CreateSessionResponse> {
+  const extraHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (E2E_MODE) {
+    const scenario = e2eScenarioFromUrl()
+    if (scenario) extraHeaders['X-Test-Scenario'] = scenario
+  }
+
   const res = await request(
     `/api/tenant/opportunities/${encodeURIComponent(opportunityId)}/inquiry`,
     tenantId,
     {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: extraHeaders,
       body: JSON.stringify(brandId ? { brand_id: brandId } : {}),
     },
   )

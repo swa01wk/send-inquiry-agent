@@ -1,0 +1,116 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "skip_cr",
+        "args": {},
+        "id": "a2c1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "No problem — ask the caller for their company name and address."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "company_name",
+              "value": "Bean Street Trading Co.",
+              "source": "user"
+            },
+            {
+              "key": "company_address",
+              "value": "Olaya Street, Riyadh",
+              "source": "user"
+            },
+            {
+              "key": "brand_name_en",
+              "value": "Bean Street",
+              "source": "user"
+            },
+            {
+              "key": "brand_name_ar",
+              "value": "بين ستريت",
+              "source": "derived"
+            },
+            {
+              "key": "unit_type",
+              "value": "specialty",
+              "source": "derived"
+            },
+            {
+              "key": "sales_category",
+              "value": "fnb_cafe",
+              "source": "derived"
+            },
+            {
+              "key": "malls",
+              "value": ["riyadh-mall-a"],
+              "source": "user"
+            }
+          ]
+        },
+        "id": "a2c2",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Saved for the caller — ask for their brand details and preferred mall if anything is missing."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "first_name",
+              "value": "Sara",
+              "source": "user"
+            },
+            {
+              "key": "last_name",
+              "value": "Ali",
+              "source": "user"
+            },
+            {
+              "key": "email",
+              "value": "sara@beanstreet.example",
+              "source": "user"
+            },
+            {
+              "key": "contact_number",
+              "value": "0501234567",
+              "source": "user"
+            }
+          ]
+        },
+        "id": "a2c3",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "show_application_link",
+        "args": {},
+        "id": "a2c4",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "The caller's basic info is complete — use Send application link when you're ready."
+  }
+]

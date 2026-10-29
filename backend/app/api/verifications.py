@@ -11,6 +11,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Request
 
 from app.agent.channels import started_by_label
+from app.agent.e2e_scripts import resolve_e2e_scenario
 from app.agent.runtime import AgentRuntime
 from app.api.cards import (
     VERIFICATION_CARD_ID,
@@ -64,7 +65,12 @@ async def verify_email_link(
 ) -> VerifyEmailResponse:
     complete = _complete_claims(settings, body.token)
     if complete is not None:
-        return await complete_application(complete, store, services, settings)
+        e2e_scenario: str | None = None
+        if settings.agent_mode == "scripted":
+            e2e_scenario = resolve_e2e_scenario(request.headers.get("X-Test-Scenario"))
+        return await complete_application(
+            complete, store, services, settings, test_scenario=e2e_scenario
+        )
     try:
         check = await services.gateway.call(
             "email", "verify_link", services.email_verification.verify_link, body.token
@@ -149,6 +155,8 @@ async def complete_application(
     store: SessionStore,
     services: ServiceContainer,
     settings: Settings,
+    *,
+    test_scenario: str | None = None,
 ) -> VerifyEmailResponse:
     """Opening the link verifies the email and continues the inquiry in a new chat for the
     applicant, starting with the basic-info review (the staff chat stays with the staff)."""
@@ -170,6 +178,9 @@ async def complete_application(
         created_by=staff_session.created_by,
         tenant_id=staff_session.tenant_id,
     )
+    if settings.agent_mode == "scripted" and test_scenario:
+        session.test_scenario = test_scenario
+        session.script_step = 0
     services.storage.copy_session_files(staff_session.id, session.id)  # type: ignore[attr-defined]
     staff_session.complete_nonce = None  # single use
     staff_session.closed = "handed_to_applicant"

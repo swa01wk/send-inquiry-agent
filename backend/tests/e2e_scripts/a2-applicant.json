@@ -1,0 +1,44 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "send_verification",
+        "args": { "resend": false },
+        "id": "a2a1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "I've sent a code to your mobile — enter it below."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "request_documents",
+        "args": {},
+        "id": "a2a2",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Company Profile and Brand Profile are required — the rest are optional."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "show_review",
+        "args": {},
+        "id": "a2a3",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Check everything on the review card and submit when you're ready."
+  }
+]

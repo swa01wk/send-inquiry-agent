@@ -64,8 +64,13 @@ def tool_call(name: str, args: dict[str, Any], call_id: str) -> dict[str, Any]:
     }
 
 
-async def new_assisted(client: AsyncClient, staff: str = STAFF) -> str:
-    created = await client.post("/api/callcentre/inquiries", headers={"X-Staff-Id": staff})
+async def new_assisted(
+    client: AsyncClient, staff: str = STAFF, *, scenario: str | None = None
+) -> str:
+    headers: dict[str, str] = {"X-Staff-Id": staff}
+    if scenario:
+        headers["X-Test-Scenario"] = scenario
+    created = await client.post("/api/callcentre/inquiries", headers=headers)
     assert created.status_code == 200, created.text
     return str(created.json()["session_id"])
 
@@ -204,6 +209,69 @@ async def test_application_link_hands_the_inquiry_to_the_applicant(life) -> None
         if applicant.draft.fields[k].source == Source.STAFF
         and not applicant.draft.fields[k].confirmed
     ]
+
+
+async def test_call_centre_e2e_script_reaches_send_link(life) -> None:
+    client, app = life
+    session_id = await new_assisted(client, scenario="a2-call-centre")
+    staff = await app.state.session_store.get(session_id)
+    assert staff.test_scenario == "a2-call-centre"
+
+    await chat_message(client, session_id, "Skip the CR for now")
+    await chat_message(
+        client,
+        session_id,
+        "Bean Street Trading Co., Olaya Street Riyadh — "
+        "coffee kiosk at Riyadh Mall A, brand Bean Street",
+    )
+    events = await chat_message(
+        client,
+        session_id,
+        "Sara Ali, sara@beanstreet.example, 0501234567",
+    )
+    link_card = ui_cards(events, "send_link")[-1]["payload"]
+    assert link_card["can_send"] is True
+
+
+async def test_application_link_e2e_script_on_applicant_session(life) -> None:
+    client, app = life
+    session_id = await new_assisted(client, scenario="a2-call-centre")
+    await chat_message(client, session_id, "Skip the CR for now")
+    await chat_message(
+        client,
+        session_id,
+        "Bean Street Trading Co., Olaya Street — Bean Street coffee kiosk, Riyadh Mall A",
+    )
+    await chat_message(client, session_id, "Sara Ali, sara@beanstreet.example, 0501234567")
+    email = "sara@beanstreet.example"
+    await chat_action(client, session_id, "send_application_link")
+    link = outbox(app, email, "complete_application")[0]["links"][0]
+    opened = await client.post(
+        "/api/verifications/email",
+        json={"token": token_from(link)},
+        headers={"X-Test-Scenario": "a2-applicant"},
+    )
+    assert opened.status_code == 200, opened.text
+    applicant_id = opened.json()["session_id"]
+    staff = await app.state.session_store.get(session_id)
+    applicant = await app.state.session_store.get(applicant_id)
+    assert staff.test_scenario == "a2-call-centre"
+    assert applicant.test_scenario == "a2-applicant"
+
+
+async def test_existing_tenant_e2e_script_shows_review_after_proceed(life) -> None:
+    client, app = life
+    raised = await client.post(
+        "/api/tenant/opportunities/OPP-103/inquiry",
+        json={},
+        headers={**tenant(OASIS), "X-Test-Scenario": "a1-existing-tenant"},
+    )
+    assert raised.status_code == 200, raised.text
+    session_id = raised.json()["session_id"]
+    session = await app.state.session_store.get(session_id)
+    assert session.test_scenario == "a1-existing-tenant"
+    events = await chat_action(client, session_id, "proceed_basic_info")
+    assert ui_cards(events, "review")
 
 
 async def test_link_needs_the_basic_info(life) -> None:
