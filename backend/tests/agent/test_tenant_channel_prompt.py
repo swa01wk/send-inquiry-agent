@@ -84,3 +84,41 @@ def test_assisted_guard_requires_show_application_link_when_basic_info_complete(
     assert isinstance(note, str)
     assert GUARD_PREFIX in note
     assert "show_application_link" in note
+
+
+def test_assisted_guard_verification_send_claim_when_basic_info_incomplete(
+    agent_runtime: AgentRuntime,
+) -> None:
+    draft = new_inquiry_draft()
+    draft.cr_status = "skipped"
+    phase = compute_phase(draft).value
+    state = initial_agent_state(session_id="sess-assisted-verify-claim", draft=draft, phase=phase)
+    state["assisted"] = True
+    state["messages"] = [
+        HumanMessage(content="Hi, I'm calling about a kiosk."),
+        AIMessage(content="I've sent the verification link to your email."),
+    ]
+    with patch("app.agent.guard.get_stream_writer", return_value=None):
+        result = guard_node(state, runtime=agent_runtime)
+    assert result.get("retry_agent") is True
+    note = result["messages"][0].content
+    assert isinstance(note, str)
+    assert "Assisted mode: don't send or promise a verification link or code" in note
+    assert "show_application_link" not in note
+
+
+def test_assisted_guard_no_note_when_caller_verifies_from_link(
+    agent_runtime: AgentRuntime,
+) -> None:
+    draft = new_inquiry_draft()
+    draft.cr_status = "skipped"
+    phase = compute_phase(draft).value
+    state = initial_agent_state(session_id="sess-assisted-caller-verify", draft=draft, phase=phase)
+    state["assisted"] = True
+    state["messages"] = [
+        HumanMessage(content="Thanks."),
+        AIMessage(content="The caller will verify their email from the link."),
+    ]
+    with patch("app.agent.guard.get_stream_writer", return_value=None):
+        result = guard_node(state, runtime=agent_runtime)
+    assert result.get("retry_agent") is not True

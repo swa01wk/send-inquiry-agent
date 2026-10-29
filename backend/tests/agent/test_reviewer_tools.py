@@ -189,6 +189,12 @@ def test_reminder_check_accepts_a_clean_draft(agent_runtime, seeded_case) -> Non
     assert reminder_check(text, case, _reviewer_names(agent_runtime)) is None
 
 
+def test_reminder_check_accepts_company_contacts_plural(agent_runtime, seeded_case) -> None:
+    case = _case_with_open_contacts(agent_runtime, seeded_case)
+    text = "Reminder — action needed on your inquiry:\n• Please send your company contacts."
+    assert reminder_check(text, case, _reviewer_names(agent_runtime)) is None
+
+
 def test_reminder_check_flags_missing_document_label(agent_runtime, seeded_case) -> None:
     case = seeded_case
     case.requests.append(

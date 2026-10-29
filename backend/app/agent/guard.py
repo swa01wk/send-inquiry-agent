@@ -49,7 +49,8 @@ _FALSE_SUBMIT_RE = re.compile(
     r"\b(inquiry|enquiry|application|request)\b[^.!?\n]{0,40}?"
     r"\b(has been|have been|was|is now|is)\s+"
     r"(submitted|sent|received)\b"
-    r"|\bI(?:'ve| have)\s+(submitted|sent)\s+(your|the)\b"
+    r"|\bI(?:'ve| have)\s+(?:submitted|sent)\s+(?:your|the)\s+"
+    r"(?:inquiry|enquiry|application|request)\b"
     r"|\byour reference(?: number)? is\b",
     re.IGNORECASE,
 )
@@ -356,9 +357,10 @@ def _unconfirm_doubted_fields(state: AgentState) -> tuple[Any, list[str]]:
     return draft, changed
 
 
-_ASSISTED_VERIFICATION_CLAIM = re.compile(
-    r"verification link|verify (?:your )?email|sms code|one-time code|"
-    r"send (?:you )?(?:a )?link to verify",
+_ASSISTED_AGENT_SENDS_VERIFICATION = re.compile(
+    r"\b(?:I(?:'m|\s+am)\s+sending|I(?:'ve|\s+have)\s+sent|sending you)\b"
+    r"[^.!?\n]{0,120}?"
+    r"\b(?:verification link|sms code|one-time code|link to verify)\b",
     re.IGNORECASE,
 )
 
@@ -388,11 +390,11 @@ def _assisted_application_link_note(
 def _assisted_verification_claim_note(state: AgentState, ai_text: str) -> str | None:
     if not state.get("assisted") or not ai_text:
         return None
-    if not _ASSISTED_VERIFICATION_CLAIM.search(ai_text):
+    if not _ASSISTED_AGENT_SENDS_VERIFICATION.search(ai_text):
         return None
     return (
-        f"{GUARD_PREFIX} Basic info is complete: call show_application_link now. "
-        "Don't say you're sending a verification link or code."
+        f"{GUARD_PREFIX} Assisted mode: don't send or promise a verification link or code; "
+        "the caller verifies from the application link."
     )
 
 

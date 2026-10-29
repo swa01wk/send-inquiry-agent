@@ -117,7 +117,7 @@ def reminder_check(text: str, case: Case, reviewer_names: list[str]) -> str | No
                 if label.lower() not in lower:
                     return "a document label was missing"
         elif request.kind == "contacts":
-            if not re.search(r"\bcontact\b", text, re.IGNORECASE):
+            if not re.search(r"\bcontacts?\b", text, re.IGNORECASE):
                 return "the draft did not name contacts"
         elif request.kind == "sales_data":
             if not re.search(r"\bsales\b", text, re.IGNORECASE):
