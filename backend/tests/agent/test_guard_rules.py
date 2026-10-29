@@ -51,6 +51,28 @@ def test_benign_text_does_not_match(text: str) -> None:
 @pytest.mark.parametrize(
     "text",
     [
+        "I've sent your details to the leasing team.",
+        "I've submitted your inquiry.",
+    ],
+)
+def test_i_sent_your_the_still_false_submit_claims(text: str) -> None:
+    assert claims_submission(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "I've sent the verification link.",
+        "I've sent the SMS code.",
+    ],
+)
+def test_i_sent_verification_wording_not_false_submit(text: str) -> None:
+    assert not claims_submission(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
         "Bean Street, a coffee kiosk at Riyadh Mall A, about 30 sqm",
         "Sara Ali, sara@beanstreet.sa, 0501234567",
         "Acme Trading LLC on King Abdullah Road",

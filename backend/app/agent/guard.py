@@ -49,8 +49,8 @@ _FALSE_SUBMIT_RE = re.compile(
     r"\b(inquiry|enquiry|application|request)\b[^.!?\n]{0,40}?"
     r"\b(has been|have been|was|is now|is)\s+"
     r"(submitted|sent|received)\b"
-    r"|\bI(?:'ve| have)\s+(?:submitted|sent)\s+(?:your|the)\s+"
-    r"(?:inquiry|enquiry|application|request)\b"
+    r"|\bI(?:'ve| have)\s+(?:submitted|sent)\s+(?:your|the)\b"
+    r"(?!\s+(?:verification|email link|sms|code|one-time))"
     r"|\byour reference(?: number)? is\b",
     re.IGNORECASE,
 )
