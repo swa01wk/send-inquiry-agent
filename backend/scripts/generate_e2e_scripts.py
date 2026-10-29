@@ -21,7 +21,8 @@ def say(content: str) -> dict[str, Any]:
     return {"content": content}
 
 
-# Guard rejects a text-only reply when the user sent saveable data; scripts include this once per retry.
+# Guard rejects a text-only reply when the user sent saveable data;
+# scripts include this once per retry.
 GUARD_DECOY = say("Thanks — one moment.")
 
 
@@ -222,7 +223,8 @@ SCRIPTS: dict[str, list[dict[str, Any]]] = {
             "CR, VAT, ID, address and articles are optional."
         ),
         say(
-            "Thanks — optional documents can still be added; check the review card when you're ready."
+            "Thanks — optional documents can still be added; "
+            "check the review card when you're ready."
         ),
     ],
     "19-cr-chip": [say("Type your 10-digit CR number when you're ready.")],
@@ -233,7 +235,8 @@ SCRIPTS: dict[str, list[dict[str, Any]]] = {
     "21-unclear": [
         say("Got it."),
         say(
-            "Do you have your company's CR number? It's on your commercial registration certificate."
+            "Do you have your company's CR number? "
+            "It's on your commercial registration certificate."
         ),
         tc(
             "suggest_replies",

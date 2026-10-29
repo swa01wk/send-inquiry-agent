@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 
 from app import clock
+from app.agent.channels import intake_staff_role
 from app.agent.e2e_scripts import resolve_e2e_scenario, scripted_model_for_session
 from app.agent.events import SseEvent
 from app.agent.reviewer_events import run_reviewer_turn
@@ -115,6 +116,7 @@ class QueueItem(BaseModel):
     follow_on_of: str | None = None
     needs_operations: bool = False
     channel: str = "self_service"
+    staff_role: str | None = None
 
 
 class TimelineEntry(BaseModel):
@@ -157,7 +159,9 @@ def _sse(event: SseEvent) -> dict[str, str]:
     return {"event": event["event"], "data": json.dumps(event["data"])}
 
 
-def _queue_item(case: Case, master: MasterData, now: datetime) -> QueueItem:
+def _queue_item(
+    case: Case, master: MasterData, now: datetime, services: ServiceContainer
+) -> QueueItem:
     fields = case.draft.fields
     malls = fields[FieldKey.MALLS].value or []
     return QueueItem(
@@ -176,6 +180,7 @@ def _queue_item(case: Case, master: MasterData, now: datetime) -> QueueItem:
         follow_on_of=case.draft.follow_on_of,
         needs_operations=case.yardi.needs_operations,
         channel=case.channel,
+        staff_role=intake_staff_role(services.reviewers, case.channel, case.created_by),
     )
 
 
@@ -253,7 +258,11 @@ def _detail(
     services: ServiceContainer, case: Case, reviewer: Reviewer, master: MasterData
 ) -> CaseDetail:
     return CaseDetail(
-        brief=build_case_brief(case, master),
+        brief=build_case_brief(
+            case,
+            master,
+            staff_role=intake_staff_role(services.reviewers, case.channel, case.created_by),
+        ),
         timeline=_timeline(services, case),
         legal_actions=[
             EVENT_TO_ACTION[e] for e in legal_events(case, reviewer.actor()) if e in EVENT_TO_ACTION
@@ -294,7 +303,9 @@ async def list_cases(
 ) -> list[QueueItem]:
     now = clock.now()
     items = [
-        _queue_item(case, master, now) for case in services.cases.all() if _in_queue(case, reviewer)
+        _queue_item(case, master, now, services)
+        for case in services.cases.all()
+        if _in_queue(case, reviewer)
     ]
     if waiting_on_filter:
         items = [i for i in items if i.waiting_on == waiting_on_filter]

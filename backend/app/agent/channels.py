@@ -11,12 +11,25 @@ from app.domain.models import (
     InquiryDraft,
     Source,
 )
+from app.services.reviewers import ReviewerDirectory
 from app.services.tenants import Tenant
 
 STAFF_ROLE_LABELS = {
     "customer_care": "The Cenomi call centre",
     "guest_service": "The mall's Guest Service desk",
 }
+
+
+def intake_staff_role(
+    reviewers: ReviewerDirectory,
+    channel: str,
+    created_by: str | None,
+) -> str | None:
+    """Staff role for assisted intake (`customer_care` | `guest_service`) for console labels."""
+    if channel != "assisted" or not created_by:
+        return None
+    staff = reviewers.get(created_by)
+    return staff.role if staff else None
 
 
 def started_by_label(runtime: AgentRuntime, staff_id: str | None) -> str:

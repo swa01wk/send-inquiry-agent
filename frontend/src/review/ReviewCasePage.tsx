@@ -182,7 +182,7 @@ export function ReviewCasePage() {
                 <div className={styles.summaryItem}>
                   <span className={styles.summaryLabel}>Channel</span>
                   <span className={styles.summaryValue} data-testid="case-channel">
-                    {channelLabel(brief.channel) ?? 'Applicant (self-service)'}
+                    {channelLabel(brief.channel, brief.staff_role) ?? 'Applicant (self-service)'}
                   </span>
                 </div>
                 <div className={styles.summaryItem}>

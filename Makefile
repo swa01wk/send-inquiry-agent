@@ -28,9 +28,9 @@ dev-frontend:
 
 # ---- BE and FE checks ----------------------------------------------------
 
-# BE: ruff (lint + format) and mypy --strict. `scripts/` joins in step 11d (B1).
+# BE: ruff (lint + format) and mypy --strict on app, tests, and scripts/.
 check-be:
-	cd backend && uv run ruff check app tests && uv run ruff format --check app tests && uv run mypy app
+	cd backend && uv run ruff check app tests scripts && uv run ruff format --check app tests scripts && uv run mypy app
 
 # FE: ESLint, tsc, Prettier.
 check-fe:

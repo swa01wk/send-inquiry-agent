@@ -208,10 +208,10 @@ export function ReviewQueuePage() {
                         {c.follow_on_of ? (
                           <div className={styles.muted}>Follow-on of {c.follow_on_of}</div>
                         ) : null}
-                        {channelLabel(c.channel) ? (
+                        {channelLabel(c.channel, c.staff_role) ? (
                           <div>
                             <span className={styles.tag} data-testid="channel-label">
-                              {channelLabel(c.channel)}
+                              {channelLabel(c.channel, c.staff_role)}
                             </span>
                           </div>
                         ) : null}
