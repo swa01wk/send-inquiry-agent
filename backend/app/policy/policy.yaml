@@ -70,3 +70,25 @@ require_contacts_before_approval: true
 # First-level approval opens a contacts request automatically (requirements §7.1.1 b,
 # "on contact creation"; L4 A10).
 auto_request_contacts_after_first_approval: true
+
+# ---- Proactive work (L5 §3.1–3.3) -----------------------------------------------------
+# Demo values. A trigger fires once per case per period: a stay in one review stage, or
+# one open request. Every decision is in the audit log.
+proactive:
+  # A case in first or second review this long → "Needs attention" + email to the queue.
+  review_stall_hours: 48
+  # Still there after this long → flagged to the region manager for that role.
+  review_escalate_hours: 96
+  # A re-upload, contacts or sales-data request unanswered this long → drafted reminder.
+  tenant_reminder_hours: 72
+  # At most one proactive message to the applicant per case in this many hours.
+  tenant_proactive_min_hours: 48
+  # false: a reviewer approves each reminder (tier 2); true: reminders send (tier 1).
+  reminder_pre_approved: false
+  # Messages to the applicant wait outside these hours (internal flags don't).
+  quiet_hours:
+    start: "22:00"
+    end: "08:00"
+    timezone: Asia/Riyadh
+  # Why a reviewer dismissed an item (counted in the console).
+  dismiss_reasons: [not_needed, already_handled, applicant_contacted, other]

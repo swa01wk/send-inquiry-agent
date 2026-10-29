@@ -19,3 +19,12 @@ def _reset_rate_limits():
 
     limiter.reset()
     yield
+
+
+@pytest.fixture(autouse=True)
+def _real_clock():
+    """Services built with DEV_TOOLS install a simulated clock; put real time back after."""
+    from app.clock import SystemClock, install_clock
+
+    yield
+    install_clock(SystemClock())

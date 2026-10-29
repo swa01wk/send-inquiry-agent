@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Iterator
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Protocol
 
+from app import clock
 from app.domain.models import DocType, DocumentRef
 from app.domain.validation import validate_document_extension, validate_document_size
 from app.services.errors import UploadTooLargeError, UploadValidationError
@@ -75,7 +75,7 @@ class MockStorageService:
             file_id=file_id,
             file_name=filename,
             size_bytes=written,
-            uploaded_at=datetime.now(tz=UTC),
+            uploaded_at=clock.now(),
         )
 
     def delete(self, session_id: str, doc_type: DocType, file_id: str) -> None:

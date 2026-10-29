@@ -12,12 +12,12 @@ import re
 import threading
 import uuid
 from dataclasses import asdict, dataclass
-from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
 from string import Template
 from typing import Any, Literal, Protocol
 
+from app import clock
 from app.persistence import JsonFile, data_path
 
 TEMPLATE_DIR = Path(__file__).resolve().parent / "templates"
@@ -41,6 +41,10 @@ TEMPLATE_NAMES = (
     "sales_data_received",
     "request_withdrawn",
     "inquiry_accepted",
+    # Proactive work (L5 §3.2)
+    "review_stalled",
+    "review_escalated",
+    "applicant_reminder",
 )
 Channel = Literal["email", "sms"]
 Kind = Literal["information", "action_required"]
@@ -136,7 +140,7 @@ class MockNotificationService:
             subject=subject,
             body=body,
             links=_LINK_RE.findall(body),
-            created_at=datetime.now(tz=UTC).isoformat(),
+            created_at=clock.now().isoformat(),
         )
         with self._lock:
             self._messages.append(asdict(message))

@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
+import logging
+import shutil
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,6 +19,7 @@ from app.agent.case_graph import build_case_graph
 from app.agent.graph import build_graph
 from app.agent.model import ScriptedChatModel, get_chat_model
 from app.agent.reviewer_graph import build_reviewer_graph
+from app.agent.runtime import AgentRuntime
 from app.api.cases import router as cases_router
 from app.api.chat import router as chat_router
 from app.api.dev import router as dev_router
@@ -28,8 +34,14 @@ from app.api.verifications import router as verifications_router
 from app.config import Settings, get_settings
 from app.domain.master import configure_master_data, load_master_data
 from app.policy.config import PolicyError, install_policy, load_policy
+from app.proactive.engine import tick
 from app.services.container import build_services
 from app.sessions import SessionStore
+
+logger = logging.getLogger(__name__)
+
+# What `POST /api/dev/reset` deletes under DATA_DIR (every folder the app writes).
+DEMO_DATA_DIRS = ("sessions", "cases", "audit", "mock_world", "proactive")
 
 
 # Registered once at import: a limit decorated inside create_app would be added again for
@@ -72,8 +84,8 @@ def create_app(
 
     chat_model_factory = model_factory or default_model_factory
 
-    @asynccontextmanager
-    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    def init_state(app: FastAPI) -> None:
+        """Sessions, services and graphs (start-up, and again after a demo reset)."""
         app.state.settings = cfg
         app.state.policy = policy
         app.state.session_store = SessionStore(
@@ -83,9 +95,47 @@ def create_app(
         app.state.graph = build_graph(model_factory=chat_model_factory)
         app.state.case_graph = build_case_graph(model_factory=chat_model_factory)
         app.state.reviewer_graph = build_reviewer_graph(model_factory=chat_model_factory)
+
+    async def reset_demo() -> None:
+        """Delete every demo record (dev tools only) and rebuild the state from scratch."""
+        if cfg.data_dir:
+            for name in DEMO_DATA_DIRS:
+                shutil.rmtree(Path(cfg.data_dir) / name, ignore_errors=True)
+        uploads = Path(cfg.upload_dir)
+        if uploads.exists():
+            for child in uploads.iterdir():
+                if child.is_dir():
+                    shutil.rmtree(child, ignore_errors=True)
+                else:
+                    child.unlink(missing_ok=True)
+        init_state(app)
+        logger.info("demo reset")
+
+    async def proactive_loop() -> None:
+        """The periodic tick (L5 §3.1): triggers fire without anyone pressing a button."""
+        while True:
+            await asyncio.sleep(cfg.proactive_tick_seconds)
+            try:
+                await tick(
+                    AgentRuntime(
+                        services=app.state.services, master=load_master_data(), settings=cfg
+                    )
+                )
+            except Exception:  # one bad tick mustn't stop the loop
+                logger.exception("proactive tick failed")
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        init_state(app)
+        task = asyncio.create_task(proactive_loop()) if cfg.proactive_enabled else None
         yield
+        if task is not None:
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
 
     app = FastAPI(title="Send Inquiry Agent", lifespan=lifespan)
+    app.state.reset_demo = reset_demo
 
     app.state.limiter = limiter
     app.add_middleware(SlowAPIMiddleware)

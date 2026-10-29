@@ -360,6 +360,8 @@ process steps · review time · required documents · what a CR number is · wha
 | `PUBLIC_API_URL` | `http://localhost:8000` (links that hit the API, e.g. the mock Azure AD accept link) |
 | `CASE_TTL_DAYS` | `30` (case links) |
 | `FORM_MODE` | `false`; `true` (testing) treats the model as unavailable, so every turn runs in form mode |
+| `PROACTIVE_ENABLED` | `false`; `true` runs the proactive tick in the background (L5, §14) |
+| `PROACTIVE_TICK_SECONDS` | `60`; how often the background tick runs |
 | `CALL_CENTRE_PHONE` / `CALL_CENTRE_EMAIL` / `CALL_CENTRE_HOURS` | `+966 11 000 0000` / `leasing-callcentre@example.com` / `Sunday to Thursday, 9 am to 5 pm (Riyadh time)` — placeholders until Cenomi confirms; shown on the `handoff` card; mock cases are emailed to `CALL_CENTRE_EMAIL` |
 
 Frontend: `VITE_API_BASE` (default `http://localhost:8000`), `VITE_MOCK` (`1` = run on fixtures), `VITE_E2E` (`1` = send the `X-Test-Scenario` header; e2e only).
@@ -462,3 +464,47 @@ Contacts being collected live on the case session (`Session.contacts_draft`); `w
 **Status page:** `GET /api/inquiries/{reference}?t=` follows the case: `status` is `under_review`, `approved`, `sent_to_yardi` or `rejected`; `summary` is applicant-facing copy (including `FINAL_APPROVAL_LABELS` when approved or sent to Yardi); stages Submitted → First review → Lead — second review → Outcome; `owner_role` from the queue; `waiting_on_you` lists open requests ("Re-upload documents", "Add company contacts", "Upload estimated sales data").
 
 **Policy:** `review_routing`, `second_level_contacts {required, optional}`, `rejection_categories`, `after_rejection`, `require_contacts_before_approval`, `auto_request_contacts_after_first_approval`.
+
+## 14. Proactive work and demo operability (L5 core, Day 5)
+
+**Clock** (`app/clock.py`). `clock.now()` stamps every business record: case transitions and requests, document uploads, invitations, audit events, outbox messages, queue and brief ages. With `DEV_TOOLS=true` it's a `SimulatedClock` (real time plus an offset that only moves forward); otherwise `SystemClock`. Session idle timeouts, rate limits and signed-link expiry stay on real time. The offset isn't persisted; a restart or a reset puts it back to 0.
+
+**Triggers** (`app/proactive/engine.py`, thresholds in `policy.proactive`). `tick()` evaluates every case; each firing is an `AttentionItem` keyed `(case, trigger, period)`, so a repeated tick or a restart doesn't fire twice:
+
+| Trigger | Condition | Action | Tier |
+| --- | --- | --- | --- |
+| `stalled_review` | `first_review` or `second_review` for `review_stall_hours` (48) since entering the stage | Item for the queue; `review_stalled` email to the queue's reviewers (not managers) | 0 |
+| `escalation` | Same stage for `review_escalate_hours` (96) | Item for the role's managers; `review_escalated` email to them | 0 |
+| `applicant_reminder` | A request (re-upload, contacts, sales data) open for `tenant_reminder_hours` (72) | Item with a drafted reminder (`text`: what's missing and the reviewer's note); waits for approval | 2 (1 when `reminder_pre_approved`) |
+
+The period is one stay in a stage (the stage plus its start time) or one request. A tick also sends held reminders whose time has come, and marks open items `dismissed` with reason `resolved` when their condition passed (the case moved on, the request was answered or withdrawn). No proactive path calls `transition()` or saves a case.
+
+**Notification policy** (`app/proactive/notification_policy.py`, `NotificationPolicy.check`): tier 0 sends at any hour; tier 2 waits for approval; an approved or tier-1 applicant message is held during quiet hours (`22:00–08:00 Asia/Riyadh`, `policy.proactive.quiet_hours`) until the window closes, and throttled to one proactive message per case per `tenant_proactive_min_hours` (48). Each decision is audited as `proactive_decision {item_id, trigger, decision, reason, by}` (`sent`, `awaiting_approval`, `held_quiet_hours`, `throttled`, `dismissed`, `resolved`); each firing as `proactive_raised {item_id, trigger, tier, stage, hours}`.
+
+**Templates:** `review_stalled`, `review_escalated` (information, staff), `applicant_reminder` (action required; `$message` is the approved text, `$case_url` opens the case scoped to the request).
+
+**Needs attention API** (review router, `X-Reviewer-Id`):
+
+| Method | Path | Response |
+| --- | --- | --- |
+| GET | `/api/review/attention` | `{items: [AttentionOut], counts: {open, raised, sent, dismissed: {reason: n}}, dismiss_reasons}`. Items are those still actionable (`open`, `awaiting_approval`, `held`) for the reviewer's queues, plus escalations for managers of that role; escalations first, then by age against the threshold |
+| POST | `/api/review/attention/{id}/approve` | `{text?}` (edited reminder, 1–1000 chars) → the item, `sent` or `held` (with `send_after`). 409 `not_awaiting_approval` / `request_closed`, 400 `invalid_text` |
+| POST | `/api/review/attention/{id}/dismiss` | `{reason}` from `policy.proactive.dismiss_reasons` → the item. 400 `invalid_reason`, 409 `already_closed` |
+
+`AttentionOut`: `{id, trigger, label, recommended, reference, brand, mall, stage_label, status, audience (queue | manager), tier, age_hours, threshold_hours, request_kind, request_label, text, raised_at, send_after, sent_at, dismissed_reason}`. An item outside the reviewer's queues → 404 `item_not_found`.
+
+**Dev tools** (`DEV_TOOLS=true`):
+
+| Method | Path | Response |
+| --- | --- | --- |
+| GET | `/api/dev/clock` | `{now, offset_hours, simulated, timezone}` |
+| POST | `/api/dev/clock/advance` | `{hours}` (0 < h ≤ 720) → moves the clock, runs a tick → `{clock, raised, sent, resolved}` |
+| POST | `/api/dev/clock/to-morning` | Moves to the end of the next quiet-hours window, runs a tick |
+| POST | `/api/dev/proactive/tick` | Runs a tick now |
+| POST | `/api/dev/reset` | Deletes sessions, cases, audit, outbox, invitations, Yardi leads, attention items (every folder under `DATA_DIR` the app writes) and uploads; resets the clock; rebuilds services and graphs → `{reset: true}` |
+
+With `PROACTIVE_ENABLED=true` a background task runs `tick()` every `PROACTIVE_TICK_SECONDS`. Moving the clock always runs a tick.
+
+**Frontend:** `/dev` (with `VITE_DEV_TOOLS=1`): one link per persona (applicant chat, dev inbox, each reviewer queue via `/review?as=<reviewer id>`, Needs attention), **Reset demo**, and the clock (+24 h, +48 h, to morning). `/review/attention`: the Needs attention view (approve, edit and dismiss reminders; dismiss flags with a reason; open the case); the queue page shows its count as a badge.
+
+**Policy:** `proactive {review_stall_hours, review_escalate_hours, tenant_reminder_hours, tenant_proactive_min_hours, reminder_pre_approved, quiet_hours {start, end, timezone}, dismiss_reasons}`.

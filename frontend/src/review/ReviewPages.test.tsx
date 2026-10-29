@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as review from '../api/review'
-import { caseDetail, queueItem, reviewerCentral } from './fixtures'
+import { attentionList, caseDetail, queueItem, reviewerCentral, stalledItem } from './fixtures'
 import { ReviewCasePage } from './ReviewCasePage'
 import { ReviewQueuePage } from './ReviewQueuePage'
 
@@ -23,6 +23,7 @@ describe('Reviewer console', () => {
     vi.restoreAllMocks()
     window.sessionStorage.clear()
     vi.spyOn(review, 'listReviewers').mockResolvedValue([reviewerCentral])
+    vi.spyOn(review, 'listAttention').mockResolvedValue(attentionList([]))
   })
 
   it('signs in with the mock picker and shows the queue', async () => {
@@ -111,5 +112,21 @@ describe('Reviewer console', () => {
     )
     renderAt('/review/cases/GEO-STR-999999')
     expect(await screen.findByText('This case is not in your queues.')).toBeInTheDocument()
+  })
+
+  it('shows the Needs attention count on the queue', async () => {
+    window.sessionStorage.setItem('cenomi.reviewerId', 'rlm_store-central')
+    vi.spyOn(review, 'listCases').mockResolvedValue([queueItem])
+    vi.spyOn(review, 'listAttention').mockResolvedValue(attentionList([stalledItem()]))
+    renderAt('/review')
+    expect(await screen.findByTestId('attention-badge')).toHaveTextContent('1')
+    expect(screen.getByTestId('attention-link')).toHaveAttribute('href', '/review/attention')
+  })
+
+  it('signs in from ?as= (the dev landing page)', async () => {
+    vi.spyOn(review, 'listCases').mockResolvedValue([queueItem])
+    renderAt('/review?as=rlm_store-central')
+    expect(await screen.findByTestId('signed-in-reviewer')).toHaveTextContent('Faisal')
+    expect(window.sessionStorage.getItem('cenomi.reviewerId')).toBe('rlm_store-central')
   })
 })

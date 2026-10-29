@@ -10,9 +10,9 @@ from __future__ import annotations
 import logging
 import random
 import threading
-from datetime import UTC, datetime
 from typing import Any, Protocol
 
+from app import clock
 from app.domain.master import MasterData
 from app.domain.models import FieldKey, InquiryDraft
 from app.persistence import JsonFile, data_path
@@ -60,7 +60,7 @@ class MockSubmitService:
             while reference in self._submissions:
                 reference = f"GEO-{code}-{random.randint(0, 999_999):06d}"
             payload = draft.model_dump(mode="json")
-            payload["submitted_at"] = datetime.now(tz=UTC).isoformat()
+            payload["submitted_at"] = clock.now().isoformat()
             self._submissions[reference] = payload
             if idempotency_key:
                 self._keys[idempotency_key] = reference

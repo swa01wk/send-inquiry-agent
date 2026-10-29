@@ -6,9 +6,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from app.audit import AuditLog
+from app.clock import Clock, SimulatedClock, SystemClock, install_clock
 from app.config import Settings
 from app.gateway import FaultPlan, Gateway
 from app.notifications import MockNotificationService
+from app.proactive.store import AttentionStore
 from app.services.call_centre import CallCentreService, MockCallCentreService
 from app.services.cr import CrService, MockCrService
 from app.services.email_verification import (
@@ -43,6 +45,8 @@ class ServiceContainer:
     reviewers: ReviewerDirectory
     identity: IdentityService
     yardi: MockYardiService
+    attention: AttentionStore
+    clock: Clock
 
 
 def build_services(settings: Settings) -> ServiceContainer:
@@ -60,6 +64,9 @@ def build_services(settings: Settings) -> ServiceContainer:
     upload_dir = Path(settings.upload_dir)
     upload_dir.mkdir(parents=True, exist_ok=True)
     max_bytes = settings.max_upload_mb * 1024 * 1024
+    # Dev tools move a simulated clock (L5 §3.1); otherwise business time is real time.
+    clock: Clock = SimulatedClock() if settings.dev_tools else SystemClock()
+    install_clock(clock)
     return ServiceContainer(
         cr=MockCrService(),
         otp=MockOtpService(settings.otp_mock_code, notifications=notifications, data_dir=data_dir),
@@ -90,4 +97,6 @@ def build_services(settings: Settings) -> ServiceContainer:
             data_dir=data_dir,
         ),
         yardi=MockYardiService(data_dir),
+        attention=AttentionStore(data_dir),
+        clock=clock,
     )

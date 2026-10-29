@@ -7,9 +7,10 @@ or not, is in the audit trail with its actor.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import TYPE_CHECKING
 
+from app import clock
 from app.domain.master import MasterData
 from app.domain.models import FieldKey, InquiryDraft
 from app.policy.config import get_policy
@@ -96,7 +97,7 @@ async def apply_event(
     if case is None:
         raise IllegalTransition("not_found", "Unknown case.")
     try:
-        updated = transition(case, event, actor=actor, now=now or datetime.now(tz=UTC))
+        updated = transition(case, event, actor=actor, now=now or clock.now())
     except IllegalTransition as exc:
         _audit_transition(runtime, case, event, actor, exc.code, None)
         raise
@@ -125,7 +126,7 @@ async def create_case(
         inquiry_seq=inquiry_seq,
         status=CaseStatus.SUBMITTED,
         draft=draft.model_copy(deep=True),
-        submitted_at=datetime.now(tz=UTC),
+        submitted_at=clock.now(),
     )
     store.save(case)
     runtime.services.audit.record(

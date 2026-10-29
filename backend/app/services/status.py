@@ -8,9 +8,10 @@ owner is a role, never a person. A case that passed first review is a **lead**
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Literal, Protocol
 
+from app import clock
 from app.services.errors import ReferenceNotFoundError
 from app.services.submit import MockSubmitService
 from app.workflow.models import ROLE_LABELS, Case, CaseStatus
@@ -125,7 +126,7 @@ class MockStatusService:
         if isinstance(submitted_raw, str):
             submitted_at = datetime.fromisoformat(submitted_raw)
         else:
-            submitted_at = datetime.now(tz=UTC)
+            submitted_at = clock.now()
         unit_type = ((payload.get("fields") or {}).get("unit_type") or {}).get("value")
         return InquiryStatus(
             reference=reference,

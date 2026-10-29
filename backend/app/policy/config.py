@@ -136,6 +136,62 @@ class SecondLevelContacts(_Strict):
         return self
 
 
+class QuietHours(_Strict):
+    start: str = "22:00"
+    end: str = "08:00"
+    timezone: str = "Asia/Riyadh"
+
+    @field_validator("start", "end")
+    @classmethod
+    def _hh_mm(cls, value: str) -> str:
+        parts = value.split(":")
+        if (
+            len(parts) != 2
+            or not all(p.isdigit() for p in parts)
+            or not (0 <= int(parts[0]) <= 23 and 0 <= int(parts[1]) <= 59)
+        ):
+            msg = f"quiet_hours: {value!r} is not a time like '22:00'"
+            raise ValueError(msg)
+        return value
+
+    @field_validator("timezone")
+    @classmethod
+    def _known_zone(cls, value: str) -> str:
+        from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+        try:
+            ZoneInfo(value)
+        except (ZoneInfoNotFoundError, ValueError) as exc:
+            msg = f"quiet_hours.timezone: unknown time zone {value!r}"
+            raise ValueError(msg) from exc
+        return value
+
+
+def _dismiss_reasons() -> list[str]:
+    return ["not_needed", "already_handled", "applicant_contacted", "other"]
+
+
+class ProactivePolicy(_Strict):
+    """Triggers, tiers and throttles for proactive work (L5 §3.1–3.3)."""
+
+    review_stall_hours: int = Field(default=48, ge=1, le=24 * 60)
+    review_escalate_hours: int = Field(default=96, ge=1, le=24 * 90)
+    tenant_reminder_hours: int = Field(default=72, ge=1, le=24 * 60)
+    # At most one proactive message to an applicant per case in this many hours.
+    tenant_proactive_min_hours: int = Field(default=48, ge=0, le=24 * 60)
+    # true: reminders go without approval (tier 1); false: a reviewer approves (tier 2).
+    reminder_pre_approved: bool = False
+    quiet_hours: QuietHours = QuietHours()
+    dismiss_reasons: list[str] = Field(default_factory=_dismiss_reasons, min_length=1)
+
+    @model_validator(mode="after")
+    def _escalate_after_stall(self) -> ProactivePolicy:
+        if self.review_escalate_hours <= self.review_stall_hours:
+            msg = "proactive: review_escalate_hours must be greater than review_stall_hours"
+            raise ValueError(msg)
+        return self
+
+
 class PolicyConfig(_Strict):
     product_lines: list[str] = Field(min_length=1)
     existing_tenant_policy: Literal["sign_in", "allow_inquiry"] = "sign_in"
@@ -159,6 +215,8 @@ class PolicyConfig(_Strict):
     )
     require_contacts_before_approval: bool = True
     auto_request_contacts_after_first_approval: bool = True
+    # ---- Proactive work (L5) -----------------------------------------------------------
+    proactive: ProactivePolicy = ProactivePolicy()
 
     @field_validator("product_lines")
     @classmethod

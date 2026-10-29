@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
+from app import clock
 from app.domain import validation as v
 from app.domain.fields import FIELD_BY_KEY
 from app.domain.master import MasterData
@@ -223,7 +224,7 @@ def follow_on_draft(
     are reused by reference. The contact stays verified when the earlier inquiry was
     verified within `reuse_hours`; changing the email or mobile clears it as usual.
     """
-    current = now or datetime.now(tz=UTC)
+    current = now or clock.now()
     draft = new_inquiry_draft()
     copied: list[str] = []
     for key in FOLLOW_ON_FIELDS:
@@ -258,7 +259,7 @@ def follow_on_draft(
 def stamp_verified(draft: InquiryDraft, now: datetime | None = None) -> None:
     """Record when the contact became fully verified (email, and mobile when given)."""
     if draft.verified_at is None and contact_verified(draft):
-        draft.verified_at = now or datetime.now(tz=UTC)
+        draft.verified_at = now or clock.now()
 
 
 def confirm(draft: InquiryDraft, keys: list[str]) -> InquiryDraft:
@@ -295,7 +296,7 @@ def add_document(
         file_id=file_id,
         file_name=file_name,
         size_bytes=size_bytes,
-        uploaded_at=uploaded_at or datetime.now(tz=UTC),
+        uploaded_at=uploaded_at or clock.now(),
     )
     return updated, None
 

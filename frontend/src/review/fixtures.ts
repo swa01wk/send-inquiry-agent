@@ -1,4 +1,4 @@
-import type { CaseDetail, QueueItem, Reviewer } from '../api/review'
+import type { AttentionItem, AttentionList, CaseDetail, QueueItem, Reviewer } from '../api/review'
 
 /** Test fixtures for the reviewer console (shapes from `docs/spec.md` §13). */
 
@@ -142,5 +142,57 @@ export function secondReviewDetail(overrides: Partial<CaseDetail> = {}): CaseDet
     ],
     approval_blockers: ['missing_contact:authorized_signatory', 'open_request:contacts'],
     ...overrides,
+  }
+}
+
+export function stalledItem(overrides: Partial<AttentionItem> = {}): AttentionItem {
+  return {
+    id: 'att_stalled1',
+    trigger: 'stalled_review',
+    label: 'Review is taking longer than the target',
+    recommended: 'Open the case and make the next decision.',
+    reference: 'GEO-STR-123456',
+    brand: 'Bean Street',
+    mall: 'Riyadh Mall A',
+    stage_label: 'First review',
+    status: 'open',
+    audience: 'queue',
+    tier: 0,
+    age_hours: 49.2,
+    threshold_hours: 48,
+    request_kind: null,
+    request_label: null,
+    text: null,
+    raised_at: '2026-10-30T09:00:00.000Z',
+    send_after: null,
+    sent_at: null,
+    dismissed_reason: null,
+    ...overrides,
+  }
+}
+
+export function reminderItem(overrides: Partial<AttentionItem> = {}): AttentionItem {
+  return stalledItem({
+    id: 'att_reminder1',
+    trigger: 'applicant_reminder',
+    label: 'Request unanswered — reminder drafted',
+    recommended: 'Approve and send the reminder, edit it, or dismiss it.',
+    stage_label: 'Lead — second review',
+    status: 'awaiting_approval',
+    tier: 2,
+    age_hours: 73,
+    threshold_hours: 72,
+    request_kind: 'contacts',
+    request_label: 'Add company contacts',
+    text: 'The leasing team is still waiting for your company contacts on your inquiry GEO-STR-123456.',
+    ...overrides,
+  })
+}
+
+export function attentionList(items: AttentionItem[]): AttentionList {
+  return {
+    items,
+    counts: { open: items.length, raised: items.length, sent: 0, dismissed: {} },
+    dismiss_reasons: ['not_needed', 'already_handled', 'applicant_contacted', 'other'],
   }
 }
