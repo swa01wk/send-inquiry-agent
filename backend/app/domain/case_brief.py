@@ -181,6 +181,79 @@ def _stage_ages(case: Case, now: datetime) -> list[StageAge]:
     return ages
 
 
+def format_case_brief_text(brief: CaseBrief) -> str:
+    """Plain-text brief for the reviewer assistant tools (L4 §3.6)."""
+    lines = [
+        f"Reference: {brief.reference}",
+        f"Stage: {brief.stage_label} ({brief.status})",
+        f"Waiting on: {brief.waiting_on}",
+        f"Channel: {brief.channel}",
+        f"Company: {brief.company or '—'}",
+        f"Brand: {brief.brand or '—'}",
+        f"Product line: {brief.product_line or '—'}",
+        f"Mall: {brief.mall or '—'}",
+        f"Region: {brief.region or '—'}",
+        f"CR status: {brief.cr_status}",
+        f"Queue: {brief.queue_role or '—'} / {brief.queue_region or '—'}",
+        "",
+        "Fields:",
+    ]
+    for field in brief.fields:
+        src = field.source or "unknown"
+        conf = "confirmed" if field.confirmed else "unconfirmed"
+        evidence = f" (evidence: {field.evidence})" if field.evidence else ""
+        lines.append(f"  - {field.label}: {field.display or '—'} [{src}, {conf}]{evidence}")
+    lines.extend(["", "Verification:"])
+    for key, ok in brief.verification.items():
+        lines.append(f"  - {key}: {'yes' if ok else 'no'}")
+    lines.extend(["", "Documents:"])
+    for doc in brief.documents:
+        status = doc.file_name if doc.uploaded else "missing"
+        replaced = f", {doc.replaced_versions} prior version(s)" if doc.replaced_versions else ""
+        req = "required" if doc.required else "optional"
+        lines.append(f"  - {doc.label} ({req}): {status}{replaced}")
+    if brief.sales_data:
+        sd = brief.sales_data
+        lines.append(
+            f"  - Estimated sales data: {sd.file_name or 'uploaded'}"
+            if sd.uploaded
+            else "  - Estimated sales data: missing"
+        )
+    if brief.contacts:
+        lines.extend(["", "Tenant contacts:"])
+        for contact in brief.contacts:
+            flag = " (same as primary)" if contact.same_as_primary else ""
+            lines.append(
+                f"  - {contact.label}{flag}: {contact.name or '—'}, "
+                f"{contact.email or '—'}, {contact.phone or '—'}"
+            )
+    if brief.requests:
+        lines.extend(["", "Requests:"])
+        for request in brief.requests:
+            docs = f" docs={','.join(request.doc_types)}" if request.doc_types else ""
+            lines.append(f"  - {request.kind} ({request.status}){docs}: {request.remarks or '—'}")
+    if brief.decisions:
+        lines.extend(["", "Decisions:"])
+        for decision in brief.decisions:
+            lines.append(
+                f"  - {decision.level} {decision.outcome} by {decision.by}: "
+                f"{decision.remarks or '—'}"
+            )
+    if brief.follow_on_of:
+        lines.append(f"\nFollow-on of: {brief.follow_on_of}")
+    if brief.yardi:
+        lines.append(f"Yardi link: {brief.yardi}")
+    if brief.stage_ages:
+        lines.extend(["", "Time in stage (days):"])
+        for age in brief.stage_ages:
+            lines.append(f"  - {age.stage}: {age.days}")
+    if brief.next_decision_checklist:
+        lines.extend(["", "Next decision checklist:"])
+        for item in brief.next_decision_checklist:
+            lines.append(f"  - {item}")
+    return "\n".join(lines)
+
+
 def build_case_brief(case: Case, master: MasterData, *, now: datetime | None = None) -> CaseBrief:
     draft = case.draft
     now = now or datetime.now(tz=UTC)

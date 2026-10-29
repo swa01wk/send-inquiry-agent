@@ -11,6 +11,7 @@ import pytest
 from app.agent.case_graph import build_case_graph
 from app.agent.graph import build_graph
 from app.agent.model import ScriptedChatModel
+from app.agent.reviewer_graph import build_reviewer_graph
 from app.config import Settings
 from app.domain.draft_ops import write_fields
 from app.domain.master import load_master_data
@@ -51,6 +52,7 @@ async def life(tmp_path: Path) -> AsyncIterator[tuple[AsyncClient, Any]]:
     application.state.services = build_services(settings)
     application.state.graph = build_graph(model_factory=factory)
     application.state.case_graph = build_case_graph(model_factory=factory)
+    application.state.reviewer_graph = build_reviewer_graph(model_factory=factory)
     transport = ASGITransport(app=application)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client, application

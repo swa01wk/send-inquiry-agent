@@ -338,3 +338,66 @@
   color: var(--color-brand);
   overflow-wrap: anywhere;
 }
+
+.assistantLog {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.assistantUserLine,
+.assistantBotLine {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-control);
+  font-size: 14px;
+}
+
+.assistantUserLine {
+  background: var(--color-muted-fill);
+  align-self: flex-end;
+  max-width: 100%;
+}
+
+.assistantBotLine {
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+}
+
+.assistantText {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--color-text-body);
+}
+
+.assistantForm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-divider);
+}
+
+.suggestionCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--color-border-card);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+}
+
+.suggestionText {
+  margin: 0;
+  font-size: 13px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--color-text-body);
+}

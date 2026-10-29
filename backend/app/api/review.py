@@ -8,13 +8,18 @@ reviewer's queue. A case outside the reviewer's queue is a 404, as if it didn't 
 
 from __future__ import annotations
 
+import json
+from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, Query
+from fastapi import APIRouter, Depends, Header, Query, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
+from sse_starlette.sse import EventSourceResponse
 
+from app.agent.events import SseEvent
+from app.agent.reviewer_events import run_reviewer_turn
 from app.agent.runtime import AgentRuntime
 from app.api.deps import get_master_data, get_services
 from app.api.deps import get_settings as get_settings_dep
@@ -133,6 +138,14 @@ class YardiBrandOut(BaseModel):
 class ActionRequest(BaseModel):
     action: str
     payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class AssistantRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=4000)
+
+
+def _sse(event: SseEvent) -> dict[str, str]:
+    return {"event": event["event"], "data": json.dumps(event["data"])}
 
 
 def _queue_item(case: Case, master: MasterData, now: datetime) -> QueueItem:
@@ -372,3 +385,31 @@ def _check_yardi_ids(
     brands = yardi.brands_for_company(company_id) if company_id else []
     if not any(b.id == payload.get("brand_id") for b in brands):
         raise ApiError(400, "invalid_payload", "That brand isn't one of the linked company's.")
+
+
+@router.post("/cases/{case_id}/assistant")
+async def assistant_chat(
+    request: Request,
+    case_id: str,
+    body: AssistantRequest,
+    reviewer: Reviewer = Depends(current_reviewer),
+    services: ServiceContainer = Depends(get_services),
+    master: MasterData = Depends(get_master_data),
+    settings: Settings = Depends(get_settings_dep),
+) -> EventSourceResponse:
+    """Reviewer-assistant chat for one case (SSE: token, ui_card, done)."""
+    case = _case_for(services, case_id, reviewer)
+    runtime = AgentRuntime(services=services, master=master, settings=settings)
+    graph = request.app.state.reviewer_graph
+
+    async def event_generator() -> AsyncIterator[dict[str, str]]:
+        async for item in run_reviewer_turn(
+            graph,
+            case=case,
+            reviewer_id=reviewer.id,
+            text=body.text,
+            runtime=runtime,
+        ):
+            yield _sse(item)
+
+    return EventSourceResponse(event_generator())

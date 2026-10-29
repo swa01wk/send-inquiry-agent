@@ -20,7 +20,7 @@ from app.domain.master import MasterData
 from app.domain.models import DocType, InquiryDraft
 from app.domain.summary import DraftDocumentRow
 from app.policy.config import get_policy
-from app.services.status import REQUEST_LABELS, _from_case
+from app.services.status import REQUEST_LABELS, _from_case, final_approval_label
 from app.workflow.contacts import contacts_blockers
 from app.workflow.models import CONTACT_ROLE_LABELS, Case, CaseRequest, CaseStatus, TenantContact
 
@@ -64,6 +64,7 @@ def build_case_status_card(case: Case, *, message_id: str | None = None) -> UiCa
         status=status.status,
         stage=status.current_stage,
         stage_label=_STAGE_LABELS[status.current_stage],
+        status_headline=final_approval_label(status.status),
         owner_role=status.owner_role,
         last_change=case.last_change,
         open_requests=[

@@ -10,7 +10,9 @@ import {
   type ReviewAction,
 } from '../api/review'
 import { PageShell } from '../components/layout/PageShell'
-import { ActionsPanel } from './ActionsPanel'
+import { ActionsPanel, type ActionsPrefill } from './ActionsPanel'
+import { prefillFromSuggestion } from './prefillFromSuggestion'
+import { ReviewerAssistantPanel } from './ReviewerAssistantPanel'
 import { ROLE_LABELS, regionLabel, useReviewerId, waitingOnLabel } from './reviewerSession'
 import styles from './review.module.css'
 
@@ -68,6 +70,7 @@ export function ReviewCasePage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [actionsPrefill, setActionsPrefill] = useState<ActionsPrefill | undefined>()
 
   useEffect(() => {
     if (!reviewerId) return
@@ -314,11 +317,17 @@ export function ReviewCasePage() {
             </section>
           </div>
           <div className={styles.column}>
+            <ReviewerAssistantPanel
+              reviewerId={reviewerId}
+              reference={reference}
+              onUseSuggestion={(payload) => setActionsPrefill(prefillFromSuggestion(payload))}
+            />
             <ActionsPanel
               detail={detail}
               reviewerId={reviewerId}
               busy={busy}
               error={actionError}
+              prefill={actionsPrefill}
               onAct={(action, payload) => void onAct(action, payload)}
             />
           </div>

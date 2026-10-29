@@ -1,0 +1,41 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_contacts",
+        "args": {
+          "entries": [
+            { "role": "authorized_signatory", "same_as_primary": true },
+            {
+              "role": "billing_contact",
+              "first_name": "Omar",
+              "last_name": "Saleh",
+              "email": "omar@beanstreet.example",
+              "contact_number": "+966551234567"
+            }
+          ]
+        },
+        "id": "t1c1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "show_contacts_review",
+        "args": {},
+        "id": "t1c2",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "I've put you down as Authorized Signatory and Omar Saleh as Billing Contact — press Send contacts when ready."
+  },
+  {
+    "content": "Thanks, your contacts are with the leasing team."
+  }
+]

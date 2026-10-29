@@ -9,12 +9,24 @@ import {
 } from '../api/review'
 import styles from './review.module.css'
 
+/** Applied when the reviewer clicks **Use** on an assistant suggestion (never submits). */
+export interface ActionsPrefill {
+  token: number
+  reuploadRemarks?: string
+  rejectRemarks?: string
+  requestRemarks?: string
+  yardiCompanies?: YardiCompany[]
+  yardiCompanyId?: string
+  yardiBrandId?: string
+}
+
 interface ActionsPanelProps {
   detail: CaseDetail
   reviewerId: string
   busy: boolean
   error: string | null
   onAct: (action: ReviewAction, payload: Record<string, unknown>) => void
+  prefill?: ActionsPrefill
 }
 
 /** Shown in the console in this order; only the legal ones render (L4 §3.3). */
@@ -72,6 +84,7 @@ function YardiLink({
   canCompany,
   canBrand,
   onAct,
+  prefill,
 }: {
   detail: CaseDetail
   reviewerId: string
@@ -79,6 +92,7 @@ function YardiLink({
   canCompany: boolean
   canBrand: boolean
   onAct: ActionsPanelProps['onAct']
+  prefill?: ActionsPrefill
 }) {
   const linkedCompany = detail.brief.yardi.company_id
   const [query, setQuery] = useState(detail.brief.company ?? '')
@@ -106,6 +120,13 @@ function YardiLink({
       cancelled = true
     }
   }, [canBrand, linkedCompany, reviewerId])
+
+  useEffect(() => {
+    if (!prefill) return
+    if (prefill.yardiCompanies !== undefined) setCompanies(prefill.yardiCompanies)
+    if (prefill.yardiCompanyId !== undefined) setCompanyId(prefill.yardiCompanyId)
+    if (prefill.yardiBrandId !== undefined) setBrandId(prefill.yardiBrandId)
+  }, [prefill?.token, prefill])
 
   const search = () => {
     setLookupError(null)
@@ -213,7 +234,14 @@ function YardiLink({
   )
 }
 
-export function ActionsPanel({ detail, reviewerId, busy, error, onAct }: ActionsPanelProps) {
+export function ActionsPanel({
+  detail,
+  reviewerId,
+  busy,
+  error,
+  onAct,
+  prefill,
+}: ActionsPanelProps) {
   const legal = ORDER.filter((a) => detail.legal_actions.includes(a))
   const [reuploadDocs, setReuploadDocs] = useState<string[]>([])
   const [reuploadRemarks, setReuploadRemarks] = useState('')
@@ -225,6 +253,13 @@ export function ActionsPanel({ detail, reviewerId, busy, error, onAct }: Actions
     .map((r) => r.kind)
   const [withdrawKind, setWithdrawKind] = useState('')
   const [removeRole, setRemoveRole] = useState('')
+
+  useEffect(() => {
+    if (!prefill) return
+    if (prefill.reuploadRemarks !== undefined) setReuploadRemarks(prefill.reuploadRemarks)
+    if (prefill.rejectRemarks !== undefined) setRejectRemarks(prefill.rejectRemarks)
+    if (prefill.requestRemarks !== undefined) setRequestRemarks(prefill.requestRemarks)
+  }, [prefill?.token, prefill])
 
   const toggleDoc = (docType: string) =>
     setReuploadDocs((current) =>
@@ -383,6 +418,7 @@ export function ActionsPanel({ detail, reviewerId, busy, error, onAct }: Actions
           canCompany={legal.includes('relink_company')}
           canBrand={legal.includes('relink_brand')}
           onAct={onAct}
+          prefill={prefill}
         />
       ) : null}
 

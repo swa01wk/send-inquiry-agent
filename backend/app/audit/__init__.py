@@ -49,6 +49,7 @@ ALLOWED_KEYS: dict[str, frozenset[str]] = {
     "case_transition": frozenset({"event", "from_status", "to_status", "by", "outcome"}),
     "effect_run": frozenset({"effect", "event", "outcome"}),
     "routing_decision": frozenset({"intent", "via", "confidence"}),
+    "assistant_suggestion": frozenset({"kind", "action", "used"}),
 }
 
 # Never kept, whatever the event type says.

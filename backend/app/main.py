@@ -13,6 +13,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from app.agent.case_graph import build_case_graph
 from app.agent.graph import build_graph
 from app.agent.model import ScriptedChatModel, get_chat_model
+from app.agent.reviewer_graph import build_reviewer_graph
 from app.api.cases import router as cases_router
 from app.api.chat import router as chat_router
 from app.api.dev import router as dev_router
@@ -81,6 +82,7 @@ def create_app(
         app.state.services = build_services(cfg)
         app.state.graph = build_graph(model_factory=chat_model_factory)
         app.state.case_graph = build_case_graph(model_factory=chat_model_factory)
+        app.state.reviewer_graph = build_reviewer_graph(model_factory=chat_model_factory)
         yield
 
     app = FastAPI(title="Send Inquiry Agent", lifespan=lifespan)
