@@ -3,8 +3,6 @@ from app.domain.draft_ops import new_inquiry_draft, write_fields
 from app.domain.master import load_master_data
 from app.domain.models import Source
 
-pytestmark = pytest.mark.unit
-
 
 @pytest.fixture
 def master():

@@ -57,7 +57,7 @@ test: test-be test-fe
 # AGENT-DET: tools, guard, actions, bundles and scenario scripts, scripted model only.
 # Moves to `pytest -m agent` when step 11d registers the markers (B1).
 test-agent:
-	cd backend && uv run pytest -m agent
+	cd backend && uv run pytest -m "agent and not sandbox and not live"
 
 # Playwright runs locally before every PR (not in CI on PRs; testing strategy §6).
 # Deps install only when missing; pass Playwright flags with ARGS, e.g.

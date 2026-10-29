@@ -50,6 +50,3 @@ async def client(app):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as http:
         yield http
-
-
-pytestmark = pytest.mark.api

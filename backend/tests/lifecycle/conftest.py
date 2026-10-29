@@ -102,6 +102,3 @@ def outbox(app: Any, to: str | None = None, template: str | None = None) -> list
 
 def token_from(link: str) -> str:
     return parse_qs(urlparse(link).query)["t"][0]
-
-
-pytestmark = pytest.mark.api
