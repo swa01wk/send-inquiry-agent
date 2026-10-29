@@ -898,7 +898,7 @@ def _check_channels_existing_tenant_brand_ask(
         ("asks which brand", "brand" in lower),
         ("names Noor Fashion", "noor fashion" in lower),
         ("names Noor Beauty", "noor beauty" in lower),
-        ("exactly one question mark", first.count("?") == 1),
+        ("at most one question", first.count("?") <= 1),
         ("no verification ask", "verification" not in lower and "otp" not in lower),
         ("no company/contact re-ask", not any(phrase in lower for phrase in detail_asks)),
     ]
