@@ -1,6 +1,6 @@
 # Demo script — Send Inquiry Agent
 
-Rehearse: `make e2e-demo` (or `make e2e-demo-headed` to watch).
+Rehearse: `make e2e-demo` (or `make e2e-demo-headed` / `make e2e-demo-step` to watch or step through). Desktop only; not part of `make e2e-int`.
 
 Use with `make demo` (SMS code **1234**; the email link is a demo button). The **self-service happy path** below is ~5 minutes. The **§A3 walkthrough** and **§A4 L3–L5 beats** need mock integrations, the reviewer console, and (for restart) `DATA_DIR` — see [Setup for lifecycle demos](#setup-for-lifecycle-demos).
 
@@ -64,6 +64,8 @@ Use **Restart** in the chat header (demo builds, `VITE_DEMO=1`) to reset the app
 
 Line-by-line requirements live in [workflows-7-1.md](specs/workflows-7-1.md). Rehearse in this order for the Mon 2 Nov demo check.
 
+**Automated (`make e2e-demo`):** `e2e/tests/demo.spec.ts` runs the steps below in one pass (after `POST /api/dev/reset`): `/dev` persona links → self-service (`s1-happy-path`) → call centre (**Sami Al Anazi**) → Guest Service (**Dana Al Rashid**) → existing CR (**both** choices) → Tenant Central + **My inquiries** → public-page sign-in → approvals to Yardi (existing-tenant path with prefilled contacts, **Remove**, reviewer assistant **Use**, no Azure invite for Layla) → L5 clock beats → **Reset demo** cleanup check. L3 stories **S2**, **S3**, and **S13** stay in `make e2e-int`, not in `@demo`.
+
 | Workflow | Demo path | When |
 | --- | --- | --- |
 | §7.1.1 **a1** — prospective, self-service | [Happy path](#happy-path--711-a1-self-service-5-min) above → submit → tracking email | **Today** (Days 1–3) |
@@ -81,16 +83,24 @@ Line-by-line requirements live in [workflows-7-1.md](specs/workflows-7-1.md). Re
 
 ## Call centre and Guest Service (§7.1.1 a2)
 
-Use **http://localhost:5173/callcentre** or open **Sami Al Anazi — The Cenomi call centre** / **Guest Service** from **/dev**. Mock sign-in if prompted (`?as=customer-care-1` or pick a Guest Service staff row on **/dev**).
+Use **http://localhost:5173/callcentre** or open staff from **/dev** (**Sami Al Anazi** for the call centre; **Dana Al Rashid** for Guest Service). Mock sign-in if prompted (`?as=customer-care-1` or pick a row on **/dev**).
 
 1. Click **New inquiry** — chat opens in **assisted mode** (badge: from the call centre / Guest Service).
-2. Dictate the caller in one or two short messages, e.g.  
-   `The caller is Omar for a specialty coffee kiosk at Riyadh Mall A — Bean Street Trading, omar@beanstreet.example, +966501234567`  
+2. Dictate the caller in three short messages (same as scripted e2e `a2-call-centre`):
+   - `Skip the CR for now`
+   - `Bean Street Trading Co., Olaya Street Riyadh — coffee kiosk at Riyadh Mall A, brand Bean Street`
+   - `Sara Ali, sara@beanstreet.example, 0501234567`  
    (Same bundles as self-service; the agent talks about “the caller”, never asks for verification, documents or consent on this side.)
-3. When details are ready, use the **Send application link** card (or the agent offers it) → check **/dev/inbox** for `complete_application`.
-4. **Existing CR (§7.1.2 a2):** give an existing tenant CR (e.g. from mock data) → **existing CR choice** card → **Continue for them** (prefilled assisted chat) **or** **Ask them to sign in** (public sign-in path; inquiry marked redirected).
+3. When details are ready, use the **Send application link** card → check **/dev/inbox** for `complete_application` to `sara@beanstreet.example`.
+4. **Existing CR (§7.1.2 a2):** one message such as  
+   `The caller gave CR 1010000000 for a specialty kiosk at Riyadh Mall A`  
+   → **existing CR choice** card:
+   - **Ask them to sign in** — choice stays visible; **Send application link** must **not** appear afterward.
+   - **Continue for them** — prefilled draft (e.g. **Oasis Coffee Company**, verified source) → send link → applicant completes as below.
 
 Handoff cases from self-service appear under **Open handoffs** on the same page; open one to continue the inquiry as staff.
+
+**Guest Service:** same staff turns as the call centre; the applicant chat may say the **Guest Service desk** started the inquiry. On the **reviewer case** page the channel still reads **Started by the call centre** (no separate Guest Service label in the console).
 
 ---
 
@@ -100,14 +110,14 @@ Handoff cases from self-service appear under **Open handoffs** on the same page;
 2. New applicant session: email is already verified; **basic info review** card lists staff-entered fields — **Edit** optional → **Proceed**.
 3. SMS code **1234** on the verification card.
 4. Upload **Company Profile** and **Brand Profile** → review card → terms → **Submit**.
-5. On the reviewer case page, channel shows **assisted** / **Started by the call centre** (or Guest Service).
+5. On the reviewer case page, channel shows **Started by the call centre** (including Guest Service–raised inquiries).
 
 ---
 
 ## Tenant Central (§7.1.2 a1)
 
-1. From **/dev**, open a mock tenant (e.g. signed-in tenant admin).
-2. **Leasing Opportunities** — filter if needed → **Raise inquiry** on a row.
+1. From **/dev**, open a mock tenant (e.g. **Layla Hassan — Oasis Coffee Company**).
+2. **Leasing Opportunities** — **Raise inquiry** on **OPP-101** (or filter to Oasis Coffee Company).
 3. Chat greets by name; one confirm card for prefilled company, property and documents on file; pick brand if several; optional space note.
 4. Signed-in tenants skip email/mobile verification → review → **Submit**.
 5. **My inquiries** lists the new reference and stage.
@@ -117,7 +127,7 @@ Handoff cases from self-service appear under **Open handoffs** on the same page;
 ## Public-page existing tenant (§7.1)
 
 1. Open **http://localhost:5173** (applicant chat).
-2. **Sign-in policy:** CR `1010000000` (or another seeded existing tenant) → **sign_in_prompt** card → **Sign in to Tenant Central** (demo copy; no submit on the public chat).
+2. **Sign-in policy:** send CR `1010000000` → **sign_in_prompt** card → **Sign in to Tenant Central** links to `/tenant/`; draft **cannot submit** on the public chat.
 3. **Allow inquiry policy:** CR on the allow list → prefilled **basic info review** → **Proceed** → complete verification/documents if required → submit.
 
 ---
@@ -155,8 +165,8 @@ Each beat maps to [DELIVERY-PLAN.md](./DELIVERY-PLAN.md) §A4. Automated twins: 
 | Capability | How to show it | Notes |
 | --- | --- | --- |
 | **Re-upload loop (T2)** | Submit Bean Street inquiry → reviewer opens case → **Request re-upload** (e.g. Brand Profile + remarks) → applicant opens **case link** from dev inbox → upload card in **reupload** mode (only requested docs) → resubmit → reviewer timeline shows *Documents resubmitted* | Story **T2** |
-| **Contacts + final approval → Yardi (T1)** | After submit: reviewer **Approve first level** → stage **Lead — second review**; `contacts_request` email → applicant case chat supplies signatory + billing (e.g. Omar) → **Submit contacts** → reviewer **Approve** when blockers clear → stage **Approved and sent to Yardi**; dev inbox: `inquiry_accepted`, `azure_ad_invitation` for new contact; tracking page: approved proposal copy | Story **T1** |
-| **Reviewer assistant — Yardi match** | On a **second review** case: open **Reviewer assistant** on the case page → ask e.g. *Find the Yardi company for Bean Street Trading Co.* → suggestion card → **Use** fills **Company** / **Brand** re-link pickers only (reviewer still clicks **Re-link** / **Approve**; assistant never submits). Ask *Should I approve?* → it defers to the reviewer | Vitest fixture: `Bean Street Trading Co. (id YC-1001)` |
+| **Contacts + final approval → Yardi (T1)** | After an **existing-tenant** submit: reviewer **Approve first level** → **Lead — second review**; optional **Remove** on a prefilled contact → `contacts_request` email → applicant case chat supplies signatory + billing (e.g. Omar) → **Submit contacts** → **Approve** → **Approved and sent to Yardi**; `azure_ad_invitation` only for contacts **without** an account (Layla skipped, Omar invited). Automated demo uses Oasis + **OPP-101**; story **T1** uses the Bean Street self-service path | Story **T1**; full Yardi beat in `make e2e-demo` |
+| **Reviewer assistant — Yardi match** | On **second review**: **Reviewer assistant** → *Find the Yardi company for Bean Street Trading.* → suggestion → **Use** sets company picker **YC-1001** → **Link company** → reload if needed → **Approve**. Assistant never submits; scripted via `e2eScenario=r1-yardi-suggest` in automation | Vitest fixture: `Bean Street Trading Co. (id YC-1001)` |
 | **Audit timeline** | Same case page: **Audit timeline** lists intake + case transitions, requests, notifications (routing/tool noise hidden) | Built Day 4; includes post-submit and review events |
 
 Case chat after submit: no intake re-asks; only open requests (re-upload, contacts) drive the dialogue.
@@ -165,10 +175,10 @@ Case chat after submit: no intake re-asks; only open requests (re-upload, contac
 
 | Capability | How to show it | Notes |
 | --- | --- | --- |
-| Stalled review → queue email | Submit and leave a case in first review → **/dev** → **+48 h** → open **Needs attention** / queue email for `review_stalled` | Threshold 48 h (`review_stall_hours`) |
-| Escalation → region manager | Same case → **+48 h** again → escalation flag to the region manager | 96 h total (`review_escalate_hours`) |
-| Unanswered request → drafted reminder | Contacts (or re-upload) still open → advance to **72 h** unanswered → item on **Needs attention** → open case → **Reviewer assistant** drafts the reminder → **Use** fills the text → **Approve and send** → once in applicant **/dev/inbox** | Tier 2 needs approval |
-| Quiet hours (Riyadh) | Set clock so a reminder would send at **23:00** → held until **08:00** → **To morning** or advance to send | Policy `22:00–08:00 Asia/Riyadh` |
+| Stalled review → queue email | Fresh self-service submit → leave in first review → **/dev** → **+48 h** → one `review_stalled` email; reviewer queue **Needs attention** badge **1** | Threshold 48 h (`review_stall_hours`) |
+| Escalation → region manager | Same case → **+48 h** again → `review_escalated`; region manager **Needs attention** shows escalation | 96 h total (`review_escalate_hours`) |
+| Unanswered request → drafted reminder | Same case → **Approve first level** → **+48 h** then **+24 h** (no auto-send yet) → **Needs attention** → **Draft with assistant** → **Use draft** on the reminder → **Approve and send** | Tier 2; scripted `e2eScenario=r2-tenant-reminder` in automation |
+| Quiet hours (Riyadh) | After **Approve and send** at **23:00** local → **held until** morning; **To morning (08:00)** → exactly **one** `applicant_reminder` in the inbox | Policy `22:00–08:00 Asia/Riyadh` |
 | `/dev` landing | Personas, **Reset demo**, clock buttons | [Dev landing](#dev-landing) |
 
 ---
@@ -185,4 +195,4 @@ Case chat after submit: no intake re-asks; only open requests (re-upload, contac
 
 ## End-of-day check (Day 5)
 
-Use the checklist in [prompts/breadth/day5-yardi-channels-demo.md](../prompts/breadth/day5-yardi-channels-demo.md) (*End-of-day demo check*). Record pass/fail in [STATUS.md](./STATUS.md) §0 when the check is done.
+Run **`make e2e-demo`** (or watch with **`make e2e-demo-headed`**). It implements the checklist in [prompts/breadth/day5-yardi-channels-demo.md](../prompts/breadth/day5-yardi-channels-demo.md) (*End-of-day demo check*). L3 restart, form mode, and evidence remain in **`make e2e-int`** (S2, S3, S13). [STATUS.md](./STATUS.md) §0 records ✅ when this passes.

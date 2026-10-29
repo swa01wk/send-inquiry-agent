@@ -24,18 +24,21 @@ The single place to see what's built, what's next and how the agent maps to the 
 | Day 2 | Wed 28 Oct | Simulated Cenomi, verification by link, resume, submit once, tracking; L3 core: restart-safe store, audit log v0, thin gateway | Day 2 backend PR (#31) | Day 2 frontend track | ✅ | Verify/resume/status/dev inbox, resend countdown, S1 Playwright, prompt notes |
 | Day 3 | Thu 29 Oct | Routing, handoff, Arabic, follow-on; L3 core: form mode, evidence — every L3 capability at demo depth | #35 (handoff, Arabic, follow-on, evidence); #37 (form mode, S2/S3/S13); #39 (confirm card already confirmed) | #38 (router, redirect, handoff card, divider, evidence line, prompt) | ✅ | Router, redirect, handoff card, follow-on divider, Arabic guard capture, prompt sync |
 | Day 4 | Fri 30 Oct | Review lifecycle, reviewer console with audit timeline, case assistant — L4 core | #40 (lifecycle backend, review API, case links); #41 (console UI, Yardi relink) | #43 (case agent, case cards, `/inquiry/case`, T2) | ✅ | Case agent, case cards, `/inquiry/case`, T2, case eval scenarios |
-| Day 5 | Mon 2 Nov | Yardi handover, reviewer assistant, intake channels; L5 core: clock, triggers, notification policy, "Needs attention", drafted reminders; demo | #44 (L5 core, `/dev`, reset, `make demo`); #46 (intake channels backend, tenant APIs) | #45 (reviewer assistant, T1, approval wording); part B PR (assisted and tenant prompts, cards, reminder drafting, demo script) | 🟡 | End-of-day check pending |
+| Day 5 | Mon 2 Nov | Yardi handover, reviewer assistant, intake channels; L5 core: clock, triggers, notification policy, "Needs attention", drafted reminders; demo | #44 (L5 core, `/dev`, reset, `make demo`); #46 (intake channels backend, tenant APIs) | #45 (reviewer assistant, T1, approval wording); part B PR (assisted and tenant prompts, cards, reminder drafting, demo script) | ✅ | End-of-day check automated: `make e2e-demo` |
 | Sprint 1 | 3–16 Nov | M0 and L3 gates (incl. E10, intake channels); full test harness | | | ⬜ | |
+| Sprint 2 | 17–30 Nov | L4 gate; channels row C5 | | | ⬜ | |
+| Closing | 1 Dec – ~16 Dec | L5 to gate quality (thin L5 runs from Day 5); production readiness | | | ⬜ | |
 
 ### What slipped (Day 5) — for Sprint 1 planning
 
 - **#46** was closed when **#44**'s base branch was deleted on merge; stacked PRs need retargeting before merge order is retried.
 - **`tenant-portal.spec.ts`** had never run before merge; it failed on a strict-mode locator (sr-only live region); fixed in part B.
 - **Channel notes** were lost to the channel-unaware `next_bundle_hint`; fixed in code (assisted and existing-tenant hints, tenant brand pick before the model). The channels live eval has two scenarios and no repeats.
-- No Playwright story for Guest Service or the call-centre **existing CR choice** (pytest only).
+- The **reviewer assistant** had no scripted mode; added in C1 (`X-Test-Scenario` on the assistant endpoint).
+- **`show_application_link`** still ran after **Ask them to sign in**; it is now blocked once that choice is made.
+- **Document-row locators** in e2e matched the whole card; rows now have `doc-row-<type>` test ids.
+- The **reviewer console** has no Guest Service channel label; those cases show **Started by the call centre**.
 - There is no **kiosk** unit type in master data; kiosks map to **specialty**.
-| Sprint 2 | 17–30 Nov | L4 gate; channels row C5 | | | ⬜ | |
-| Closing | 1 Dec – ~16 Dec | L5 to gate quality (thin L5 runs from Day 5); production readiness | | | ⬜ | |
 
 ## 1. Gates
 
@@ -87,9 +90,9 @@ Summary by workflow. Line-by-line coverage of every statement in §7.1, §7.1.1 
 | Workflow | Where it's built | 5-day plan | Status |
 | --- | --- | --- | --- |
 | §7.1.1 a1 — prospective, self-service: CR check or skip, 12 basic-info fields, one product line and mall, email link and mobile OTP with resend after a set time, documents with their numbers, submit, reference and tracking link | v1; 11c; 17–20 | Days 1–3 | 🟡 (v1 built; link, tracking and document numbers to come) |
-| §7.1.1 a2 — prospective, via the call centre: executive raises it; applicant completes from the emailed link (email auto-verified, review basic info, Proceed, OTP, documents, submit) | 21c | Day 5 | 🟡 (demo depth; no Playwright for Guest Service) |
+| §7.1.1 a2 — prospective, via the call centre: executive raises it; applicant completes from the emailed link (email auto-verified, review basic info, Proceed, OTP, documents, submit) | 21c | Day 5 | 🟡 (demo depth; Playwright `a2-call-centre.spec.ts`, `a2-guest-service.spec.ts`, and `make e2e-demo`) |
 | §7.1.2 a1 — existing tenant via Leasing Opportunities: prefilled details and documents, property preselected, verify and edit, submit, My inquiries | 21c | Day 5 | 🟡 |
-| §7.1.2 a2 — existing tenant via the call centre: CR exists → ask to sign in, or continue with the record prefilled | 21c | Day 5 | 🟡 (pytest; no Playwright for existing-CR choice) |
+| §7.1.2 a2 — existing tenant via the call centre: CR exists → ask to sign in, or continue with the record prefilled | 21c | Day 5 | 🟡 (demo depth; Playwright `a2-existing-cr.spec.ts` and `make e2e-demo`) |
 | §7.1 — existing tenant on the public page (`existing_tenant_policy`) | 17, 21c | Days 1, 5 | 🟡 |
 | b — routing to RLM-Store / RPLM-Media / RPLM-Specialty by unit type and region | 23 | Day 4 | 🟡 (policy routing by unit type and the mall's region; reviewers notified) |
 | b — first-level review: re-upload by email link, reject with remarks, approve with Azure AD invitation (only if no account) | 23–25 | Day 4 | 🟡 (console, API and applicant chat built at demo depth) |
@@ -189,6 +192,7 @@ What each layer proves and when it runs: [`docs/specs/testing-strategy.md`](spec
 | BE | ruff, `mypy --strict`; pytest for domain, services, API, workflow, audit, contracts | `make check-be`, `make test-be` | Every PR (`ci.yml` `backend`) | 🟡 | In CI from Day 1; `scripts/` not linted and no coverage report yet (11d, B1) |
 | FE | ESLint, `tsc`, Prettier; Vitest; Playwright against the frontend alone (`VITE_MOCK=1`) | `make check-fe`, `make test-fe`, `make e2e-fe` | Every PR (`ci.yml` `frontend`; `e2e-fe` locally) | 🟡 | ESLint, `tsc`, Prettier and Vitest in CI from Day 1; frontend-only Playwright (`e2e-fe`) doesn't exist yet (11d, B1) |
 | INT | Playwright, real frontend + backend, scripted agent, mocks | `make e2e-int` (`make e2e`) | Every PR, locally (CI on demand: `e2e.yml`, suite `scripted`) | ✅ | `@scripted` suites, desktop and mobile. Taken out of per-PR CI on 27 Oct: installing browsers took most of each run |
+| DEMO | Full demo-script walkthrough (Day 5 end-of-day check); desktop only | `make e2e-demo`, `make e2e-demo-headed`, `make e2e-demo-step` | Local rehearsal (not part of `e2e-int`) | ✅ | `@demo` suite in `e2e/tests/demo.spec.ts`; same order as [demo-script.md](./demo-script.md) §A3 automation |
 | AGENT-DET | Tools, guard, actions, bundles, prompt snapshot, routing, allowlists, scenarios, parity goldens | `make test-agent` | Every PR (inside `test-be`) | 🟡 | `make test-agent` runs `tests/agent`, `tests/scenarios` and the e2e-script tests (Day 1); markers, prompt snapshot and goldens in 11d and 12 |
 | AGENT-LIVE | `eval_live.py` scenario groups, ×3 repeats, invariants I1–I7, score vs baseline | `make eval-live` | `workflow_dispatch`; nightly opt-in | 🟡 | Script exists (intake scenarios); no repeats, JSON output or invariant checks yet (11d); baseline in 12 |
 | E2E-LIVE | Playwright, real frontend + backend + model; personas and live stories | `make e2e-live` | `workflow_dispatch`; nightly opt-in | 🟡 | `@live` personas: desktop 14/14, mobile 13/14 before #13; invariant checks in 11d |
