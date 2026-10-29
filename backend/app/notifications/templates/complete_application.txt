@@ -1,0 +1,13 @@
+kind: action_required
+channel: email
+subject: Complete your leasing inquiry for $brand
+---
+Hello $first_name,
+
+$started_by started a leasing inquiry for $brand with the details you gave on the phone.
+Open this link to check them, confirm your mobile number, add your documents and submit:
+$complete_url
+
+Opening the link confirms your email address. It works for $ttl_hours hours.
+
+Cenomi Tenant Central

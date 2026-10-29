@@ -360,6 +360,8 @@ process steps · review time · required documents · what a CR number is · wha
 | `PUBLIC_API_URL` | `http://localhost:8000` (links that hit the API, e.g. the mock Azure AD accept link) |
 | `CASE_TTL_DAYS` | `30` (case links) |
 | `FORM_MODE` | `false`; `true` (testing) treats the model as unavailable, so every turn runs in form mode |
+| `CALLCENTRE_CONSOLE` | `false`; `true` mounts `/api/callcentre/*` (refused unless `INTEGRATIONS=mock`) |
+| `TENANT_PORTAL` | `false`; `true` mounts `/api/tenant/*`, the simulated Tenant Central (refused unless `INTEGRATIONS=mock`) |
 | `PROACTIVE_ENABLED` | `false`; `true` runs the proactive tick in the background (L5, §14) |
 | `PROACTIVE_TICK_SECONDS` | `60`; how often the background tick runs |
 | `CALL_CENTRE_PHONE` / `CALL_CENTRE_EMAIL` / `CALL_CENTRE_HOURS` | `+966 11 000 0000` / `leasing-callcentre@example.com` / `Sunday to Thursday, 9 am to 5 pm (Riyadh time)` — placeholders until Cenomi confirms; shown on the `handoff` card; mock cases are emailed to `CALL_CENTRE_EMAIL` |
@@ -508,3 +510,66 @@ With `PROACTIVE_ENABLED=true` a background task runs `tick()` every `PROACTIVE_T
 **Frontend:** `/dev` (with `VITE_DEV_TOOLS=1`): one link per persona (applicant chat, dev inbox, each reviewer queue via `/review?as=<reviewer id>`, Needs attention), **Reset demo**, and the clock (+24 h, +48 h, to morning). `/review/attention`: the Needs attention view (approve, edit and dismiss reminders; dismiss flags with a reason; open the case); the queue page shows its count as a badge.
 
 **Policy:** `proactive {review_stall_hours, review_escalate_hours, tenant_reminder_hours, tenant_proactive_min_hours, reminder_pre_approved, quiet_hours {start, end, timezone}, dismiss_reasons}`.
+
+## 15. Intake channels (Day 5)
+
+Spec: `docs/specs/intake-channels.md`. Every channel ends in the same draft, rules, submit and lifecycle.
+
+**Who entered a value.** `Source.staff`: typed by a call-centre executive or the Guest Service desk for the applicant. Like `derived` and `verified` it is unconfirmed until the applicant confirms it (`NEEDS_CONFIRMATION = {derived, verified, staff}`), and `can_submit` blocks on it. In assisted mode every `user` write in a turn (tool, guard capture, card edit) is restamped `staff` (`agent/channels.restamp_staff`).
+
+**Channel on the session and the case.** `Session.channel` and `Case.channel`: `self_service | assisted | existing_tenant`; `created_by` (staff id, tenant id, or null for the applicant); `tenant_id`. The case brief, the queue (`QueueItem.channel`) and the console show it. `Session.staff_id` is set while staff drive the chat (assisted mode).
+
+**Tenant Central, simulated.** `TenantDirectory` (`data/mock_world/tenants.json`: `T-1001` Oasis Coffee Company, CR `1010000000`, one brand; `T-1002` Al Noor Retail Group, CR `1010444444`, two brands) and `OpportunityCatalogue` (`opportunities.json`). `domain/tenant_prefill.prefill_from_tenant(draft, tenant, master, brand_id?)` writes company, CR, VAT, National Address, the brand (when one is chosen or there's only one), its sales category and the primary contact as `verified`, unconfirmed, and sets `cr_status: "tenant"` (submit isn't blocked). `agent/channels.attach_documents_on_file` copies the documents on file into the inquiry (`DocumentRef.on_file`, `DraftDocumentRow.on_file`).
+
+**Cards:**
+
+| `card_type` | Payload | Action |
+| --- | --- | --- |
+| `basic_info_review` | `{title, started_by, rows: [{key, label, display, source, confirmed, required}], missing, can_proceed, proceeded}` | Edit per field = `edit_field`; **Proceed** = `proceed_basic_info` (confirms every derived, verified or staff basic-info value in one step; audit `field_confirmed via=basic_info_review`) |
+| `send_link` | `{email_masked, can_send, missing, sent_to_masked}` | **Send application link** = `send_application_link` |
+| `existing_cr_choice` | `{cr_number, company_name, options: [{value: sign_in \| continue, label}], chosen}` | `existing_cr_choice {choice}` |
+| `sign_in_prompt` | `{message, sign_in_url, button_label}` | A link to `/tenant` |
+
+**Assisted mode** (call centre and Guest Service, `CALLCENTRE_CONSOLE=true`):
+
+| Method | Path | Response |
+| --- | --- | --- |
+| GET | `/api/callcentre/staff` | Staff for the mock sign-in `[{id, name, role, role_label}]` (roles `customer_care`, `guest_service`) |
+| POST | `/api/callcentre/inquiries` | Header `X-Staff-Id`. A new inquiry, `channel: assisted`, `created_by` and `staff_id` = the staff id → `CreateSessionResponse`. Honors `X-Test-Scenario` in scripted mode |
+| GET | `/api/callcentre/handoffs` | Open handoff cases `[{case_id, inquiry_id, short_ref, reason, reason_label, summary, created_at}]` |
+| POST | `/api/callcentre/handoffs/{case_id}/open` | The same inquiry, now driven by the staff member (`staff_id` set), with a summary message → resume payload |
+
+Unknown or non-staff `X-Staff-Id` → 401 `unknown_staff`. In assisted mode the chat uses `app.state.assisted_graph`: the intake tools minus `send_verification`, `request_documents`, `show_review` and `start_follow_on`, plus `show_application_link` (shows the `send_link` card; it never sends). The router is skipped. The guard doesn't require `send_verification` or the sign-in wording. `verify_cr` on an existing CR shows `existing_cr_choice`:
+- `sign_in` → `Session.closed = "redirected_to_sign_in"`, audit `inquiry_redirected {reason: sign_in}`;
+- `continue` → the tenant record is prefilled and its documents attached, `Session.tenant_id` set, audit `tenant_prefill`.
+
+**Application link.** `send_application_link` (staff only; needs the CR checked or skipped and every required basic-info field) emails `complete_application` with `<PUBLIC_BASE_URL>/inquiry/verify?t=<complete token>` (valid `EMAIL_LINK_TTL_HOURS`). The staff session keeps the token's nonce (`complete_nonce`): a resend makes the old link stop working, and the link is single use. Audit `application_link_sent {by, resend}`. `POST /api/verifications/email` accepts a `complete` token:
+- checks the nonce (400 `token_used`) and that the email is still the one it was sent to (400 `email_changed`);
+- creates a new chat session for the applicant (same draft with `email_verified: true`, same `channel`, `created_by` and `tenant_id`, uploads copied over) starting with a greeting and the `basic_info_review` card;
+- marks the staff session `closed: "handed_to_applicant"`;
+- returns `{session_id, resume_token}` as for the email link.
+Then the self-service flow continues: mobile OTP, documents, review, submit.
+
+**Existing tenant, signed in** (`TENANT_PORTAL=true`, header `X-Tenant-Id`; unknown → 401 `unknown_tenant`):
+
+| Method | Path | Response |
+| --- | --- | --- |
+| GET | `/api/tenant/tenants` | For the mock sign-in `[{id, company_name, contact_name, brands: [{id, name}]}]` |
+| GET | `/api/tenant/me` | The signed-in tenant |
+| GET | `/api/tenant/opportunities?city=&unit_type=` | `[{id, mall_id, mall, city_id, city, unit_type, unit_type_label, unit_ref, area_min, area_max}]` |
+| POST | `/api/tenant/opportunities/{id}/inquiry` | `{brand_id?}` → a new inquiry, `channel: existing_tenant`, prefilled from the record; mall and unit type from the opportunity (`user`); area range (`default`); with `policy.signed_in_skips_verification` the email and mobile are verified (audit `verification_result result=signed_in`); documents on file attached; greeting by name (asking which brand if there are several and none was chosen) and the `basic_info_review` card. 404 `opportunity_not_found`, 400 `unknown_brand` |
+| GET | `/api/tenant/inquiries` | My inquiries: cases with this `tenant_id`, newest first `[{reference, brand, mall, product_line, stage_label, submitted_at, last_change, tracking_url}]` |
+
+**Public page with an existing CR.** `existing_tenant_policy: sign_in`: `verify_cr` shows `sign_in_prompt` (button to `/tenant`) and audits `inquiry_redirected`; no inquiry is made. `allow_inquiry`: the tenant record is prefilled and `basic_info_review` shown; the email link and OTP still apply.
+
+**Lifecycle.** On `approved_first`, an existing tenant's case gets its contacts from the record (`verified`, unconfirmed; effect `prefill_tenant_contacts`, before the automatic contacts request). Reviewers can remove one (`remove_contact`). Invitations still skip anyone with an account (`has_account`).
+
+**Policy:** `signed_in_skips_verification` (default `true`). **Audit:** `application_link_sent`, `inquiry_redirected`, `tenant_prefill`. **Templates:** `complete_application`. **Token purpose:** `complete`.
+
+**Frontend (this PR):**
+- `/tenant`: mock sign-in;
+- `/tenant/opportunities`: filters, **Raise inquiry** opens the chat;
+- `/tenant/inquiries`: My inquiries;
+- `/dev`: links to the call centre, Guest Service and each tenant;
+- the console: channel labels.
+The chat cards above, the `/callcentre` page and the assisted and existing-tenant prompts are Day 5 part B.

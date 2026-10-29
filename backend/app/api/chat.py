@@ -72,7 +72,12 @@ async def chat_stream(
         await store.end_turn(session_id)
         raise
 
-    graph = request.app.state.case_graph if session.mode == "case" else request.app.state.graph
+    if session.mode == "case":
+        graph = request.app.state.case_graph
+    elif session.assisted:
+        graph = request.app.state.assisted_graph
+    else:
+        graph = request.app.state.graph
 
     runtime = AgentRuntime(
         services=services,
@@ -96,7 +101,8 @@ async def chat_stream(
             actor="user",
             payload={"chars": len(body.text), "message_id": user_message_id},
         )
-        if not session.form_mode and session.mode != "case":
+        # Staff (assisted) and case chats skip the intent router: they're on task.
+        if not session.form_mode and session.mode != "case" and not session.assisted:
             route_decision = await route_message(body.text, session, runtime)
             record_routing_audit(
                 runtime,

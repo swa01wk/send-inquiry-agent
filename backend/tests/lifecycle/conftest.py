@@ -9,7 +9,7 @@ from urllib.parse import parse_qs, urlparse
 
 import pytest
 from app.agent.case_graph import build_case_graph
-from app.agent.graph import build_graph
+from app.agent.graph import build_assisted_graph, build_graph
 from app.agent.model import ScriptedChatModel
 from app.agent.reviewer_graph import build_reviewer_graph
 from app.config import Settings
@@ -33,6 +33,8 @@ def lifecycle_settings(tmp_path: Path, **extra: Any) -> Settings:
         upload_dir=str(tmp_path / "uploads"),
         dev_tools=True,
         reviewer_console=True,
+        callcentre_console=True,
+        tenant_portal=True,
         agent_mode="scripted",
         token_secret="lifecycle-secret",
         **extra,
@@ -51,6 +53,7 @@ async def life(tmp_path: Path) -> AsyncIterator[tuple[AsyncClient, Any]]:
     application.state.session_store = SessionStore(ttl_minutes=120)
     application.state.services = build_services(settings)
     application.state.graph = build_graph(model_factory=factory)
+    application.state.assisted_graph = build_assisted_graph(model_factory=factory)
     application.state.case_graph = build_case_graph(model_factory=factory)
     application.state.reviewer_graph = build_reviewer_graph(model_factory=factory)
     transport = ASGITransport(app=application)

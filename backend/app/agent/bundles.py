@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from app.domain.fields import FIELD_BY_KEY
-from app.domain.models import FieldKey, InquiryDraft, Source
+from app.domain.models import NEEDS_CONFIRMATION, FieldKey, InquiryDraft, Source
 from app.domain.rules import contact_verified
 
 
@@ -94,7 +94,7 @@ def _unconfirmed(draft: InquiryDraft, *, exclude_keys: frozenset[str] = frozense
             continue
         if not _has_value(draft, key):
             continue
-        if field.source in (Source.DERIVED, Source.VERIFIED) and not field.confirmed:
+        if field.source in NEEDS_CONFIRMATION and not field.confirmed:
             labels.append(_label(key))
     return labels
 

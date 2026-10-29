@@ -36,6 +36,13 @@ export function regionLabel(region: string | null): string {
   return region.charAt(0).toUpperCase() + region.slice(1)
 }
 
+/** How the inquiry came in (intake channels §3.8); nothing for self-service. */
+export function channelLabel(channel: string | null | undefined): string | null {
+  if (channel === 'assisted') return 'Started by the call centre'
+  if (channel === 'existing_tenant') return 'Existing tenant'
+  return null
+}
+
 export function waitingOnLabel(waitingOn: string): string {
   if (waitingOn === 'reviewer') return 'You'
   if (waitingOn === 'applicant') return 'Applicant'

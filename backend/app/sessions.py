@@ -64,6 +64,24 @@ class Session:
     mode: str = "intake"
     case_id: str | None = None
     contacts_draft: list[dict[str, Any]] = field(default_factory=list)
+    # Intake channel (intake channels §3.8): self_service | assisted | existing_tenant, and
+    # who started it (a staff id, a tenant id, or None for the applicant).
+    channel: str = "self_service"
+    created_by: str | None = None
+    tenant_id: str | None = None
+    # Set while a call-centre executive (or Guest Service) is driving the chat: the
+    # assisted tool allowlist applies and writes are `staff` (§3.2).
+    staff_id: str | None = None
+    # The application link sent to the applicant (§3.2): where, and the current link's
+    # nonce (a resend replaces it, so the old link stops working).
+    link_sent_to: str | None = None
+    complete_nonce: str | None = None
+    # Why this chat ended without a submission, e.g. "redirected_to_sign_in".
+    closed: str | None = None
+
+    @property
+    def assisted(self) -> bool:
+        return self.staff_id is not None
 
     def add_message(self, message_id: str, role: str, text: str) -> None:
         self.transcript.append({"id": message_id, "role": role, "text": text})
@@ -98,6 +116,13 @@ class Session:
             "mode": self.mode,
             "case_id": self.case_id,
             "contacts_draft": self.contacts_draft,
+            "channel": self.channel,
+            "created_by": self.created_by,
+            "tenant_id": self.tenant_id,
+            "staff_id": self.staff_id,
+            "link_sent_to": self.link_sent_to,
+            "complete_nonce": self.complete_nonce,
+            "closed": self.closed,
         }
 
     @classmethod
@@ -121,6 +146,13 @@ class Session:
             mode=str(raw.get("mode", "intake")),
             case_id=raw.get("case_id"),
             contacts_draft=list(raw.get("contacts_draft", [])),
+            channel=str(raw.get("channel", "self_service")),
+            created_by=raw.get("created_by"),
+            tenant_id=raw.get("tenant_id"),
+            staff_id=raw.get("staff_id"),
+            link_sent_to=raw.get("link_sent_to"),
+            complete_nonce=raw.get("complete_nonce"),
+            closed=raw.get("closed"),
         )
 
 
@@ -175,6 +207,10 @@ class SessionStore:
         draft: InquiryDraft | None = None,
         mode: str = "intake",
         case_id: str | None = None,
+        channel: str = "self_service",
+        created_by: str | None = None,
+        tenant_id: str | None = None,
+        staff_id: str | None = None,
     ) -> Session:
         session_id = str(uuid.uuid4())
         now = datetime.now(tz=UTC)
@@ -185,6 +221,10 @@ class SessionStore:
             last_seen=now,
             mode=mode,
             case_id=case_id,
+            channel=channel,
+            created_by=created_by,
+            tenant_id=tenant_id,
+            staff_id=staff_id,
         )
         async with self._meta_lock:
             self._register(session)

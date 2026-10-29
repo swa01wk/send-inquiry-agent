@@ -73,10 +73,12 @@ def test_allow_inquiry_lets_an_existing_cr_continue(
     with use_policy(_policy(existing_tenant_policy="allow_inquiry")):
         result = _verify_existing_cr(agent_runtime, base_state, stream_events)
     draft = result.update["draft"]
-    assert draft.cr_status == "new"
+    # The CR has a Tenant Central record (intake channels §3.6): prefilled, not blocked.
+    assert draft.cr_status == "tenant"
     assert draft.fields[FieldKey.CR_NUMBER].value == "1010000000"
+    assert draft.fields[FieldKey.COMPANY_NAME].value == "Oasis Coffee Company"
     assert "cr_existing" not in [b.token for b in can_submit(draft)]
-    assert "existing Tenant Central account" in result.update["messages"][0].content
+    assert "Tenant Central record" in result.update["messages"][0].content
 
 
 # ---- phone.allowed_countries --------------------------------------------------------------

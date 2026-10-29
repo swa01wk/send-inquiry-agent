@@ -139,6 +139,10 @@ class Case(BaseModel):
     events: list[CaseEvent] = Field(default_factory=list)
     effects_done: list[str] = Field(default_factory=list)
     case_session_id: str | None = None  # the chat that answers requests (case mode)
+    # Intake channel (intake channels §3.8): self_service | assisted | existing_tenant.
+    channel: str = "self_service"
+    created_by: str | None = None  # a staff id or tenant id; None = the applicant
+    tenant_id: str | None = None
 
     @property
     def event_seq(self) -> int:

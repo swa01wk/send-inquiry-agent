@@ -10,6 +10,9 @@ Purposes:
 - ``track``: the private tracking page for a submitted reference.
 - ``case``: a request link after submission (re-upload, contacts, sales data); subject is
   the reference, ``data.r`` the request id (L4 §3.5, §3.9).
+- ``complete``: the application link a call-centre executive sends (intake channels §3.2);
+  subject is the staff session; the session keeps the current link's nonce, so a resend
+  makes the old link stop working and the link is single use.
 """
 
 from __future__ import annotations
@@ -23,7 +26,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Literal
 
-Purpose = Literal["verify_email", "resume", "track", "case"]
+Purpose = Literal["verify_email", "resume", "track", "case", "complete"]
 
 
 class TokenError(Exception):

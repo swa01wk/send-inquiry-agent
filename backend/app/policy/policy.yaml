@@ -13,6 +13,10 @@ product_lines: [store, media, specialty]
 #   allow_inquiry — the inquiry continues (requirements §7.1).
 existing_tenant_policy: sign_in
 
+# A tenant signed in to Tenant Central (Leasing Opportunities) is already verified by Azure
+# AD: the email link and SMS code are skipped (intake channels §3.5, assumption D4).
+signed_in_skips_verification: true
+
 # Malls one inquiry can cover (assumption 2). Another inquiry can follow for the rest.
 max_malls_per_inquiry: 1
 

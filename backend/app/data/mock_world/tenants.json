@@ -1,0 +1,108 @@
+{
+  "_about": "Simulated Tenant Central records (intake channels §3.4). Each CR here is 'existing' in cr_registry.json.",
+  "tenants": [
+    {
+      "id": "T-1001",
+      "cr_number": "1010000000",
+      "company_name": "Oasis Coffee Company",
+      "company_address": "Prince Sultan Road, Al Rawdah, Jeddah",
+      "vat_number": "300000000000003",
+      "national_address": "JRDA4521, 7765 Prince Sultan Road, Jeddah 23435",
+      "brands": [
+        {
+          "id": "TB-1",
+          "name_en": "Oasis Coffee",
+          "name_ar": "قهوة الواحة",
+          "sales_category": "fnb_cafe"
+        }
+      ],
+      "primary_contact": {
+        "first_name": "Layla",
+        "last_name": "Hassan",
+        "email": "layla.hassan@oasiscoffee.example",
+        "mobile": "+966551110001",
+        "has_account": true
+      },
+      "contacts": [
+        {
+          "role": "authorized_signatory",
+          "first_name": "Layla",
+          "last_name": "Hassan",
+          "email": "layla.hassan@oasiscoffee.example",
+          "mobile": "+966551110001",
+          "has_account": true
+        },
+        {
+          "role": "billing_contact",
+          "first_name": "Omar",
+          "last_name": "Faris",
+          "email": "omar.faris@oasiscoffee.example",
+          "mobile": "+966551110002",
+          "has_account": false
+        }
+      ],
+      "documents": [
+        {"doc_type": "company_profile", "file_name": "Oasis Coffee - Company Profile.pdf"},
+        {"doc_type": "brand_profile", "file_name": "Oasis Coffee - Brand Profile.pdf"},
+        {"doc_type": "cr_certificate", "file_name": "Oasis Coffee - CR.pdf"},
+        {"doc_type": "vat_certificate", "file_name": "Oasis Coffee - VAT.pdf"}
+      ],
+      "leases": [{"mall": "jeddah-mall-a", "unit_type": "store"}]
+    },
+    {
+      "id": "T-1002",
+      "cr_number": "1010444444",
+      "company_name": "Al Noor Retail Group",
+      "company_address": "King Abdulaziz Road, Al Wurud, Riyadh",
+      "vat_number": "310000000000013",
+      "national_address": "RRRD2934, 2934 King Abdulaziz Road, Riyadh 12251",
+      "brands": [
+        {
+          "id": "TB-2",
+          "name_en": "Noor Fashion",
+          "name_ar": "نور للأزياء",
+          "sales_category": "fashion"
+        },
+        {
+          "id": "TB-3",
+          "name_en": "Noor Beauty",
+          "name_ar": "نور للتجميل",
+          "sales_category": "beauty"
+        }
+      ],
+      "primary_contact": {
+        "first_name": "Khalid",
+        "last_name": "Al Noor",
+        "email": "khalid.alnoor@alnoorretail.example",
+        "mobile": "+966552220001",
+        "has_account": true
+      },
+      "contacts": [
+        {
+          "role": "authorized_signatory",
+          "first_name": "Sami",
+          "last_name": "Al Noor",
+          "email": "sami.alnoor@alnoorretail.example",
+          "mobile": "+966552220002",
+          "has_account": true
+        },
+        {
+          "role": "billing_contact",
+          "first_name": "Huda",
+          "last_name": "Saleh",
+          "email": "finance@alnoorretail.example",
+          "mobile": "+966552220003",
+          "has_account": false
+        }
+      ],
+      "documents": [
+        {"doc_type": "company_profile", "file_name": "Al Noor - Company Profile.pdf"},
+        {"doc_type": "cr_certificate", "file_name": "Al Noor - CR.pdf"}
+      ],
+      "leases": [
+        {"mall": "riyadh-mall-b", "unit_type": "store"},
+        {"mall": "mall-of-arabia", "unit_type": "store"}
+      ]
+    }
+  ]
+}

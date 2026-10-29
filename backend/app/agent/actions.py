@@ -5,10 +5,11 @@ from __future__ import annotations
 import functools
 import logging
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 from langchain_core.messages import HumanMessage
 
+from app.agent.channels import attach_documents_on_file, started_by_label
 from app.agent.context import message_context
 from app.agent.cr_check import apply_cr_result
 from app.agent.events import SseEvent
@@ -30,13 +31,21 @@ from app.api.case_cards import (
     build_reupload_card,
     replaced_since,
 )
+from app.api.channel_cards import (
+    BASIC_INFO_CARD_ID,
+    build_basic_info_card,
+    build_existing_cr_choice_card,
+    build_send_link_card,
+    confirm_basic_info,
+)
 from app.api.schemas import UiCard
 from app.domain import draft_ops
 from app.domain import validation as v
 from app.domain.fields import document_definitions
-from app.domain.models import DocType, FieldKey, InquiryDraft, Source
+from app.domain.models import NEEDS_CONFIRMATION, DocType, FieldKey, InquiryDraft, Source
 from app.domain.rules import can_submit, contact_verified
 from app.domain.summary import build_draft_summary
+from app.domain.tenant_prefill import prefill_from_tenant
 from app.domain.validation import validate_malls
 from app.gateway import GatewayError
 from app.security import tokens
@@ -98,6 +107,10 @@ async def handle_ui_action(
         "resubmit_documents": _resubmit_documents,
         "submit_contacts": _submit_contacts,
         "submit_sales_data": _submit_sales_data,
+        # Intake channels (spec §15)
+        "send_application_link": _send_application_link,
+        "existing_cr_choice": _existing_cr_choice,
+        "proceed_basic_info": _proceed_basic_info,
     }
     handler = handlers.get(action)
     if handler is None:
@@ -151,8 +164,16 @@ def _verification_events(
     return [_card_event(session, card), _draft_event(draft, runtime, changed_keys)]
 
 
-def _audit(runtime: AgentRuntime, session: Session, event: str, **payload: object) -> None:
-    runtime.services.audit.record(session.id, event, actor="user", payload=dict(payload))
+def _audit(
+    runtime: AgentRuntime,
+    session: Session,
+    event: str,
+    *,
+    by_staff: bool = False,
+    **payload: object,
+) -> None:
+    actor: Literal["staff", "user"] = "staff" if by_staff else "user"
+    runtime.services.audit.record(session.id, event, actor=actor, payload=dict(payload))
 
 
 def _throttled(runtime: AgentRuntime, session: Session, channel: str) -> ActionResult | None:
@@ -373,9 +394,11 @@ async def _edit_field(
     value = payload.get("value")
     if not isinstance(key, str):
         return ActionResult(note=HumanMessage(content="[ui_event] field_edit_failed"))
+    # An executive editing for a caller writes `staff`; the applicant writes `user`.
+    source = Source.STAFF if session.assisted else Source.USER
     draft, written, errors = draft_ops.write_fields(
         session.draft,
-        [(key, value, Source.USER)],
+        [(key, value, source)],
         master=runtime.master,
     )
     if errors or not written:
@@ -412,7 +435,7 @@ async def _confirm_card(
         field = session.draft.fields[field_key]
         if field.value is None:
             continue
-        if field.source in (Source.DERIVED, Source.VERIFIED) and not field.confirmed:
+        if field.source in NEEDS_CONFIRMATION and not field.confirmed:
             keys.append(key_str)
     if not keys:
         # Everything on the card is already confirmed (often the agent confirmed it from
@@ -593,6 +616,9 @@ async def _accept_and_submit(
             inquiry_seq=session.inquiry_seq,
             draft=draft,
             reference=reference,
+            channel=session.channel,
+            created_by=session.created_by,
+            tenant_id=session.tenant_id,
         )
     except Exception:  # the submission stands; the case can be created again on retry
         logger.exception("case creation failed for %s", reference)
@@ -890,3 +916,154 @@ async def _send_submission_notices(
             outcome="sent",
             message_id=message_id,
         )
+
+
+# ---- Intake channels (spec §15) -------------------------------------------------------
+
+
+async def _send_application_link(
+    payload: dict[str, Any],
+    session: Session,
+    runtime: AgentRuntime,
+) -> ActionResult:
+    """Assisted mode: email the applicant a `complete` link (single use; a resend replaces
+    it). The applicant verifies the email by opening it and finishes the inquiry."""
+    del payload
+    if not session.assisted:
+        return ActionResult(note=HumanMessage(content="[ui_event] link_blocked not_assisted"))
+    card = build_send_link_card(session.draft, sent_to=session.link_sent_to)
+    if not card.payload["can_send"]:
+        missing = ", ".join(card.payload["missing"])
+        return ActionResult(
+            note=HumanMessage(content=f"[ui_event] link_blocked missing {missing}"),
+            events=[_card_event(session, card)],
+        )
+    email = str(session.draft.fields[FieldKey.EMAIL].value)
+    settings = runtime.settings
+    token, claims = tokens.issue(
+        settings.token_secret,
+        "complete",
+        session.id,
+        ttl_seconds=settings.email_link_ttl_hours * 3600,
+    )
+    resend = session.complete_nonce is not None
+    session.complete_nonce = claims.nonce
+    session.link_sent_to = email
+    context = {
+        **message_context(session.draft, runtime.master),
+        "started_by": started_by_label(runtime, session.staff_id),
+        "complete_url": f"{settings.public_base_url.rstrip('/')}/inquiry/verify?t={token}",
+        "ttl_hours": settings.email_link_ttl_hours,
+    }
+    send = functools.partial(runtime.services.notifications.send, inquiry_id=session.id)
+    try:
+        await runtime.services.gateway.call(
+            "notifications",
+            "send",
+            send,
+            "complete_application",
+            email,
+            context,
+            inquiry_id=session.id,
+        )
+    except GatewayError as err:
+        return ActionResult(note=HumanMessage(content=f"[ui_event] link_failed {err.kind}"))
+    _audit(
+        runtime,
+        session,
+        "application_link_sent",
+        by_staff=True,
+        by=session.staff_id,
+        resend=resend,
+    )
+    card = build_send_link_card(session.draft, sent_to=email)
+    return ActionResult(
+        note=HumanMessage(
+            content=f"[ui_event] application_link_sent to={card.payload['sent_to_masked']}"
+        ),
+        events=[_card_event(session, card)],
+    )
+
+
+async def _existing_cr_choice(
+    payload: dict[str, Any],
+    session: Session,
+    runtime: AgentRuntime,
+) -> ActionResult:
+    """Assisted mode, existing CR: ask them to sign in (no inquiry), or continue for them
+    with the tenant record prefilled (intake channels §3.2, §7.1.2 a2)."""
+    choice = payload.get("choice")
+    cr_number = session.draft.fields[FieldKey.CR_NUMBER].value
+    if not session.assisted or session.draft.cr_status != "existing" or not cr_number:
+        return ActionResult(note=HumanMessage(content="[ui_event] cr_choice_failed"))
+    tenant = runtime.services.tenants.get_by_cr(str(cr_number))
+    company = tenant.company_name if tenant else None
+    if choice == "sign_in":
+        session.closed = "redirected_to_sign_in"
+        _audit(
+            runtime,
+            session,
+            "inquiry_redirected",
+            by_staff=True,
+            reason="sign_in",
+            channel=session.channel,
+        )
+        card = build_existing_cr_choice_card(str(cr_number), company, chosen="sign_in")
+        return ActionResult(
+            note=HumanMessage(content="[ui_event] redirected_to_sign_in"),
+            events=[_card_event(session, card)],
+        )
+    if choice != "continue" or tenant is None:
+        return ActionResult(note=HumanMessage(content="[ui_event] cr_choice_failed no_record"))
+    draft, written = prefill_from_tenant(session.draft, tenant, runtime.master)
+    draft, documents = attach_documents_on_file(runtime, session.id, draft, tenant)
+    session.draft = draft
+    session.tenant_id = tenant.id
+    _audit(
+        runtime,
+        session,
+        "tenant_prefill",
+        by_staff=True,
+        tenant_id=tenant.id,
+        channel=session.channel,
+        keys=written,
+        documents=documents,
+    )
+    card = build_existing_cr_choice_card(str(cr_number), company, chosen="continue")
+    brands = "several brands" if len(tenant.brands) > 1 else "one brand"
+    return ActionResult(
+        note=HumanMessage(
+            content=f"[ui_event] tenant_record_loaded {tenant.company_name} ({brands})"
+        ),
+        events=[_card_event(session, card), _draft_event(draft, runtime, written)],
+        changed_keys=written,
+    )
+
+
+async def _proceed_basic_info(
+    payload: dict[str, Any],
+    session: Session,
+    runtime: AgentRuntime,
+) -> ActionResult:
+    """The applicant accepts the basic info as shown: every staff, verified or derived
+    value on the card is confirmed in one step (intake channels §3.3)."""
+    del payload
+    card = build_basic_info_card(session.draft, runtime.master, started_by=None)
+    if not card.payload["can_proceed"]:
+        missing = ", ".join(card.payload["missing"])
+        return ActionResult(
+            note=HumanMessage(content=f"[ui_event] basic_info_incomplete {missing}"),
+            events=[_card_event(session, card)],
+        )
+    previous = session.cards.get(BASIC_INFO_CARD_ID, {}).get("payload", {})
+    draft, keys = confirm_basic_info(session.draft)
+    session.draft = draft
+    _audit(runtime, session, "field_confirmed", keys=keys, via="basic_info_review")
+    card = build_basic_info_card(
+        draft, runtime.master, started_by=previous.get("started_by"), proceeded=True
+    )
+    return ActionResult(
+        note=HumanMessage(content=f"[ui_event] basic_info_confirmed {' '.join(keys)}".strip()),
+        events=[_card_event(session, card), _draft_event(draft, runtime, keys)],
+        changed_keys=keys,
+    )

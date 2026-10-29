@@ -14,6 +14,14 @@ class Source(StrEnum):
     DERIVED = "derived"
     VERIFIED = "verified"
     DEFAULT = "default"
+    # Entered by a call-centre executive or the Guest Service desk for the applicant
+    # (intake channels §3.1): like derived and verified, unconfirmed until the applicant
+    # confirms it.
+    STAFF = "staff"
+
+
+# Values the applicant must confirm before submit (golden rule 2).
+NEEDS_CONFIRMATION = frozenset({Source.DERIVED, Source.VERIFIED, Source.STAFF})
 
 
 class FieldKey(StrEnum):
@@ -73,7 +81,8 @@ class Phase(StrEnum):
     REVIEW = "review"
 
 
-CrStatus = Literal["unknown", "new", "existing", "skipped"]
+# "tenant": an existing tenant continuing with their Tenant Central record (intake channels).
+CrStatus = Literal["unknown", "new", "existing", "skipped", "tenant"]
 
 
 EVIDENCE_MAX_CHARS = 80
@@ -96,6 +105,8 @@ class DocumentRef(BaseModel):
     uploaded_at: datetime
     # Reused from an earlier inquiry (its reference) by a follow-on inquiry (L3 §3.11).
     copied_from: str | None = None
+    # A document already on the tenant's Tenant Central record (intake channels §3.4).
+    on_file: bool = False
 
 
 class Blocker(BaseModel):

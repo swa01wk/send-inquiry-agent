@@ -113,6 +113,9 @@ async def create_case(
     inquiry_seq: int,
     draft: InquiryDraft,
     reference: str,
+    channel: str = "self_service",
+    created_by: str | None = None,
+    tenant_id: str | None = None,
 ) -> Case:
     """The case for a submitted inquiry, routed to its review queue (event `routed`)."""
     store = runtime.services.cases
@@ -127,6 +130,9 @@ async def create_case(
         status=CaseStatus.SUBMITTED,
         draft=draft.model_copy(deep=True),
         submitted_at=clock.now(),
+        channel=channel,
+        created_by=created_by,
+        tenant_id=tenant_id,
     )
     store.save(case)
     runtime.services.audit.record(

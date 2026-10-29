@@ -26,6 +26,9 @@ class AgentState(TypedDict):
     # Case assistant (L4 §3.5): reference for `services.cases`, contacts being collected.
     case_id: NotRequired[str | None]
     contacts_draft: NotRequired[list[dict[str, Any]]]
+    # Intake channels: who is driving the chat (assisted = a staff member for a caller).
+    channel: NotRequired[str]
+    assisted: NotRequired[bool]
 
 
 def initial_agent_state(

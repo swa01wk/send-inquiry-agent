@@ -23,6 +23,11 @@ CardType = Literal[
     "contacts",
     "sales_data_upload",
     "reviewer_suggestion",
+    # Intake channels (spec §15)
+    "basic_info_review",
+    "send_link",
+    "existing_cr_choice",
+    "sign_in_prompt",
 ]
 
 StepState = Literal["done", "current", "upcoming"]
@@ -66,6 +71,58 @@ class ConfirmFieldsPayload(BaseModel):
     title: str
     fields: list[ConfirmFieldRow]
     all_confirmed: bool
+
+
+class BasicInfoRow(BaseModel):
+    key: str
+    label: str
+    display: str | None
+    source: str | None  # user | derived | verified | staff | default
+    confirmed: bool
+    required: bool
+
+
+class BasicInfoReviewPayload(BaseModel):
+    """Every basic-info field with its value and source; Edit per field (`edit_field`),
+    **Proceed** = `proceed_basic_info` (intake channels §3.3)."""
+
+    title: str
+    started_by: str | None  # "the Cenomi call centre", "your Tenant Central account", …
+    rows: list[BasicInfoRow]
+    missing: list[str]  # labels of required basic fields still empty
+    can_proceed: bool
+    proceeded: bool
+
+
+class SendLinkPayload(BaseModel):
+    """Assisted mode: **Send application link** = `send_application_link` (§3.2)."""
+
+    email_masked: str | None
+    can_send: bool
+    missing: list[str]
+    sent_to_masked: str | None = None
+
+
+class ExistingCrChoiceOption(BaseModel):
+    value: Literal["sign_in", "continue"]
+    label: str
+
+
+class ExistingCrChoicePayload(BaseModel):
+    """Assisted mode, existing CR (§3.2): `existing_cr_choice {choice}`."""
+
+    cr_number: str
+    company_name: str | None
+    options: list[ExistingCrChoiceOption]
+    chosen: Literal["sign_in", "continue"] | None = None
+
+
+class SignInPromptPayload(BaseModel):
+    """Public page, existing CR under `existing_tenant_policy: sign_in` (§3.6)."""
+
+    message: str
+    sign_in_url: str
+    button_label: str
 
 
 class MallPickerCity(BaseModel):

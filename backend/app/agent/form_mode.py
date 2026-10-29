@@ -36,7 +36,7 @@ from app.api.schemas import (
 )
 from app.domain.fields import FIELD_BY_KEY, FieldGroup
 from app.domain.master import MasterData
-from app.domain.models import FieldKey, InquiryDraft, Phase, Source
+from app.domain.models import NEEDS_CONFIRMATION, FieldKey, InquiryDraft, Phase
 from app.domain.rules import compute_phase, contact_verified
 from app.policy.config import get_policy
 from app.sessions import Session
@@ -117,9 +117,7 @@ def unconfirmed_keys(draft: InquiryDraft) -> list[str]:
     return [
         key.value
         for key, field in draft.fields.items()
-        if _has_value(draft, key)
-        and field.source in (Source.DERIVED, Source.VERIFIED)
-        and not field.confirmed
+        if _has_value(draft, key) and field.source in NEEDS_CONFIRMATION and not field.confirmed
     ]
 
 

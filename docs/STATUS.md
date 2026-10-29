@@ -12,7 +12,7 @@ The single place to see what's built, what's next and how the agent maps to the 
 
 **Status values:** ✅ Done · 🟡 In progress, or built at demo depth during the breadth days · ⬜ Not started · ⛔ Blocked · ➖ Waived (with reason)
 
-**Last updated:** 29 Oct 2026 · Day 5 L5 core and demo operability (PR A)
+**Last updated:** 29 Oct 2026 · Day 5 intake channels (PR B)
 
 ## 0. Delivery plan
 
@@ -60,7 +60,7 @@ Each step is one Cursor prompt in `prompts/` and normally one PR.
 | 20 | `20-status-page-notifications.md` | Submission email and SMS, tokenised status page | E4, E5 | 🟡 | Day 2 backend PR (#31), Day 2 frontend | Status page, success card tracking link. Left: retried failed sends |
 | 21 | `21-routing-handoff.md` | Intent router, redirect agent, human handoff, form mode when the model is down | E1 | 🟡 | Day 3 backend PR A; Day 3 frontend and agent track | Built: handoff backend, form mode (PR B), `route_message` + redirect stream, `HandoffCard`, routing fixtures (≥ 90%). Left: other handoff triggers (Sprint 1), 60-message routing set |
 | 21b | `21b-arabic-follow-on-duplicates.md` | Arabic safety nets; follow-on inquiries; duplicate check | E8 | 🟡 | Day 3 backend PR A; Day 3 frontend and agent track | Built: digits, doubt, `start_follow_on`, Arabic capture in guard, follow-on divider + prompt. Left: duplicate check, follow-on from tracking page, Arabic golden (Sprint 1) |
-| 21c | `21c-intake-channels.md` | Call-centre assisted intake (§7.1.1 a2, §7.1.2 a2); existing tenants via Leasing Opportunities (§7.1.2 a1); public-page sign-in path (§7.1); `staff` source; contacts prefill and remove | E10, C1–C6 | ⬜ | | Added after the §7.1 review |
+| 21c | `21c-intake-channels.md` | Call-centre assisted intake (§7.1.1 a2, §7.1.2 a2); existing tenants via Leasing Opportunities (§7.1.2 a1); public-page sign-in path (§7.1); `staff` source; contacts prefill and remove | E10, C1–C6 | 🟡 | Day 5 PR B (backend, tenant portal); part B (cards, `/callcentre`, prompts) | Built: `staff` source (unconfirmed, restamped per turn in assisted mode), channel and `created_by` on session and case, `TenantDirectory` and `OpportunityCatalogue`, `prefill_from_tenant` with documents on file, assisted graph and allowlist, `existing_cr_choice`, `send_application_link` with single-use `complete` links, completing from the link (new chat, `basic_info_review`, `proceed_basic_info`), `/api/callcentre/*`, `/api/tenant/*` (signed-in verification skip), public-page `sign_in_prompt` and `allow_inquiry` prefill, contacts prefilled at second review; Tenant Central pages, console channel labels, `/dev` links. Left: the chat cards, `/callcentre` page and channel prompts (part B), stories |
 | 22 | `22-l3-gate.md` | Stories S1–S13, KPI report, the L3 gate run (evidence built on Day 3) | E1–E10 | 🟡 | Day 2 frontend (S1), Day 3 PR B (S2, S3, S13) | Stories S1, S2, S3, S13 scripted; evidence for derived values (Day 3 PR A). Left: S4–S8, KPI report. Closes the L3 gate |
 | 23 | `23-lifecycle-core.md` | Case data, live L4 transitions, review routing, effects, Azure AD and Yardi mocks | X1, X2, X5, X7 | 🟡 | #40 | Built (Day 4 depth): `transition()` with every M0 §6 row and the queue check, case record in JSON snapshots, routing from the policy, inline effects keyed per event, reviewer directory, Azure AD and Yardi mocks, every §3.4 template, automatic contacts request, Yardi retries and operations flag. Left: `case_effects` outbox and worker, migration, Postgres (Sprint 2) |
 | 24 | `24-reviewer-console.md` | Review API, mock sign-in, queue and case pages, case brief | X4, X6 | 🟡 | #40 (API, brief); #41 (pages) | Built: `/api/review/*` with `X-Reviewer-Id`, legal actions per status, audit timeline, document download, deterministic case brief; console pages (mock sign-in, queue, case page, actions panel with only legal actions, Yardi company and brand re-link with lookups); Vitest and a Playwright legal-actions spec. Left: channel labels (Day 5), funnel (Should) |
@@ -79,14 +79,14 @@ Summary by workflow. Line-by-line coverage of every statement in §7.1, §7.1.1 
 | Workflow | Where it's built | 5-day plan | Status |
 | --- | --- | --- | --- |
 | §7.1.1 a1 — prospective, self-service: CR check or skip, 12 basic-info fields, one product line and mall, email link and mobile OTP with resend after a set time, documents with their numbers, submit, reference and tracking link | v1; 11c; 17–20 | Days 1–3 | 🟡 (v1 built; link, tracking and document numbers to come) |
-| §7.1.1 a2 — prospective, via the call centre: executive raises it; applicant completes from the emailed link (email auto-verified, review basic info, Proceed, OTP, documents, submit) | 21c | Day 5 | ⬜ |
-| §7.1.2 a1 — existing tenant via Leasing Opportunities: prefilled details and documents, property preselected, verify and edit, submit, My inquiries | 21c | Day 5 | ⬜ |
-| §7.1.2 a2 — existing tenant via the call centre: CR exists → ask to sign in, or continue with the record prefilled | 21c | Day 5 | ⬜ |
+| §7.1.1 a2 — prospective, via the call centre: executive raises it; applicant completes from the emailed link (email auto-verified, review basic info, Proceed, OTP, documents, submit) | 21c | Day 5 | 🟡 (backend; cards and `/callcentre` in part B) |
+| §7.1.2 a1 — existing tenant via Leasing Opportunities: prefilled details and documents, property preselected, verify and edit, submit, My inquiries | 21c | Day 5 | 🟡 (Tenant Central pages and backend; the review card in part B) |
+| §7.1.2 a2 — existing tenant via the call centre: CR exists → ask to sign in, or continue with the record prefilled | 21c | Day 5 | 🟡 (backend; the choice card in part B) |
 | §7.1 — existing tenant on the public page (`existing_tenant_policy`) | 17, 21c | Days 1, 5 | 🟡 |
 | b — routing to RLM-Store / RPLM-Media / RPLM-Specialty by unit type and region | 23 | Day 4 | 🟡 (policy routing by unit type and the mall's region; reviewers notified) |
 | b — first-level review: re-upload by email link, reject with remarks, approve with Azure AD invitation (only if no account) | 23–25 | Day 4 | 🟡 (console, API and applicant chat built at demo depth) |
 | b — automatic contacts request "on contact creation"; qualified as a lead | 23, 25 | Days 4, 5 | ⬜ |
-| c — additional contacts (prefilled for existing tenants; reviewer can remove), estimated sales data with notifications both ways | 26, 21c | Days 4, 5 | ⬜ |
+| c — additional contacts (prefilled for existing tenants; reviewer can remove), estimated sales data with notifications both ways | 26, 21c | Days 4, 5 | 🟡 |
 | c — re-link company and brand from Yardi matches | 24, 27 | Day 5 | 🟡 (console form and Yardi lookups, #41; reviewer assistant suggestions on Day 5) |
 | c — approve (invitations for new contacts, acceptance email, data to Yardi) or reject with email | 28 | Days 4, 5 | ⬜ |
 | Tracking link: stage, owner and what's waiting on the applicant | 20, 25 | Days 2, 5 | 🟡 (status page Day 2; case chat from track link and stage/owner on `case_status` card Day 4) |

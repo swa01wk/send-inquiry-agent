@@ -16,11 +16,11 @@ from langgraph.prebuilt import tools_condition
 
 from app.agent.guard import after_guard, guard_node
 from app.agent.model import ModelUnavailable, get_chat_model, model_error_kind
-from app.agent.prompts import build_system_message
+from app.agent.prompts import build_system_message, channel_notes
 from app.agent.runtime import AgentRuntime, runtime_from_config
 from app.agent.sequential_tool_node import build_sequential_tool_node
 from app.agent.state import AgentState
-from app.agent.tools import TOOLS
+from app.agent.tools import ASSISTED_TOOLS, TOOLS
 from app.domain.rules import compute_phase
 from app.gateway import GatewayError
 
@@ -100,25 +100,38 @@ def build_agent_graph(
     return graph.compile(checkpointer=MemorySaver())
 
 
+def system_for_turn(state: AgentState, config: RunnableConfig) -> SystemMessage:
+    """The intake prompt, plus the channel's notes (assisted, existing tenant)."""
+    runtime = runtime_from_config(config)
+    message = build_system_message(state["draft"], runtime.master, state["cards_shown"])
+    notes = channel_notes(state.get("channel"), bool(state.get("assisted")))
+    return SystemMessage(content=f"{message.content}\n\n{notes}") if notes else message
+
+
+def guard(state: AgentState, config: RunnableConfig) -> dict[str, Any]:
+    return guard_node(state, runtime=runtime_from_config(config))
+
+
 def build_graph(
     model_factory: Callable[[], BaseChatModel] | None = None,
 ) -> CompiledStateGraph[AgentState, None, AgentState, AgentState]:
     factory = model_factory or get_chat_model
-
-    def system_for_turn(state: AgentState, config: RunnableConfig) -> SystemMessage:
-        runtime = runtime_from_config(config)
-        return build_system_message(
-            state["draft"],
-            runtime.master,
-            state["cards_shown"],
-        )
-
-    def guard(state: AgentState, config: RunnableConfig) -> dict[str, Any]:
-        return guard_node(state, runtime=runtime_from_config(config))
 
     return build_agent_graph(
         tools=TOOLS,
         system_for_turn=system_for_turn,
         guard_node_fn=guard,
         model_factory=factory,
+    )
+
+
+def build_assisted_graph(
+    model_factory: Callable[[], BaseChatModel] | None = None,
+) -> CompiledStateGraph[AgentState, None, AgentState, AgentState]:
+    """Assisted mode (intake channels §3.2): the intake agent with the assisted allowlist."""
+    return build_agent_graph(
+        tools=ASSISTED_TOOLS,
+        system_for_turn=system_for_turn,
+        guard_node_fn=guard,
+        model_factory=model_factory or get_chat_model,
     )

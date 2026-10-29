@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from app.domain.fields import FIELD_BY_KEY, FieldGroup, document_definitions
-from app.domain.models import Blocker, FieldKey, InquiryDraft, Phase, Source
+from app.domain.models import NEEDS_CONFIRMATION, Blocker, FieldKey, InquiryDraft, Phase
 
 
 def _has_value(draft: InquiryDraft, key: FieldKey) -> bool:
@@ -29,7 +29,7 @@ def _is_unconfirmed(draft: InquiryDraft, key: FieldKey) -> bool:
         return False
     if isinstance(field.value, list) and len(field.value) == 0:
         return False
-    return field.source in (Source.DERIVED, Source.VERIFIED) and not field.confirmed
+    return field.source in NEEDS_CONFIRMATION and not field.confirmed
 
 
 def verification_blockers(draft: InquiryDraft) -> list[Blocker]:

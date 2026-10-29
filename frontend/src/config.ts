@@ -14,3 +14,9 @@ export const DEV_TOOLS = import.meta.env.VITE_DEV_TOOLS === '1'
 
 /** Reviewer console routes (must match backend REVIEWER_CONSOLE). */
 export const REVIEWER_CONSOLE = import.meta.env.VITE_REVIEWER_CONSOLE === '1'
+
+/** Call-centre console (must match backend CALLCENTRE_CONSOLE). */
+export const CALLCENTRE_CONSOLE = import.meta.env.VITE_CALLCENTRE_CONSOLE === '1'
+
+/** Simulated Tenant Central: sign-in, Leasing Opportunities, My inquiries (TENANT_PORTAL). */
+export const TENANT_PORTAL = import.meta.env.VITE_TENANT_PORTAL === '1'

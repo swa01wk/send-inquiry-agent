@@ -1,6 +1,9 @@
 {
   "accounts": [
     "existing.tenant@zarahome.example",
-    "admin@acme.example"
+    "admin@acme.example",
+    "layla.hassan@oasiscoffee.example",
+    "khalid.alnoor@alnoorretail.example",
+    "sami.alnoor@alnoorretail.example"
   ]
 }
