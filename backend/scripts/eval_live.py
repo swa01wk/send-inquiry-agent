@@ -462,8 +462,9 @@ def _check_case_contacts_bundle(session, turns: list[TurnResult], app) -> list[t
 def _check_case_rejection(_session, turns: list[TurnResult], _app=None) -> list[tuple[str, bool]]:
     text = _reply_text(turns).lower()
     after = get_policy().after_rejection.lower()
-    after_hint = "new inquiry" in text or any(
-        chunk.strip() and chunk.strip() in text for chunk in after.split(",")
+    after_hint = any(
+        p in text
+        for p in ("new inquiry", "new one", "start a new", "another inquiry", "another mall")
     )
     reopen_phrases = ("reopen", "reverse the decision", "change the decision", "overturn")
     bad_reopen = any(phrase in text for phrase in reopen_phrases)
