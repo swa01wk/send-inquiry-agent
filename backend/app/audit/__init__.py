@@ -13,9 +13,9 @@ from __future__ import annotations
 import hashlib
 import re
 import threading
-from datetime import UTC, datetime
 from typing import Any, Literal
 
+from app import clock
 from app.persistence import JsonFile, data_path
 
 Actor = Literal["user", "agent", "system", "reviewer", "staff"]
@@ -50,6 +50,9 @@ ALLOWED_KEYS: dict[str, frozenset[str]] = {
     "effect_run": frozenset({"effect", "event", "outcome"}),
     "routing_decision": frozenset({"intent", "via", "confidence"}),
     "assistant_suggestion": frozenset({"kind", "action", "used"}),
+    # Proactive work (L5): what fired, and every decision on it.
+    "proactive_raised": frozenset({"item_id", "trigger", "tier", "stage", "hours"}),
+    "proactive_decision": frozenset({"item_id", "trigger", "decision", "reason", "by"}),
 }
 
 # Never kept, whatever the event type says.
@@ -120,7 +123,7 @@ class AuditLog:
             events.append(
                 {
                     "seq": len(events) + 1,
-                    "at": datetime.now(tz=UTC).isoformat(),
+                    "at": clock.now().isoformat(),
                     "type": event_type,
                     "actor": actor,
                     "payload": redact(event_type, payload or {}),

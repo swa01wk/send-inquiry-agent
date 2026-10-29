@@ -1,0 +1,12 @@
+kind: information
+channel: email
+subject: $reference has been waiting $hours hours in $stage_label
+---
+Hello $reviewer_name,
+
+Inquiry $reference ($brand, $mall) has been in $stage_label for $hours hours, past the
+$threshold_hours-hour review target. It's in your queue's "Needs attention" list.
+
+Open the case: $console_url
+
+Cenomi Tenant Central

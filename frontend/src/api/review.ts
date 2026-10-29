@@ -335,3 +335,71 @@ export async function downloadDocument(
   link.click()
   URL.revokeObjectURL(url)
 }
+
+/** "Needs attention" (L5): proactive items for the reviewer's queues. */
+export interface AttentionItem {
+  id: string
+  trigger: 'stalled_review' | 'escalation' | 'applicant_reminder'
+  label: string
+  recommended: string
+  reference: string
+  brand: string | null
+  mall: string | null
+  stage_label: string
+  status: 'open' | 'awaiting_approval' | 'held' | 'sent' | 'dismissed'
+  audience: 'queue' | 'manager'
+  tier: number
+  age_hours: number
+  threshold_hours: number
+  request_kind: string | null
+  request_label: string | null
+  text: string | null
+  raised_at: string
+  send_after: string | null
+  sent_at: string | null
+  dismissed_reason: string | null
+}
+
+export interface AttentionList {
+  items: AttentionItem[]
+  counts: { open: number; raised: number; sent: number; dismissed: Record<string, number> }
+  dismiss_reasons: string[]
+}
+
+export async function listAttention(reviewerId: string): Promise<AttentionList> {
+  return (await request('/api/review/attention', reviewerId)).json() as Promise<AttentionList>
+}
+
+export async function approveAttention(
+  reviewerId: string,
+  itemId: string,
+  text?: string,
+): Promise<AttentionItem> {
+  const res = await request(
+    `/api/review/attention/${encodeURIComponent(itemId)}/approve`,
+    reviewerId,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(text === undefined ? {} : { text }),
+    },
+  )
+  return res.json() as Promise<AttentionItem>
+}
+
+export async function dismissAttention(
+  reviewerId: string,
+  itemId: string,
+  reason: string,
+): Promise<AttentionItem> {
+  const res = await request(
+    `/api/review/attention/${encodeURIComponent(itemId)}/dismiss`,
+    reviewerId,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason }),
+    },
+  )
+  return res.json() as Promise<AttentionItem>
+}

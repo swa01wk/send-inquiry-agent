@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
+  listAttention,
   listCases,
   listReviewers,
   type QueueItem,
@@ -25,6 +26,17 @@ export function ReviewQueuePage() {
   const [cases, setCases] = useState<QueueItem[] | null>(null)
   const [filter, setFilter] = useState<WaitingOn | ''>('')
   const [error, setError] = useState<string | null>(null)
+  const [attentionCount, setAttentionCount] = useState<number | null>(null)
+  const [params, setParams] = useSearchParams()
+  const asReviewer = params.get('as')
+
+  // `/review?as=<id>`: the dev landing page opens a queue in one click (mock sign-in).
+  // The parameter is dropped once used, so "Switch reviewer" still works.
+  useEffect(() => {
+    if (!asReviewer) return
+    setReviewerId(asReviewer)
+    setParams({}, { replace: true })
+  }, [asReviewer, setReviewerId, setParams])
 
   useEffect(() => {
     let cancelled = false
@@ -55,6 +67,21 @@ export function ReviewQueuePage() {
       cancelled = true
     }
   }, [reviewerId, filter])
+
+  useEffect(() => {
+    if (!reviewerId) return
+    let cancelled = false
+    listAttention(reviewerId)
+      .then((data) => {
+        if (!cancelled) setAttentionCount(data.counts.open)
+      })
+      .catch(() => {
+        if (!cancelled) setAttentionCount(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [reviewerId])
 
   const me = reviewers.find((r) => r.id === reviewerId) ?? null
 
@@ -111,6 +138,17 @@ export function ReviewQueuePage() {
             {me.manager ? 'all regions' : me.regions.map(regionLabel).join(', ')}
           </p>
           <div className={styles.buttonRow}>
+            <Link className={styles.link} to="/review/attention" data-testid="attention-link">
+              Needs attention
+              {attentionCount !== null ? (
+                <span
+                  className={attentionCount > 0 ? styles.tagApplicant : styles.tag}
+                  data-testid="attention-badge"
+                >
+                  {attentionCount}
+                </span>
+              ) : null}
+            </Link>
             <label className={styles.label} htmlFor="waiting-filter">
               Waiting on
             </label>

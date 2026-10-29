@@ -1,0 +1,14 @@
+# `make demo`: every dev and console flag on (mock integrations only).
+services:
+  backend:
+    environment:
+      DEV_TOOLS: 'true'
+      REVIEWER_CONSOLE: 'true'
+      PROACTIVE_ENABLED: 'true'
+      OTP_MOCK_CODE: '1234'
+      DATA_DIR: /app/.data
+  frontend:
+    environment:
+      VITE_DEMO: '1'
+      VITE_DEV_TOOLS: '1'
+      VITE_REVIEWER_CONSOLE: '1'

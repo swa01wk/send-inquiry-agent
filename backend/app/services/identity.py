@@ -12,10 +12,10 @@ import functools
 import json
 import threading
 import uuid
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
 
+from app import clock
 from app.notifications import MockNotificationService
 from app.persistence import JsonFile, data_path
 from app.workflow.models import Invitation
@@ -72,7 +72,7 @@ class MockIdentityService:
             id=f"inv_{uuid.uuid4().hex[:10]}",
             email=email,
             role=role,
-            invited_at=datetime.now(tz=UTC),
+            invited_at=clock.now(),
         )
         with self._lock:
             self._invitations[invitation.id] = invitation.model_dump(mode="json")
@@ -95,7 +95,7 @@ class MockIdentityService:
             if raw is None:
                 return None
             if raw.get("accepted_at") is None:
-                raw["accepted_at"] = datetime.now(tz=UTC).isoformat()
+                raw["accepted_at"] = clock.now().isoformat()
             self._accounts.add(str(raw["email"]).lower())
             self._save()
             accepted: Invitation = Invitation.model_validate(raw)

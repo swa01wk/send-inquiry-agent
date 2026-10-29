@@ -7,11 +7,12 @@ the reviewer assistant (Day 5) answers from it.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from app import clock
 from app.domain.fields import FIELD_BY_KEY, FieldGroup, document_definitions, document_label
 from app.domain.master import MasterData
 from app.domain.models import DocType, FieldKey
@@ -256,7 +257,7 @@ def format_case_brief_text(brief: CaseBrief) -> str:
 
 def build_case_brief(case: Case, master: MasterData, *, now: datetime | None = None) -> CaseBrief:
     draft = case.draft
-    now = now or datetime.now(tz=UTC)
+    now = now or clock.now()
     fields: list[BriefField] = []
     for d in FIELD_BY_KEY.values():
         value = draft.fields[d.key]

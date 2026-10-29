@@ -289,3 +289,9 @@ async def run_effects(runtime: AgentRuntime, case: Case, event: WorkflowEvent) -
             payload={"effect": name, "event": event.name, "outcome": outcome},
         )
     return runtime.services.cases.get(case.id) or case
+
+
+# Shared with proactive work (app/proactive/engine.py): the same context and delivery path.
+applicant_context = _applicant_context
+send_message = _send
+send_to_applicant = _to_applicant

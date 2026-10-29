@@ -1,0 +1,12 @@
+kind: action_required
+channel: email
+subject: Reminder: your inquiry $reference
+---
+Hello $first_name,
+
+$message
+
+You can answer here, in a couple of messages:
+$case_url
+
+Cenomi Tenant Central

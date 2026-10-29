@@ -12,7 +12,7 @@ The single place to see what's built, what's next and how the agent maps to the 
 
 **Status values:** ✅ Done · 🟡 In progress, or built at demo depth during the breadth days · ⬜ Not started · ⛔ Blocked · ➖ Waived (with reason)
 
-**Last updated:** 29 Oct 2026 · Day 4 agent and chat track.
+**Last updated:** 29 Oct 2026 · Day 5 L5 core and demo operability (PR A)
 
 ## 0. Delivery plan
 
@@ -24,7 +24,7 @@ The single place to see what's built, what's next and how the agent maps to the 
 | Day 2 | Wed 28 Oct | Simulated Cenomi, verification by link, resume, submit once, tracking; L3 core: restart-safe store, audit log v0, thin gateway | Day 2 backend PR (#31) | Day 2 frontend track | ✅ | Verify/resume/status/dev inbox, resend countdown, S1 Playwright, prompt notes |
 | Day 3 | Thu 29 Oct | Routing, handoff, Arabic, follow-on; L3 core: form mode, evidence — every L3 capability at demo depth | #35 (handoff, Arabic, follow-on, evidence); #37 (form mode, S2/S3/S13); #39 (confirm card already confirmed) | #38 (router, redirect, handoff card, divider, evidence line, prompt) | ✅ | Router, redirect, handoff card, follow-on divider, Arabic guard capture, prompt sync |
 | Day 4 | Fri 30 Oct | Review lifecycle, reviewer console with audit timeline, case assistant — L4 core | #40 (lifecycle backend, review API, case links); #41 (console UI, Yardi relink) | #43 (case agent, case cards, `/inquiry/case`, T2) | ✅ | Case agent, case cards, `/inquiry/case`, T2, case eval scenarios |
-| Day 5 | Mon 2 Nov | Yardi handover, reviewer assistant, intake channels; L5 core: clock, triggers, notification policy, "Needs attention", drafted reminders; demo | | | ⬜ | |
+| Day 5 | Mon 2 Nov | Yardi handover, reviewer assistant, intake channels; L5 core: clock, triggers, notification policy, "Needs attention", drafted reminders; demo | PR A (L5 core, `/dev`, reset, `make demo`); PR B (intake channels) | Part A (reviewer assistant, T1, approval wording, demo script); part B (assisted and tenant prompts, cards, reminder drafting) | 🟡 | Lifecycle to Yardi, re-link and `waiting_on_you` were built on Day 4 (#40, #41) |
 | Sprint 1 | 3–16 Nov | M0 and L3 gates (incl. E10, intake channels); full test harness | | | ⬜ | |
 | Sprint 2 | 17–30 Nov | L4 gate; channels row C5 | | | ⬜ | |
 | Closing | 1 Dec – ~16 Dec | L5 to gate quality (thin L5 runs from Day 5); production readiness | | | ⬜ | |
@@ -68,8 +68,8 @@ Each step is one Cursor prompt in `prompts/` and normally one PR.
 | 26 | `26-second-level-requests.md` | Contacts and estimated sales data | X1, X3 | 🟡 | #40 (backend) | Built: `workflow/contacts.py` (validation, "that's me"), `contacts` and `sales_data_upload` cards, `submit_contacts`, `submit_sales_data`, `DocType.sales_data` (case chats only), `update_contacts` tool and prompt. Left: existing-tenant prefill (Day 5) |
 | 27 | `27-reviewer-assistant.md` | Reviewer agent, Yardi suggestions, drafted notes | X2, X4 | ⬜ | | |
 | 28 | `28-yardi-handover-l4-gate.md` | Approval to Yardi, L4 KPIs, stories T1–T8 | X1–X9 | ⬜ | | Closes the L4 gate |
-| 29 | `29-event-engine-policy.md` | Event engine, simulated clock, notification policy, opt-out | Y2 | ⬜ | | |
-| 30 | `30-triggers-attention.md` | Triggers, "Needs attention", drafting agent | Y1, Y3, Y4 | ⬜ | | |
+| 29 | `29-event-engine-policy.md` | Event engine, simulated clock, notification policy, opt-out | Y2 | 🟡 | Day 5 PR A | Built (thin): `app/clock.py` (`SimulatedClock` behind `DEV_TOOLS`, every business timestamp reads it), tick over case state (background with `PROACTIVE_ENABLED`, and on every clock move), `NotificationPolicy` (tiers 0/1/2, quiet hours across midnight, one proactive message per case per 48 h), every decision audited, `policy.proactive`. Left: event engine over `inquiry_events`, opt-out link, abandoned-draft trigger, persisted clock offset |
+| 30 | `30-triggers-attention.md` | Triggers, "Needs attention", drafting agent | Y1, Y3, Y4 | 🟡 | Day 5 PR A | Built (thin): stalled review, escalation to the region manager, unanswered request → drafted reminder (plain template text), each once per period and resolved when the condition passes; `/api/review/attention` (ranked, approve with edits, dismiss with reason, counts); console "Needs attention" page and badge. Left: drafting agent (Day 5 part B), late duplicate and insights (Should) |
 | 31 | `31-insights-l5-gate.md` | Insight report, L5 KPIs | Y5, Y6 | ⬜ | | Closes the L5 gate |
 
 ## 3. Business flow coverage (requirements §7.1)

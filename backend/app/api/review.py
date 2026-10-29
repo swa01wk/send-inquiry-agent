@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import AsyncIterator
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, Query, Request
@@ -18,6 +18,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 
+from app import clock
 from app.agent.events import SseEvent
 from app.agent.reviewer_events import run_reviewer_turn
 from app.agent.runtime import AgentRuntime
@@ -30,8 +31,13 @@ from app.domain.fields import DOCUMENT_LABELS
 from app.domain.master import MasterData
 from app.domain.models import FieldKey
 from app.policy.config import get_policy
+from app.proactive.engine import ProactiveError, hours_between
+from app.proactive.engine import approve as proactive_approve
+from app.proactive.engine import dismiss as proactive_dismiss
+from app.proactive.models import RECOMMENDED, TRIGGER_LABELS, AttentionItem
 from app.services.container import ServiceContainer
 from app.services.reviewers import Reviewer
+from app.services.status import REQUEST_LABELS
 from app.workflow.machine import IllegalTransition, approval_blockers, legal_events
 from app.workflow.models import Case, WorkflowEvent
 from app.workflow.service import apply_event
@@ -282,7 +288,7 @@ async def list_cases(
     services: ServiceContainer = Depends(get_services),
     master: MasterData = Depends(get_master_data),
 ) -> list[QueueItem]:
-    now = datetime.now(tz=UTC)
+    now = clock.now()
     items = [
         _queue_item(case, master, now) for case in services.cases.all() if _in_queue(case, reviewer)
     ]
@@ -413,3 +419,180 @@ async def assistant_chat(
             yield _sse(item)
 
     return EventSourceResponse(event_generator())
+
+
+# ---- Needs attention (L5 §3.4, thin) --------------------------------------------------
+
+
+class AttentionOut(BaseModel):
+    id: str
+    trigger: str
+    label: str
+    recommended: str
+    reference: str
+    brand: str | None
+    mall: str | None
+    stage_label: str
+    status: str
+    audience: str
+    tier: int
+    age_hours: float
+    threshold_hours: int
+    request_kind: str | None
+    request_label: str | None
+    text: str | None
+    raised_at: datetime
+    send_after: datetime | None
+    sent_at: datetime | None
+    dismissed_reason: str | None
+
+
+class AttentionCounts(BaseModel):
+    open: int
+    raised: int
+    sent: int
+    dismissed: dict[str, int]
+
+
+class AttentionList(BaseModel):
+    items: list[AttentionOut]
+    counts: AttentionCounts
+    dismiss_reasons: list[str]
+
+
+class ApproveBody(BaseModel):
+    text: str | None = None
+
+
+class DismissBody(BaseModel):
+    reason: str
+
+
+ACTIONABLE = ("open", "awaiting_approval", "held")
+
+
+def _sees(item: AttentionItem, case: Case | None, reviewer: Reviewer) -> bool:
+    if case is None:
+        return False
+    if item.audience == "manager":
+        return reviewer.manager and reviewer.role == item.queue_role
+    return _in_queue(case, reviewer)
+
+
+def _attention_out(item: AttentionItem, case: Case, master: MasterData) -> AttentionOut:
+    fields = case.draft.fields
+    malls = fields[FieldKey.MALLS].value or []
+    return AttentionOut(
+        id=item.id,
+        trigger=item.trigger,
+        label=TRIGGER_LABELS[item.trigger],
+        recommended=RECOMMENDED[item.trigger],
+        reference=case.reference,
+        brand=fields[FieldKey.BRAND_NAME_EN].value,
+        mall=master.label_for("malls", malls[0]) if malls else None,
+        stage_label=STAGE_LABELS.get(item.stage, item.stage),
+        status=item.status,
+        audience=item.audience,
+        tier=item.tier,
+        age_hours=round(hours_between(item.since, clock.now()), 1),
+        threshold_hours=item.threshold_hours,
+        request_kind=item.request_kind,
+        request_label=REQUEST_LABELS.get(item.request_kind) if item.request_kind else None,
+        text=item.text,
+        raised_at=item.raised_at,
+        send_after=item.send_after,
+        sent_at=item.sent_at,
+        dismissed_reason=item.dismissed_reason,
+    )
+
+
+def _visible_item(services: ServiceContainer, item_id: str, reviewer: Reviewer) -> AttentionItem:
+    item = services.attention.get(item_id)
+    case = services.cases.get(item.case_id) if item else None
+    if item is None or not _sees(item, case, reviewer):
+        raise ApiError(404, "item_not_found", "No such item in your queues.")
+    return item
+
+
+@router.get("/attention", response_model=AttentionList)
+async def list_attention(
+    reviewer: Reviewer = Depends(current_reviewer),
+    services: ServiceContainer = Depends(get_services),
+    master: MasterData = Depends(get_master_data),
+) -> AttentionList:
+    """Items for the reviewer's queues (escalations for managers), most urgent first."""
+    visible: list[tuple[AttentionItem, Case]] = []
+    for item in services.attention.all():
+        case = services.cases.get(item.case_id)
+        if case is not None and _sees(item, case, reviewer):
+            visible.append((item, case))
+    now = clock.now()
+    actionable = [(i, c) for i, c in visible if i.status in ACTIONABLE]
+    actionable.sort(
+        key=lambda pair: (
+            pair[0].trigger != "escalation",
+            -hours_between(pair[0].since, now) / pair[0].threshold_hours,
+        )
+    )
+    dismissed: dict[str, int] = {}
+    for item, _case in visible:
+        if item.status == "dismissed" and item.dismissed_reason:
+            dismissed[item.dismissed_reason] = dismissed.get(item.dismissed_reason, 0) + 1
+    return AttentionList(
+        items=[_attention_out(i, c, master) for i, c in actionable],
+        counts=AttentionCounts(
+            open=len(actionable),
+            raised=len(visible),
+            sent=sum(1 for i, _c in visible if i.status == "sent"),
+            dismissed=dismissed,
+        ),
+        dismiss_reasons=list(get_policy().proactive.dismiss_reasons),
+    )
+
+
+def _runtime(services: ServiceContainer, master: MasterData, settings: Settings) -> AgentRuntime:
+    return AgentRuntime(services=services, master=master, settings=settings)
+
+
+@router.post("/attention/{item_id}/approve", response_model=AttentionOut)
+async def approve_attention(
+    item_id: str,
+    body: ApproveBody,
+    reviewer: Reviewer = Depends(current_reviewer),
+    services: ServiceContainer = Depends(get_services),
+    master: MasterData = Depends(get_master_data),
+    settings: Settings = Depends(get_settings_dep),
+) -> AttentionOut:
+    """Approve a drafted reminder (optionally edited). It sends now, or is held for quiet
+    hours or the per-case throttle."""
+    _visible_item(services, item_id, reviewer)
+    try:
+        item = await proactive_approve(
+            _runtime(services, master, settings), item_id, by=reviewer.id, text=body.text
+        )
+    except ProactiveError as exc:
+        raise ApiError(exc.status, exc.code, exc.message) from exc
+    case = services.cases.get(item.case_id)
+    assert case is not None
+    return _attention_out(item, case, master)
+
+
+@router.post("/attention/{item_id}/dismiss", response_model=AttentionOut)
+async def dismiss_attention(
+    item_id: str,
+    body: DismissBody,
+    reviewer: Reviewer = Depends(current_reviewer),
+    services: ServiceContainer = Depends(get_services),
+    master: MasterData = Depends(get_master_data),
+    settings: Settings = Depends(get_settings_dep),
+) -> AttentionOut:
+    _visible_item(services, item_id, reviewer)
+    try:
+        item = proactive_dismiss(
+            _runtime(services, master, settings), item_id, by=reviewer.id, reason=body.reason
+        )
+    except ProactiveError as exc:
+        raise ApiError(exc.status, exc.code, exc.message) from exc
+    case = services.cases.get(item.case_id)
+    assert case is not None
+    return _attention_out(item, case, master)

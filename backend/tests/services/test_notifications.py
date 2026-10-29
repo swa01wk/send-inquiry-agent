@@ -26,6 +26,11 @@ CONTEXT = {
     "role_label": "Company Admin",
     "accept_url": "http://localhost:8000/api/dev/identity/accept/inv_1",
     "request_label": "sales data",
+    "hours": 49,
+    "threshold_hours": 48,
+    "stage_label": "First review",
+    "queue_label": "Regional Leasing Manager (Store), Central",
+    "message": "We're still waiting for your company contacts.",
 }
 
 

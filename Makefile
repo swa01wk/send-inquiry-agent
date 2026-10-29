@@ -13,8 +13,9 @@
 dev:
 	docker compose up --build
 
+# Every persona and dev tool on; open http://localhost:5173/dev.
 demo:
-	OTP_MOCK_CODE=1234 VITE_DEMO=1 docker compose up --build
+	docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
 
 dev-backend:
 	cd backend && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000

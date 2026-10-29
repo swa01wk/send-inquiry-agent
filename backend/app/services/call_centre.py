@@ -14,9 +14,9 @@ import functools
 import random
 import threading
 from dataclasses import asdict, dataclass
-from datetime import UTC, datetime
 from typing import Any, Literal, Protocol
 
+from app import clock
 from app.notifications import MockNotificationService
 from app.persistence import JsonFile, data_path
 
@@ -123,7 +123,7 @@ class MockCallCentreService:
                 short_ref=short_ref,
                 summary=transcript_summary,
                 status="open",
-                created_at=datetime.now(tz=UTC).isoformat(),
+                created_at=clock.now().isoformat(),
                 payload=payload,
             )
             self._cases[case_id] = asdict(case)

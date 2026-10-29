@@ -84,6 +84,11 @@ class Settings(BaseSettings):
     case_ttl_days: int = Field(default=30, validation_alias="CASE_TTL_DAYS")
     # Testing only: treat the model as unavailable, so every turn runs in form mode (L3 §3.14).
     form_mode: bool = Field(default=False, validation_alias="FORM_MODE")
+    # Proactive work (L5): a background tick evaluates triggers every N seconds.
+    proactive_enabled: bool = Field(default=False, validation_alias="PROACTIVE_ENABLED")
+    proactive_tick_seconds: int = Field(
+        default=60, ge=5, le=3600, validation_alias="PROACTIVE_TICK_SECONDS"
+    )
     agent_mode: Literal["openai", "scripted"] = Field(
         default="openai",
         validation_alias="AGENT_MODE",

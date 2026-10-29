@@ -1,0 +1,13 @@
+kind: information
+channel: email
+subject: Escalation: $reference waiting $hours hours in $stage_label
+---
+Hello $reviewer_name,
+
+Inquiry $reference ($brand, $mall) in the $queue_label queue has been in $stage_label for
+$hours hours, past the $threshold_hours-hour escalation point. The queue was flagged
+earlier and the case is still waiting for a decision.
+
+Open the case: $console_url
+
+Cenomi Tenant Central
