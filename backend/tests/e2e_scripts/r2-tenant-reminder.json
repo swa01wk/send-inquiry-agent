@@ -1,0 +1,21 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "draft_reviewer_note",
+        "args": {
+          "kind": "tenant_reminder",
+          "points": [
+            "Authorized Signatory and Billing Contact contacts are still needed"
+          ]
+        },
+        "id": "r2t1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Here's a draft reminder — approve or edit it before sending."
+  }
+]

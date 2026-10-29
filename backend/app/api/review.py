@@ -19,8 +19,10 @@ from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 
 from app import clock
+from app.agent.e2e_scripts import resolve_e2e_scenario, scripted_model_for_session
 from app.agent.events import SseEvent
 from app.agent.reviewer_events import run_reviewer_turn
+from app.agent.reviewer_tools import REVIEWER_TOOLS
 from app.agent.runtime import AgentRuntime
 from app.api.deps import get_master_data, get_services
 from app.api.deps import get_settings as get_settings_dep
@@ -409,6 +411,13 @@ async def assistant_chat(
     case = _case_for(services, case_id, reviewer)
     runtime = AgentRuntime(services=services, master=master, settings=settings)
     graph = request.app.state.reviewer_graph
+    bound_model = None
+    if settings.agent_mode == "scripted":
+        scenario = resolve_e2e_scenario(request.headers.get("X-Test-Scenario"))
+        if scenario:
+            bound_model = scripted_model_for_session(scenario=scenario, step_index=0).bind_tools(
+                REVIEWER_TOOLS
+            )
 
     async def event_generator() -> AsyncIterator[dict[str, str]]:
         async for item in run_reviewer_turn(
@@ -417,6 +426,7 @@ async def assistant_chat(
             reviewer_id=reviewer.id,
             text=body.text,
             runtime=runtime,
+            bound_model=bound_model,
         ):
             yield _sse(item)
 

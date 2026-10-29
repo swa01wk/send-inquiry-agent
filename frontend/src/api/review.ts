@@ -1,5 +1,6 @@
 import { fetchEventSource } from '@microsoft/fetch-event-source'
-import { API_BASE } from '../config'
+import { API_BASE, E2E_MODE } from '../config'
+import { e2eScenarioFromUrl } from './client'
 import type { SseEvent } from '../types/contracts'
 import { StreamAbortError } from './stream'
 
@@ -270,13 +271,19 @@ export async function streamReviewerAssistant(
   let sawError = false
   const path = `/api/review/cases/${encodeURIComponent(reference)}/assistant`
 
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Accept: 'text/event-stream',
+    'X-Reviewer-Id': reviewerId,
+  }
+  if (E2E_MODE) {
+    const scenario = e2eScenarioFromUrl()
+    if (scenario) headers['X-Test-Scenario'] = scenario
+  }
+
   await fetchEventSource(`${API_BASE}${path}`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'text/event-stream',
-      'X-Reviewer-Id': reviewerId,
-    },
+    headers,
     body: JSON.stringify({ text }),
     signal,
     openWhenHidden: true,

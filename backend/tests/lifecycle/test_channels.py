@@ -211,6 +211,23 @@ async def test_application_link_hands_the_inquiry_to_the_applicant(life) -> None
     ]
 
 
+async def test_assisted_e2e_script_existing_cr_then_send_link(life) -> None:
+    client, app = life
+    session_id = await new_assisted(client, scenario="c1-existing-cr")
+    events = await chat_message(
+        client,
+        session_id,
+        "The caller gave CR 1010000000 for a specialty kiosk at Riyadh Mall A",
+    )
+    choice = ui_cards(events, "existing_cr_choice")[0]["payload"]
+    assert choice["company_name"] == "Oasis Coffee Company"
+    assert {o["value"] for o in choice["options"]} == {"sign_in", "continue"}
+    continued = await chat_action(client, session_id, "existing_cr_choice", {"choice": "continue"})
+    assert ui_cards(continued, "existing_cr_choice")[0]["payload"]["chosen"] == "continue"
+    link_card = ui_cards(continued, "send_link")[-1]["payload"]
+    assert link_card["can_send"] is True
+
+
 async def test_call_centre_e2e_script_reaches_send_link(life) -> None:
     client, app = life
     session_id = await new_assisted(client, scenario="a2-call-centre")

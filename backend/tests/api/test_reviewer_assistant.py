@@ -15,18 +15,26 @@ from app.main import create_app
 from app.services.container import build_services
 from app.sessions import SessionStore
 from httpx import ASGITransport, AsyncClient
-from tests.lifecycle.conftest import STORE_CENTRAL, STORE_WESTERN, submit_case
+from tests.lifecycle.conftest import STORE_CENTRAL, STORE_WESTERN, act, submit_case
 from tests.scenarios.helpers import read_sse
 
 
 async def _assistant(
-    client: AsyncClient, reviewer_id: str, reference: str, text: str
+    client: AsyncClient,
+    reviewer_id: str,
+    reference: str,
+    text: str,
+    *,
+    scenario: str | None = None,
 ) -> list[tuple[str, dict[str, Any]]]:
+    headers: dict[str, str] = {"X-Reviewer-Id": reviewer_id}
+    if scenario:
+        headers["X-Test-Scenario"] = scenario
     async with client.stream(
         "POST",
         f"/api/review/cases/{reference}/assistant",
         json={"text": text},
-        headers={"X-Reviewer-Id": reviewer_id},
+        headers=headers,
     ) as response:
         assert response.status_code == 200
         return await read_sse(response)
@@ -98,6 +106,47 @@ async def test_assistant_declines_to_approve_and_case_unchanged(review_client) -
         if name == "ui_card" and data.get("card_type") == "reviewer_suggestion"
     ]
     assert not suggestions
+
+
+@pytest.mark.asyncio
+async def test_assistant_e2e_script_yardi_suggestion(review_client) -> None:
+    client, _app = review_client
+    reference = await submit_case(client, _app)
+    events = await _assistant(
+        client,
+        STORE_CENTRAL,
+        reference,
+        "Find the Yardi company for Bean Street Trading.",
+        scenario="r1-yardi-suggest",
+    )
+    suggestions = [
+        data["payload"]
+        for name, data in events
+        if name == "ui_card" and data.get("card_type") == "reviewer_suggestion"
+    ]
+    assert suggestions
+    assert any(s.get("action") == "relink_company" for s in suggestions)
+
+
+@pytest.mark.asyncio
+async def test_assistant_e2e_script_tenant_reminder(review_client) -> None:
+    client, app = review_client
+    reference = await submit_case(client, app)
+    assert (await act(client, STORE_CENTRAL, reference, "approve_first")).status_code == 200
+    events = await _assistant(
+        client,
+        STORE_CENTRAL,
+        reference,
+        "Draft a reminder for the open contacts request.",
+        scenario="r2-tenant-reminder",
+    )
+    suggestions = [
+        data["payload"]
+        for name, data in events
+        if name == "ui_card" and data.get("card_type") == "reviewer_suggestion"
+    ]
+    assert len(suggestions) == 1
+    assert suggestions[0].get("kind") == "tenant_reminder"
 
 
 @pytest.mark.asyncio

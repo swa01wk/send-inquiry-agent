@@ -1,0 +1,56 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "verify_cr",
+        "args": {
+          "cr_number": "1010000000"
+        },
+        "id": "c1v1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Ask the caller to sign in to Tenant Central, or choose Continue to fill the inquiry from their tenant record."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "unit_type",
+              "value": "specialty",
+              "source": "user"
+            },
+            {
+              "key": "malls",
+              "value": ["riyadh-mall-a"],
+              "source": "user"
+            }
+          ]
+        },
+        "id": "c1u1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "show_application_link",
+        "args": {},
+        "id": "c1l1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "The caller's details are complete — use Send application link when you're ready."
+  }
+]
