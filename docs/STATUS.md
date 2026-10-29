@@ -12,7 +12,7 @@ The single place to see what's built, what's next and how the agent maps to the 
 
 **Status values:** ✅ Done · 🟡 In progress, or built at demo depth during the breadth days · ⬜ Not started · ⛔ Blocked · ➖ Waived (with reason)
 
-**Last updated:** 29 Oct 2026 · Day 4 backend and console (#40, #41)
+**Last updated:** 29 Oct 2026 · Day 4 agent and chat track.
 
 ## 0. Delivery plan
 
@@ -23,7 +23,7 @@ The single place to see what's built, what's next and how the agent maps to the 
 | Day 1 | Tue 27 Oct | Foundation: 11c, harness, policy and master data | #24 harness; #26 card fix; #27 policy; #28 CI without Playwright; #29 live targets load `.env` | #25 (11c) | ✅ | Live checks recorded in `docs/eval-notes.md` |
 | Day 2 | Wed 28 Oct | Simulated Cenomi, verification by link, resume, submit once, tracking; L3 core: restart-safe store, audit log v0, thin gateway | Day 2 backend PR (#31) | Day 2 frontend track | ✅ | Verify/resume/status/dev inbox, resend countdown, S1 Playwright, prompt notes |
 | Day 3 | Thu 29 Oct | Routing, handoff, Arabic, follow-on; L3 core: form mode, evidence — every L3 capability at demo depth | #35 (handoff, Arabic, follow-on, evidence); #37 (form mode, S2/S3/S13); #39 (confirm card already confirmed) | #38 (router, redirect, handoff card, divider, evidence line, prompt) | ✅ | Router, redirect, handoff card, follow-on divider, Arabic guard capture, prompt sync |
-| Day 4 | Fri 30 Oct | Review lifecycle, reviewer console with audit timeline, case assistant — L4 core | #40 (lifecycle backend, review API, case links); #41 (console UI, Yardi relink) | Case agent, chat cards, `/inquiry/case`, story T2 | 🟡 | Backend and console merged; console Playwright spec green locally. Cursor track next (`prompts/breadth/day4-lifecycle-console-case.md`, updated to what was built) |
+| Day 4 | Fri 30 Oct | Review lifecycle, reviewer console with audit timeline, case assistant — L4 core | #40 (lifecycle backend, review API, case links); #41 (console UI, Yardi relink) | #43 (case agent, case cards, `/inquiry/case`, T2) | ✅ | Case agent, case cards, `/inquiry/case`, T2, case eval scenarios |
 | Day 5 | Mon 2 Nov | Yardi handover, reviewer assistant, intake channels; L5 core: clock, triggers, notification policy, "Needs attention", drafted reminders; demo | | | ⬜ | |
 | Sprint 1 | 3–16 Nov | M0 and L3 gates (incl. E10, intake channels); full test harness | | | ⬜ | |
 | Sprint 2 | 17–30 Nov | L4 gate; channels row C5 | | | ⬜ | |
@@ -64,8 +64,8 @@ Each step is one Cursor prompt in `prompts/` and normally one PR.
 | 22 | `22-l3-gate.md` | Stories S1–S13, KPI report, the L3 gate run (evidence built on Day 3) | E1–E10 | 🟡 | Day 2 frontend (S1), Day 3 PR B (S2, S3, S13) | Stories S1, S2, S3, S13 scripted; evidence for derived values (Day 3 PR A). Left: S4–S8, KPI report. Closes the L3 gate |
 | 23 | `23-lifecycle-core.md` | Case data, live L4 transitions, review routing, effects, Azure AD and Yardi mocks | X1, X2, X5, X7 | 🟡 | #40 | Built (Day 4 depth): `transition()` with every M0 §6 row and the queue check, case record in JSON snapshots, routing from the policy, inline effects keyed per event, reviewer directory, Azure AD and Yardi mocks, every §3.4 template, automatic contacts request, Yardi retries and operations flag. Left: `case_effects` outbox and worker, migration, Postgres (Sprint 2) |
 | 24 | `24-reviewer-console.md` | Review API, mock sign-in, queue and case pages, case brief | X4, X6 | 🟡 | #40 (API, brief); #41 (pages) | Built: `/api/review/*` with `X-Reviewer-Id`, legal actions per status, audit timeline, document download, deterministic case brief; console pages (mock sign-in, queue, case page, actions panel with only legal actions, Yardi company and brand re-link with lookups); Vitest and a Playwright legal-actions spec. Left: channel labels (Day 5), funnel (Should) |
-| 25 | `25-case-assistant.md` | Case links, `case` agent, re-upload loop, outcome framing, full status page | X1, X3 | 🟡 | #40 (backend) | Built: `case` token, `POST /api/cases/open` (case or track link) → case-mode chat with `case_status` and request cards, `resubmit_documents`, re-upload card mode, status page from the case. Left: case agent, chat cards, `/inquiry/case` route, story T2 (Cursor track) |
-| 26 | `26-second-level-requests.md` | Contacts and estimated sales data | X1, X3 | 🟡 | #40 (backend) | Built: `workflow/contacts.py` (validation, "that's me"), `contacts` and `sales_data_upload` cards, `submit_contacts`, `submit_sales_data`, `DocType.sales_data` (case chats only). Left: `update_contacts` tool and prompt (Cursor track), existing-tenant prefill (Day 5) |
+| 25 | `25-case-assistant.md` | Case links, `case` agent, re-upload loop, outcome framing, full status page | X1, X3 | 🟡 | #40 (backend) | Built: `case` token, `POST /api/cases/open` (case or track link) → case-mode chat with `case_status` and request cards, `resubmit_documents`, re-upload card mode, status page from the case, case agent, chat cards, `/inquiry/case` route, story T2 |
+| 26 | `26-second-level-requests.md` | Contacts and estimated sales data | X1, X3 | 🟡 | #40 (backend) | Built: `workflow/contacts.py` (validation, "that's me"), `contacts` and `sales_data_upload` cards, `submit_contacts`, `submit_sales_data`, `DocType.sales_data` (case chats only), `update_contacts` tool and prompt. Left: existing-tenant prefill (Day 5) |
 | 27 | `27-reviewer-assistant.md` | Reviewer agent, Yardi suggestions, drafted notes | X2, X4 | ⬜ | | |
 | 28 | `28-yardi-handover-l4-gate.md` | Approval to Yardi, L4 KPIs, stories T1–T8 | X1–X9 | ⬜ | | Closes the L4 gate |
 | 29 | `29-event-engine-policy.md` | Event engine, simulated clock, notification policy, opt-out | Y2 | ⬜ | | |
@@ -84,12 +84,12 @@ Summary by workflow. Line-by-line coverage of every statement in §7.1, §7.1.1 
 | §7.1.2 a2 — existing tenant via the call centre: CR exists → ask to sign in, or continue with the record prefilled | 21c | Day 5 | ⬜ |
 | §7.1 — existing tenant on the public page (`existing_tenant_policy`) | 17, 21c | Days 1, 5 | 🟡 |
 | b — routing to RLM-Store / RPLM-Media / RPLM-Specialty by unit type and region | 23 | Day 4 | 🟡 (policy routing by unit type and the mall's region; reviewers notified) |
-| b — first-level review: re-upload by email link, reject with remarks, approve with Azure AD invitation (only if no account) | 23–25 | Day 4 | 🟡 (console and API built; the applicant's chat side is the Day 4 Cursor track) |
+| b — first-level review: re-upload by email link, reject with remarks, approve with Azure AD invitation (only if no account) | 23–25 | Day 4 | 🟡 (console, API and applicant chat built at demo depth) |
 | b — automatic contacts request "on contact creation"; qualified as a lead | 23, 25 | Days 4, 5 | ⬜ |
 | c — additional contacts (prefilled for existing tenants; reviewer can remove), estimated sales data with notifications both ways | 26, 21c | Days 4, 5 | ⬜ |
 | c — re-link company and brand from Yardi matches | 24, 27 | Day 5 | 🟡 (console form and Yardi lookups, #41; reviewer assistant suggestions on Day 5) |
 | c — approve (invitations for new contacts, acceptance email, data to Yardi) or reject with email | 28 | Days 4, 5 | ⬜ |
-| Tracking link: stage, owner and what's waiting on the applicant | 20, 25 | Days 2, 5 | ⬜ |
+| Tracking link: stage, owner and what's waiting on the applicant | 20, 25 | Days 2, 5 | 🟡 (status page Day 2; case chat from track link and stage/owner on `case_status` card Day 4) |
 | Notifications: information vs action required (§7.15) | 18, 23 | Days 2, 4 | ⬜ |
 | Audit log of actions by customers and staff (§7.10) | 15, 23 | Sprint 1 | ⬜ |
 | Review SLAs (Phase 2) | Demo thresholds in 29–30 | Closing | ⬜ |

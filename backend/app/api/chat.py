@@ -65,13 +65,14 @@ async def chat_stream(
     services: ServiceContainer = Depends(get_services),
     settings: Settings = Depends(get_settings),
 ) -> EventSourceResponse:
-    graph = request.app.state.graph
     await store.begin_turn(session_id)
     try:
         session = await store.touch(session_id)
     except Exception:
         await store.end_turn(session_id)
         raise
+
+    graph = request.app.state.case_graph if session.mode == "case" else request.app.state.graph
 
     runtime = AgentRuntime(
         services=services,
@@ -95,7 +96,7 @@ async def chat_stream(
             actor="user",
             payload={"chars": len(body.text), "message_id": user_message_id},
         )
-        if not session.form_mode:
+        if not session.form_mode and session.mode != "case":
             route_decision = await route_message(body.text, session, runtime)
             record_routing_audit(
                 runtime,

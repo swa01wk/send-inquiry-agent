@@ -27,6 +27,8 @@ def _apply_command(
     confirm_card_keys = dict(state.get("confirm_card_keys", {}))
     confirm_card_turns = dict(state.get("confirm_card_turns", {}))
     inquiry_seq = int(state.get("inquiry_seq", 1))
+    contacts_draft = list(state.get("contacts_draft") or [])
+    case_id = state.get("case_id")
     new_messages: list[BaseMessage] = []
 
     for item in items:
@@ -42,6 +44,10 @@ def _apply_command(
                 confirm_card_turns = dict(update["confirm_card_turns"])
             if "inquiry_seq" in update:
                 inquiry_seq = int(update["inquiry_seq"])
+            if "contacts_draft" in update:
+                contacts_draft = list(update["contacts_draft"])
+            if "case_id" in update:
+                case_id = update["case_id"]
             for message in update.get("messages", []):
                 if isinstance(message, ToolMessage):
                     new_messages.append(message)
@@ -52,7 +58,7 @@ def _apply_command(
                 if isinstance(message, ToolMessage):
                     new_messages.append(message)
 
-    return {
+    merged: AgentState = {
         **state,
         "draft": draft,
         "cards_shown": cards_shown,
@@ -61,6 +67,11 @@ def _apply_command(
         "inquiry_seq": inquiry_seq,
         "messages": [*state["messages"], *new_messages],
     }
+    if contacts_draft or "contacts_draft" in state:
+        merged["contacts_draft"] = contacts_draft
+    if case_id is not None:
+        merged["case_id"] = case_id
+    return merged
 
 
 def build_sequential_tool_node(tools: list[Any]) -> Any:
@@ -89,7 +100,7 @@ def build_sequential_tool_node(tools: list[Any]) -> Any:
             output = await base.ainvoke(step_state, config)
             working = _apply_command(working, output)
 
-        return {
+        out: dict[str, Any] = {
             "draft": working["draft"],
             "cards_shown": working["cards_shown"],
             "confirm_card_keys": working.get("confirm_card_keys", {}),
@@ -97,5 +108,8 @@ def build_sequential_tool_node(tools: list[Any]) -> Any:
             "inquiry_seq": working.get("inquiry_seq", state.get("inquiry_seq", 1)),
             "messages": working["messages"][len(state["messages"]) :],
         }
+        if "contacts_draft" in working:
+            out["contacts_draft"] = working["contacts_draft"]
+        return out
 
     return sequential_tools_node

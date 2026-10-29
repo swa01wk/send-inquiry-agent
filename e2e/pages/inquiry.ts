@@ -170,8 +170,18 @@ export class InquiryPage {
     const headerText = (await header.textContent()) ?? ''
     const match = headerText.match(/(\d+) of (\d+) required uploaded/)
     if (match && match[1] === match[2]) {
-      await this.waitForTurnDone(doneBefore)
+      const mode = await card.getAttribute('data-mode')
+      if (mode !== 'reupload') {
+        await this.waitForTurnDone(doneBefore)
+      }
     }
+  }
+
+  async resubmitDocuments() {
+    const card = this.cards('document_upload')
+    const doneBefore = await readDoneEventCount(this.page)
+    await card.getByRole('button', { name: 'Resubmit' }).click()
+    await this.waitForTurnDone(doneBefore)
   }
 
   async expectUploadError(docLabel: string, message: string) {
@@ -266,6 +276,7 @@ export class InquiryPage {
     if (type === 'review') return this.page.getByTestId('review-card')
     if (type === 'success') return this.page.getByTestId('success-card')
     if (type === 'form_mode') return this.page.getByTestId('form-mode-card')
+    if (type === 'case_status') return this.page.getByTestId('case-status-card')
     return this.page.locator(`[data-card-type="${type}"]`)
   }
 

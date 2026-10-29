@@ -18,6 +18,7 @@ from typing import Any, Literal, TypedDict, cast
 from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
 
+from app.agent.case_tools import CASE_TOOLS
 from app.agent.e2e_scripts import scripted_model_for_session
 from app.agent.form_mode import (
     FORM_MODE_NOTICE,
@@ -58,12 +59,13 @@ def _graph_config(
         "thread_id": session.id,
         "runtime": runtime,
     }
+    tools = CASE_TOOLS if session.mode == "case" else TOOLS
     if settings and settings.agent_mode == "scripted" and session.test_scenario:
         model = scripted_model_for_session(
             scenario=session.test_scenario,
             step_index=session.script_step,
         )
-        configurable["bound_chat_model"] = model.bind_tools(TOOLS)
+        configurable["bound_chat_model"] = model.bind_tools(tools)
     return {"configurable": configurable}
 
 
@@ -198,6 +200,9 @@ async def run_turn(
     state["cards_shown"] = list(session.cards_shown)
     state["confirm_card_keys"] = dict(session.confirm_card_keys)
     state["inquiry_seq"] = session.inquiry_seq
+    if session.mode == "case":
+        state["case_id"] = session.case_id
+        state["contacts_draft"] = list(session.contacts_draft)
 
     config = _graph_config(session, runtime, settings=settings)
     before = await graph.aget_state(config)
@@ -280,6 +285,8 @@ async def run_turn(
             final.get("confirm_card_turns", session.confirm_card_turns),
         )
         session.inquiry_seq = int(final.get("inquiry_seq", session.inquiry_seq))
+        if session.mode == "case" and "contacts_draft" in final:
+            session.contacts_draft = list(final["contacts_draft"])
         if isinstance(bound, ScriptedChatModel):
             session.script_step = bound._step_index
 

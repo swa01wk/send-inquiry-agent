@@ -9,6 +9,7 @@ interface DocumentChecklistCardProps {
   onUpload: (docType: string, file: File) => Promise<void>
   onRemove: (docType: string) => Promise<void>
   onSetNumber: (key: string, value: string) => void
+  onResubmit?: () => void
 }
 
 const FOOTER_COPY =
@@ -35,7 +36,13 @@ export function DocumentChecklistCard({
   onUpload,
   onRemove,
   onSetNumber,
+  onResubmit,
 }: DocumentChecklistCardProps) {
+  const isReupload = payload.mode === 'reupload'
+  const requested = new Set(payload.requested_doc_types)
+  const docs = isReupload ? payload.docs.filter((d) => requested.has(d.doc_type)) : payload.docs
+  const canResubmit =
+    isReupload && payload.required_total > 0 && payload.required_uploaded >= payload.required_total
   const inputRef = useRef<HTMLInputElement>(null)
   const pendingTypeRef = useRef<string | null>(null)
   const [uploadingType, setUploadingType] = useState<string | null>(null)
@@ -78,13 +85,20 @@ export function DocumentChecklistCard({
   const displayValue = (row: DocumentNumberRow) => numberDrafts[row.key] ?? row.value ?? ''
 
   return (
-    <div className={`${shared.shell} ${styles.shell}`} data-testid="document-checklist-card">
+    <div
+      className={`${shared.shell} ${styles.shell}`}
+      data-testid="document-checklist-card"
+      data-mode={payload.mode}
+    >
       <div className={styles.header}>
-        <span className={styles.title}>Documents</span>
+        <span className={styles.title}>{isReupload ? 'Documents to re-upload' : 'Documents'}</span>
         <span className={shared.caption}>
           {payload.required_uploaded} of {payload.required_total} required uploaded
         </span>
       </div>
+      {isReupload && payload.remarks ? (
+        <p className={styles.reuploadRemarks}>{payload.remarks}</p>
+      ) : null}
       <input
         ref={inputRef}
         className={styles.hiddenInput}
@@ -96,7 +110,7 @@ export function DocumentChecklistCard({
           void onFileChange(f)
         }}
       />
-      {payload.docs.map((doc) => {
+      {docs.map((doc) => {
         const uploading = uploadingType === doc.doc_type
         const numberRow = numberForDoc(doc.doc_type, numbers)
         return (
@@ -113,7 +127,7 @@ export function DocumentChecklistCard({
                   ? `Uploaded · ${doc.file_name}${doc.size_bytes != null ? ` · ${formatFileSize(doc.size_bytes)}` : ''}`
                   : 'Not uploaded'}
               </span>
-              {numberRow ? (
+              {!isReupload && numberRow ? (
                 <label className={styles.numberField}>
                   <span className={shared.caption}>{numberRow.label}</span>
                   <input
@@ -168,7 +182,20 @@ export function DocumentChecklistCard({
           </div>
         )
       })}
-      <p className={styles.footer}>{FOOTER_COPY}</p>
+      {isReupload ? (
+        <div className={styles.resubmitFooter}>
+          <button
+            type="button"
+            className={shared.primaryBtnFull}
+            disabled={!canResubmit}
+            onClick={() => onResubmit?.()}
+          >
+            Resubmit
+          </button>
+        </div>
+      ) : (
+        <p className={styles.footer}>{FOOTER_COPY}</p>
+      )}
     </div>
   )
 }

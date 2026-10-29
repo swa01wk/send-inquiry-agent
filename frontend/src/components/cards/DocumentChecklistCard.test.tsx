@@ -56,6 +56,59 @@ describe('DocumentChecklistCard', () => {
     await waitFor(() => expect(onUpload).toHaveBeenCalledWith('company_profile', ok))
   })
 
+  it('re-upload mode shows remarks, filters docs, and resubmits when complete', async () => {
+    const user = userEvent.setup()
+    const onResubmit = vi.fn()
+    if (documentUploadCardExample.card_type !== 'document_upload') throw new Error('bad fixture')
+
+    const payload = {
+      ...documentUploadCardExample.payload,
+      mode: 'reupload' as const,
+      requested_doc_types: ['brand_profile'],
+      remarks: 'Please upload a clearer brand profile.',
+      docs: [
+        {
+          doc_type: 'brand_profile',
+          label: 'Brand profile',
+          required: true,
+          uploaded: true,
+          file_name: 'brand.pdf',
+          size_bytes: 1000,
+        },
+        {
+          doc_type: 'company_profile',
+          label: 'Company profile',
+          required: true,
+          uploaded: false,
+          file_name: null,
+          size_bytes: null,
+        },
+      ],
+      required_uploaded: 1,
+      required_total: 1,
+      numbers: [],
+    }
+
+    render(
+      <DocumentChecklistCard
+        payload={payload}
+        onUpload={async () => undefined}
+        onRemove={async () => undefined}
+        onSetNumber={() => undefined}
+        onResubmit={onResubmit}
+      />,
+    )
+
+    expect(screen.getByTestId('document-checklist-card')).toHaveAttribute('data-mode', 'reupload')
+    expect(screen.getByText('Please upload a clearer brand profile.')).toBeInTheDocument()
+    expect(screen.getByText('Brand profile')).toBeInTheDocument()
+    expect(screen.queryByText('Company profile')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('doc-number-cr_number')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /resubmit/i }))
+    expect(onResubmit).toHaveBeenCalled()
+  })
+
   it('shows read-only CR number next to CR certificate row', () => {
     if (documentUploadCardExample.card_type !== 'document_upload') throw new Error('bad fixture')
     const payload = {

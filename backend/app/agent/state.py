@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, NotRequired, TypedDict
+from typing import Annotated, Any, NotRequired, TypedDict
 
 from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
@@ -23,6 +23,9 @@ class AgentState(TypedDict):
     retry_agent: NotRequired[bool]
     # Which inquiry of the chat is current (follow-on inquiries, L3 §3.11).
     inquiry_seq: NotRequired[int]
+    # Case assistant (L4 §3.5): reference for `services.cases`, contacts being collected.
+    case_id: NotRequired[str | None]
+    contacts_draft: NotRequired[list[dict[str, Any]]]
 
 
 def initial_agent_state(

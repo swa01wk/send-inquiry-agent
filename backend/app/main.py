@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from langchain_core.language_models.chat_models import BaseChatModel
 from slowapi.middleware import SlowAPIMiddleware
 
+from app.agent.case_graph import build_case_graph
 from app.agent.graph import build_graph
 from app.agent.model import ScriptedChatModel, get_chat_model
 from app.api.cases import router as cases_router
@@ -79,6 +80,7 @@ def create_app(
         )
         app.state.services = build_services(cfg)
         app.state.graph = build_graph(model_factory=chat_model_factory)
+        app.state.case_graph = build_case_graph(model_factory=chat_model_factory)
         yield
 
     app = FastAPI(title="Send Inquiry Agent", lifespan=lifespan)

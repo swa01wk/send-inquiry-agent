@@ -121,7 +121,11 @@ SCRIPTS: dict[str, list[dict[str, Any]]] = {
         say("Company saved — see the card."),
         tc("update_draft", {"fields": COLLECT}, "i2"),
         say("Brand summary is in the card — confirm when ready."),
-        tc("update_draft", {"fields": [{"key": "unit_type", "value": "store", "source": "user"}]}, "i3"),
+        tc(
+            "update_draft",
+            {"fields": [{"key": "unit_type", "value": "store", "source": "user"}]},
+            "i3",
+        ),
         say("Updated to a full store — see the card."),
     ],
     "10-unsure": [
@@ -150,7 +154,9 @@ SCRIPTS: dict[str, list[dict[str, Any]]] = {
         say("Use the verification card — open the link, then enter the SMS code in the box."),
         tc("request_documents", {}, "l4"),
         say("Company Profile and Brand Profile are required. Other documents are optional."),
-        say("Thanks — optional documents can still be added; the review card is ready when you are."),
+        say(
+            "Thanks — optional documents can still be added; the review card is ready when you are."
+        ),
     ],
     "14-wants-person": [
         say("Our leasing team can follow up after you submit — happy to keep going here."),
@@ -204,14 +210,20 @@ SCRIPTS: dict[str, list[dict[str, Any]]] = {
         ),
         tc("send_verification", {"resend": False}, "p5"),
         say("Open the link we emailed you and enter the SMS code in the box."),
-        tc("update_draft", {"fields": [{"key": "unit_type", "value": "store", "source": "user"}]}, "p6"),
+        tc(
+            "update_draft",
+            {"fields": [{"key": "unit_type", "value": "store", "source": "user"}]},
+            "p6",
+        ),
         say("Updated to a full store — see the card."),
         tc("request_documents", {}, "p7"),
         say(
             "Company Profile and Brand Profile are required. "
             "CR, VAT, ID, address and articles are optional."
         ),
-        say("Thanks — optional documents can still be added; check the review card when you're ready."),
+        say(
+            "Thanks — optional documents can still be added; check the review card when you're ready."
+        ),
     ],
     "19-cr-chip": [say("Type your 10-digit CR number when you're ready.")],
     "20-formatting": [
@@ -220,8 +232,14 @@ SCRIPTS: dict[str, list[dict[str, Any]]] = {
     ],
     "21-unclear": [
         say("Got it."),
-        say("Do you have your company's CR number? It's on your commercial registration certificate."),
-        tc("suggest_replies", {"options": ["I have my CR number", "I don't have it", "What is a CR?"]}, "q1"),
+        say(
+            "Do you have your company's CR number? It's on your commercial registration certificate."
+        ),
+        tc(
+            "suggest_replies",
+            {"options": ["I have my CR number", "I don't have it", "What is a CR?"]},
+            "q1",
+        ),
         say("Share your CR number, or say if you don't have it handy."),
         tc("suggest_replies", {"options": ["Skip CR for now", "What do I need?"]}, "q2"),
         say("Tell me about your shop idea in a few words, or share your CR to start."),
