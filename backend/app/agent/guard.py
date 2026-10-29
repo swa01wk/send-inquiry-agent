@@ -33,6 +33,7 @@ from app.api.cards import (
     build_document_upload_card,
     build_review_card,
 )
+from app.api.channel_cards import basic_info_missing, build_send_link_card
 from app.api.schemas import UiCard
 from app.domain.models import NEEDS_CONFIRMATION, FieldKey
 from app.domain.rules import compute_phase, contact_verified
@@ -355,6 +356,46 @@ def _unconfirm_doubted_fields(state: AgentState) -> tuple[Any, list[str]]:
     return draft, changed
 
 
+_ASSISTED_VERIFICATION_CLAIM = re.compile(
+    r"verification link|verify (?:your )?email|sms code|one-time code|"
+    r"send (?:you )?(?:a )?link to verify",
+    re.IGNORECASE,
+)
+
+
+def _assisted_application_link_note(
+    state: AgentState,
+    draft: Any,
+    turn_messages: list[BaseMessage],
+    cards_shown: list[str],
+) -> str | None:
+    if not state.get("assisted"):
+        return None
+    if basic_info_missing(draft):
+        return None
+    if "show_application_link" in _tools_called(turn_messages):
+        return None
+    if "send_link" in cards_shown:
+        payload = build_send_link_card(draft).payload
+        if payload.get("can_send"):
+            return None
+    return (
+        f"{GUARD_PREFIX} Basic info is complete: call show_application_link now. "
+        "Don't say you're sending a verification link or code."
+    )
+
+
+def _assisted_verification_claim_note(state: AgentState, ai_text: str) -> str | None:
+    if not state.get("assisted") or not ai_text:
+        return None
+    if not _ASSISTED_VERIFICATION_CLAIM.search(ai_text):
+        return None
+    return (
+        f"{GUARD_PREFIX} Basic info is complete: call show_application_link now. "
+        "Don't say you're sending a verification link or code."
+    )
+
+
 def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
     draft, doubt_unconfirmed = _unconfirm_doubted_fields(state)
     user_text, turn_messages = _current_turn({**state, "draft": draft})
@@ -402,7 +443,9 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
             )
         else:
             note = (
-                _brand_reask_note({**state, "draft": draft}, ai_text)
+                _assisted_application_link_note(state, draft, turn_messages, cards_shown)
+                or _assisted_verification_claim_note(state, ai_text)
+                or _brand_reask_note({**state, "draft": draft}, ai_text)
                 or _incomplete_bulk_capture_note({**state, "draft": draft}, phase)
                 or _incomplete_contact_capture_note(
                     {**state, "draft": draft},

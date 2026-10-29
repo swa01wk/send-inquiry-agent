@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from app.api.channel_cards import basic_info_missing
 from app.domain.fields import FIELD_BY_KEY
 from app.domain.models import NEEDS_CONFIRMATION, FieldKey, InquiryDraft, Source
 from app.domain.rules import contact_verified
@@ -102,6 +103,9 @@ def _unconfirmed(draft: InquiryDraft, *, exclude_keys: frozenset[str] = frozense
 def next_bundle_hint(
     draft: InquiryDraft,
     cards_shown: list[str] | None = None,
+    *,
+    assisted: bool = False,
+    tenant_brands: list[str] | None = None,
 ) -> str:
     """One or two lines telling the agent what to ask for next, as one question."""
     del cards_shown  # verification progress now lives on the draft
@@ -127,8 +131,18 @@ def next_bundle_hint(
     for bundle in (COMPANY, BRAND_AND_SPACE, CONTACT):
         if not _missing(draft, bundle):
             continue
-        asks = _askable(draft, bundle)
-        if asks:
+        if (
+            bundle is BRAND_AND_SPACE
+            and tenant_brands
+            and not _has_value(draft, FieldKey.BRAND_NAME_EN)
+        ):
+            brands_or = " or ".join(tenant_brands)
+            lines.append(
+                f"Next question (brand): ask which brand this inquiry is for — {brands_or} — "
+                "or whether it's a new brand. One question. The mall and space type are already "
+                "set from the unit they chose."
+            )
+        elif asks := _askable(draft, bundle):
             lines.append(
                 f"Next question ({bundle.name}): ask for {', '.join(asks)} together, "
                 "in one natural question."
@@ -153,6 +167,14 @@ def next_bundle_hint(
                     "User gave the Arabic brand only: propose a Latin spelling in your reply "
                     "and save it with update_draft (source derived) for confirmation."
                 )
+        return "\n".join(lines)
+
+    if assisted:
+        if not basic_info_missing(draft):
+            lines.append(
+                "Next: call show_application_link; the executive sends the link. "
+                "Don't mention verification, codes, documents or the terms."
+            )
         return "\n".join(lines)
 
     if not contact_verified(draft):

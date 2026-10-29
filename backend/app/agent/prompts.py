@@ -13,6 +13,7 @@ from app.domain.master import MasterData
 from app.domain.models import InquiryDraft
 from app.domain.summary import prompt_summary
 from app.policy.config import PolicyConfig, get_policy
+from app.services.tenants import Tenant
 
 _PROMPT_PATH = Path(__file__).resolve().parent / "system_prompt.md"
 
@@ -97,10 +98,18 @@ def build_system_message(
     draft: InquiryDraft,
     master: MasterData,
     cards_shown: list[str] | None = None,
+    *,
+    assisted: bool = False,
+    tenant_brands: list[str] | None = None,
 ) -> SystemMessage:
     rules = rules_in_force(get_policy(), master)
     dynamic = prompt_summary(draft, master)
-    hint = next_bundle_hint(draft, cards_shown)
+    hint = next_bundle_hint(
+        draft,
+        cards_shown,
+        assisted=assisted,
+        tenant_brands=tenant_brands,
+    )
     content = f"{_static_prompt()}\n\n{rules}\n\n## Current state\n{dynamic}\n{hint}"
     return SystemMessage(content=content)
 
@@ -108,22 +117,44 @@ def build_system_message(
 # Channel notes (intake channels §3.2, §3.5): appended to the system prompt per session.
 # Kept short and factual here; tone and examples live in the static prompt.
 ASSISTED_NOTES = """## Channel: assisted (call centre or Guest Service)
-- You are talking to a Cenomi staff member who is on the phone with the applicant. Refer to
-  the applicant as "the caller"; keep replies short.
-- Collect the same bundles as usual. Values you save are recorded as entered by staff; the
-  caller confirms them later from the application link.
-- Never ask for email or SMS verification, documents or the terms: the caller does those
-  from the link.
-- When the basic info is complete, call `show_application_link`. The executive presses the
-  button to send it.
-- On an existing CR, the card lets the executive choose: ask the caller to sign in, or
-  continue for them."""
+- You speak to the executive, never to the caller. Refer to the applicant as "the caller".
+- Never address the caller by name or as "you" — the executive reads your reply aloud
+  (e.g. "Thanks — I've saved Sara's details.").
+- Same bundles as usual, but one short question at a time — they are relaying over the phone.
+- Never ask for email or SMS verification, codes, documents or consent; the caller does those
+  from the application link.
+- As soon as the basic info is complete, call `show_application_link`.
+- When an `existing_cr_choice` card appears, give the executive one sentence to say to the
+  caller for each option (sign in / continue for them), then wait for their pick."""
 
 EXISTING_TENANT_NOTES = """## Channel: existing tenant (signed in to Tenant Central)
-- The details come from their Tenant Central record and are on a review card; they are
-  already verified by signing in (no email link or SMS code).
-- Ask only for what's missing: the brand if they have several, and the space if they want
-  to add it. Their documents on file are attached; they can keep or replace them."""
+- Greet by first name only if you have not already (the opening greeting is sent by the server).
+- Details are on the review card — ask them to press Proceed or Edit there, not to repeat
+  the details in chat.
+- If the brand is not chosen yet, ask one question naming the brands listed under This account;
+  once it is chosen, do not ask what they sell. You may ask for space or budget. Their
+  documents on file can be kept or replaced.
+- Never ask for verification."""
+
+
+def tenant_account_notes(tenant: Tenant) -> str:
+    """Account context for existing-tenant mode (brands the model cannot infer from the draft)."""
+    brand_labels: list[str] = []
+    for brand in tenant.brands:
+        if brand.name_ar:
+            brand_labels.append(f"{brand.name_en} ({brand.name_ar})")
+        else:
+            brand_labels.append(brand.name_en)
+    brands_line = "; ".join(brand_labels)
+    return "\n".join(
+        [
+            "## This account",
+            f"- Company: {tenant.company_name}",
+            f"- Brands: {brands_line}",
+            "- The mall and space type come from the unit they chose; don't ask about mall, "
+            "city or space type.",
+        ]
+    )
 
 
 def channel_notes(channel: str | None, assisted: bool) -> str:

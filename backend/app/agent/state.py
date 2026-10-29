@@ -29,6 +29,7 @@ class AgentState(TypedDict):
     # Intake channels: who is driving the chat (assisted = a staff member for a caller).
     channel: NotRequired[str]
     assisted: NotRequired[bool]
+    tenant_id: NotRequired[str | None]
 
 
 def initial_agent_state(

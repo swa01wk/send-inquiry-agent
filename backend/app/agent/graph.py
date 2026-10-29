@@ -16,7 +16,7 @@ from langgraph.prebuilt import tools_condition
 
 from app.agent.guard import after_guard, guard_node
 from app.agent.model import ModelUnavailable, get_chat_model, model_error_kind
-from app.agent.prompts import build_system_message, channel_notes
+from app.agent.prompts import build_system_message, channel_notes, tenant_account_notes
 from app.agent.runtime import AgentRuntime, runtime_from_config
 from app.agent.sequential_tool_node import build_sequential_tool_node
 from app.agent.state import AgentState
@@ -103,9 +103,28 @@ def build_agent_graph(
 def system_for_turn(state: AgentState, config: RunnableConfig) -> SystemMessage:
     """The intake prompt, plus the channel's notes (assisted, existing tenant)."""
     runtime = runtime_from_config(config)
-    message = build_system_message(state["draft"], runtime.master, state["cards_shown"])
+    tenant_brands: list[str] | None = None
+    tenant_id = state.get("tenant_id")
+    tenant = None
+    if state.get("channel") == "existing_tenant" and tenant_id:
+        tenant = runtime.services.tenants.get_by_id(tenant_id)
+        if tenant is not None:
+            tenant_brands = [b.name_en for b in tenant.brands]
+    message = build_system_message(
+        state["draft"],
+        runtime.master,
+        state["cards_shown"],
+        assisted=bool(state.get("assisted")),
+        tenant_brands=tenant_brands,
+    )
+    base = message.content if isinstance(message.content, str) else ""
+    parts: list[str] = [base]
     notes = channel_notes(state.get("channel"), bool(state.get("assisted")))
-    return SystemMessage(content=f"{message.content}\n\n{notes}") if notes else message
+    if notes:
+        parts.append(notes)
+    if tenant is not None:
+        parts.append(tenant_account_notes(tenant))
+    return SystemMessage(content="\n\n".join(p for p in parts if p))
 
 
 def guard(state: AgentState, config: RunnableConfig) -> dict[str, Any]:

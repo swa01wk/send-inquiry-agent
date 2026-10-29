@@ -35,6 +35,7 @@ from app.api.schemas import UiCard
 from app.config import Settings
 from app.domain.rules import compute_phase
 from app.domain.summary import build_draft_summary
+from app.domain.tenant_prefill import apply_tenant_brand_pick_from_message
 from app.observability.turn_log import TurnTimer, log_chat_turn
 from app.sessions import Session
 
@@ -189,6 +190,29 @@ async def run_turn(
     runtime: AgentRuntime,
     settings: Settings | None = None,
 ) -> AsyncIterator[SseEvent]:
+    user_text = _text_of(user_input)
+    if session.channel == "existing_tenant" and session.tenant_id:
+        tenant = runtime.services.tenants.get_by_id(session.tenant_id)
+        if tenant is not None:
+            updated, written = apply_tenant_brand_pick_from_message(
+                session.draft,
+                tenant,
+                runtime.master,
+                user_text,
+            )
+            if written:
+                session.draft = updated
+                runtime.services.audit.record(
+                    session.id,
+                    "tenant_prefill",
+                    actor="system",
+                    payload={
+                        "tenant_id": tenant.id,
+                        "keys": written,
+                        "source": "brand_message",
+                    },
+                )
+
     phase = compute_phase(session.draft).value
     session.turn_index += 1
     state: AgentState = initial_agent_state(
@@ -206,6 +230,7 @@ async def run_turn(
         state["contacts_draft"] = list(session.contacts_draft)
     state["channel"] = session.channel
     state["assisted"] = session.assisted
+    state["tenant_id"] = session.tenant_id
     turn_start_draft = session.draft.model_copy(deep=True)
 
     config = _graph_config(session, runtime, settings=settings)
