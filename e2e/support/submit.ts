@@ -48,7 +48,7 @@ export async function submitScriptedInquiry(
 export async function completeApplicationLinkFlow(
   inquiry: InquiryPage,
   request: APIRequestContext,
-): Promise<void> {
+): Promise<string> {
   await expect(inquiry.cards("basic_info_review")).toBeVisible({
     timeout: 60_000,
   });
@@ -68,6 +68,7 @@ export async function completeApplicationLinkFlow(
   await expect(inquiry.cards("review")).toBeVisible({ timeout: 60_000 });
   await inquiry.acceptAndSubmit();
   await expect(inquiry.cards("success")).toBeVisible({ timeout: 60_000 });
+  return inquiry.successReference();
 }
 
 /** The (non-manager) reviewer whose queue holds the case, from the review API. */

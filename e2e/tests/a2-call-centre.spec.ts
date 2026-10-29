@@ -1,11 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { InquiryPage } from "../pages/inquiry";
+import { A2_CALL_CENTRE_TURNS } from "../support/channelScripts";
 import {
   clearDevOutbox,
   completeVerifyLink,
   fetchDevOutbox,
   latestByTemplate,
-  referenceFromReviewAssigned,
   withE2eScenario,
 } from "../support/outbox";
 import {
@@ -39,11 +39,9 @@ test.describe("Story A2 call centre @scripted", () => {
 
     const staffChat = new InquiryPage(page);
     await staffChat.waitForChatReady();
-    await staffChat.say("Skip the CR for now");
-    await staffChat.say(
-      "Bean Street Trading Co., Olaya Street Riyadh — coffee kiosk at Riyadh Mall A, brand Bean Street",
-    );
-    await staffChat.say("Sara Ali, sara@beanstreet.example, 0501234567");
+    for (const turn of A2_CALL_CENTRE_TURNS) {
+      await staffChat.say(turn);
+    }
 
     await expect(staffChat.cards("send_link")).toBeVisible({ timeout: 60_000 });
     await staffChat.sendApplicationLink();
@@ -75,10 +73,7 @@ test.describe("Story A2 call centre @scripted", () => {
       const applicantPage = await applicantContext.newPage();
       const applicant = new InquiryPage(applicantPage);
       await applicant.openApplicationVerifyLink(verifyPath);
-      await completeApplicationLinkFlow(applicant, request);
-      const reference = referenceFromReviewAssigned(
-        await fetchDevOutbox(request),
-      );
+      const reference = await completeApplicationLinkFlow(applicant, request);
 
       const reviewer = await reviewerFor(request, reference);
       const reviewerPage = await reviewerContext.newPage();
