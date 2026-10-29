@@ -15,16 +15,21 @@ Use with `make demo` (SMS code **1234**; the email link is a demo button). The *
 | Draft survives backend restart | `DATA_DIR=./.data` (default in `.env.example`) | — |
 | Form mode without the model | `FORM_MODE=true` (testing only; restart backend) | — |
 
-`make demo` today sets `OTP_MOCK_CODE=1234` and `VITE_DEMO=1` only. Day 5 will also turn on dev tools, reviewer console, call centre, tenant portal, and proactivity from one command.
+`make demo` sets `OTP_MOCK_CODE=1234`, `VITE_DEMO=1`, dev tools, reviewer console, call centre, tenant portal, and proactivity (`DEV_TOOLS`, `REVIEWER_CONSOLE`, `CALLCENTRE_CONSOLE`, `TENANT_PORTAL`, `PROACTIVE_ENABLED`).
 
-**Personas (URLs today):**
+**Personas (URLs):**
 
 | Persona | URL |
 | --- | --- |
+| Demo hub | http://localhost:5173/dev |
 | Applicant chat | http://localhost:5173 |
+| Call centre / Guest Service | http://localhost:5173/callcentre (pick staff on the page, or open from **/dev**) |
+| Tenant Central | http://localhost:5173/tenant (mock tenants linked from **/dev**) |
 | Dev notification inbox | http://localhost:5173/dev/inbox |
 | Reviewer queue / case | http://localhost:5173/review → open a **GEO-…** row |
+| Needs attention | http://localhost:5173/review/attention |
 | Applicant case link | From email in dev inbox → `/inquiry/case?t=…` |
+| Applicant complete link (assisted) | `complete_application` email → `/inquiry/verify?t=…` (new session, email verified) |
 | Tracking | `/inquiry/status/{reference}?t=` from submission email |
 
 Use **Restart** in the chat header (demo builds, `VITE_DEMO=1`) to reset the applicant chat without reloading the page.
@@ -60,15 +65,67 @@ Line-by-line requirements live in [workflows-7-1.md](specs/workflows-7-1.md). Re
 | Workflow | Demo path | When |
 | --- | --- | --- |
 | §7.1.1 **a1** — prospective, self-service | [Happy path](#happy-path--711-a1-self-service-5-min) above → submit → tracking email | **Today** (Days 1–3) |
-| §7.1.1 **a2** — prospective, call centre | Executive at `/callcentre` → assisted chat → link → applicant **Proceed** → OTP → documents → submit | **(after Day 5 backend)** |
-| §7.1.2 **a1** — existing tenant, signed in | `/tenant` → Leasing Opportunities → **Raise inquiry** → prefilled confirm → submit → My inquiries | **(after Day 5 backend)** |
-| §7.1.2 **a2** — existing tenant, call centre | Executive + existing CR → **Continue for them** or **Ask them to sign in** → link → applicant completes | **(after Day 5 backend)** |
-| §7.1 — existing tenant on public page | CR `1010000000` → Sign in; or `allow_inquiry` prefill path | **(after Day 5 backend)** for portal/sign-in UX; **existing account redirect** today: CR `1010000000` → Sign In guidance, no submit |
+| §7.1.1 **a2** — prospective, call centre | [Call centre / Guest Service](#call-centre-and-guest-service-711-a2) → [applicant from link](#applicant-completes-an-assisted-link-711-a2) | **Today** |
+| §7.1.2 **a1** — existing tenant, signed in | [Tenant Central](#tenant-central-712-a1) | **Today** |
+| §7.1.2 **a2** — existing tenant, call centre | [Existing CR choice](#call-centre-and-guest-service-711-a2) → prefilled assisted chat → link → applicant completes | **Today** |
+| §7.1 — existing tenant on public page | [Public-page sign-in](#public-page-existing-tenant-71) (`sign_in` or `allow_inquiry`) | **Today** |
 | §7.1.1 **b** / §7.1.2 **b** — first-level review | Reviewer queue → optional [re-upload (T2)](#l4--re-upload-loop-story-t2) → or **Approve first level** | **Today** (Day 4+) |
 | §7.1.1 **c** / §7.1.2 **c** — second-level review | **Lead — second review** → [contacts + Yardi (T1)](#l4--contacts-and-final-approval-to-yardi-story-t1) → optional [reviewer assistant](#l4--reviewer-assistant-yardi-match) on re-link | **Today** (Day 4–5 track) |
-| Tracking throughout | Status page: stage, owner role; after Yardi, approved copy for the applicant | **Today** for submit and review stages; **Waiting for you** on status **(after Day 5 backend)** |
+| Tracking throughout | Status page: stage, owner role, **Waiting for you**; after Yardi, approved copy for the applicant | **Today** |
 
-**Suggested presenter arc (what you can run today):** self-service submit → open **/review** from the `review_assigned` email (or queue) → first approval **or** re-upload loop → second review with contacts → final approval → applicant tracking shows *Approved — your details are with the leasing team for a proposal* → scroll **Audit timeline** on the case page. Slot call-centre, tenant-portal, and clock beats when Day 5 backend lands.
+**Suggested presenter arc (~15 min):** start at **/dev** → self-service submit (or call-centre path) → **/review** from `review_assigned` → first approval **or** re-upload → second review with contacts → reviewer assistant **Use** on Yardi pickers (optional) → final approval → tracking shows *Approved — your details are with the leasing team for a proposal* → [L5 clock beats](#l5--governed-proactivity) on a stalled case → **Audit timeline** on the case page.
+
+---
+
+## Call centre and Guest Service (§7.1.1 a2)
+
+Use **http://localhost:5173/callcentre** or open **Sami Al Anazi — The Cenomi call centre** / **Guest Service** from **/dev**. Mock sign-in if prompted (`?as=customer-care-1` or pick a Guest Service staff row on **/dev**).
+
+1. Click **New inquiry** — chat opens in **assisted mode** (badge: from the call centre / Guest Service).
+2. Dictate the caller in one or two short messages, e.g.  
+   `The caller is Omar for a specialty coffee kiosk at Riyadh Mall A — Bean Street Trading, omar@beanstreet.example, +966501234567`  
+   (Same bundles as self-service; the agent talks about “the caller”, never asks for verification, documents or consent on this side.)
+3. When details are ready, use the **Send application link** card (or the agent offers it) → check **/dev/inbox** for `complete_application`.
+4. **Existing CR (§7.1.2 a2):** give an existing tenant CR (e.g. from mock data) → **existing CR choice** card → **Continue for them** (prefilled assisted chat) **or** **Ask them to sign in** (public sign-in path; inquiry marked redirected).
+
+Handoff cases from self-service appear under **Open handoffs** on the same page; open one to continue the inquiry as staff.
+
+---
+
+## Applicant completes an assisted link (§7.1.1 a2)
+
+1. From **/dev/inbox**, open the **complete_application** email → **Open link** (demo) or follow `/inquiry/verify?t=…`.
+2. New applicant session: email is already verified; **basic info review** card lists staff-entered fields — **Edit** optional → **Proceed**.
+3. SMS code **1234** on the verification card.
+4. Upload **Company Profile** and **Brand Profile** → review card → terms → **Submit**.
+5. On the reviewer case page, channel shows **assisted** / **Started by the call centre** (or Guest Service).
+
+---
+
+## Tenant Central (§7.1.2 a1)
+
+1. From **/dev**, open a mock tenant (e.g. signed-in tenant admin).
+2. **Leasing Opportunities** — filter if needed → **Raise inquiry** on a row.
+3. Chat greets by name; one confirm card for prefilled company, property and documents on file; pick brand if several; optional space note.
+4. Signed-in tenants skip email/mobile verification → review → **Submit**.
+5. **My inquiries** lists the new reference and stage.
+
+---
+
+## Public-page existing tenant (§7.1)
+
+1. Open **http://localhost:5173** (applicant chat).
+2. **Sign-in policy:** CR `1010000000` (or another seeded existing tenant) → **sign_in_prompt** card → **Sign in to Tenant Central** (demo copy; no submit on the public chat).
+3. **Allow inquiry policy:** CR on the allow list → prefilled **basic info review** → **Proceed** → complete verification/documents if required → submit.
+
+---
+
+## /dev landing
+
+**http://localhost:5173/dev** (`VITE_DEV_TOOLS=1`): one link per persona (applicant, inbox, each call-centre / Guest Service staff, each mock tenant, each reviewer queue, **Needs attention**), plus:
+
+1. **Advance clock** — +24 h, +48 h, **To morning** (quiet-hours demo).
+2. **Reset demo** — clears sessions, cases, outbox, clock and mock world for a clean rehearsal.
 
 ---
 
@@ -106,13 +163,11 @@ Case chat after submit: no intake re-asks; only open requests (re-upload, contac
 
 | Capability | How to show it | Notes |
 | --- | --- | --- |
-| Stalled review → queue email | Advance clock **+49 h** → case in **Needs attention** | **(after Day 5 backend)** |
-| Escalation → region manager | **+48 h** more on stalled case | **(after Day 5 backend)** |
-| Unanswered request → drafted reminder | Contacts (or re-upload) open **73 h** → reminder item; reviewer assistant draft → **Approve and send** → applicant dev inbox | **(after Day 5 backend)** |
-| Quiet hours (Riyadh) | Reminder due 23:00 held until 08:00 | **(after Day 5 backend)** |
-| `/dev` landing | One link per persona, **Reset demo**, **Advance clock** | **(after Day 5 backend)** |
-
-Until then, treat L5 as specified in [l5-governed-proactivity.md](specs/l5-governed-proactivity.md) and rehearse L3–L4 beats above.
+| Stalled review → queue email | Submit and leave a case in first review → **/dev** → **+48 h** → open **Needs attention** / queue email for `review_stalled` | Threshold 48 h (`review_stall_hours`) |
+| Escalation → region manager | Same case → **+48 h** again → escalation flag to the region manager | 96 h total (`review_escalate_hours`) |
+| Unanswered request → drafted reminder | Contacts (or re-upload) still open → advance to **72 h** unanswered → item on **Needs attention** → open case → **Reviewer assistant** drafts the reminder → **Use** fills the text → **Approve and send** → once in applicant **/dev/inbox** | Tier 2 needs approval |
+| Quiet hours (Riyadh) | Set clock so a reminder would send at **23:00** → held until **08:00** → **To morning** or advance to send | Policy `22:00–08:00 Asia/Riyadh` |
+| `/dev` landing | Personas, **Reset demo**, clock buttons | [Dev landing](#dev-landing) |
 
 ---
 
@@ -128,4 +183,4 @@ Until then, treat L5 as specified in [l5-governed-proactivity.md](specs/l5-gover
 
 ## End-of-day check (Day 5)
 
-Use the checklist in [prompts/breadth/day5-yardi-channels-demo.md](../prompts/breadth/day5-yardi-channels-demo.md) (*End-of-day demo check*). Items marked **(after Day 5 backend)** in this script should flip to **Today** as those PRs land; update this file in the same PR when they do.
+Use the checklist in [prompts/breadth/day5-yardi-channels-demo.md](../prompts/breadth/day5-yardi-channels-demo.md) (*End-of-day demo check*). Record pass/fail in [STATUS.md](./STATUS.md) §0 when the check is done.
