@@ -44,7 +44,7 @@ test.describe('Story A2 Guest Service @scripted', () => {
       await signInReviewer(reviewerPage, reviewer)
       await openReviewerCase(reviewerPage, reference)
       await expect(reviewerPage.getByTestId('case-channel')).toHaveText(
-        'Started by the call centre',
+        'Started by Guest Service',
       )
     } finally {
       await reviewerContext.close()

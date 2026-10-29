@@ -100,7 +100,7 @@ Use **http://localhost:5173/callcentre** or open staff from **/dev** (**Sami Al 
 
 Handoff cases from self-service appear under **Open handoffs** on the same page; open one to continue the inquiry as staff.
 
-**Guest Service:** same staff turns as the call centre; the applicant chat may say the **Guest Service desk** started the inquiry. On the **reviewer case** page the channel still reads **Started by the call centre** (no separate Guest Service label in the console).
+**Guest Service:** same staff turns as the call centre; the applicant chat may say the **Guest Service desk** started the inquiry. On the **reviewer case** page the channel reads **Started by Guest Service**.
 
 ---
 
@@ -110,7 +110,7 @@ Handoff cases from self-service appear under **Open handoffs** on the same page;
 2. New applicant session: email is already verified; **basic info review** card lists staff-entered fields — **Edit** optional → **Proceed**.
 3. SMS code **1234** on the verification card.
 4. Upload **Company Profile** and **Brand Profile** → review card → terms → **Submit**.
-5. On the reviewer case page, channel shows **Started by the call centre** (including Guest Service–raised inquiries).
+5. On the reviewer case page, channel shows **Started by Guest Service** for Guest Service–raised inquiries and **Started by the call centre** for call-centre ones.
 
 ---
 

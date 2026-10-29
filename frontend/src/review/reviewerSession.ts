@@ -37,8 +37,14 @@ export function regionLabel(region: string | null): string {
 }
 
 /** How the inquiry came in (intake channels §3.8); nothing for self-service. */
-export function channelLabel(channel: string | null | undefined): string | null {
-  if (channel === 'assisted') return 'Started by the call centre'
+export function channelLabel(
+  channel: string | null | undefined,
+  staffRole?: string | null,
+): string | null {
+  if (channel === 'assisted') {
+    if (staffRole === 'guest_service') return 'Started by Guest Service'
+    return 'Started by the call centre'
+  }
   if (channel === 'existing_tenant') return 'Existing tenant'
   return null
 }

@@ -9,11 +9,11 @@ from typing import Any
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableConfig
-from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import tools_condition
 
+from app.agent.checkpointer import memory_checkpointer
 from app.agent.guard import after_guard, guard_node
 from app.agent.model import ModelUnavailable, get_chat_model, model_error_kind
 from app.agent.prompts import build_system_message, channel_notes, tenant_account_notes
@@ -97,7 +97,7 @@ def build_agent_graph(
     graph.add_edge("tools", "agent")
     graph.add_conditional_edges("guard", after_guard, {"agent": "agent", "__end__": END})
 
-    return graph.compile(checkpointer=MemorySaver())
+    return graph.compile(checkpointer=memory_checkpointer())
 
 
 def system_for_turn(state: AgentState, config: RunnableConfig) -> SystemMessage:

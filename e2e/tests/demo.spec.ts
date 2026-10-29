@@ -124,7 +124,7 @@ test.describe('Demo script @demo', () => {
         await signInReviewer(reviewerPage, reviewer)
         await openReviewerCase(reviewerPage, reference)
         await expect(reviewerPage.getByTestId('case-channel')).toHaveText(
-          'Started by the call centre',
+          'Started by Guest Service',
         )
         await beat(reviewerPage)
       } finally {

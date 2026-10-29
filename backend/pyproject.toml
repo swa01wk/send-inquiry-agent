@@ -52,6 +52,7 @@ select = ["E", "F", "I", "UP", "B"]
 
 [tool.ruff.lint.per-file-ignores]
 "app/api/**/*.py" = ["B008"]
+"scripts/**/*.py" = ["E402"]  # sys.path is set before importing app.*
 
 [tool.mypy]
 python_version = "3.11"

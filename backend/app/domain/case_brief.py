@@ -86,6 +86,7 @@ class CaseBrief(BaseModel):
     queue_role: str | None
     queue_region: str | None
     channel: str
+    staff_role: str | None = None
     company: str | None
     brand: str | None
     product_line: str | None
@@ -255,7 +256,13 @@ def format_case_brief_text(brief: CaseBrief) -> str:
     return "\n".join(lines)
 
 
-def build_case_brief(case: Case, master: MasterData, *, now: datetime | None = None) -> CaseBrief:
+def build_case_brief(
+    case: Case,
+    master: MasterData,
+    *,
+    now: datetime | None = None,
+    staff_role: str | None = None,
+) -> CaseBrief:
     draft = case.draft
     now = now or clock.now()
     fields: list[BriefField] = []
@@ -325,6 +332,7 @@ def build_case_brief(case: Case, master: MasterData, *, now: datetime | None = N
         queue_role=ROLE_LABELS.get(queue.role) if queue else None,
         queue_region=queue.region if queue else None,
         channel=case.channel,
+        staff_role=staff_role,
         company=draft.fields[FieldKey.COMPANY_NAME].value,
         brand=draft.fields[FieldKey.BRAND_NAME_EN].value,
         product_line=draft.fields[FieldKey.UNIT_TYPE].value,

@@ -30,8 +30,8 @@ if str(_BACKEND_ROOT) not in sys.path:
 import httpx
 from app.agent.case_graph import build_case_graph
 from app.agent.eval_checks import off_topic_offers_continue
-from app.agent.guard import reply_asks_for_brand_name
 from app.agent.graph import build_assisted_graph, build_graph
+from app.agent.guard import reply_asks_for_brand_name
 from app.agent.model import get_chat_model
 from app.config import get_settings
 from app.domain.draft_ops import add_document, new_inquiry_draft, write_fields
@@ -1016,7 +1016,10 @@ SCENARIOS: list[LiveScenario] = [
         "Hesitation on sales category",
         [
             "Skip CR please.",
-            "Acme Trading LLC, King Abdullah Road. Bean Street specialty coffee kiosk at Riyadh Mall A.",
+            (
+                "Acme Trading LLC, King Abdullah Road. "
+                "Bean Street specialty coffee kiosk at Riyadh Mall A."
+            ),
             "Hmm, not sure about the category",
         ],
         _check_hesitation,

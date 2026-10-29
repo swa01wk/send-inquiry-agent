@@ -95,7 +95,7 @@ Every framework capability is shown working in the 5-day demo. **Full** = as the
 | L4 | 10 Outcome tracking | Tracking page, "Waiting for you", My inquiries | 2, 5 | Full | — |
 | L5 | 1 Event and state awareness | Triggers evaluated on every clock tick over case states | 5 | Thin (case states, not the audit stream) | Closing |
 | L5 | 2 Next-best action | "Needs attention" ranked by age against threshold, escalations first | 5 | Full | — |
-| L5 | 3 Proactive preparation | Reviewer assistant drafts the reminder for an unanswered request | 5 | Thin (no deterministic draft checks) | Closing |
+| L5 | 3 Proactive preparation | Reviewer assistant drafts the reminder for an unanswered request; `reminder_check` (#47) | 5 | Thin (deterministic checks in #47) | Closing (stories P1–P6, `proactive` eval) |
 | L5 | 4 Cross-role coordination | Escalation to the region manager after a second threshold | 5 | Full | — |
 | L5 | 5 Process optimisation | Counts of items raised, sent, dismissed by reason | 5 | Thin (no insight report) | Closing |
 | L5 | 6 Bounded automation | Tiers: internal flags auto; applicant reminders need approval | 5 | Full | — |
@@ -109,7 +109,7 @@ Every framework capability is shown working in the 5-day demo. **Full** = as the
 - **Store.** The in-memory `SessionStore` writes a JSON snapshot of every inquiry (draft, cards, case data, audit log v0) to `DATA_DIR` after each turn and reloads it at start-up, so a restart loses nothing in a demo. New fields go where M0 §5.1, L4 §3.1 and intake-channels §3.8 put them on `Inquiry`, so step 13 swaps in Postgres without changing callers.
 - **Audit log v0.** One `AuditLog.record(inquiry_id, type, actor, payload)` with the M0 §8 event types and its redaction allowlist from Day 2; step 15 moves it to `inquiry_events` and adds the tests.
 - **Thin gateway.** Every mock call goes through one wrapper with a timeout and the four error kinds from M0 §7.1; step 14 adds retries, audit of latency and reconciled submit.
-- **Proactive engine.** Triggers read case states on each tick of the `Clock`; step 29 moves them onto the audit stream. Reminder text comes from the reviewer assistant; step 30 adds the deterministic draft checks.
+- **Proactive engine.** Triggers read case states on each tick of the `Clock`; step 29 moves them onto the audit stream. Reminder text comes from the reviewer assistant; #47 added `reminder_check` (names open requests, no promises/timelines/reviewer names, standard fallback).
 - **State machine.** It is the pure `transition()` from M0 §6 from Day 4; step 14 adds the gateway around it.
 - **One agent, several modes.** Assisted and existing-tenant intake are prompt variants and tool allowlists of the same intake agent, so step 16's registry registers them as configuration, not copies.
 - **One prefill function.** `prefill_from_tenant` serves the executive, the signed-in tenant and the public-page `allow_inquiry` path.
@@ -149,7 +149,7 @@ The step prompts (`prompts/11c`–`31`) remain the full definition of every piec
 | 27 Reviewer assistant | Day 5 | Suggestion audit, guard, `reviewer` eval group | B2 |
 | 28 Yardi handover, L4 gate | Day 5 handover, story T1 | Retries and operations flag, L4 KPIs, stories T1–T10; **closes L4 and C5** | B2 |
 | 29 Event engine and policy | Day 5: clock, notification policy (tiers, quiet hours, once per period), attention API | Engine on the audit stream, throttles, opt-out, audit of every decision, migration | B3 |
-| 30 Triggers and attention | Day 5: stalled review, escalation, unanswered-request triggers; "Needs attention"; reminders drafted by the reviewer assistant | Abandoned-draft trigger, late-duplicate trigger, deterministic draft checks, stories P1–P6, `proactive` eval group | B3 |
+| 30 Triggers and attention | Day 5: stalled review, escalation, unanswered-request triggers; "Needs attention"; reminders drafted by the reviewer assistant; `reminder_check` (#47) | Abandoned-draft trigger, late-duplicate trigger, stories P1–P6, `proactive` eval group | B3 |
 | 31 Insights, L5 gate | Day 5: accepted and dismissed counts | Insight report, L5 KPIs with proactivity on and off; **closes L5** | B3 |
 
 **Running a step prompt after the 5 days.** In Part B, start each step in Cursor with:
@@ -166,6 +166,10 @@ followed by the step prompt itself.
 
 | Item | Step | Track |
 | --- | --- | --- |
+| LangGraph checkpoint msgpack allowlist (`Source`, `InquiryDraft`, `DocType`) | 13 | Swaroop |
+| `make check-be` includes `scripts/` (ruff clean) | 11d | Both |
+| Guest Service channel label on the reviewer console | 21c, 24 | Swaroop |
+| Live eval **Case: contacts bundle** — contacts card not re-shown (case agent; track in Sprint 1) | 25 | Swaroop |
 | Rest of the test harness | 11d | Both |
 | Parity goldens (including an assisted and an existing-tenant transcript), frontend fixtures, live-eval baseline | 12 | Claude (goldens), Swaroop (live baseline) |
 | Postgres store, lease, checkpointer, bounded history, retention | 13 | Claude |
@@ -205,7 +209,7 @@ About 12 working days, with a thin L5 already running from Day 5.
 | Item | Step | Track |
 | --- | --- | --- |
 | Event engine on the audit stream, throttles, opt-out, audit of every policy decision, `proactive_items` migration | 29 | Claude |
-| Abandoned-draft and late-duplicate triggers, deterministic checks on drafted reminders, stories P1–P6, `proactive` eval group | 30 | Both |
+| Abandoned-draft and late-duplicate triggers, stories P1–P6, `proactive` eval group | 30 | Both |
 | Insight report, L5 KPIs, the L5 gate run | 31 | Both |
 | Production readiness: `EMAIL_LINK_DEMO` off by default, deployment notes, real adapters for any Cenomi system that has given access | — | Both |
 

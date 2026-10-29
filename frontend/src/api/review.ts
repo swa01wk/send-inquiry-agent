@@ -33,6 +33,7 @@ export interface QueueItem {
   follow_on_of: string | null
   needs_operations: boolean
   channel?: string
+  staff_role?: string | null
 }
 
 export interface BriefField {
@@ -94,6 +95,7 @@ export interface CaseBrief {
   queue_role: string | null
   queue_region: string | null
   channel: string
+  staff_role?: string | null
   company: string | null
   brand: string | null
   product_line: string | null
