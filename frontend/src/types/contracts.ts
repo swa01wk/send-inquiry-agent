@@ -16,6 +16,7 @@ export type CardType =
   | 'case_status'
   | 'contacts'
   | 'sales_data_upload'
+  | 'reviewer_suggestion'
 
 export type StepState = 'done' | 'current' | 'upcoming'
 
@@ -131,6 +132,7 @@ export interface CaseStatusPayload {
   status: string
   stage: 'submitted' | 'first_review' | 'second_review' | 'outcome'
   stage_label: string
+  status_headline: string | null
   owner_role: string
   last_change: string
   open_requests: CaseRequestRow[]
@@ -168,6 +170,21 @@ export interface SalesDataPayload {
   size_bytes: number | null
   allowed_extensions: string[]
   max_mb: number
+}
+
+/** Reviewer console assistant — Use prefills action forms (never submits). */
+export interface ReviewerSuggestionPayload {
+  kind:
+    | 'yardi_company'
+    | 'yardi_brand'
+    | 'reupload_remarks'
+    | 'rejection_remarks'
+    | 'contacts_request'
+    | 'tenant_reminder'
+  action:
+    'request_reupload' | 'reject' | 'request_contacts' | 'relink_company' | 'relink_brand' | ''
+  payload: Record<string, unknown>
+  text: string
 }
 
 export interface ReviewGroupRow {
@@ -302,6 +319,12 @@ export type UiCard =
       message_id: string | null
       payload: SalesDataPayload
     }
+  | {
+      card_id: string
+      card_type: 'reviewer_suggestion'
+      message_id: string | null
+      payload: ReviewerSuggestionPayload
+    }
 
 export type FormModeStep =
   'existing_account' | 'cr' | 'details' | 'verification' | 'documents' | 'review' | 'submitted'
@@ -386,7 +409,8 @@ export interface InquiryStatusStage {
 
 export interface InquiryStatusResponse {
   reference: string
-  status: 'under_review'
+  status: 'under_review' | 'approved' | 'sent_to_yardi' | 'rejected'
+  summary: string
   submitted_at: string
   steps: InquiryStatusStage[]
   stages: InquiryStatusStage[]

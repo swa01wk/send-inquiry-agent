@@ -73,10 +73,7 @@ export function InquiryStatusPage() {
               <span className={styles.refLabel}>Reference</span>
               <span className={styles.refValue}>{status.reference}</span>
             </div>
-            <p className={styles.summary}>
-              Your inquiry was submitted and is waiting for review.
-              {status.owner_role ? ` Current owner: ${status.owner_role}.` : ''}
-            </p>
+            <p className={styles.summary}>{status.summary}</p>
             {lastChangeLabel ? (
               <p className={styles.meta}>Last update · {lastChangeLabel}</p>
             ) : null}

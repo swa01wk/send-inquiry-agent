@@ -13,7 +13,7 @@ from app.agent.state import AgentState
 from app.api.case_cards import _STAGE_LABELS
 from app.domain.fields import document_label
 from app.policy.config import get_policy
-from app.services.status import REQUEST_LABELS, _from_case
+from app.services.status import REQUEST_LABELS, _from_case, final_approval_label
 from app.workflow.models import Case, TenantContact
 
 _PROMPT_PATH = Path(__file__).resolve().parent / "case_prompt.md"
@@ -77,12 +77,16 @@ def build_case_system_message(state: AgentState, runtime: AgentRuntime) -> Syste
             line += f": {request.remarks}"
             open_lines.append(line)
         open_text = "\n".join(open_lines) if open_lines else "  - none"
-        status_block = (
-            f"Reference {case.reference}\n"
-            f"Stage: {stage_label}\n"
-            f"Owner role: {status.owner_role}\n"
-            f"Open requests:\n{open_text}"
-        )
+        lines = [
+            f"Reference {case.reference}",
+            f"Status: {status.status}",
+            f"Stage: {stage_label}",
+            f"Owner role: {status.owner_role}",
+        ]
+        if headline := final_approval_label(status.status):
+            lines.append(f"Outcome wording: {headline}")
+        lines.append(f"Open requests:\n{open_text}")
+        status_block = "\n".join(lines)
     contacts = state.get("contacts_draft") or []
     content = (
         f"{_static_prompt()}\n\n"

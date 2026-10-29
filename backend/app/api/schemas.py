@@ -22,6 +22,7 @@ CardType = Literal[
     "case_status",
     "contacts",
     "sales_data_upload",
+    "reviewer_suggestion",
 ]
 
 StepState = Literal["done", "current", "upcoming"]
@@ -220,6 +221,7 @@ class CaseStatusPayload(BaseModel):
     status: str
     stage: str  # submitted | first_review | second_review | outcome
     stage_label: str
+    status_headline: str | None = None
     owner_role: str
     last_change: datetime
     open_requests: list[CaseRequestRow] = Field(default_factory=list)
@@ -325,6 +327,7 @@ class InquiryStatusStep(BaseModel):
 class InquiryStatusResponse(BaseModel):
     reference: str
     status: Literal["under_review", "approved", "sent_to_yardi", "rejected"]
+    summary: str
     submitted_at: datetime
     steps: list[InquiryStatusStep]
     # Day 2 (L3 §3.4): the stages, who holds the inquiry (a role), what waits on the applicant.

@@ -20,7 +20,7 @@ export function CaseStatusCard({ payload }: CaseStatusCardProps) {
   return (
     <div className={`${shared.shell} ${styles.shell}`} data-testid="case-status-card">
       <div className={styles.ref}>Reference · {payload.reference}</div>
-      <h3 className={styles.stage}>{payload.stage_label}</h3>
+      <h3 className={styles.stage}>{payload.status_headline ?? payload.stage_label}</h3>
       <p className={styles.meta}>
         {payload.owner_role ? `Current owner · ${payload.owner_role}. ` : null}
         Last change · {lastChange}
@@ -46,7 +46,7 @@ export function CaseStatusCard({ payload }: CaseStatusCardProps) {
               payload.outcome === 'approved' ? styles.outcomeApproved : styles.outcomeRejected
             }
           >
-            {payload.outcome === 'approved' ? 'Approved' : 'Rejected'}
+            {payload.outcome === 'approved' ? (payload.status_headline ?? 'Approved') : 'Rejected'}
           </p>
           {payload.outcome_remarks ? (
             <p className={styles.requestRemarks}>{payload.outcome_remarks}</p>

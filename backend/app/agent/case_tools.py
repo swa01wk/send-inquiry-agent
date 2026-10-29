@@ -24,7 +24,7 @@ from app.api.case_cards import (
 from app.api.schemas import UiCard
 from app.domain.fields import document_label
 from app.policy.config import get_policy
-from app.services.status import REQUEST_LABELS, _from_case
+from app.services.status import REQUEST_LABELS, _from_case, final_approval_label
 from app.workflow.contacts import write_contacts
 from app.workflow.models import Case, TenantContact
 
@@ -75,8 +75,8 @@ def _status_summary(case: Case) -> str:
         if decision and decision.remarks:
             parts.append(f"Outcome remarks: {decision.remarks}")
         parts.append(f"After rejection: {get_policy().after_rejection}")
-    elif status.status in ("approved", "sent_to_yardi"):
-        parts.append(f"Outcome: {status.status}.")
+    elif label := final_approval_label(status.status):
+        parts.append(f"Outcome: {label}")
     open_any = False
     for request in case.requests:
         if request.status != "open":

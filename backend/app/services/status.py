@@ -52,6 +52,27 @@ REQUEST_LABELS: dict[str, str] = {
     "sales_data": "Upload estimated sales data",
 }
 
+# Wording after final approval (L4 §3.8): only promise a proposal once Yardi has acknowledged.
+FINAL_APPROVAL_LABELS: dict[Literal["approved", "sent_to_yardi"], str] = {
+    "approved": "Approved — we're passing your details to the leasing team",
+    "sent_to_yardi": "Approved — your details are with the leasing team for a proposal",
+}
+
+
+def final_approval_label(status: StatusValue) -> str | None:
+    if status in FINAL_APPROVAL_LABELS:
+        return FINAL_APPROVAL_LABELS[status]
+    return None
+
+
+def inquiry_status_summary(inquiry: InquiryStatus) -> str:
+    if label := final_approval_label(inquiry.status):
+        return label
+    if inquiry.status == "rejected":
+        return "Your inquiry was not approved."
+    owner = f" Current owner: {inquiry.owner_role}." if inquiry.owner_role else ""
+    return f"Your inquiry was submitted and is waiting for review.{owner}"
+
 
 def _from_case(case: Case) -> InquiryStatus:
     stage: StageKey

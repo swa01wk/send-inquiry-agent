@@ -31,6 +31,7 @@ async def test_inquiry_status_known(app) -> None:
     body = response.json()
     assert body["reference"] == reference
     assert body["status"] == "under_review"
+    assert "waiting for review" in body["summary"]
     assert len(body["steps"]) == 3
     assert body["steps"][0]["state"] == "done"
     assert body["steps"][1]["state"] == "current"

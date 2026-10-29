@@ -8,6 +8,7 @@ const sample: CaseStatusPayload = {
   status: 'under_review',
   stage: 'first_review',
   stage_label: 'First review',
+  status_headline: null,
   owner_role: 'Regional Leasing Manager (Store)',
   last_change: '2026-10-28T09:00:00.000Z',
   open_requests: [
@@ -52,5 +53,33 @@ describe('CaseStatusCard', () => {
 
     expect(screen.getByText('Rejected')).toBeInTheDocument()
     expect(screen.getByText('Does not fit the mall mix.')).toBeInTheDocument()
+  })
+
+  it.each([
+    {
+      status: 'approved' as const,
+      headline: "Approved — we're passing your details to the leasing team",
+    },
+    {
+      status: 'sent_to_yardi' as const,
+      headline: 'Approved — your details are with the leasing team for a proposal',
+    },
+  ])('shows final approval headline when status is $status', ({ status, headline }) => {
+    render(
+      <CaseStatusCard
+        payload={{
+          ...sample,
+          status,
+          stage: 'outcome',
+          stage_label: 'Outcome',
+          status_headline: headline,
+          open_requests: [],
+          outcome: 'approved',
+          next_step: 'Nothing is needed from you right now.',
+        }}
+      />,
+    )
+
+    expect(screen.getAllByText(headline).length).toBeGreaterThanOrEqual(1)
   })
 })

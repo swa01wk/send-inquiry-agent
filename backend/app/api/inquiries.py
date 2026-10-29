@@ -19,7 +19,7 @@ from app.gateway import GatewayError
 from app.security import tokens
 from app.services.container import ServiceContainer
 from app.services.errors import ReferenceNotFoundError
-from app.services.status import STAGES
+from app.services.status import STAGES, inquiry_status_summary
 
 router = APIRouter(prefix="/api/inquiries", tags=["inquiries"])
 
@@ -67,6 +67,7 @@ async def get_inquiry_status(
     return InquiryStatusResponse(
         reference=inquiry.reference,
         status=inquiry.status,
+        summary=inquiry_status_summary(inquiry),
         submitted_at=inquiry.submitted_at,
         steps=steps,
         stages=stages,

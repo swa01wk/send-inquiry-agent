@@ -184,6 +184,13 @@ export class InquiryPage {
     await this.waitForTurnDone(doneBefore)
   }
 
+  async submitContacts() {
+    const card = this.cards('contacts')
+    const doneBefore = await readDoneEventCount(this.page)
+    await card.getByRole('button', { name: 'Send contacts' }).click()
+    await this.waitForTurnDone(doneBefore)
+  }
+
   async expectUploadError(docLabel: string, message: string) {
     const card = this.page.getByTestId('document-checklist-card')
     const row = card.locator('div').filter({ hasText: docLabel }).first()
@@ -277,6 +284,7 @@ export class InquiryPage {
     if (type === 'success') return this.page.getByTestId('success-card')
     if (type === 'form_mode') return this.page.getByTestId('form-mode-card')
     if (type === 'case_status') return this.page.getByTestId('case-status-card')
+    if (type === 'contacts') return this.page.getByTestId('contacts-card')
     return this.page.locator(`[data-card-type="${type}"]`)
   }
 

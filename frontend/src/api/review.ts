@@ -1,4 +1,7 @@
+import { fetchEventSource } from '@microsoft/fetch-event-source'
 import { API_BASE } from '../config'
+import type { SseEvent } from '../types/contracts'
+import { StreamAbortError } from './stream'
 
 /** Reviewer console API (L4 §3.3). Every call carries the mock reviewer identity. */
 
@@ -243,6 +246,78 @@ export async function listYardiBrands(
 }
 
 /** Download needs the reviewer header, so it goes through fetch and a blob URL. */
+function parseReviewerSse(eventType: string, data: string): SseEvent | null {
+  if (!eventType || !data) return null
+  try {
+    const parsed = JSON.parse(data) as SseEvent['data']
+    return { event: eventType, data: parsed } as SseEvent
+  } catch {
+    return null
+  }
+}
+
+export type ReviewerStreamOutcome = 'ok' | 'error'
+
+/** SSE over POST for the reviewer assistant (same events as applicant chat). */
+export async function streamReviewerAssistant(
+  reviewerId: string,
+  reference: string,
+  text: string,
+  onEvent: (event: SseEvent) => void,
+  signal: AbortSignal,
+): Promise<ReviewerStreamOutcome> {
+  let sawError = false
+  const path = `/api/review/cases/${encodeURIComponent(reference)}/assistant`
+
+  await fetchEventSource(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'text/event-stream',
+      'X-Reviewer-Id': reviewerId,
+    },
+    body: JSON.stringify({ text }),
+    signal,
+    openWhenHidden: true,
+    async onopen(res) {
+      if (res.ok && res.headers.get('content-type')?.includes('text/event-stream')) {
+        return
+      }
+      if (res.status === 401) {
+        throw Object.assign(new Error('Unknown reviewer'), { code: 'unknown_reviewer' })
+      }
+      if (res.status === 404) {
+        throw Object.assign(new Error('Case not found'), { code: 'case_not_found' })
+      }
+      let code = 'stream_failed'
+      let message = 'Stream failed'
+      try {
+        const errBody = (await res.json()) as { error?: { code: string; message: string } }
+        if (errBody.error) {
+          code = errBody.error.code
+          message = errBody.error.message
+        }
+      } catch {
+        /* ignore */
+      }
+      throw Object.assign(new Error(message), { code })
+    },
+    onmessage(msg) {
+      const event = parseReviewerSse(msg.event, msg.data)
+      if (event) {
+        if (event.event === 'error') sawError = true
+        onEvent(event)
+      }
+    },
+    onerror(err) {
+      if (signal.aborted) throw new StreamAbortError()
+      throw err
+    },
+  })
+
+  return sawError ? 'error' : 'ok'
+}
+
 export async function downloadDocument(
   reviewerId: string,
   reference: string,
