@@ -28,7 +28,7 @@ jobs:
       # Same as `make check-be`, one step each so a failure names its tool; mypy errors are
       # also printed as annotations.
       - name: Ruff
-        run: cd backend && uv run ruff check app tests && uv run ruff format --check app tests
+        run: cd backend && uv run ruff check app tests scripts && uv run ruff format --check app tests scripts
       - name: Mypy
         if: success() || failure()
         run: |
