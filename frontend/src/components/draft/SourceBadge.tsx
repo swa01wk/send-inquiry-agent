@@ -21,6 +21,7 @@ function badgeMeta(
       ? { text: 'Suggested · confirmed', variant: 'derived' }
       : { text: 'Suggested · confirm', variant: 'pending' }
   }
+  if (source === 'staff') return { text: 'From the call centre', variant: 'neutral' }
   return { text: 'Default', variant: 'defaultVariant' }
 }
 

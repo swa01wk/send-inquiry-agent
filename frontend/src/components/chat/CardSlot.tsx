@@ -6,7 +6,11 @@ import { ContactsCard } from '../cards/ContactsCard'
 import { DocumentChecklistCard } from '../cards/DocumentChecklistCard'
 import { SalesDataUploadCard } from '../cards/SalesDataUploadCard'
 import { FormModeCard } from '../cards/FormModeCard'
+import { BasicInfoReviewCard } from '../cards/BasicInfoReviewCard'
+import { ExistingCrChoiceCard } from '../cards/ExistingCrChoiceCard'
 import { HandoffCard } from '../cards/HandoffCard'
+import { SendLinkCard } from '../cards/SendLinkCard'
+import { SignInPromptCard } from '../cards/SignInPromptCard'
 import { MallPickerCard } from '../cards/MallPickerCard'
 import { ReviewCard } from '../cards/ReviewCard'
 import { SuccessCard } from '../cards/SuccessCard'
@@ -98,6 +102,26 @@ export function CardSlot({ card, actions, focusOnMount = false }: CardSlotProps)
         />
       ) : null}
       {card.card_type === 'handoff' ? <HandoffCard payload={card.payload} /> : null}
+      {card.card_type === 'basic_info_review' ? (
+        <BasicInfoReviewCard
+          payload={card.payload}
+          onEditField={(key, value) => actions.sendAction('edit_field', { key, value })}
+          onProceed={() => actions.sendAction('proceed_basic_info', {})}
+        />
+      ) : null}
+      {card.card_type === 'send_link' ? (
+        <SendLinkCard
+          payload={card.payload}
+          onSendLink={() => actions.sendAction('send_application_link', {})}
+        />
+      ) : null}
+      {card.card_type === 'existing_cr_choice' ? (
+        <ExistingCrChoiceCard
+          payload={card.payload}
+          onChoose={(choice) => actions.sendAction('existing_cr_choice', { choice })}
+        />
+      ) : null}
+      {card.card_type === 'sign_in_prompt' ? <SignInPromptCard payload={card.payload} /> : null}
       {card.card_type === 'quick_replies' ? null : null}
     </div>
   )

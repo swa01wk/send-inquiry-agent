@@ -1,0 +1,26 @@
+.layout {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.headline {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+  line-height: 1.45;
+}
+
+.doneLine {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-success-fg);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}

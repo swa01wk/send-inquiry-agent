@@ -20,6 +20,7 @@ const DOCUMENT_ROWS: DraftDocumentRow[] = [
     uploaded: false,
     file_name: null,
     size_bytes: null,
+    on_file: false,
   },
   {
     doc_type: 'brand_profile',
@@ -28,6 +29,7 @@ const DOCUMENT_ROWS: DraftDocumentRow[] = [
     uploaded: false,
     file_name: null,
     size_bytes: null,
+    on_file: false,
   },
   {
     doc_type: 'cr_certificate',
@@ -36,6 +38,7 @@ const DOCUMENT_ROWS: DraftDocumentRow[] = [
     uploaded: false,
     file_name: null,
     size_bytes: null,
+    on_file: false,
   },
   {
     doc_type: 'vat_certificate',
@@ -44,6 +47,7 @@ const DOCUMENT_ROWS: DraftDocumentRow[] = [
     uploaded: false,
     file_name: null,
     size_bytes: null,
+    on_file: false,
   },
   {
     doc_type: 'national_id',
@@ -52,6 +56,7 @@ const DOCUMENT_ROWS: DraftDocumentRow[] = [
     uploaded: false,
     file_name: null,
     size_bytes: null,
+    on_file: false,
   },
   {
     doc_type: 'national_address',
@@ -60,6 +65,7 @@ const DOCUMENT_ROWS: DraftDocumentRow[] = [
     uploaded: false,
     file_name: null,
     size_bytes: null,
+    on_file: false,
   },
   {
     doc_type: 'articles_of_association',
@@ -68,6 +74,7 @@ const DOCUMENT_ROWS: DraftDocumentRow[] = [
     uploaded: false,
     file_name: null,
     size_bytes: null,
+    on_file: false,
   },
 ]
 

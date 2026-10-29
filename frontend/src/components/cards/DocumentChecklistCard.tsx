@@ -123,9 +123,11 @@ export function DocumentChecklistCard({
                 </span>
               </div>
               <span className={doc.uploaded ? styles.statusOk : styles.statusMuted}>
-                {doc.uploaded && doc.file_name
-                  ? `Uploaded · ${doc.file_name}${doc.size_bytes != null ? ` · ${formatFileSize(doc.size_bytes)}` : ''}`
-                  : 'Not uploaded'}
+                {doc.on_file
+                  ? 'On file'
+                  : doc.uploaded && doc.file_name
+                    ? `Uploaded · ${doc.file_name}${doc.size_bytes != null ? ` · ${formatFileSize(doc.size_bytes)}` : ''}`
+                    : 'Not uploaded'}
               </span>
               {!isReupload && numberRow ? (
                 <label className={styles.numberField}>
@@ -162,13 +164,23 @@ export function DocumentChecklistCard({
               {uploading ? (
                 <span className={styles.spinner} aria-label="Uploading" />
               ) : doc.uploaded ? (
-                <button
-                  type="button"
-                  className={shared.secondaryBtn}
-                  onClick={() => void onRemove(doc.doc_type)}
-                >
-                  Remove
-                </button>
+                doc.on_file ? (
+                  <button
+                    type="button"
+                    className={shared.secondaryBtn}
+                    onClick={() => openPicker(doc.doc_type)}
+                  >
+                    Replace
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className={shared.secondaryBtn}
+                    onClick={() => void onRemove(doc.doc_type)}
+                  >
+                    Remove
+                  </button>
+                )
               ) : (
                 <button
                   type="button"

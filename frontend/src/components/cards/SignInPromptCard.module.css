@@ -1,0 +1,21 @@
+.layout {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.message {
+  margin: 0;
+  font-size: 15px;
+  color: var(--color-text);
+  line-height: 1.45;
+}
+
+.signInBtn {
+  composes: primaryBtnFull from './cards.module.css';
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  box-sizing: border-box;
+}

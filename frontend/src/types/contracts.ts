@@ -1,4 +1,4 @@
-export type Source = 'user' | 'derived' | 'verified' | 'default'
+export type Source = 'user' | 'derived' | 'verified' | 'staff' | 'default'
 
 export type Phase =
   'existing_account' | 'submitted' | 'gate' | 'collecting' | 'verifying' | 'documents' | 'review'
@@ -17,6 +17,10 @@ export type CardType =
   | 'contacts'
   | 'sales_data_upload'
   | 'reviewer_suggestion'
+  | 'basic_info_review'
+  | 'send_link'
+  | 'existing_cr_choice'
+  | 'sign_in_prompt'
 
 export type StepState = 'done' | 'current' | 'upcoming'
 
@@ -42,6 +46,49 @@ export interface ConfirmFieldsPayload {
   title: string
   fields: ConfirmFieldRow[]
   all_confirmed: boolean
+}
+
+export interface BasicInfoRow {
+  key: string
+  label: string
+  display: string | null
+  source: Source | null
+  confirmed: boolean
+  required: boolean
+}
+
+export interface BasicInfoReviewPayload {
+  title: string
+  started_by: string | null
+  rows: BasicInfoRow[]
+  missing: string[]
+  can_proceed: boolean
+  proceeded: boolean
+}
+
+export interface SendLinkPayload {
+  email_masked: string | null
+  can_send: boolean
+  missing: string[]
+  sent_to_masked?: string | null
+}
+
+export interface ExistingCrChoiceOption {
+  value: 'sign_in' | 'continue'
+  label: string
+}
+
+export interface ExistingCrChoicePayload {
+  cr_number: string
+  company_name: string | null
+  options: ExistingCrChoiceOption[]
+  chosen?: 'sign_in' | 'continue' | null
+}
+
+export interface SignInPromptPayload {
+  message: string
+  sign_in_url: string
+  button_label: string
 }
 
 export interface MallPickerCity {
@@ -96,6 +143,7 @@ export interface DraftDocumentRow {
   uploaded: boolean
   file_name: string | null
   size_bytes: number | null
+  on_file: boolean
 }
 
 export interface DocumentNumberRow {
@@ -324,6 +372,30 @@ export type UiCard =
       card_type: 'reviewer_suggestion'
       message_id: string | null
       payload: ReviewerSuggestionPayload
+    }
+  | {
+      card_id: string
+      card_type: 'basic_info_review'
+      message_id: string | null
+      payload: BasicInfoReviewPayload
+    }
+  | {
+      card_id: string
+      card_type: 'send_link'
+      message_id: string | null
+      payload: SendLinkPayload
+    }
+  | {
+      card_id: string
+      card_type: 'existing_cr_choice'
+      message_id: string | null
+      payload: ExistingCrChoicePayload
+    }
+  | {
+      card_id: string
+      card_type: 'sign_in_prompt'
+      message_id: string | null
+      payload: SignInPromptPayload
     }
 
 export type FormModeStep =
