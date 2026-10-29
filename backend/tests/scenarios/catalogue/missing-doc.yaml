@@ -1,0 +1,13 @@
+id: missing-doc
+layers:
+- agent_det
+model_steps:
+- content: ''
+  tool_calls:
+  - name: show_review
+    args: {}
+    id: s1
+    type: tool_call
+- content: Please upload your Company Profile first — I'll show review once that's
+    done.
+title: Missing mandatory doc

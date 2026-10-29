@@ -1,0 +1,46 @@
+collect:
+- &id001
+  key: brand_name_en
+  value: Bean Street
+  source: user
+- &id002
+  key: brand_name_ar
+  value: بين ستريت
+  source: derived
+- &id003
+  key: unit_type
+  value: specialty
+  source: derived
+- &id004
+  key: sales_category
+  value: fnb_cafe
+  source: derived
+- key: malls
+  value:
+  - riyadh-mall-a
+  source: user
+collect_no_malls:
+- *id001
+- *id002
+- *id003
+- *id004
+contact:
+- key: first_name
+  value: Sara
+  source: user
+- key: last_name
+  value: Ali
+  source: user
+- key: email
+  value: sara@beanstreet.example
+  source: user
+- key: contact_number
+  value: '0501234567'
+  source: user
+company:
+- key: company_name
+  value: Acme Trading LLC
+  source: user
+- key: company_address
+  value: King Abdullah Road, Riyadh
+  source: user

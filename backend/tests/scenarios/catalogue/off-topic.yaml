@@ -1,0 +1,7 @@
+id: off-topic
+layers:
+- agent_det
+model_steps:
+- content: I'm here to help with leasing inquiries at Cenomi — shall we continue with
+    your brand details?
+title: Off topic

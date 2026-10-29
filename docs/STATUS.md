@@ -59,7 +59,7 @@ Each step is one Cursor prompt in `prompts/` and normally one PR.
 | --- | --- | --- | --- | --- | --- | --- |
 | 00–11, 11b | `00`–`11b` | v1 POC, POC assumptions, UI fixes, Playwright suites | — | ✅ | #1–#13 | Live e2e: desktop 14/14; mobile test 14 fix in #13, needs a live run to confirm |
 | 11c | `11c-pre-baseline-fixes.md` | Confirm only what was shown; turn on documents complete; Office removed; document numbers on the documents card; landline and `written_keys` fixes | P1–P5 | ✅ | #25, #26 | #26: a corrected document number clears its card error |
-| 11d | `11d-test-harness.md` | Six test layers with one command each, frontend Playwright, eval repeats and invariants, scenario catalogue, `ci.yml`, PR template | — | 🟡 | Day 1 harness PR | Day 1: Make targets, `ci.yml`, PR template. Left for B1: frontend-only Playwright, scenario catalogue, eval repeats and invariants, `@flaky`, prompt snapshot, coverage, `scripts/` linting, `eval-live` CI job |
+| 11d | `11d-test-harness.md` | Six test layers with one command each, frontend Playwright, eval repeats and invariants, scenario catalogue, `ci.yml`, PR template | — | 🟡 | Day 1 harness PR | Day 1: Make targets, `ci.yml`, PR template. B1 slice (items 2, 5, 8): markers, coverage, `mypy` on `scripts/`, prompt snapshots, scenario catalogue. Left: frontend-only Playwright, eval repeats and invariants, `@flaky`, `eval-live` CI job |
 | 12 | `12-baseline-parity.md` | Golden transcripts, `make golden`, frontend fixtures from goldens, live-eval baseline | G1 | ⬜ | | |
 | 13 | `13-durable-state.md` | Inquiry store (memory, Postgres), turn lease, checkpointer, bounded history, retention | G2 | 🟡 | Day 2 backend PR | Day 2: JSON snapshots of sessions and the simulated systems in `DATA_DIR`, history restored after restart. Left: Postgres store, turn lease, checkpointer, retention |
 | 14 | `14-workflow-gateway-submit.md` | State machine (L4 rows defined), tool gateway, idempotent submit | G3, G5, G6 | 🟡 | Day 2 backend PR | Day 2: thin gateway (timeouts, four error kinds, faults, audited calls), submit once with an idempotency key. Left: retries, reconciliation (`submit_pending` follow-up), `InquiryPayload`, state machine (Day 4) |
@@ -189,13 +189,13 @@ What each layer proves and when it runs: [`docs/specs/testing-strategy.md`](spec
 
 | Layer | What it covers | Command | In CI | Status today | Notes |
 | --- | --- | --- | --- | --- | --- |
-| BE | ruff, `mypy --strict`; pytest for domain, services, API, workflow, audit, contracts | `make check-be`, `make test-be` | Every PR (`ci.yml` `backend`) | 🟡 | In CI from Day 1; `scripts/` in `check-be` (Sprint 1 PR 1); no coverage report yet (11d, B1) |
+| BE | ruff, `mypy --strict` on `app` and `scripts/`; pytest with markers (default excludes `sandbox`, `live`); coverage on every run | `make check-be`, `make test-be` | Every PR (`ci.yml` `backend`) | 🟡 | Markers, coverage floors and `scripts/` mypy in 11d B1 slice |
 | FE | ESLint, `tsc`, Prettier; Vitest; Playwright against the frontend alone (`VITE_MOCK=1`) | `make check-fe`, `make test-fe`, `make e2e-fe` | Every PR (`ci.yml` `frontend`; `e2e-fe` locally) | 🟡 | ESLint, `tsc`, Prettier and Vitest in CI from Day 1; frontend-only Playwright (`e2e-fe`) doesn't exist yet (11d, B1) |
 | INT | Playwright, real frontend + backend, scripted agent, mocks | `make e2e-int` (`make e2e`) | Every PR, locally (CI on demand: `e2e.yml`, suite `scripted`) | ✅ | `@scripted` suites, desktop and mobile. Taken out of per-PR CI on 27 Oct: installing browsers took most of each run |
 | DEMO | Full demo-script walkthrough (Day 5 end-of-day check); desktop only | `make e2e-demo`, `make e2e-demo-headed`, `make e2e-demo-step` | Local rehearsal (not part of `e2e-int`) | ✅ | `@demo` suite in `e2e/tests/demo.spec.ts`; same order as [demo-script.md](./demo-script.md) §A3 automation |
-| AGENT-DET | Tools, guard, actions, bundles, prompt snapshot, routing, allowlists, scenarios, parity goldens | `make test-agent` | Every PR (inside `test-be`) | 🟡 | `make test-agent` runs `tests/agent`, `tests/scenarios` and the e2e-script tests (Day 1); markers, prompt snapshot and goldens in 11d and 12 |
+| AGENT-DET | Tools, guard, actions, bundles, prompt snapshot, routing, allowlists, scenarios, parity goldens | `make test-agent` (`pytest -m agent`) | Every PR (inside `test-be`) | 🟡 | Prompt snapshots and scenario catalogue in 11d B1 slice; parity goldens in step 12 |
 | AGENT-LIVE | `eval_live.py` scenario groups, ×3 repeats, invariants I1–I7, score vs baseline | `make eval-live` | `workflow_dispatch`; nightly opt-in | 🟡 | Script exists (intake scenarios); no repeats, JSON output or invariant checks yet (11d); baseline in 12 |
 | E2E-LIVE | Playwright, real frontend + backend + model; personas and live stories | `make e2e-live` | `workflow_dispatch`; nightly opt-in | 🟡 | `@live` personas: desktop 14/14, mobile 13/14 before #13; invariant checks in 11d |
 
-Coverage (from 11d): `app/domain` — · `app/agent` — · `app` — (floors 95% / 85% / 85%).
+Coverage (from 11d): `app/domain` **93%** (target floor 95%) · `app/agent` **89%** (floor 85%, enforced) · `app` **92%** (floor 85%, enforced).
 

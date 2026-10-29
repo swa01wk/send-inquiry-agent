@@ -18,6 +18,7 @@ from app.main import create_app
 from app.services.container import build_services
 from app.sessions import Session, SessionStore
 from httpx import ASGITransport, AsyncClient
+
 from tests.domain.conftest import fill_minimal_collectible
 
 

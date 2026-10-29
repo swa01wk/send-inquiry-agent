@@ -1,0 +1,65 @@
+id: unit-type-correction
+layers:
+- agent_det
+model_steps:
+- content: ''
+  tool_calls:
+  - name: skip_cr
+    args: {}
+    id: s1
+    type: tool_call
+- content: What company and brand are you planning to open?
+- content: ''
+  tool_calls:
+  - name: update_draft
+    args:
+      fields:
+      - key: company_name
+        value: Acme Trading LLC
+        source: user
+      - key: company_address
+        value: King Abdullah Road, Riyadh
+        source: user
+      - key: brand_name_en
+        value: Bean Street
+        source: user
+      - key: brand_name_ar
+        value: بين ستريت
+        source: derived
+      - key: unit_type
+        value: specialty
+        source: derived
+      - key: sales_category
+        value: fnb_cafe
+        source: derived
+      - key: malls
+        value:
+        - riyadh-mall-a
+        source: user
+      - key: first_name
+        value: Sara
+        source: user
+      - key: last_name
+        value: Ali
+        source: user
+      - key: email
+        value: sara@beanstreet.example
+        source: user
+      - key: contact_number
+        value: '+966501234567'
+        source: user
+    id: s2
+    type: tool_call
+- content: Does specialty kiosk sound right for your format?
+- content: ''
+  tool_calls:
+  - name: update_draft
+    args:
+      fields:
+      - key: unit_type
+        value: store
+        source: user
+    id: s3
+    type: tool_call
+- content: Store it is — thanks for clarifying.
+title: Unit type correction

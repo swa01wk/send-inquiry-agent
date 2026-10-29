@@ -1,0 +1,13 @@
+id: status-lookup
+layers:
+- agent_det
+model_steps:
+- content: ''
+  tool_calls:
+  - name: get_inquiry_status
+    args:
+      reference: GEO-STR-100001
+    id: s1
+    type: tool_call
+- content: Reference GEO-STR-100001 is under review with our leasing team.
+title: Status lookup

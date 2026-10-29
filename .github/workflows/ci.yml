@@ -34,9 +34,9 @@ jobs:
         run: |
           cd backend
           set +e
-          uv run mypy app 2>&1 | tee mypy.log
+          uv run mypy app scripts 2>&1 | tee mypy.log
           status=${PIPESTATUS[0]}
-          grep -E "^app/.*: error:" mypy.log | head -40 | while IFS= read -r line; do
+          grep -E "^(app|scripts)/.*: error:" mypy.log | head -40 | while IFS= read -r line; do
             file=${line%%:*}
             rest=${line#*:}
             lineno=${rest%%:*}
@@ -49,11 +49,15 @@ jobs:
         run: |
           cd backend
           set +e
-          uv run pytest -q -rfE 2>&1 | tee pytest.log
+          uv run pytest -q -rfE --cov=app --cov-report=term-missing:skip-covered 2>&1 | tee pytest.log
           status=${PIPESTATUS[0]}
           grep -E "^(FAILED|ERROR) tests/" pytest.log | head -40 | while IFS= read -r line; do
             echo "::error title=pytest::${line}"
           done
+          if [ "$status" -eq 0 ]; then
+            uv run coverage report --include='app/agent/*' --fail-under=85
+            uv run coverage report --fail-under=85
+          fi
           exit $status
 
   frontend:

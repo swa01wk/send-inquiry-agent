@@ -1,0 +1,14 @@
+id: existing-cr-sign-in
+layers:
+- agent_det
+model_steps:
+- content: ''
+  tool_calls:
+  - name: verify_cr
+    args:
+      cr_number: '1010000000'
+    id: s1
+    type: tool_call
+- content: This CR is linked to an existing account — please use Sign In on Tenant
+    Central.
+title: Existing CR sign in

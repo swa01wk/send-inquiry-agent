@@ -1,0 +1,47 @@
+id: 10-unsure
+layers:
+- e2e_script
+model_steps:
+- content: ''
+  tool_calls:
+  - name: verify_cr
+    args:
+      cr_number: '1010123456'
+    id: j1
+    type: tool_call
+- content: Thanks — company card below.
+- content: ''
+  tool_calls:
+  - name: update_draft
+    args:
+      fields:
+      - key: brand_name_en
+        value: Bean Street
+        source: user
+      - key: brand_name_ar
+        value: بين ستريت
+        source: derived
+      - key: unit_type
+        value: specialty
+        source: derived
+      - key: sales_category
+        value: fnb_cafe
+        source: derived
+      - key: malls
+        value:
+        - riyadh-mall-a
+        source: user
+    id: j2
+    type: tool_call
+- content: No problem — we can pick a category together.
+- content: ''
+  tool_calls:
+  - name: suggest_replies
+    args:
+      options:
+      - Food & drink
+      - Fashion
+      - Not sure yet
+    id: j3
+    type: tool_call
+- content: Which feels closest?

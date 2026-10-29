@@ -1,8 +1,11 @@
 import json
 import logging
 
+import pytest
 from app.observability.turn_log import log_chat_turn, tools_called_from_messages
 from langchain_core.messages import AIMessage, HumanMessage
+
+pytestmark = pytest.mark.unit
 
 
 def test_tools_called_from_messages() -> None:
