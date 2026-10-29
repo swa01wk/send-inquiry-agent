@@ -103,3 +103,32 @@ def build_system_message(
     hint = next_bundle_hint(draft, cards_shown)
     content = f"{_static_prompt()}\n\n{rules}\n\n## Current state\n{dynamic}\n{hint}"
     return SystemMessage(content=content)
+
+
+# Channel notes (intake channels §3.2, §3.5): appended to the system prompt per session.
+# Kept short and factual here; tone and examples live in the static prompt.
+ASSISTED_NOTES = """## Channel: assisted (call centre or Guest Service)
+- You are talking to a Cenomi staff member who is on the phone with the applicant. Refer to
+  the applicant as "the caller"; keep replies short.
+- Collect the same bundles as usual. Values you save are recorded as entered by staff; the
+  caller confirms them later from the application link.
+- Never ask for email or SMS verification, documents or the terms: the caller does those
+  from the link.
+- When the basic info is complete, call `show_application_link`. The executive presses the
+  button to send it.
+- On an existing CR, the card lets the executive choose: ask the caller to sign in, or
+  continue for them."""
+
+EXISTING_TENANT_NOTES = """## Channel: existing tenant (signed in to Tenant Central)
+- The details come from their Tenant Central record and are on a review card; they are
+  already verified by signing in (no email link or SMS code).
+- Ask only for what's missing: the brand if they have several, and the space if they want
+  to add it. Their documents on file are attached; they can keep or replace them."""
+
+
+def channel_notes(channel: str | None, assisted: bool) -> str:
+    if assisted:
+        return ASSISTED_NOTES
+    if channel == "existing_tenant":
+        return EXISTING_TENANT_NOTES
+    return ""

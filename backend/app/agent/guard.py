@@ -34,7 +34,7 @@ from app.api.cards import (
     build_review_card,
 )
 from app.api.schemas import UiCard
-from app.domain.models import FieldKey, Source
+from app.domain.models import NEEDS_CONFIRMATION, FieldKey
 from app.domain.rules import compute_phase, contact_verified
 from app.domain.summary import build_draft_summary
 from app.domain.validation import normalise_digits
@@ -229,7 +229,12 @@ def _incomplete_contact_capture_note(
     return (
         f"{GUARD_PREFIX} The user gave contact details; save first_name, last_name, email "
         "and contact_number with update_draft (split the full name: first word = first name, "
-        f"rest = last name){example}, then call send_verification."
+        f"rest = last name){example}"
+        + (
+            ", then call show_application_link."
+            if state.get("assisted")
+            else ", then call send_verification."
+        )
     )
 
 
@@ -344,7 +349,7 @@ def _unconfirm_doubted_fields(state: AgentState) -> tuple[Any, list[str]]:
         field = draft.fields[key]
         # Only derived or prefilled values need the user's acceptance; what the user
         # typed themselves stays as it is.
-        if field.confirmed and field.source in (Source.DERIVED, Source.VERIFIED):
+        if field.confirmed and field.source in NEEDS_CONFIRMATION:
             draft.fields[key] = field.model_copy(update={"confirmed": False})
             changed.append(key_str)
     return draft, changed
@@ -385,7 +390,12 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
                 "It is only submitted when a submitted reference ui_event arrives. "
                 "Reply again without that claim."
             )
-        elif phase == "existing_account" and ai_text and not _SIGN_IN_RE.search(ai_text):
+        elif (
+            phase == "existing_account"
+            and not state.get("assisted")  # the executive chooses on the card instead
+            and ai_text
+            and not _SIGN_IN_RE.search(ai_text)
+        ):
             note = (
                 f"{GUARD_PREFIX} This user already has an account. "
                 "Reply again, kindly pointing them to Sign In on Tenant Central."
@@ -400,12 +410,16 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
                     user_text,
                     phase,
                 )
-                or _missing_send_verification_note(
-                    state,
-                    draft,
-                    user_text,
-                    turn_messages,
-                    cards_shown,
+                or (
+                    None
+                    if state.get("assisted")  # no verification in assisted mode
+                    else _missing_send_verification_note(
+                        state,
+                        draft,
+                        user_text,
+                        turn_messages,
+                        cards_shown,
+                    )
                 )
                 or _missed_capture_note({**state, "draft": draft}, phase)
             )

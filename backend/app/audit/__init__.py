@@ -50,6 +50,10 @@ ALLOWED_KEYS: dict[str, frozenset[str]] = {
     "effect_run": frozenset({"effect", "event", "outcome"}),
     "routing_decision": frozenset({"intent", "via", "confidence"}),
     "assistant_suggestion": frozenset({"kind", "action", "used"}),
+    # Intake channels (spec §15)
+    "application_link_sent": frozenset({"by", "resend"}),
+    "inquiry_redirected": frozenset({"reason", "channel"}),
+    "tenant_prefill": frozenset({"tenant_id", "channel", "keys", "documents"}),
     # Proactive work (L5): what fired, and every decision on it.
     "proactive_raised": frozenset({"item_id", "trigger", "tier", "stage", "hours"}),
     "proactive_decision": frozenset({"item_id", "trigger", "decision", "reason", "by"}),

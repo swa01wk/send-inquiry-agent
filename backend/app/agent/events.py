@@ -19,6 +19,7 @@ from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage, Huma
 from langchain_core.runnables import RunnableConfig
 
 from app.agent.case_tools import CASE_TOOLS
+from app.agent.channels import restamp_staff
 from app.agent.e2e_scripts import scripted_model_for_session
 from app.agent.form_mode import (
     FORM_MODE_NOTICE,
@@ -28,7 +29,7 @@ from app.agent.form_mode import (
 from app.agent.model import ModelUnavailable, ScriptedChatModel
 from app.agent.runtime import AgentRuntime
 from app.agent.state import AgentState, initial_agent_state
-from app.agent.tools import TOOLS
+from app.agent.tools import ASSISTED_TOOLS, TOOLS
 from app.api.cards import remember_confirm_card_keys
 from app.api.schemas import UiCard
 from app.config import Settings
@@ -59,7 +60,7 @@ def _graph_config(
         "thread_id": session.id,
         "runtime": runtime,
     }
-    tools = CASE_TOOLS if session.mode == "case" else TOOLS
+    tools = CASE_TOOLS if session.mode == "case" else ASSISTED_TOOLS if session.assisted else TOOLS
     if settings and settings.agent_mode == "scripted" and session.test_scenario:
         model = scripted_model_for_session(
             scenario=session.test_scenario,
@@ -203,6 +204,9 @@ async def run_turn(
     if session.mode == "case":
         state["case_id"] = session.case_id
         state["contacts_draft"] = list(session.contacts_draft)
+    state["channel"] = session.channel
+    state["assisted"] = session.assisted
+    turn_start_draft = session.draft.model_copy(deep=True)
 
     config = _graph_config(session, runtime, settings=settings)
     before = await graph.aget_state(config)
@@ -279,6 +283,12 @@ async def run_turn(
         final_messages = list(final.get("messages", []))
         _audit_turn(runtime, session.id, final_messages[prior_count:], retractions)
         session.draft = final["draft"]
+        if session.assisted:
+            # Everything the executive typed this turn is `staff`, whichever path wrote it.
+            session.draft, restamped = restamp_staff(turn_start_draft, session.draft)
+            if restamped:
+                summary = build_draft_summary(session.draft, runtime.master, restamped)
+                yield SseEvent(event="draft", data=summary.model_dump())
         session.cards_shown = set(final.get("cards_shown", []))
         session.confirm_card_keys = dict(final.get("confirm_card_keys", session.confirm_card_keys))
         session.confirm_card_turns = dict(

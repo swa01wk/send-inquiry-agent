@@ -10,6 +10,7 @@ from app.domain import validation as v
 from app.domain.fields import FIELD_BY_KEY
 from app.domain.master import MasterData
 from app.domain.models import (
+    NEEDS_CONFIRMATION,
     DocType,
     DocumentRef,
     FieldKey,
@@ -102,7 +103,7 @@ def _apply_field(
         )
         return
 
-    if source not in (Source.USER, Source.DERIVED, Source.VERIFIED, Source.DEFAULT):
+    if source not in (Source.USER, Source.DERIVED, Source.VERIFIED, Source.DEFAULT, Source.STAFF):
         errors[key.value] = v.ValidationError(
             code="invalid_source",
             message="Invalid source for field write.",
@@ -270,7 +271,7 @@ def confirm(draft: InquiryDraft, keys: list[str]) -> InquiryDraft:
         except ValueError:
             continue
         field = updated.fields[key]
-        if field.value is not None and field.source in (Source.DERIVED, Source.VERIFIED):
+        if field.value is not None and field.source in NEEDS_CONFIRMATION:
             field.confirmed = True
     return updated
 

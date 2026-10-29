@@ -20,6 +20,7 @@
       "company_address": "طريق الملك عبدالعزيز، حي الربوة، الرياض"
     },
     {"cr_number": "1010000000", "outcome": "existing"},
+    {"cr_number": "1010444444", "outcome": "existing"},
     {"cr_number": "1010999991", "outcome": "fault", "fault": "timeout"},
     {"cr_number": "1010999992", "outcome": "fault", "fault": "unavailable"}
   ],

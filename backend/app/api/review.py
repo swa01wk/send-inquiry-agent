@@ -112,6 +112,7 @@ class QueueItem(BaseModel):
     possible_duplicate: bool = False
     follow_on_of: str | None = None
     needs_operations: bool = False
+    channel: str = "self_service"
 
 
 class TimelineEntry(BaseModel):
@@ -172,6 +173,7 @@ def _queue_item(case: Case, master: MasterData, now: datetime) -> QueueItem:
         open_requests=[r.kind for r in case.requests if r.status == "open"],
         follow_on_of=case.draft.follow_on_of,
         needs_operations=case.yardi.needs_operations,
+        channel=case.channel,
     )
 
 

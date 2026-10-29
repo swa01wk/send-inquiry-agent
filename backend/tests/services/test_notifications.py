@@ -31,6 +31,8 @@ CONTEXT = {
     "stage_label": "First review",
     "queue_label": "Regional Leasing Manager (Store), Central",
     "message": "We're still waiting for your company contacts.",
+    "started_by": "The Cenomi call centre",
+    "complete_url": "http://localhost:5173/inquiry/verify?t=k",
 }
 
 

@@ -37,11 +37,21 @@ from app.api.cards import (
     build_review_card,
     confirm_card_id_for_keys,
 )
+from app.api.channel_cards import (
+    BASIC_INFO_CARD_ID,
+    EXISTING_CR_CARD_ID,
+    SEND_LINK_CARD_ID,
+    SIGN_IN_CARD_ID,
+    build_basic_info_card,
+    build_existing_cr_choice_card,
+    build_send_link_card,
+    build_sign_in_prompt_card,
+)
 from app.api.schemas import UiCard
 from app.domain import draft_ops
 from app.domain import validation as v
 from app.domain.faq import search_faq as faq_search
-from app.domain.models import EVIDENCE_MAX_CHARS, FieldKey, InquiryDraft, Source
+from app.domain.models import EVIDENCE_MAX_CHARS, NEEDS_CONFIRMATION, FieldKey, InquiryDraft, Source
 from app.domain.rules import can_submit, contact_verified
 from app.domain.summary import build_draft_summary
 from app.domain.validation import validate_cr_number
@@ -157,6 +167,13 @@ def _tool_result(
     )
 
 
+def _write_source(source: str, state: AgentState) -> Source:
+    """In assisted mode the executive types what the caller said: `user` becomes `staff`."""
+    if source == "user" and state.get("assisted"):
+        return Source.STAFF
+    return Source(source)
+
+
 def _remember_confirm_card_keys(
     confirm_card_keys: dict[str, list[str]],
     confirm_card_turns: dict[str, int],
@@ -202,26 +219,77 @@ def verify_cr(
             ),
         )
     cards_shown = list(state["cards_shown"])
-    outcome = apply_cr_result(state["draft"], validated, result, rt.master)
+    tenant = rt.services.tenants.get_by_cr(validated) if result.exists else None
+    outcome = apply_cr_result(state["draft"], validated, result, rt.master, tenant=tenant)
     updated = outcome.draft
 
     if outcome.kind == "existing_allowed":
+        if tenant is None:
+            return _tool_result(
+                runtime,
+                draft=updated,
+                content=(
+                    "CR number belongs to an existing Tenant Central account. Policy allows "
+                    "the inquiry to continue: collect company name and address as usual."
+                ),
+                changed_keys=outcome.changed,
+                cards_shown=cards_shown,
+            )
+        # Intake channels §3.6: prefilled from the tenant record, reviewed in one card.
+        card = build_basic_info_card(updated, rt.master, started_by="your Tenant Central record")
+        _emit_card(card, runtime)
+        if BASIC_INFO_CARD_ID not in cards_shown:
+            cards_shown.append(BASIC_INFO_CARD_ID)
+        brand_note = (
+            " The tenant has several brands: ask which one this inquiry is for (or a new one)."
+            if len(tenant.brands) > 1
+            else ""
+        )
         return _tool_result(
             runtime,
             draft=updated,
             content=(
-                "CR number belongs to an existing Tenant Central account. Policy allows the "
-                "inquiry to continue: collect company name and address as usual."
+                f"Existing tenant {tenant.company_name}: details prefilled from their Tenant "
+                "Central record and shown on a review card. Ask them to check it and press "
+                "Proceed (or edit a field); then continue with what's still missing." + brand_note
             ),
             changed_keys=outcome.changed,
             cards_shown=cards_shown,
         )
 
     if outcome.kind == "existing":
+        if state.get("assisted"):
+            # Intake channels §3.2: the executive chooses (sign in, or continue for them).
+            card = build_existing_cr_choice_card(validated, tenant.company_name if tenant else None)
+            _emit_card(card, runtime)
+            if EXISTING_CR_CARD_ID not in cards_shown:
+                cards_shown.append(EXISTING_CR_CARD_ID)
+            content = (
+                "This CR already has a Tenant Central account"
+                + (f" ({tenant.company_name})" if tenant else "")
+                + ". The executive chooses on the card: ask the caller to sign in to Tenant "
+                "Central, or continue the inquiry for them with the tenant record prefilled."
+            )
+        else:
+            # Intake channels §3.6 (sign_in): a button to Tenant Central; no inquiry here.
+            card = build_sign_in_prompt_card(rt.settings.public_base_url)
+            _emit_card(card, runtime)
+            if SIGN_IN_CARD_ID not in cards_shown:
+                cards_shown.append(SIGN_IN_CARD_ID)
+            rt.services.audit.record(
+                state["session_id"],
+                "inquiry_redirected",
+                actor="system",
+                payload={"reason": "sign_in", "channel": state.get("channel", "self_service")},
+            )
+            content = (
+                "CR number belongs to an existing Tenant Central account. A Sign in to "
+                "Tenant Central button is on the card; explain kindly and stop collecting."
+            )
         return _tool_result(
             runtime,
             draft=updated,
-            content="CR number belongs to an existing Tenant Central account.",
+            content=content,
             changed_keys=outcome.changed,
             cards_shown=cards_shown,
         )
@@ -370,9 +438,9 @@ def update_draft(
                 continue
             if not accepted:
                 continue
-            entries.append((item.key, accepted, Source(item.source)))
+            entries.append((item.key, accepted, _write_source(item.source, state)))
             continue
-        entries.append((item.key, item.value, Source(item.source)))
+        entries.append((item.key, item.value, _write_source(item.source, state)))
 
     if not entries and rejected:
         updated, malls_filled = fill_mentioned_malls(draft, user_text, rt.master)
@@ -520,7 +588,7 @@ def confirm_fields(
         if field.value is None:
             skipped.append(key_str)
             continue
-        if field.source not in (Source.DERIVED, Source.VERIFIED):
+        if field.source not in NEEDS_CONFIRMATION:
             skipped.append(key_str)
             continue
         if field.confirmed:
@@ -892,6 +960,29 @@ def start_follow_on(
     )
 
 
+@tool
+def show_application_link(
+    state: Annotated[AgentState, InjectedState],
+    runtime: ToolRuntime,
+) -> Command[Any]:
+    """Assisted mode: show the Send application link card once the basic info is complete.
+    The executive presses the button; this tool never sends anything."""
+    draft = state["draft"]
+    card = build_send_link_card(draft)
+    _emit_card(card, runtime)
+    cards_shown = list(state["cards_shown"])
+    if SEND_LINK_CARD_ID not in cards_shown:
+        cards_shown.append(SEND_LINK_CARD_ID)
+    if card.payload["can_send"]:
+        content = (
+            "Send link card shown. The basic info is complete: the executive presses Send "
+            f"application link to email it to {card.payload['email_masked']}."
+        )
+    else:
+        content = "Not ready to send yet. Still missing: " + ", ".join(card.payload["missing"])
+    return _tool_result(runtime, draft=draft, content=content, cards_shown=cards_shown)
+
+
 TOOLS = [
     verify_cr,
     skip_cr,
@@ -908,3 +999,10 @@ TOOLS = [
     get_inquiry_status,
     start_follow_on,
 ]
+
+# Assisted mode (intake channels §3.2): no verification, documents or review for the
+# executive; the applicant does those from the application link.
+ASSISTED_EXCLUDED = frozenset(
+    {"send_verification", "request_documents", "show_review", "start_follow_on"}
+)
+ASSISTED_TOOLS = [t for t in TOOLS if t.name not in ASSISTED_EXCLUDED] + [show_application_link]

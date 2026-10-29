@@ -84,6 +84,9 @@ class Settings(BaseSettings):
     case_ttl_days: int = Field(default=30, validation_alias="CASE_TTL_DAYS")
     # Testing only: treat the model as unavailable, so every turn runs in form mode (L3 §3.14).
     form_mode: bool = Field(default=False, validation_alias="FORM_MODE")
+    # Intake channels (mock integrations only): the call-centre console and Tenant Central.
+    callcentre_console: bool = Field(default=False, validation_alias="CALLCENTRE_CONSOLE")
+    tenant_portal: bool = Field(default=False, validation_alias="TENANT_PORTAL")
     # Proactive work (L5): a background tick evaluates triggers every N seconds.
     proactive_enabled: bool = Field(default=False, validation_alias="PROACTIVE_ENABLED")
     proactive_tick_seconds: int = Field(

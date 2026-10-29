@@ -1,0 +1,11 @@
+{
+  "_about": "Simulated Leasing Opportunities on Tenant Central (intake channels §3.5).",
+  "opportunities": [
+    {"id": "OPP-101", "mall": "riyadh-mall-a", "unit_type": "store", "unit_ref": "RMA-G-014", "area_min": 80, "area_max": 120},
+    {"id": "OPP-102", "mall": "riyadh-mall-c", "unit_type": "specialty", "unit_ref": "RMC-K-03", "area_min": 10, "area_max": 20},
+    {"id": "OPP-103", "mall": "jeddah-mall-b", "unit_type": "store", "unit_ref": "JMB-1-122", "area_min": 150, "area_max": 220},
+    {"id": "OPP-104", "mall": "mall-of-arabia", "unit_type": "media", "unit_ref": "MOA-SCR-07", "area_min": 10, "area_max": 10},
+    {"id": "OPP-105", "mall": "dammam-mall-a", "unit_type": "store", "unit_ref": "DMA-G-031", "area_min": 60, "area_max": 90},
+    {"id": "OPP-106", "mall": "mall-of-dhahran", "unit_type": "specialty", "unit_ref": "MOD-K-11", "area_min": 12, "area_max": 18}
+  ]
+}

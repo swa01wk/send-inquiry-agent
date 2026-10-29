@@ -123,6 +123,13 @@ describe('Reviewer console', () => {
     expect(screen.getByTestId('attention-link')).toHaveAttribute('href', '/review/attention')
   })
 
+  it('labels how the inquiry came in', async () => {
+    window.sessionStorage.setItem('cenomi.reviewerId', 'rlm_store-central')
+    vi.spyOn(review, 'listCases').mockResolvedValue([{ ...queueItem, channel: 'existing_tenant' }])
+    renderAt('/review')
+    expect(await screen.findByTestId('channel-label')).toHaveTextContent('Existing tenant')
+  })
+
   it('signs in from ?as= (the dev landing page)', async () => {
     vi.spyOn(review, 'listCases').mockResolvedValue([queueItem])
     renderAt('/review?as=rlm_store-central')

@@ -45,6 +45,8 @@ TEMPLATE_NAMES = (
     "review_stalled",
     "review_escalated",
     "applicant_reminder",
+    # Intake channels (spec §15)
+    "complete_application",
 )
 Channel = Literal["email", "sms"]
 Kind = Literal["information", "action_required"]

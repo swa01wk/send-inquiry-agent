@@ -14,7 +14,7 @@ from app.domain.fields import (
     document_definitions,
 )
 from app.domain.master import MasterData
-from app.domain.models import FieldKey, InquiryDraft, Source
+from app.domain.models import NEEDS_CONFIRMATION, FieldKey, InquiryDraft
 from app.domain.rules import can_submit, compute_phase, contact_verified
 
 
@@ -35,6 +35,8 @@ class DraftDocumentRow(BaseModel):
     uploaded: bool
     file_name: str | None
     size_bytes: int | None
+    # From the tenant's Tenant Central record (intake channels §3.4): keep or replace it.
+    on_file: bool = False
 
 
 class DraftChecks(BaseModel):
@@ -127,7 +129,7 @@ def _count_unconfirmed(draft: InquiryDraft) -> int:
             continue
         if isinstance(field.value, str) and not field.value.strip():
             continue
-        if field.source in (Source.DERIVED, Source.VERIFIED) and not field.confirmed:
+        if field.source in NEEDS_CONFIRMATION and not field.confirmed:
             count += 1
     return count
 
@@ -245,6 +247,7 @@ def build_draft_summary(
                 uploaded=uploaded,
                 file_name=ref.file_name if ref else None,
                 size_bytes=ref.size_bytes if ref else None,
+                on_file=bool(ref and ref.on_file),
             )
         )
 

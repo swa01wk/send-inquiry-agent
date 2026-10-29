@@ -31,6 +31,7 @@ export interface QueueItem {
   possible_duplicate: boolean
   follow_on_of: string | null
   needs_operations: boolean
+  channel?: string
 }
 
 export interface BriefField {

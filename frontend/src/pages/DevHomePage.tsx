@@ -8,9 +8,11 @@ import {
   type ClockState,
   type TickResult,
 } from '../api/dev'
+import { listStaff, type StaffMember } from '../api/callcentre'
 import { listReviewers, type Reviewer } from '../api/review'
+import { listTenants, type TenantSummary } from '../api/tenant'
 import { PageShell } from '../components/layout/PageShell'
-import { REVIEWER_CONSOLE } from '../config'
+import { CALLCENTRE_CONSOLE, REVIEWER_CONSOLE, TENANT_PORTAL } from '../config'
 import { ROLE_LABELS, regionLabel } from '../review/reviewerSession'
 import styles from './devHome.module.css'
 
@@ -31,6 +33,8 @@ function clockText(clock: ClockState): string {
 export function DevHomePage() {
   const [clock, setClock] = useState<ClockState | null>(null)
   const [reviewers, setReviewers] = useState<Reviewer[]>([])
+  const [staff, setStaff] = useState<StaffMember[]>([])
+  const [tenants, setTenants] = useState<TenantSummary[]>([])
   const [message, setMessage] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
@@ -49,6 +53,16 @@ export function DevHomePage() {
       listReviewers()
         .then(setReviewers)
         .catch(() => setReviewers([]))
+    }
+    if (CALLCENTRE_CONSOLE) {
+      listStaff()
+        .then(setStaff)
+        .catch(() => setStaff([]))
+    }
+    if (TENANT_PORTAL) {
+      listTenants()
+        .then(setTenants)
+        .catch(() => setTenants([]))
     }
   }, [refresh])
 
@@ -93,6 +107,34 @@ export function DevHomePage() {
               </li>
             ) : null}
           </ul>
+          {CALLCENTRE_CONSOLE && staff.length > 0 ? (
+            <>
+              <h3 className={styles.subtitle}>Call centre and Guest Service</h3>
+              <ul className={styles.links} data-testid="dev-staff">
+                {staff.map((s) => (
+                  <li key={s.id}>
+                    <Link className={styles.link} to={`/callcentre?as=${encodeURIComponent(s.id)}`}>
+                      {s.name} — {s.role_label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
+          {TENANT_PORTAL && tenants.length > 0 ? (
+            <>
+              <h3 className={styles.subtitle}>Tenant Central (existing tenants)</h3>
+              <ul className={styles.links} data-testid="dev-tenants">
+                {tenants.map((t) => (
+                  <li key={t.id}>
+                    <Link className={styles.link} to={`/tenant?as=${encodeURIComponent(t.id)}`}>
+                      {t.company_name} — {t.contact_name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
           {REVIEWER_CONSOLE && reviewers.length > 0 ? (
             <>
               <h3 className={styles.subtitle}>Reviewer console</h3>

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 import uuid
 from collections.abc import Iterator
 from pathlib import Path
@@ -94,3 +95,15 @@ class MockStorageService:
             for path in (self._upload_dir / session_id).glob(f"{file_id}.*"):
                 return path
         return None
+
+    def copy_session_files(self, from_session: str, to_session: str) -> None:
+        """Hand an inquiry's uploads to another chat (the applicant completing a call-centre
+        inquiry gets a new session; intake channels §3.3)."""
+        source = self._upload_dir / from_session
+        if not source.exists():
+            return
+        target = self._upload_dir / to_session
+        target.mkdir(parents=True, exist_ok=True)
+        for path in source.iterdir():
+            if path.is_file():
+                shutil.copy2(path, target / path.name)

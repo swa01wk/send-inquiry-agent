@@ -13,7 +13,13 @@ import { PageShell } from '../components/layout/PageShell'
 import { ActionsPanel, type ActionsPrefill } from './ActionsPanel'
 import { prefillFromSuggestion } from './prefillFromSuggestion'
 import { ReviewerAssistantPanel } from './ReviewerAssistantPanel'
-import { ROLE_LABELS, regionLabel, useReviewerId, waitingOnLabel } from './reviewerSession'
+import {
+  ROLE_LABELS,
+  channelLabel,
+  regionLabel,
+  useReviewerId,
+  waitingOnLabel,
+} from './reviewerSession'
 import styles from './review.module.css'
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -172,6 +178,12 @@ export function ReviewCasePage() {
                 <div className={styles.summaryItem}>
                   <span className={styles.summaryLabel}>Mall</span>
                   <span className={styles.summaryValue}>{brief.mall ?? '—'}</span>
+                </div>
+                <div className={styles.summaryItem}>
+                  <span className={styles.summaryLabel}>Channel</span>
+                  <span className={styles.summaryValue} data-testid="case-channel">
+                    {channelLabel(brief.channel) ?? 'Applicant (self-service)'}
+                  </span>
                 </div>
                 <div className={styles.summaryItem}>
                   <span className={styles.summaryLabel}>CR</span>

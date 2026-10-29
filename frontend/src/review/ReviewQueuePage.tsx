@@ -9,7 +9,13 @@ import {
   type WaitingOn,
 } from '../api/review'
 import { PageShell } from '../components/layout/PageShell'
-import { ROLE_LABELS, regionLabel, useReviewerId, waitingOnLabel } from './reviewerSession'
+import {
+  ROLE_LABELS,
+  channelLabel,
+  regionLabel,
+  useReviewerId,
+  waitingOnLabel,
+} from './reviewerSession'
 import styles from './review.module.css'
 
 function waitingTag(waitingOn: string): string {
@@ -201,6 +207,13 @@ export function ReviewQueuePage() {
                         </Link>
                         {c.follow_on_of ? (
                           <div className={styles.muted}>Follow-on of {c.follow_on_of}</div>
+                        ) : null}
+                        {channelLabel(c.channel) ? (
+                          <div>
+                            <span className={styles.tag} data-testid="channel-label">
+                              {channelLabel(c.channel)}
+                            </span>
+                          </div>
                         ) : null}
                       </td>
                       <td>{c.brand ?? '—'}</td>

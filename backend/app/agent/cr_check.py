@@ -9,8 +9,10 @@ from app.domain import draft_ops
 from app.domain import validation as v
 from app.domain.master import MasterData
 from app.domain.models import FieldKey, InquiryDraft, Source
+from app.domain.tenant_prefill import prefill_from_tenant
 from app.policy.config import get_policy
 from app.services.cr import CrResult
+from app.services.tenants import Tenant
 
 CrKind = Literal["existing", "existing_allowed", "new"]
 CONFIRMABLE_FROM_CR = (FieldKey.COMPANY_NAME.value, FieldKey.COMPANY_ADDRESS.value)
@@ -26,12 +28,21 @@ class CrOutcome:
 
 
 def apply_cr_result(
-    draft: InquiryDraft, cr_number: str, result: CrResult, master: MasterData
+    draft: InquiryDraft,
+    cr_number: str,
+    result: CrResult,
+    master: MasterData,
+    *,
+    tenant: Tenant | None = None,
 ) -> CrOutcome:
-    """Existing account → `existing` (or continue under `allow_inquiry`); new → prefill the
-    company name and address as `verified`, unconfirmed, for the user to confirm."""
+    """Existing account → `existing` (or continue under `allow_inquiry`, prefilled from the
+    tenant record when there is one); new → prefill the company name and address as
+    `verified`, unconfirmed, for the user to confirm."""
     if result.exists and get_policy().existing_tenant_policy == "allow_inquiry":
         # Requirements §7.1: existing tenants may raise an inquiry from this page.
+        if tenant is not None:
+            updated, written = prefill_from_tenant(draft, tenant, master)
+            return CrOutcome(kind="existing_allowed", draft=updated, changed=written)
         updated, written, _errors = draft_ops.write_fields(
             draft, [(FieldKey.CR_NUMBER.value, cr_number, Source.USER)], master=master
         )

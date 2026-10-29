@@ -24,6 +24,7 @@ from app.services.reviewers import ReviewerDirectory
 from app.services.status import MockStatusService, StatusService
 from app.services.storage import MockStorageService, StorageService
 from app.services.submit import MockSubmitService, SubmitService
+from app.services.tenants import OpportunityCatalogue, TenantDirectory
 from app.services.yardi import MockYardiService
 from app.workflow.store import CaseStore
 
@@ -47,6 +48,8 @@ class ServiceContainer:
     yardi: MockYardiService
     attention: AttentionStore
     clock: Clock
+    tenants: TenantDirectory
+    opportunities: OpportunityCatalogue
 
 
 def build_services(settings: Settings) -> ServiceContainer:
@@ -99,4 +102,6 @@ def build_services(settings: Settings) -> ServiceContainer:
         yardi=MockYardiService(data_dir),
         attention=AttentionStore(data_dir),
         clock=clock,
+        tenants=TenantDirectory(),
+        opportunities=OpportunityCatalogue(),
     )
