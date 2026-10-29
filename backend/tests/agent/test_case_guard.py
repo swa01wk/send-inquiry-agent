@@ -5,8 +5,6 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from langchain_core.messages import AIMessage, HumanMessage
-
 from app.agent.case_guard import (
     _APPROVAL_CLAIM_RE,
     _CONTACTS_SENT_RE,
@@ -18,6 +16,7 @@ from app.domain.draft_ops import new_inquiry_draft
 from app.domain.models import DocType, DocumentRef
 from app.workflow.machine import SYSTEM, Actor, transition
 from app.workflow.models import Case, CaseStatus, ReviewQueue, WorkflowEvent
+from langchain_core.messages import AIMessage, HumanMessage
 
 T0 = datetime(2026, 10, 30, 9, tzinfo=UTC)
 REVIEWER = Actor(kind="reviewer", id="rlm_store-central", role="rlm_store", regions=["central"])
