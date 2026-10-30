@@ -40,7 +40,7 @@ Every layer ran on GitHub Actions against `main` at #51, or against the close-ou
 | FE Playwright (`@fe`, incl. card screenshots) | `make e2e-fe` | ✅ branch (41097895440), after the Linux baselines were committed |
 | DEMO (Day 5 end-of-day check, every §7.1 workflow and the L3–L5 moments) | `make e2e-demo` | ✅ branch (41095388578) |
 | E2E-LIVE (`@live`, real model) | `make e2e-live` | ✅ `main` (41094879588) |
-| AGENT-LIVE (all groups, ×3, invariants) | `make eval-live` | ✅ 26/26 (41096900622); two scenarios at 2/3 (see `docs/eval-notes.md`) |
+| AGENT-LIVE (all groups, ×3, invariants) | `make eval-live` | ✅ 26/26 (41096900622); two scenarios at 2/3. With the contacts-card guard, case group 4/4 (41099339596), contacts bundle 3/3 in two runs (see `docs/eval-notes.md`) |
 
 Day 1–5 end-of-day checks (`prompts/breadth/day*.md`) are covered by those suites plus backend tests: idempotent submit, restart from the snapshot, audit redaction, queue access (404 for another queue), Arabic digits and doubt, follow-on, evidence, quiet hours and escalation.
 
@@ -52,7 +52,7 @@ Day 1–5 end-of-day checks (`prompts/breadth/day*.md`) are covered by those sui
 - The **reviewer assistant** had no scripted mode; added in C1 (`X-Test-Scenario` on the assistant endpoint).
 - **`show_application_link`** still ran after **Ask them to sign in**; it is now blocked once that choice is made.
 - **Document-row locators** in e2e matched the whole card; rows now have `doc-row-<type>` test ids.
-- Live eval **"Case: contacts bundle"** didn't show the contacts card in about 1 run in 3 (2/3 on 30 Oct). Fixed in the 5-day close-out with a case guard retry (`_contacts_card_missing_note`), not the prompt.
+- Live eval **"Case: contacts bundle"** didn't show the contacts card in about 1 run in 3 (2/3 on 30 Oct). Fixed in the 5-day close-out (#52) with a case guard retry (`_contacts_card_missing_note`), not the prompt: 3/3 in two runs since.
 - Live eval **"Two malls named"** is 2/3 on 30 Oct (the agent sometimes starts with one mall instead of asking). Watch in step 12's baseline.
 - Live eval **"channels: dictated caller"** failed 0/3: the assisted agent thanked the caller by name ("Thanks, Sara") despite `ASSISTED_NOTES`; fixed with an assisted guard retry (`_assisted_addresses_caller_note`, 11d-b review).
 - There is no **kiosk** unit type in master data; kiosks map to **specialty**.
