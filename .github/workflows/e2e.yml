@@ -214,7 +214,18 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.group }}" != "all" ]; then
             GROUP="${{ inputs.group }}"
           fi
-          make eval-live GROUP="$GROUP"
+          set -o pipefail
+          make eval-live GROUP="$GROUP" 2>&1 | tee /tmp/eval.log
+      - name: Show the eval summary and failures
+        if: always()
+        run: |
+          enc() { sed -e 's/%/%25/g' | sed -e ':a;N;$!ba;s/\n/%0A/g'; }
+          md=$(ls -t backend/eval-results/*.md 2>/dev/null | head -n 1)
+          if [ -n "$md" ]; then echo "::notice title=eval summary::$(head -c 60000 "$md" | enc)"; fi
+          if [ -f /tmp/eval.log ]; then
+            fails=$(awk '/^=== /{h=$0; shown=0; next} /\[FAIL\]|\[INVARIANT|ERROR:|Scenario: FAIL/{if(!shown){print h; shown=1} print}' /tmp/eval.log | head -c 60000)
+            if [ -n "$fails" ]; then echo "::error title=eval failures::$(printf '%s' "$fails" | enc)"; fi
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
