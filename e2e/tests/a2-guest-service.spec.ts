@@ -43,9 +43,7 @@ test.describe('Story A2 Guest Service @scripted', () => {
       const reviewerPage = await reviewerContext.newPage()
       await signInReviewer(reviewerPage, reviewer)
       await openReviewerCase(reviewerPage, reference)
-      await expect(reviewerPage.getByTestId('case-channel')).toHaveText(
-        'Started by Guest Service',
-      )
+      await expect(reviewerPage.getByTestId('case-channel')).toHaveText('Started by Guest Service')
     } finally {
       await reviewerContext.close()
     }

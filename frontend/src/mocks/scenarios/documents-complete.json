@@ -90,16 +90,7 @@
           ],
           "required_uploaded": 2,
           "required_total": 2,
-          "allowed_extensions": [
-            ".doc",
-            ".docx",
-            ".jpg",
-            ".jpeg",
-            ".pdf",
-            ".png",
-            ".xlsx",
-            ".zip"
-          ],
+          "allowed_extensions": [".doc", ".docx", ".jpg", ".jpeg", ".pdf", ".png", ".xlsx", ".zip"],
           "max_mb": 5
         }
       }

@@ -25,7 +25,10 @@ export function chatRequestMatches(when: FeRequestMatch, request: ChatRequest): 
     if (request.type !== 'message') return false
     const text = request.text.trim()
     if (when.textEquals !== undefined && text !== when.textEquals) return false
-    if (when.textIncludes !== undefined && !text.toLowerCase().includes(when.textIncludes.toLowerCase())) {
+    if (
+      when.textIncludes !== undefined &&
+      !text.toLowerCase().includes(when.textIncludes.toLowerCase())
+    ) {
       return false
     }
     return true

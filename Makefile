@@ -66,11 +66,11 @@ E2E_DEPS = cd e2e && ([ -d node_modules ] || npm ci) && npx playwright install c
 
 # FE: Playwright, frontend only (VITE_MOCK=1, @fe suites).
 e2e-fe:
-	$(E2E_DEPS) && cd e2e && CI=1 npm run test:fe -- $(ARGS)
+	$(E2E_DEPS) && CI=1 npm run test:fe -- $(ARGS)
 
 # INT: Playwright, real frontend + backend, scripted agent (@scripted suites).
 e2e-int:
-	$(E2E_DEPS) && cd e2e && CI=1 npm run test:scripted -- $(ARGS)
+	$(E2E_DEPS) && CI=1 npm run test:scripted -- $(ARGS)
 
 # Full demo-script rehearsal (@demo; desktop only; not part of e2e-int).
 e2e-demo:

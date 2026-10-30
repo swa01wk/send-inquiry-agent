@@ -90,16 +90,7 @@
           ],
           "required_uploaded": 0,
           "required_total": 2,
-          "allowed_extensions": [
-            ".doc",
-            ".docx",
-            ".jpg",
-            ".jpeg",
-            ".pdf",
-            ".png",
-            ".xlsx",
-            ".zip"
-          ],
+          "allowed_extensions": [".doc", ".docx", ".jpg", ".jpeg", ".pdf", ".png", ".xlsx", ".zip"],
           "max_mb": 5
         }
       }
@@ -320,10 +311,7 @@
         "terms_accepted": false
       },
       "can_submit": false,
-      "changed_keys": [
-        "company_name",
-        "company_address"
-      ],
+      "changed_keys": ["company_name", "company_address"],
       "follow_on_of": null
     }
   }

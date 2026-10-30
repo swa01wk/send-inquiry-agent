@@ -267,10 +267,7 @@
         "terms_accepted": false
       },
       "can_submit": false,
-      "changed_keys": [
-        "company_name",
-        "company_address"
-      ],
+      "changed_keys": ["company_name", "company_address"],
       "follow_on_of": null
     }
   },
@@ -499,10 +496,7 @@
               "terms_accepted": false
             },
             "can_submit": false,
-            "changed_keys": [
-              "company_name",
-              "company_address"
-            ],
+            "changed_keys": ["company_name", "company_address"],
             "follow_on_of": null
           }
         },

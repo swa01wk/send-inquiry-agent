@@ -166,9 +166,7 @@
           },
           "can_submit": false,
           "terms_accepted": false,
-          "blockers": [
-            "terms_not_accepted"
-          ]
+          "blockers": ["terms_not_accepted"]
         }
       }
     ],

@@ -601,7 +601,11 @@ export const signInPromptCardExample: UiCard = {
 }
 
 export const MOCK_WELCOME_MESSAGES = [
-  { id: 'welcome-1', role: 'assistant' as const, text: "Marhaba, and welcome to Cenomi Tenant Central! I'm your leasing assistant." },
+  {
+    id: 'welcome-1',
+    role: 'assistant' as const,
+    text: "Marhaba, and welcome to Cenomi Tenant Central! I'm your leasing assistant.",
+  },
   {
     id: 'welcome-2',
     role: 'assistant' as const,

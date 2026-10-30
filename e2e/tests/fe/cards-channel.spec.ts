@@ -12,7 +12,9 @@ test.describe('Intake channel cards @fe', () => {
     await page.getByRole('button', { name: 'Proceed' }).click()
     await inquiry.waitForTurnDone(doneBefore)
     const requests = await inquiry.mockRequests()
-    expect(requests.some((r) => (r as { action?: string }).action === 'proceed_basic_info')).toBeTruthy()
+    expect(
+      requests.some((r) => (r as { action?: string }).action === 'proceed_basic_info'),
+    ).toBeTruthy()
     await finishA11yOnPage(page, testInfo.project.name)
   })
 

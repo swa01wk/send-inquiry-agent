@@ -12,7 +12,9 @@ test.describe('Stream edge cases @fe', () => {
     const doneBefore = await readDoneEventCount(page)
     await inquiry.clickRetry()
     await inquiry.waitForTurnDone(doneBefore)
-    await expect(page.getByTestId('bot-bubble-text').filter({ hasText: 'Back online' })).toBeVisible()
+    await expect(
+      page.getByTestId('bot-bubble-text').filter({ hasText: 'Back online' }),
+    ).toBeVisible()
     await finishA11yOnPage(page, testInfo.project.name)
   })
 
@@ -20,7 +22,9 @@ test.describe('Stream edge cases @fe', () => {
     const inquiry = new FeInquiryPage(page)
     await inquiry.openMock('stream-message-remove')
     await inquiry.sendMessageNoWait('hello')
-    await expect(page.getByTestId('bot-bubble-text').filter({ hasText: 'corrected reply' })).toBeVisible({
+    await expect(
+      page.getByTestId('bot-bubble-text').filter({ hasText: 'corrected reply' }),
+    ).toBeVisible({
       timeout: 30_000,
     })
     expect(countRetractions(await inquiry.events())).toBeGreaterThan(0)
@@ -35,7 +39,9 @@ test.describe('Stream edge cases @fe', () => {
     const doneBefore = await readDoneEventCount(page)
     await inquiry.clickRetry()
     await inquiry.waitForTurnDone(doneBefore)
-    await expect(page.getByTestId('bot-bubble-text').filter({ hasText: 'Ready when you are' })).toBeVisible()
+    await expect(
+      page.getByTestId('bot-bubble-text').filter({ hasText: 'Ready when you are' }),
+    ).toBeVisible()
     await finishA11yOnPage(page, testInfo.project.name)
   })
 

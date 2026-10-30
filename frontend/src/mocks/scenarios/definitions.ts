@@ -45,10 +45,7 @@ const confirmDraft = draftMidway
 export const feScenarioDefinitions: FeScenario[] = [
   {
     name: 'confirm-fields',
-    session: cardSession(
-      { ...confirmFieldsCardExample, message_id: 'm-static' },
-      confirmDraft,
-    ),
+    session: cardSession({ ...confirmFieldsCardExample, message_id: 'm-static' }, confirmDraft),
     turns: [
       {
         when: { type: 'action', action: 'confirm_card' },
@@ -107,10 +104,13 @@ export const feScenarioDefinitions: FeScenario[] = [
   },
   {
     name: 'verification',
-    session: cardSession({ ...verificationCardExample, message_id: 'm-static' }, {
-      ...draftMidway,
-      phase: 'verifying',
-    }),
+    session: cardSession(
+      { ...verificationCardExample, message_id: 'm-static' },
+      {
+        ...draftMidway,
+        phase: 'verifying',
+      },
+    ),
     turns: [
       {
         when: { type: 'action', action: 'verify_email' },
@@ -193,22 +193,25 @@ export const feScenarioDefinitions: FeScenario[] = [
   },
   {
     name: 'success',
-    session: cardSession({ ...successCardExample, message_id: 'm-static' }, {
-      ...draftComplete,
-      phase: 'submitted',
-    }),
+    session: cardSession(
+      { ...successCardExample, message_id: 'm-static' },
+      {
+        ...draftComplete,
+        phase: 'submitted',
+      },
+    ),
   },
   {
     name: 'quick-replies',
-    session: session(
-      [{ ...quickRepliesCardExample, message_id: 'welcome-2' }],
-      draftEmpty,
-    ),
+    session: session([{ ...quickRepliesCardExample, message_id: 'welcome-2' }], draftEmpty),
     turns: [
       {
         when: { type: 'message', textEquals: 'I have my CR number' },
         events: [
-          { event: 'token', data: { message_id: 'm-reply', text: 'Great — share your CR when ready.' } },
+          {
+            event: 'token',
+            data: { message_id: 'm-reply', text: 'Great — share your CR when ready.' },
+          },
           { event: 'done', data: { phase: 'gate' } },
         ],
       },

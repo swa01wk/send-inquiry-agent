@@ -1,9 +1,5 @@
 import { patchMockDraft } from '../mockStreamState'
-import {
-  advanceScenarioTurn,
-  getActiveJsonScenario,
-  nextScenarioTurnIndex,
-} from './load'
+import { advanceScenarioTurn, getActiveJsonScenario, nextScenarioTurnIndex } from './load'
 import { chatRequestMatches } from './types'
 import type { ChatRequest, SseEvent } from '../../types/contracts'
 

@@ -11,7 +11,12 @@ function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v)
 }
 
-function expectString(obj: Record<string, unknown>, key: string, filePath: string, at: string): string {
+function expectString(
+  obj: Record<string, unknown>,
+  key: string,
+  filePath: string,
+  at: string,
+): string {
   const v = obj[key]
   if (typeof v !== 'string' || !v.trim()) {
     throw new Error(path(filePath, `${at}.${key} must be a non-empty string`))
@@ -81,7 +86,9 @@ function validateSseEvent(raw: unknown, filePath: string, at: string): void {
       break
     case 'draft':
       if (!Array.isArray(data.fields) || !Array.isArray(data.documents)) {
-        throw new Error(path(filePath, `${at}.data must look like DraftSummary (fields, documents)`))
+        throw new Error(
+          path(filePath, `${at}.data must look like DraftSummary (fields, documents)`),
+        )
       }
       if (typeof data.phase !== 'string' || typeof data.can_submit !== 'boolean') {
         throw new Error(path(filePath, `${at}.data must include phase and can_submit`))
