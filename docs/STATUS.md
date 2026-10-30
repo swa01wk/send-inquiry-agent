@@ -12,22 +12,37 @@ The single place to see what's built, what's next and how the agent maps to the 
 
 **Status values:** ✅ Done · 🟡 In progress, or built at demo depth during the breadth days · ⬜ Not started · ⛔ Blocked · ➖ Waived (with reason)
 
-**Last updated:** 29 Oct 2026 · Sprint 1 PR 1 (Day 5 leftovers, before step 12)
+**Last updated:** 30 Oct 2026 · 5-day close-out (actual dates, §3–§4 brought in line with §2, CI evidence for the demo)
 
 ## 0. Delivery plan
 
 [`docs/DELIVERY-PLAN.md`](DELIVERY-PLAN.md) (§A4 lists every L3–L5 capability in the 5 days and its depth): Part A is the 5-day plan (every level at demo depth; day prompts in `prompts/breadth/`). Part B is the full implementation plan: two 2-week sprints and a short closing phase finish each step to its gate. §B0 there maps every step to what the 5 days built and what's left. In §2 below, 🟡 on a step means it was built at demo depth.
 
-| Phase | Dates | Goal | Backend PR (Claude) | Frontend and agent PR (Swaroop) | Status | Notes |
+| Phase | Planned | Goal | Backend PR (Claude) | Frontend and agent PR (Swaroop) | Status | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| Day 1 | Tue 27 Oct | Foundation: 11c, harness, policy and master data | #24 harness; #26 card fix; #27 policy; #28 CI without Playwright; #29 live targets load `.env` | #25 (11c) | ✅ | Live checks recorded in `docs/eval-notes.md` |
-| Day 2 | Wed 28 Oct | Simulated Cenomi, verification by link, resume, submit once, tracking; L3 core: restart-safe store, audit log v0, thin gateway | Day 2 backend PR (#31) | Day 2 frontend track | ✅ | Verify/resume/status/dev inbox, resend countdown, S1 Playwright, prompt notes |
-| Day 3 | Thu 29 Oct | Routing, handoff, Arabic, follow-on; L3 core: form mode, evidence — every L3 capability at demo depth | #35 (handoff, Arabic, follow-on, evidence); #37 (form mode, S2/S3/S13); #39 (confirm card already confirmed) | #38 (router, redirect, handoff card, divider, evidence line, prompt) | ✅ | Router, redirect, handoff card, follow-on divider, Arabic guard capture, prompt sync |
-| Day 4 | Fri 30 Oct | Review lifecycle, reviewer console with audit timeline, case assistant — L4 core | #40 (lifecycle backend, review API, case links); #41 (console UI, Yardi relink) | #43 (case agent, case cards, `/inquiry/case`, T2) | ✅ | Case agent, case cards, `/inquiry/case`, T2, case eval scenarios |
-| Day 5 | Mon 2 Nov | Yardi handover, reviewer assistant, intake channels; L5 core: clock, triggers, notification policy, "Needs attention", drafted reminders; demo | #44 (L5 core, `/dev`, reset, `make demo`); #46 (intake channels backend, tenant APIs) | #45 (reviewer assistant, T1, approval wording); #47 (assisted and tenant prompts, cards, reminder drafting, demo script) | ✅ | End-of-day check automated: `make e2e-demo` |
-| Sprint 1 | 3–16 Nov | M0 and L3 gates (incl. E10, intake channels); full test harness | | | ⬜ | |
+| Day 1 | Tue 27 Oct | Foundation: 11c, harness, policy and master data | #24 harness; #26 card fix; #27 policy; #28 CI without Playwright; #29 live targets load `.env` | #25 (11c) | ✅ | **Merged 27 Oct.** Live checks recorded in `docs/eval-notes.md` |
+| Day 2 | Wed 28 Oct | Simulated Cenomi, verification by link, resume, submit once, tracking; L3 core: restart-safe store, audit log v0, thin gateway | Day 2 backend PR (#31) | Day 2 frontend track (#33); #32 (two malls ask first) | ✅ | **Merged 28 Oct.** Verify/resume/status/dev inbox, resend countdown, S1 Playwright, prompt notes |
+| Day 3 | Thu 29 Oct | Routing, handoff, Arabic, follow-on; L3 core: form mode, evidence — every L3 capability at demo depth | #35 (handoff, Arabic, follow-on, evidence); #37 (form mode, S2/S3/S13); #39 (confirm card already confirmed) | #38 (router, redirect, handoff card, divider, evidence line, prompt) | ✅ | **Merged 28 Oct** (#38, #39 just after midnight). Router, redirect, handoff card, follow-on divider, Arabic guard capture, prompt sync |
+| Day 4 | Fri 30 Oct | Review lifecycle, reviewer console with audit timeline, case assistant — L4 core | #40 (lifecycle backend, review API, case links); #41 (console UI, Yardi relink) | #43 (case agent, case cards, `/inquiry/case`, T2) | ✅ | **Merged 29 Oct** (#42 docs). Case agent, case cards, `/inquiry/case`, T2, case eval scenarios |
+| Day 5 | Mon 2 Nov | Yardi handover, reviewer assistant, intake channels; L5 core: clock, triggers, notification policy, "Needs attention", drafted reminders; demo | #44 (L5 core, `/dev`, reset, `make demo`); #46 (intake channels backend, tenant APIs) | #45 (reviewer assistant, T1, approval wording); #47 (assisted and tenant prompts, cards, reminder drafting, demo script) | ✅ | **Merged 29 Oct.** End-of-day check automated: `make e2e-demo`; runs in CI as `e2e.yml` suite **demo** |
+| Sprint 1 | 3–16 Nov | M0 and L3 gates (incl. E10, intake channels); full test harness | #48 (Day 5 leftovers); #49 (11d-a) | #50 (11d-b); #51 (11d-c) | 🟡 | **Started early, 30 Oct.** Step 11d done; next is step 12 |
 | Sprint 2 | 17–30 Nov | L4 gate; channels row C5 | | | ⬜ | |
 | Closing | 1 Dec – ~16 Dec | L5 to gate quality (thin L5 runs from Day 5); production readiness | | | ⬜ | |
+
+### 5-day close-out (30 Oct): dev tested and demo ready
+
+Every layer ran on GitHub Actions against `main` at #51, or against the close-out branch where only test tooling, one mock fixture and the case guard differ. Run ids are `e2e.yml` runs.
+
+| Layer | Command | Result |
+| --- | --- | --- |
+| BE + AGENT-DET, FE checks + Vitest | `ci.yml` | ✅ on `main` and on the close-out PR |
+| INT (`@scripted`, desktop + mobile) | `make e2e-int` | ✅ `main` (41094858529) and branch (41097903838) |
+| FE Playwright (`@fe`, incl. card screenshots) | `make e2e-fe` | ✅ branch (41097895440), after the Linux baselines were committed |
+| DEMO (Day 5 end-of-day check, every §7.1 workflow and the L3–L5 moments) | `make e2e-demo` | ✅ branch (41095388578) |
+| E2E-LIVE (`@live`, real model) | `make e2e-live` | ✅ `main` (41094879588) |
+| AGENT-LIVE (all groups, ×3, invariants) | `make eval-live` | ✅ 26/26 (41096900622); two scenarios at 2/3. With the contacts-card guard, case group 4/4 (41099339596), contacts bundle 3/3 in two runs (see `docs/eval-notes.md`) |
+
+Day 1–5 end-of-day checks (`prompts/breadth/day*.md`) are covered by those suites plus backend tests: idempotent submit, restart from the snapshot, audit redaction, queue access (404 for another queue), Arabic digits and doubt, follow-on, evidence, quiet hours and escalation.
 
 ### What slipped (Day 5) — for Sprint 1 planning
 
@@ -37,7 +52,8 @@ The single place to see what's built, what's next and how the agent maps to the 
 - The **reviewer assistant** had no scripted mode; added in C1 (`X-Test-Scenario` on the assistant endpoint).
 - **`show_application_link`** still ran after **Ask them to sign in**; it is now blocked once that choice is made.
 - **Document-row locators** in e2e matched the whole card; rows now have `doc-row-<type>` test ids.
-- Live eval **"Case: contacts bundle"** once didn't re-show the contacts card (case agent unchanged in #47).
+- Live eval **"Case: contacts bundle"** didn't show the contacts card in about 1 run in 3 (2/3 on 30 Oct). Fixed in the 5-day close-out (#52) with a case guard retry (`_contacts_card_missing_note`), not the prompt: 3/3 in two runs since.
+- Live eval **"Two malls named"** is 2/3 on 30 Oct (the agent sometimes starts with one mall instead of asking). Watch in step 12's baseline.
 - Live eval **"channels: dictated caller"** failed 0/3: the assisted agent thanked the caller by name ("Thanks, Sara") despite `ASSISTED_NOTES`; fixed with an assisted guard retry (`_assisted_addresses_caller_note`, 11d-b review).
 - There is no **kiosk** unit type in master data; kiosks map to **specialty**.
 
@@ -90,32 +106,34 @@ Summary by workflow. Line-by-line coverage of every statement in §7.1, §7.1.1 
 
 | Workflow | Where it's built | 5-day plan | Status |
 | --- | --- | --- | --- |
-| §7.1.1 a1 — prospective, self-service: CR check or skip, 12 basic-info fields, one product line and mall, email link and mobile OTP with resend after a set time, documents with their numbers, submit, reference and tracking link | v1; 11c; 17–20 | Days 1–3 | 🟡 (v1 built; link, tracking and document numbers to come) |
+| §7.1.1 a1 — prospective, self-service: CR check or skip, 12 basic-info fields, one product line and mall, email link and mobile OTP with resend after a set time, documents with their numbers, submit, reference and tracking link | v1; 11c; 17–20 | Days 1–3 | 🟡 (demo depth: email link, OTP resend countdown, document numbers, submit once, tracking link; stories S1–S3, S13) |
 | §7.1.1 a2 — prospective, via the call centre: executive raises it; applicant completes from the emailed link (email auto-verified, review basic info, Proceed, OTP, documents, submit) | 21c | Day 5 | 🟡 (demo depth; Playwright `a2-call-centre.spec.ts`, `a2-guest-service.spec.ts`, and `make e2e-demo`) |
 | §7.1.2 a1 — existing tenant via Leasing Opportunities: prefilled details and documents, property preselected, verify and edit, submit, My inquiries | 21c | Day 5 | 🟡 |
 | §7.1.2 a2 — existing tenant via the call centre: CR exists → ask to sign in, or continue with the record prefilled | 21c | Day 5 | 🟡 (demo depth; Playwright `a2-existing-cr.spec.ts` and `make e2e-demo`) |
 | §7.1 — existing tenant on the public page (`existing_tenant_policy`) | 17, 21c | Days 1, 5 | 🟡 |
 | b — routing to RLM-Store / RPLM-Media / RPLM-Specialty by unit type and region | 23 | Day 4 | 🟡 (policy routing by unit type and the mall's region; reviewers notified) |
 | b — first-level review: re-upload by email link, reject with remarks, approve with Azure AD invitation (only if no account) | 23–25 | Day 4 | 🟡 (console, API and applicant chat built at demo depth) |
-| b — automatic contacts request "on contact creation"; qualified as a lead | 23, 25 | Days 4, 5 | ⬜ |
+| b — automatic contacts request "on contact creation"; qualified as a lead | 23, 25 | Days 4, 5 | 🟡 (demo depth: `_auto_contacts_request` after first approval, behind the policy flag; `contacts_request` email) |
 | c — additional contacts (prefilled for existing tenants; reviewer can remove), estimated sales data with notifications both ways | 26, 21c | Days 4, 5 | 🟡 |
 | c — re-link company and brand from Yardi matches | 24, 27 | Day 5 | 🟡 (console form and Yardi lookups, #41; reviewer assistant suggestions on Day 5) |
-| c — approve (invitations for new contacts, acceptance email, data to Yardi) or reject with email | 28 | Days 4, 5 | ⬜ |
+| c — approve (invitations for new contacts, acceptance email, data to Yardi) or reject with email | 28 | Days 4, 5 | 🟡 (demo depth: `send_lead`, invitations only for contacts without accounts, story T1, `make e2e-demo`) |
 | Tracking link: stage, owner and what's waiting on the applicant | 20, 25 | Days 2, 5 | 🟡 (status page Day 2; case chat from track link and stage/owner on `case_status` card Day 4) |
-| Notifications: information vs action required (§7.15) | 18, 23 | Days 2, 4 | ⬜ |
-| Audit log of actions by customers and staff (§7.10) | 15, 23 | Sprint 1 | ⬜ |
-| Review SLAs (Phase 2) | Demo thresholds in 29–30 | Closing | ⬜ |
+| Notifications: information vs action required (§7.15) | 18, 23 | Days 2, 4 | 🟡 (every template has kind `information` or `action_required`; content synthetic until Cenomi sends §7.15) |
+| Audit log of actions by customers and staff (§7.10) | 15, 23 | Days 2, 4 | 🟡 (audit log v0, redacted; case audit timeline with actors on the console. `inquiry_events` table in Sprint 1) |
+| Review SLAs (Phase 2) | Demo thresholds in 29–30 | Day 5, Closing | 🟡 (thin: stalled-review and escalation thresholds on the simulated clock) |
 | **Out of scope:** Super Admin onboarding of existing tenants (§7.1, user management); profile completion after sign-in; General Inquiries (§7.8.1.1, router redirects); Proposal stage (§7.2); document-content checks | — | — | ➖ |
 
 ## 4. Agentic capability coverage (framework §5–§7)
+
+🟡 means shown working at demo depth in the 5 days ([DELIVERY-PLAN.md](DELIVERY-PLAN.md) §A4 gives full or thin per capability). A capability turns ✅ when its level's gate passes (§1).
 
 | Level | Capability | Where | Status |
 | --- | --- | --- | --- |
 | L1 | Task can be completed through a reliable digital form (incl. when the model is down) | Cards and review card (v1); form mode L3 §3.14 (21) | 🟡 |
 | L1 | Schema, accessibility, authorisation, persistence, duplicate-submission controls | Validators (v1); axe (11d); mock identities (21c, 24); Postgres (13); idempotent submit (14) | 🟡 |
 | L2 | All form paths conversational with no field loss | v1; parity goldens (12) | 🟡 |
-| L2 | Clear handoff to the original transaction | 21; call-centre continuation (21c) | ⬜ |
-| L3 | 1 Intent detection and routing | 16 (supervisor), 21 (router) | ⬜ |
+| L2 | Clear handoff to the original transaction | 21; call-centre continuation (21c) | 🟡 |
+| L3 | 1 Intent detection and routing | 16 (supervisor), 21 (router; Day 3, thin) | 🟡 |
 | L3 | 2 Multi-field extraction | v1; Arabic digits and doubt (Day 3); evidence for derived values on the confirm card and in the audit (Day 3) | 🟡 |
 | L3 | 3 Entity resolution | v1 mall and category matching; Arabic mall names and aliases matched (17) | 🟡 |
 | L3 | 4 Verified context reuse | v1 CR prefill; follow-on inquiries reuse verified details (Day 3, 21b) | 🟡 |
@@ -125,24 +143,24 @@ Summary by workflow. Line-by-line coverage of every statement in §7.1, §7.1.1 
 | L3 | 8 Explicit review and consent | v1 | ✅ |
 | L3 | 9 Reliable tool and API execution | 14, 18 (Day 2: thin gateway, submit once) | 🟡 |
 | L3 | 10 Audit and recovery | 15, 18, 21 (Day 2: audit log v0, faults end in clear notes; Day 3: handoff to the call centre with a case, `handoff_created` audit) | 🟡 |
-| L4 | 1 Outcome framing | 25 | ⬜ |
-| L4 | 2 Structured context assembly | 24 (case brief) | ⬜ |
-| L4 | 3 Grounded derivation and prefill | Day 3 evidence (22), 26 (reuse primary contact), 21c (tenant-record prefill) | ⬜ |
-| L4 | 4 Adaptive dialogue | 25, 26 | ⬜ |
-| L4 | 5 Bounded read-and-reason tools | 25, 27 | ⬜ |
-| L4 | 6 Cross-step continuity | 23, 25; 21c (executive → applicant handover) | ⬜ |
-| L4 | 7 Reviewer assistance | 24, 27 | ⬜ |
-| L4 | 8 Exception and rework reduction | 25, 26, 21b (duplicates) | ⬜ |
-| L4 | 9 Human collaboration (reviewers decide) | 23 (actor checks), 27 | ⬜ |
-| L4 | 10 Outcome tracking | 20, 25 | ⬜ |
-| L5 | 1 Event and state awareness | 29 | ⬜ |
-| L5 | 2 Next-best-action recommendations | 30 | ⬜ |
-| L5 | 3 Proactive preparation | 30 | ⬜ |
-| L5 | 4 Cross-role coordination | 30 (escalation) | ⬜ |
-| L5 | 5 Process optimisation | 31 | ⬜ |
-| L5 | 6 Bounded automation | 29 (tiers) | ⬜ |
-| L5 | 7 Attention management | 29 (quiet hours, throttles, opt-out) | ⬜ |
-| L5 | 8 Feedback and learning | 31 (KPIs) | ⬜ |
+| L4 | 1 Outcome framing | 25 | 🟡 |
+| L4 | 2 Structured context assembly | 24 (case brief) | 🟡 |
+| L4 | 3 Grounded derivation and prefill | Day 3 evidence (22), 26 (reuse primary contact), 21c (tenant-record prefill) | 🟡 |
+| L4 | 4 Adaptive dialogue | 25, 26 | 🟡 |
+| L4 | 5 Bounded read-and-reason tools | 25, 27 | 🟡 |
+| L4 | 6 Cross-step continuity | 23, 25; 21c (executive → applicant handover) | 🟡 |
+| L4 | 7 Reviewer assistance | 24, 27 | 🟡 |
+| L4 | 8 Exception and rework reduction | 25, 26, 21b (duplicates) | 🟡 |
+| L4 | 9 Human collaboration (reviewers decide) | 23 (actor checks), 27 | 🟡 |
+| L4 | 10 Outcome tracking | 20, 25 | 🟡 |
+| L5 | 1 Event and state awareness | 29 | 🟡 |
+| L5 | 2 Next-best-action recommendations | 30 | 🟡 |
+| L5 | 3 Proactive preparation | 30 | 🟡 |
+| L5 | 4 Cross-role coordination | 30 (escalation) | 🟡 |
+| L5 | 5 Process optimisation | 31 | 🟡 (counts only; insight report in 31) |
+| L5 | 6 Bounded automation | 29 (tiers) | 🟡 |
+| L5 | 7 Attention management | 29 (quiet hours, throttles, opt-out) | 🟡 |
+| L5 | 8 Feedback and learning | 31 (KPIs) | 🟡 |
 
 ## 5. Assumptions and decisions waiting on Cenomi
 
@@ -191,9 +209,9 @@ What each layer proves and when it runs: [`docs/specs/testing-strategy.md`](spec
 | Layer | What it covers | Command | In CI | Status today | Notes |
 | --- | --- | --- | --- | --- | --- |
 | BE | ruff, `mypy --strict` on `app` and `scripts/`; pytest with markers (default excludes `sandbox`, `live`); coverage on every run | `make check-be`, `make test-be` | Every PR (`ci.yml` `backend`) | 🟡 | Markers, coverage floors and `scripts/` mypy in 11d B1 slice |
-| FE | ESLint, `tsc`, Prettier; Vitest; Playwright against the frontend alone (`VITE_MOCK=1`, `?scenario=`) | `make check-fe`, `make test-fe`, `make e2e-fe` | Every PR (`ci.yml` `frontend`; `e2e-fe` locally; `e2e.yml` suite **fe** on demand) | ✅ | `@fe` suites in `e2e/tests/fe/`; fixtures in `frontend/src/mocks/scenarios/*.json` (step 12 export from goldens). **Remaining:** commit Linux card-screenshot baselines after one `e2e.yml` **fe** run on `ubuntu-latest` with `make e2e-fe ARGS='--update-snapshots tests/fe/card-screenshots.spec.ts --project=desktop-chrome'` |
+| FE | ESLint, `tsc`, Prettier; Vitest; Playwright against the frontend alone (`VITE_MOCK=1`, `?scenario=`) | `make check-fe`, `make test-fe`, `make e2e-fe` | Every PR (`ci.yml` `frontend`; `e2e-fe` locally; `e2e.yml` suite **fe** on demand) | ✅ | `@fe` suites in `e2e/tests/fe/`; fixtures in `frontend/src/mocks/scenarios/*.json` (step 12 export from goldens). Card-screenshot baselines (desktop, Linux) committed 30 Oct from `e2e.yml` suite **fe** with **update_snapshots**, which rewrites them on `ubuntu-latest` and commits to the branch |
 | INT | Playwright, real frontend + backend, scripted agent, mocks | `make e2e-int` (`make e2e`) | Every PR, locally (CI on demand: `e2e.yml`, suite `scripted`) | ✅ | `@scripted` suites, desktop and mobile. Taken out of per-PR CI on 27 Oct: installing browsers took most of each run |
-| DEMO | Full demo-script walkthrough (Day 5 end-of-day check); desktop only | `make e2e-demo`, `make e2e-demo-headed`, `make e2e-demo-step` | Local rehearsal (not part of `e2e-int`) | ✅ | `@demo` suite in `e2e/tests/demo.spec.ts`; same order as [demo-script.md](./demo-script.md) §A3 automation |
+| DEMO | Full demo-script walkthrough (Day 5 end-of-day check); desktop only | `make e2e-demo`, `make e2e-demo-headed`, `make e2e-demo-step` | Local rehearsal (not part of `e2e-int`); CI on demand: `e2e.yml` suite **demo** | ✅ | `@demo` suite in `e2e/tests/demo.spec.ts`; same order as [demo-script.md](./demo-script.md) §A3 automation |
 | AGENT-DET | Tools, guard, actions, bundles, prompt snapshot, routing, allowlists, scenarios, parity goldens | `make test-agent` (`pytest -m agent`) | Every PR (inside `test-be`) | 🟡 | Prompt snapshots and scenario catalogue in 11d B1 slice; parity goldens in step 12 |
 | AGENT-LIVE | `eval_live.py` scenario groups, ×3 repeats, invariants I1–I7, score vs baseline | `make eval-live` | `workflow_dispatch` suite `eval`; nightly opt-in | ✅ | `EVAL_REPEATS` / `EVAL_TOLERANCE`, per-turn invariants (`app/agent/invariants.py`), JSON+MD in `backend/eval-results/`; formal baseline recording in step 12 |
 | E2E-LIVE | Playwright, real frontend + backend + model; personas and live stories | `make e2e-live` | `workflow_dispatch` suite `live`; nightly opt-in | ✅ | `@live` personas; per-turn invariants in `e2e/support/invariants.ts`; `@flaky` excluded from stable pass rate (`liveSummary` reporter) |
