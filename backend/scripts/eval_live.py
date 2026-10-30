@@ -824,7 +824,7 @@ class RunAttempt:
     passed: bool
     checks: list[tuple[str, bool]]
     turns: list[TurnResult]
-    invariant_violations: list[InvariantViolation]
+    invariant_violations: list[tuple[InvariantViolation, int]]
 
 
 @dataclass
@@ -1375,18 +1375,18 @@ async def run_scenario(
     scenario: LiveScenario,
     *,
     outbox_messages: list[dict[str, Any]],
-) -> tuple[ScenarioResult, list[InvariantViolation]]:
+) -> tuple[ScenarioResult, list[tuple[InvariantViolation, int]]]:
     created = await client.post("/api/sessions")
     session_id = created.json()["session_id"]
     turns: list[TurnResult] = []
-    all_violations: list[InvariantViolation] = []
+    all_violations: list[tuple[InvariantViolation, int]] = []
 
     if scenario.setup is not None:
         override = await scenario.setup(client, session_id, app)
         if override:
             session_id = override
 
-    for user_text in scenario.user_turns:
+    for turn_index, user_text in enumerate(scenario.user_turns, start=1):
         session = await app.state.session_store.get(session_id)
         draft_before = session.draft.model_copy(deep=True) if session else new_inquiry_draft()
         audit_before = len(await _fetch_audit_events(client, session_id))
@@ -1420,7 +1420,7 @@ async def run_scenario(
                 case_status_before=case_before,
             )
             turn_violations.extend(hits)
-            all_violations.extend(hits)
+            all_violations.extend((v, turn_index) for v in hits)
             assistant_parts.append(_tokens(batch))
             combined_events.extend(batch)
             session = await app.state.session_store.get(session_id)
@@ -1480,7 +1480,9 @@ def _format_markdown(result: EvalRunResult, json_path: Path) -> str:
     lines.append("")
     for scenario in result.scenarios:
         status = "PASS" if scenario.passed else "FAIL"
-        lines.append(f"- **{status}** {scenario.name} ({scenario.passes}/{len(scenario.runs)} runs)")
+        lines.append(
+            f"- **{status}** {scenario.name} ({scenario.passes}/{len(scenario.runs)} runs)"
+        )
     return "\n".join(lines) + "\n"
 
 
@@ -1508,16 +1510,14 @@ def _eval_run_to_json(result: EvalRunResult) -> dict[str, Any]:
                         "passed": r.passed,
                         "checks": [[label, ok] for label, ok in r.checks],
                         "invariants": [
-                            {"invariant": v.invariant, "detail": v.detail}
-                            for v in r.invariant_violations
+                            {"invariant": v.invariant, "detail": v.detail, "turn": turn_no}
+                            for v, turn_no in r.invariant_violations
                         ],
                         "turns": [
                             {
                                 "user": t.user,
                                 "assistant": t.assistant,
-                                "retractions": sum(
-                                    1 for n, _ in t.events if n == "message_remove"
-                                ),
+                                "retractions": sum(1 for n, _ in t.events if n == "message_remove"),
                             }
                             for t in r.turns
                         ],
@@ -1550,8 +1550,8 @@ async def main() -> int:
         print(f"Cannot run live eval: {exc}", file=sys.stderr)
         return 1
 
-    eval_repeats = max(1, int(os.environ.get("EVAL_REPEATS", "3")))
-    eval_tolerance = float(os.environ.get("EVAL_TOLERANCE", "5"))
+    eval_repeats = max(1, int(os.environ.get("EVAL_REPEATS") or "3"))
+    eval_tolerance = float(os.environ.get("EVAL_TOLERANCE") or "5")
     passes_needed = _scenario_passes_needed(eval_repeats)
 
     factory = get_chat_model
@@ -1617,21 +1617,21 @@ async def main() -> int:
                     )
                     continue
                 run_passed = result.passed and not violations
-                for v in violations:
+                for v, turn_no in violations:
                     invariant_failures.append(
                         {
                             "invariant": v.invariant,
                             "scenario": scenario.name,
                             "run": run_index,
-                            "turn": "-",
+                            "turn": turn_no,
                             "detail": v.detail,
                         },
                     )
                 for label, ok in result.checks:
                     print(f"  [{'PASS' if ok else 'FAIL'}] {label}")
                 if violations:
-                    for v in violations:
-                        print(f"  [INVARIANT {v.invariant}] {v.detail}")
+                    for v, turn_no in violations:
+                        print(f"  [INVARIANT {v.invariant} turn {turn_no}] {v.detail}")
                 retractions += _retraction_count(result.turns)
                 runs.append(
                     RunAttempt(
@@ -1643,9 +1643,7 @@ async def main() -> int:
                     ),
                 )
             pass_count = sum(1 for r in runs if r.passed)
-            scenario_ok = pass_count >= passes_needed and not any(
-                r.invariant_violations for r in runs
-            )
+            scenario_ok = pass_count >= passes_needed and not any(r.invariant_violations for r in runs)
             scenario_aggregates.append(
                 ScenarioAggregate(
                     name=scenario.name,
@@ -1694,7 +1692,9 @@ async def main() -> int:
     results_dir.mkdir(parents=True, exist_ok=True)
     json_path = results_dir / f"{timestamp}.json"
     md_path = results_dir / f"{timestamp}.md"
-    json_path.write_text(json.dumps(_eval_run_to_json(eval_result), indent=2) + "\n", encoding="utf-8")
+    json_path.write_text(
+        json.dumps(_eval_run_to_json(eval_result), indent=2) + "\n", encoding="utf-8"
+    )
     markdown = _format_markdown(eval_result, json_path)
     md_path.write_text(markdown, encoding="utf-8")
     print("\n" + markdown)

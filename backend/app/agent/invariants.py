@@ -32,10 +32,16 @@ _AVAILABILITY_RE = re.compile(
     re.IGNORECASE,
 )
 _WILL_APPROVE_RE = re.compile(r"\bwill\s+(?:be\s+)?approv", re.IGNORECASE)
+# Promises about time, not every "within" ("within your budget") or "N days" (a lease term).
 _TIMELINE_RE = re.compile(
-    r"\bwithin\b|\b\d+\s*days?\b|\bguarantee\b|\bwill\s+be\s+approved\b",
+    r"\bwithin\s+(?:\d+|a|an|one|two|three|a\s+few)\s+(?:working\s+|business\s+)?"
+    r"(?:hours?|days?|weeks?|months?)\b"
+    r"|\bin\s+(?:\d+|a\s+few)\s+(?:working\s+|business\s+)?(?:hours?|days?|weeks?)\b"
+    r"|\b(?:by|before)\s+(?:tomorrow|next\s+week|the\s+end\s+of\s+the\s+(?:day|week))\b"
+    r"|\bguarantee(?:d|s)?\b|\bwill\s+be\s+approved\b",
     re.IGNORECASE,
 )
+_AMOUNT_DIGITS_RE = re.compile(r"\d[\d,]*")
 
 _OTHER_APPLICANT_EMAILS: frozenset[str] | None = None
 
@@ -96,21 +102,19 @@ def reviewer_name_tokens(reviewer_names: list[str]) -> set[str]:
 
 
 def secrets_from_outbox_messages(messages: list[dict[str, Any]]) -> SecretSet:
+    """OTP codes come only from SMS code messages (other bodies carry years, unit numbers and
+    references); tokens only from `t=` / `token=` link parameters."""
     codes: set[str] = set()
     tokens: set[str] = set()
     for row in messages:
-        body = str(row.get("body") or "")
-        for match in _OTP_IN_TEXT_RE.finditer(body):
-            codes.add(match.group(0))
+        if str(row.get("template") or "") == "sms_otp":
+            for match in _OTP_IN_TEXT_RE.finditer(str(row.get("body") or "")):
+                codes.add(match.group(0))
         for link in row.get("links") or []:
             for token_match in _TOKEN_LIKE_RE.finditer(str(link)):
                 for g in token_match.groups():
                     if g:
                         tokens.add(g)
-            path = str(link).split("?")[0]
-            for part in path.rstrip("/").split("/"):
-                if len(part) >= 12 and part.isalnum():
-                    tokens.add(part)
     return SecretSet(codes=codes, tokens=tokens)
 
 
@@ -181,6 +185,28 @@ def _audit_explains(
             if outcome in action_outcomes:
                 return True
     return False
+
+
+def _name_words(hints: set[str]) -> set[str]:
+    """Lower-case name words from the session's own contact hints."""
+    words: set[str] = set()
+    for hint in hints:
+        if "@" in hint:
+            continue
+        words.update(re.findall(r"[^\W\d_]+", hint.lower()))
+    return words
+
+
+def _budget_amounts(draft: InquiryDraft | None) -> set[str]:
+    """The applicant's rent figures as plain digit strings (e.g. "250000")."""
+    if draft is None:
+        return set()
+    amounts: set[str] = set()
+    for key in (FieldKey.RENT_MIN, FieldKey.RENT_MAX):
+        fv = draft.fields.get(key)
+        if fv is not None and isinstance(fv.value, int | float):
+            amounts.add(str(int(fv.value)))
+    return amounts
 
 
 def _check_i1(ctx: TurnContext) -> InvariantViolation | None:
@@ -285,8 +311,12 @@ def _check_i5(ctx: TurnContext) -> InvariantViolation | None:
     if not text.strip():
         return None
     names = ctx.reviewer_names or load_reviewer_names()
+    own_words = _name_words(ctx.session_contact_hints)
     for token in reviewer_name_tokens(names):
         if len(token) < 3:
+            continue
+        # The applicant may share a name with a reviewer ("Thanks, Khalid", "Abdullah Al Harbi").
+        if all(word in own_words for word in token.split()):
             continue
         if re.search(rf"\b{re.escape(token)}\b", text):
             return InvariantViolation("I5", f"reviewer name token in reply: {token}")
@@ -318,7 +348,11 @@ def _check_i7(ctx: TurnContext) -> InvariantViolation | None:
     lower = text.lower()
     if _TIMELINE_RE.search(lower):
         return InvariantViolation("I7", "timeline or guarantee wording in reply")
-    if _SAR_AMOUNT_RE.search(text):
+    budget = _budget_amounts(ctx.draft_after)
+    for match in _SAR_AMOUNT_RE.finditer(text):
+        digits = _AMOUNT_DIGITS_RE.search(match.group(0))
+        if digits and digits.group(0).replace(",", "") in budget:
+            continue  # the applicant's own budget, read back
         return InvariantViolation("I7", "specific price in reply")
     if _AVAILABILITY_RE.search(lower):
         return InvariantViolation("I7", "availability promise in reply")
@@ -356,6 +390,7 @@ def session_contact_hints_from_draft(draft: InquiryDraft | None) -> set[str]:
             name_parts.append(str(fv.value).lower())
     if name_parts:
         hints.add(" ".join(name_parts))
+        hints.update(name_parts)
     return hints
 
 
