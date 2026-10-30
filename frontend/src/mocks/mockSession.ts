@@ -1,31 +1,37 @@
-import { documentUploadCardExample, quickRepliesCardExample } from './fixtures'
+import {
+  defaultMockSessionCards,
+  documentUploadCardExample,
+  MOCK_WELCOME_MESSAGES,
+} from './fixtures'
+import { getActiveJsonScenario, resetScenarioTurnState } from './scenarios/load'
+import { resetDemoMessageCounter } from './scenarios/demo'
 import { mockDraft, patchMockDraft, resetMockDraft } from './mockStreamState'
 import type { CreateSessionResponse, DraftSummary, UiCard } from '../types/contracts'
 
-const WELCOME_1 = "Marhaba, and welcome to Cenomi Tenant Central! I'm your leasing assistant."
-const WELCOME_2 =
-  "I'll help you send a leasing inquiry in a few minutes, no long form. To start, do you have your company's CR number? I'll check whether you already have an account with us."
-
 export function resetMockSessionState(): void {
   resetMockDraft()
+  resetScenarioTurnState()
+  resetDemoMessageCounter()
 }
 
 export async function mockCreateSession(): Promise<CreateSessionResponse> {
   resetMockSessionState()
+  const json = getActiveJsonScenario()
+  if (json) {
+    patchMockDraft(json.session.draft)
+    return {
+      session_id: json.session.session_id,
+      messages: json.session.messages.map((m) => ({ ...m })),
+      cards: json.session.cards.map((c) => ({ ...c })),
+      draft: JSON.parse(JSON.stringify(json.session.draft)) as DraftSummary,
+    }
+  }
   return {
     session_id: 'mock-session',
-    messages: [
-      { id: 'welcome-1', role: 'assistant', text: WELCOME_1 },
-      { id: 'welcome-2', role: 'assistant', text: WELCOME_2 },
-    ],
-    cards: [{ ...quickRepliesCardExample, message_id: 'welcome-2' }],
-    draft: mockDraft,
+    messages: MOCK_WELCOME_MESSAGES.map((m) => ({ ...m })),
+    cards: defaultMockSessionCards(),
+    draft: { ...mockDraft },
   }
-}
-
-function patchDraft(next: DraftSummary): DraftSummary {
-  patchMockDraft(next)
-  return next
 }
 
 function documentCardFromDraft(draft: DraftSummary): UiCard {
@@ -83,7 +89,7 @@ export async function mockUploadDocument(
     },
     changed_keys: [docType],
   }
-  patchDraft(next)
+  patchMockDraft(next)
   return { card: documentCardFromDraft(next), draft: next }
 }
 
@@ -104,6 +110,6 @@ export async function mockRemoveDocument(
     },
     changed_keys: [docType],
   }
-  patchDraft(next)
+  patchMockDraft(next)
   return { card: documentCardFromDraft(next), draft: next }
 }

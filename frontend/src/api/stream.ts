@@ -20,6 +20,20 @@ function parseSseMessage(eventType: string, data: string): SseEvent | null {
   }
 }
 
+function recordE2eEvent(event: SseEvent): void {
+  if (!E2E_MODE || typeof window === 'undefined') return
+  const w = window as Window & { __e2eEvents?: unknown[] }
+  w.__e2eEvents = w.__e2eEvents ?? []
+  w.__e2eEvents.push(event)
+}
+
+function recordFeMockRequest(body: ChatRequest): void {
+  if (!MOCK_MODE || !E2E_MODE || typeof window === 'undefined') return
+  const w = window as Window & { __feMockRequests?: ChatRequest[] }
+  w.__feMockRequests = w.__feMockRequests ?? []
+  w.__feMockRequests.push(body)
+}
+
 export type StreamOutcome = 'ok' | 'error'
 
 export async function streamChat(
@@ -29,8 +43,15 @@ export async function streamChat(
   signal: AbortSignal,
 ): Promise<StreamOutcome> {
   if (MOCK_MODE) {
-    await replayMockChat(body, onEvent, signal)
-    return 'ok'
+    recordFeMockRequest(body)
+    let sawError = false
+    const wrapped = (event: SseEvent) => {
+      if (event.event === 'error') sawError = true
+      recordE2eEvent(event)
+      onEvent(event)
+    }
+    await replayMockChat(body, wrapped, signal)
+    return sawError ? 'error' : 'ok'
   }
 
   let sawError = false
@@ -54,6 +75,11 @@ export async function streamChat(
       if (res.status === 404) {
         throw Object.assign(new Error('Session not found'), { code: 'session_not_found' })
       }
+      if (res.status === 409) {
+        throw Object.assign(new Error('Another turn is still in progress.'), {
+          code: 'turn_in_progress',
+        })
+      }
       let code = 'stream_failed'
       let message = 'Stream failed'
       try {
@@ -71,11 +97,7 @@ export async function streamChat(
       const event = parseSseMessage(msg.event, msg.data)
       if (event) {
         if (event.event === 'error') sawError = true
-        if (E2E_MODE && typeof window !== 'undefined') {
-          const w = window as Window & { __e2eEvents?: unknown[] }
-          w.__e2eEvents = w.__e2eEvents ?? []
-          w.__e2eEvents.push(event)
-        }
+        recordE2eEvent(event)
         onEvent(event)
       }
     },
