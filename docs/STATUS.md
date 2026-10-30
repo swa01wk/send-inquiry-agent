@@ -38,6 +38,7 @@ The single place to see what's built, what's next and how the agent maps to the 
 - **`show_application_link`** still ran after **Ask them to sign in**; it is now blocked once that choice is made.
 - **Document-row locators** in e2e matched the whole card; rows now have `doc-row-<type>` test ids.
 - Live eval **"Case: contacts bundle"** once didn't re-show the contacts card (case agent unchanged in #47).
+- Live eval **"channels: dictated caller"** failed 0/3: the assisted agent thanked the caller by name ("Thanks, Sara") despite `ASSISTED_NOTES`; fixed with an assisted guard retry (`_assisted_addresses_caller_note`, 11d-b review).
 - There is no **kiosk** unit type in master data; kiosks map to **specialty**.
 
 ## 1. Gates

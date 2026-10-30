@@ -246,11 +246,33 @@ def _check_i2(ctx: TurnContext) -> InvariantViolation | None:
     for token in ctx.secrets.tokens:
         if len(token) >= 8 and token in text:
             return InvariantViolation("I2", "link token in assistant reply")
-    audit_blob = json.dumps(ctx.audit_events_new)
+    # Audit payloads carry numbers (latency_ms, counts) and timestamps that can equal a
+    # 4-digit code; only free-text string values can leak one.
+    audit_text = "\n".join(_audit_strings(ctx.audit_events_new))
     for code in ctx.secrets.codes:
-        if re.search(rf"\b{re.escape(code)}\b", audit_blob):
+        if re.search(rf"\b{re.escape(code)}\b", audit_text):
             return InvariantViolation("I2", "OTP or secret code in new audit events")
+    for token in ctx.secrets.tokens:
+        if len(token) >= 8 and token in audit_text:
+            return InvariantViolation("I2", "link token in new audit events")
     return None
+
+
+_AUDIT_NON_TEXT_KEYS = frozenset({"at", "ts", "timestamp", "created_at", "id", "event_id"})
+
+
+def _audit_strings(node: Any, key: str | None = None) -> list[str]:
+    """String values in audit events, skipping timestamps and ids."""
+    if isinstance(node, dict):
+        out: list[str] = []
+        for k, v in node.items():
+            out.extend(_audit_strings(v, str(k)))
+        return out
+    if isinstance(node, list):
+        return [s for item in node for s in _audit_strings(item, key)]
+    if isinstance(node, str) and key not in _AUDIT_NON_TEXT_KEYS:
+        return [node]
+    return []
 
 
 def _check_i3(ctx: TurnContext) -> InvariantViolation | None:

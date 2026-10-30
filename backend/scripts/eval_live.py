@@ -1643,7 +1643,9 @@ async def main() -> int:
                     ),
                 )
             pass_count = sum(1 for r in runs if r.passed)
-            scenario_ok = pass_count >= passes_needed and not any(r.invariant_violations for r in runs)
+            scenario_ok = pass_count >= passes_needed and not any(
+                r.invariant_violations for r in runs
+            )
             scenario_aggregates.append(
                 ScenarioAggregate(
                     name=scenario.name,
@@ -1659,16 +1661,31 @@ async def main() -> int:
     scenarios_total = len(scenario_aggregates)
     score_percent = 100.0 * scenarios_passed / scenarios_total if scenarios_total else 0.0
 
-    baseline_check = "skipped (group filter)" if group_filter else "not configured"
-    baseline_ok = True
-    if baseline_info and not group_filter:
-        floor = baseline_info["percent"] - eval_tolerance
-        baseline_ok = score_percent >= floor
-        baseline_check = f"{'pass' if baseline_ok else 'fail'} (floor {floor:.1f}%)"
-
+    # Testing strategy §2.5: invariants are hard failures; otherwise the score must be no lower
+    # than the baseline minus EVAL_TOLERANCE. A baseline only compares with a run over the same
+    # scenario set; without one (group runs, or a set that has grown since it was recorded) every
+    # scenario must pass its 2-of-3 rule.
     invariant_ok = not invariant_failures
     scenarios_ok = scenarios_passed == scenarios_total
-    overall_pass = invariant_ok and scenarios_ok and baseline_ok
+    baseline_comparable = bool(
+        baseline_info and not group_filter and baseline_info["total"] == scenarios_total
+    )
+    if baseline_comparable and baseline_info:
+        floor = baseline_info["percent"] - eval_tolerance
+        score_ok = score_percent >= floor
+        baseline_check = f"{'pass' if score_ok else 'fail'} (floor {floor:.1f}%)"
+    else:
+        score_ok = scenarios_ok
+        if group_filter:
+            baseline_check = "skipped (group filter); every scenario must pass"
+        elif baseline_info:
+            baseline_check = (
+                f"skipped (baseline covers {baseline_info['total']} scenarios, this run "
+                f"{scenarios_total}; re-recorded in step 12); every scenario must pass"
+            )
+        else:
+            baseline_check = "not configured; every scenario must pass"
+    overall_pass = invariant_ok and score_ok
 
     timestamp = datetime.now(tz=UTC).strftime("%Y%m%dT%H%M%SZ")
     eval_result = EvalRunResult(

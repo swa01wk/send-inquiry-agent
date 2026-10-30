@@ -398,6 +398,32 @@ def _assisted_verification_claim_note(state: AgentState, ai_text: str) -> str | 
     )
 
 
+def _assisted_addresses_caller_note(state: AgentState, draft: Any, ai_text: str) -> str | None:
+    """Assisted mode: the executive reads every reply, so it must not greet or thank the
+    caller by name ("Thanks, Sara"); "Thanks — I've saved Sara's details." is fine."""
+    if not state.get("assisted") or not ai_text:
+        return None
+    first = draft.fields[FieldKey.FIRST_NAME].value
+    if not first:
+        user_text, _ = _current_turn({**state, "draft": draft})
+        parsed = parse_contact_from_message(user_text)
+        first = parsed[0] if parsed else None
+    if not first:
+        return None
+    pattern = (
+        r"\b(?:thanks|thank you|hi|hello|hey|dear)\b[,!]?\s+"
+        + re.escape(str(first).split()[0])
+        + r"\b(?![\'\u2019]s)"
+    )
+    if not re.search(pattern, ai_text, re.IGNORECASE):
+        return None
+    return (
+        f"{GUARD_PREFIX} Assisted mode: you are talking to the executive, not the caller. "
+        "Don't greet or thank the caller by name. Reply again starting with "
+        f"\"Thanks — I've saved {first}'s details.\" and keep the rest of your reply."
+    )
+
+
 def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
     draft, doubt_unconfirmed = _unconfirm_doubted_fields(state)
     user_text, turn_messages = _current_turn({**state, "draft": draft})
@@ -447,6 +473,7 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
             note = (
                 _assisted_application_link_note(state, draft, turn_messages, cards_shown)
                 or _assisted_verification_claim_note(state, ai_text)
+                or _assisted_addresses_caller_note(state, draft, ai_text)
                 or _brand_reask_note({**state, "draft": draft}, ai_text)
                 or _incomplete_bulk_capture_note({**state, "draft": draft}, phase)
                 or _incomplete_contact_capture_note(
