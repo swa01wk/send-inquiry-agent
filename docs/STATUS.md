@@ -29,6 +29,21 @@ The single place to see what's built, what's next and how the agent maps to the 
 | Sprint 2 | 17–30 Nov | L4 gate; channels row C5 | | | ⬜ | |
 | Closing | 1 Dec – ~16 Dec | L5 to gate quality (thin L5 runs from Day 5); production readiness | | | ⬜ | |
 
+### 5-day close-out (30 Oct): dev tested and demo ready
+
+Every layer ran on GitHub Actions against `main` at #51, or against the close-out branch where only test tooling, one mock fixture and the case guard differ. Run ids are `e2e.yml` runs.
+
+| Layer | Command | Result |
+| --- | --- | --- |
+| BE + AGENT-DET, FE checks + Vitest | `ci.yml` | ✅ on `main` and on the close-out PR |
+| INT (`@scripted`, desktop + mobile) | `make e2e-int` | ✅ `main` (41094858529) and branch (41097903838) |
+| FE Playwright (`@fe`, incl. card screenshots) | `make e2e-fe` | ✅ branch (41097895440), after the Linux baselines were committed |
+| DEMO (Day 5 end-of-day check, every §7.1 workflow and the L3–L5 moments) | `make e2e-demo` | ✅ branch (41095388578) |
+| E2E-LIVE (`@live`, real model) | `make e2e-live` | ✅ `main` (41094879588) |
+| AGENT-LIVE (all groups, ×3, invariants) | `make eval-live` | ✅ 26/26 (41096900622); two scenarios at 2/3 (see `docs/eval-notes.md`) |
+
+Day 1–5 end-of-day checks (`prompts/breadth/day*.md`) are covered by those suites plus backend tests: idempotent submit, restart from the snapshot, audit redaction, queue access (404 for another queue), Arabic digits and doubt, follow-on, evidence, quiet hours and escalation.
+
 ### What slipped (Day 5) — for Sprint 1 planning
 
 - **#46** was closed when **#44**'s base branch was deleted on merge; stacked PRs need retargeting before merge order is retried.
@@ -37,7 +52,8 @@ The single place to see what's built, what's next and how the agent maps to the 
 - The **reviewer assistant** had no scripted mode; added in C1 (`X-Test-Scenario` on the assistant endpoint).
 - **`show_application_link`** still ran after **Ask them to sign in**; it is now blocked once that choice is made.
 - **Document-row locators** in e2e matched the whole card; rows now have `doc-row-<type>` test ids.
-- Live eval **"Case: contacts bundle"** once didn't re-show the contacts card (case agent unchanged in #47).
+- Live eval **"Case: contacts bundle"** didn't show the contacts card in about 1 run in 3 (2/3 on 30 Oct). Fixed in the 5-day close-out with a case guard retry (`_contacts_card_missing_note`), not the prompt.
+- Live eval **"Two malls named"** is 2/3 on 30 Oct (the agent sometimes starts with one mall instead of asking). Watch in step 12's baseline.
 - Live eval **"channels: dictated caller"** failed 0/3: the assisted agent thanked the caller by name ("Thanks, Sara") despite `ASSISTED_NOTES`; fixed with an assisted guard retry (`_assisted_addresses_caller_note`, 11d-b review).
 - There is no **kiosk** unit type in master data; kiosks map to **specialty**.
 
@@ -193,9 +209,9 @@ What each layer proves and when it runs: [`docs/specs/testing-strategy.md`](spec
 | Layer | What it covers | Command | In CI | Status today | Notes |
 | --- | --- | --- | --- | --- | --- |
 | BE | ruff, `mypy --strict` on `app` and `scripts/`; pytest with markers (default excludes `sandbox`, `live`); coverage on every run | `make check-be`, `make test-be` | Every PR (`ci.yml` `backend`) | 🟡 | Markers, coverage floors and `scripts/` mypy in 11d B1 slice |
-| FE | ESLint, `tsc`, Prettier; Vitest; Playwright against the frontend alone (`VITE_MOCK=1`, `?scenario=`) | `make check-fe`, `make test-fe`, `make e2e-fe` | Every PR (`ci.yml` `frontend`; `e2e-fe` locally; `e2e.yml` suite **fe** on demand) | ✅ | `@fe` suites in `e2e/tests/fe/`; fixtures in `frontend/src/mocks/scenarios/*.json` (step 12 export from goldens). **Remaining:** commit Linux card-screenshot baselines after one `e2e.yml` **fe** run on `ubuntu-latest` with `make e2e-fe ARGS='--update-snapshots tests/fe/card-screenshots.spec.ts --project=desktop-chrome'` |
+| FE | ESLint, `tsc`, Prettier; Vitest; Playwright against the frontend alone (`VITE_MOCK=1`, `?scenario=`) | `make check-fe`, `make test-fe`, `make e2e-fe` | Every PR (`ci.yml` `frontend`; `e2e-fe` locally; `e2e.yml` suite **fe** on demand) | ✅ | `@fe` suites in `e2e/tests/fe/`; fixtures in `frontend/src/mocks/scenarios/*.json` (step 12 export from goldens). Card-screenshot baselines (desktop, Linux) committed 30 Oct from `e2e.yml` suite **fe** with **update_snapshots**, which rewrites them on `ubuntu-latest` and commits to the branch |
 | INT | Playwright, real frontend + backend, scripted agent, mocks | `make e2e-int` (`make e2e`) | Every PR, locally (CI on demand: `e2e.yml`, suite `scripted`) | ✅ | `@scripted` suites, desktop and mobile. Taken out of per-PR CI on 27 Oct: installing browsers took most of each run |
-| DEMO | Full demo-script walkthrough (Day 5 end-of-day check); desktop only | `make e2e-demo`, `make e2e-demo-headed`, `make e2e-demo-step` | Local rehearsal (not part of `e2e-int`) | ✅ | `@demo` suite in `e2e/tests/demo.spec.ts`; same order as [demo-script.md](./demo-script.md) §A3 automation |
+| DEMO | Full demo-script walkthrough (Day 5 end-of-day check); desktop only | `make e2e-demo`, `make e2e-demo-headed`, `make e2e-demo-step` | Local rehearsal (not part of `e2e-int`); CI on demand: `e2e.yml` suite **demo** | ✅ | `@demo` suite in `e2e/tests/demo.spec.ts`; same order as [demo-script.md](./demo-script.md) §A3 automation |
 | AGENT-DET | Tools, guard, actions, bundles, prompt snapshot, routing, allowlists, scenarios, parity goldens | `make test-agent` (`pytest -m agent`) | Every PR (inside `test-be`) | 🟡 | Prompt snapshots and scenario catalogue in 11d B1 slice; parity goldens in step 12 |
 | AGENT-LIVE | `eval_live.py` scenario groups, ×3 repeats, invariants I1–I7, score vs baseline | `make eval-live` | `workflow_dispatch` suite `eval`; nightly opt-in | ✅ | `EVAL_REPEATS` / `EVAL_TOLERANCE`, per-turn invariants (`app/agent/invariants.py`), JSON+MD in `backend/eval-results/`; formal baseline recording in step 12 |
 | E2E-LIVE | Playwright, real frontend + backend + model; personas and live stories | `make e2e-live` | `workflow_dispatch` suite `live`; nightly opt-in | ✅ | `@live` personas; per-turn invariants in `e2e/support/invariants.ts`; `@flaky` excluded from stable pass rate (`liveSummary` reporter) |

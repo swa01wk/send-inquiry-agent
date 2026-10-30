@@ -9,6 +9,7 @@ from app.agent.case_guard import (
     _APPROVAL_CLAIM_RE,
     _CONTACTS_SENT_RE,
     _DOC_RESUBMITTED_RE,
+    _contacts_card_missing_note,
     _false_outcome_note,
 )
 from app.agent.runtime import AgentRuntime
@@ -16,7 +17,7 @@ from app.domain.draft_ops import new_inquiry_draft
 from app.domain.models import DocType, DocumentRef
 from app.workflow.machine import SYSTEM, Actor, transition
 from app.workflow.models import Case, CaseStatus, ReviewQueue, WorkflowEvent
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
 T0 = datetime(2026, 10, 30, 9, tzinfo=UTC)
 REVIEWER = Actor(kind="reviewer", id="rlm_store-central", role="rlm_store", regions=["central"])
@@ -156,4 +157,63 @@ def test_false_outcome_note_skipped_when_contacts_submitted_ui_event(
         AIMessage(content="Your contacts have been sent."),
     ]
     note = _false_outcome_note("Your contacts have been sent.", turn, case)
+    assert note is None
+
+
+def _contacts_request_case(agent_runtime: AgentRuntime) -> Case:
+    case = _second_review_case(agent_runtime)
+    case = transition(
+        case,
+        WorkflowEvent(name="contacts_requested", payload={"remarks": ""}),
+        actor=SYSTEM,
+        now=T0 + timedelta(minutes=2),
+    )
+    agent_runtime.services.cases.save(case)
+    return case
+
+
+_BOTH_ROLES = [{"role": "authorized_signatory"}, {"role": "billing_contact"}]
+
+
+def _contacts_turn(*tool_names: str, result: str = "Contacts draft updated (2 role(s)).") -> list:
+    calls = [{"name": n, "args": {}, "id": f"call-{i}"} for i, n in enumerate(tool_names)]
+    turn: list = [
+        HumanMessage(content="I'm the signatory; billing is Omar Saleh, omar@x.sa, +966551234567"),
+        AIMessage(content="", tool_calls=calls),
+    ]
+    for i, name in enumerate(tool_names):
+        content = result if name == "update_contacts" else "Contacts review card shown."
+        turn.append(ToolMessage(content=content, tool_call_id=f"call-{i}"))
+    turn.append(AIMessage(content="I've put you down as Authorized Signatory."))
+    return turn
+
+
+def test_contacts_card_missing_note_when_saved_without_card(agent_runtime: AgentRuntime) -> None:
+    case = _contacts_request_case(agent_runtime)
+    note = _contacts_card_missing_note(_contacts_turn("update_contacts"), case, _BOTH_ROLES)
+    assert note is not None
+    assert "show_contacts_review" in note
+
+
+def test_contacts_card_missing_note_quiet_when_card_shown(agent_runtime: AgentRuntime) -> None:
+    case = _contacts_request_case(agent_runtime)
+    turn = _contacts_turn("update_contacts", "show_contacts_review")
+    assert _contacts_card_missing_note(turn, case, _BOTH_ROLES) is None
+
+
+def test_contacts_card_missing_note_quiet_on_validation_errors(agent_runtime: AgentRuntime) -> None:
+    case = _contacts_request_case(agent_runtime)
+    turn = _contacts_turn("update_contacts", result="Contact validation errors: billing: email")
+    assert _contacts_card_missing_note(turn, case, _BOTH_ROLES) is None
+
+
+def test_contacts_card_missing_note_quiet_until_required_roles(agent_runtime: AgentRuntime) -> None:
+    case = _contacts_request_case(agent_runtime)
+    turn = _contacts_turn("update_contacts")
+    assert _contacts_card_missing_note(turn, case, [{"role": "authorized_signatory"}]) is None
+
+
+def test_contacts_card_missing_note_quiet_without_open_request(agent_runtime: AgentRuntime) -> None:
+    case = _second_review_case(agent_runtime)
+    note = _contacts_card_missing_note(_contacts_turn("update_contacts"), case, _BOTH_ROLES)
     assert note is None
