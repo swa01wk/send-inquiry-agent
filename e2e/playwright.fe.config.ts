@@ -12,6 +12,8 @@ export default defineConfig({
   reporter: [
     ['html', { open: 'never' }],
     ['list'],
+    // In GitHub Actions, failures also appear as annotations on the run.
+    ...(process.env.GITHUB_ACTIONS ? [['github'] as const] : []),
   ],
   use: {
     baseURL,

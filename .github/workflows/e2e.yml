@@ -6,8 +6,8 @@ name: e2e
 #   Run workflow → suite "live": the E2E-LIVE layer (@live), real model.
 #   Run workflow → suite "eval": AGENT-LIVE (`make eval-live`).
 #   Run workflow → suite "fe": the FE layer (@fe), frontend mock only (`make e2e-fe`).
-#     With "update_snapshots", the card screenshot baselines are (re)written and uploaded as
-#     the `card-screenshot-baselines` artifact to commit under e2e/tests/fe/.
+#     With "update_snapshots" on a branch other than main, the card screenshot baselines are
+#     (re)written on ubuntu-latest and committed to that branch.
 #   Run workflow → suite "demo": the Day 5 demo rehearsal (`make e2e-demo`, @demo).
 # Nightly live runs are opt-in: set the repository variable NIGHTLY_LIVE=true (model cost).
 
@@ -35,6 +35,8 @@ jobs:
   playwright-fe:
     if: github.event_name == 'workflow_dispatch' && inputs.suite == 'fe'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # only used to commit screenshot baselines (update_snapshots)
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -54,11 +56,15 @@ jobs:
       - name: Write card screenshot baselines
         if: ${{ inputs.update_snapshots }}
         run: make e2e-fe ARGS='--update-snapshots tests/fe/card-screenshots.spec.ts'
-      - uses: actions/upload-artifact@v4
-        if: ${{ inputs.update_snapshots }}
-        with:
-          name: card-screenshot-baselines
-          path: e2e/tests/fe/card-screenshots.spec.ts-snapshots/
+      - name: Commit card screenshot baselines to this branch
+        if: ${{ inputs.update_snapshots && github.ref != 'refs/heads/main' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add e2e/tests/fe/card-screenshots.spec.ts-snapshots/
+          if git diff --cached --quiet; then echo "Baselines unchanged"; exit 0; fi
+          git commit -m "e2e: card screenshot baselines (ubuntu-latest, run ${{ github.run_id }})"
+          git push
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
