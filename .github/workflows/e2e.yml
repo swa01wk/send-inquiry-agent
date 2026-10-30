@@ -71,7 +71,8 @@ jobs:
           git add e2e/tests/fe/card-screenshots.spec.ts-snapshots/
           if git diff --cached --quiet; then echo "Baselines unchanged"; exit 0; fi
           git commit -m "e2e: card screenshot baselines (ubuntu-latest, run ${{ github.run_id }})"
-          git push
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
