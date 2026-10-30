@@ -122,3 +122,41 @@ def test_assisted_guard_no_note_when_caller_verifies_from_link(
     with patch("app.agent.guard.get_stream_writer", return_value=None):
         result = guard_node(state, runtime=agent_runtime)
     assert result.get("retry_agent") is not True
+
+
+def _assisted_contact_state(reply: str, agent_runtime: AgentRuntime):  # type: ignore[no-untyped-def]
+    master = load_master_data()
+    draft, _, _ = write_fields(
+        new_inquiry_draft(),
+        [(FieldKey.FIRST_NAME.value, "Sara", Source.STAFF)],
+        master=master,
+    )
+    draft.cr_status = "skipped"
+    state = initial_agent_state(
+        session_id="sess-assisted-name", draft=draft, phase=compute_phase(draft).value
+    )
+    state["assisted"] = True
+    state["messages"] = [
+        HumanMessage(content="Sara Ali, sara@beanstreet.example, 0501234567."),
+        AIMessage(content=reply),
+    ]
+    with patch("app.agent.guard.get_stream_writer", return_value=None):
+        return guard_node(state, runtime=agent_runtime)
+
+
+def test_assisted_guard_retries_when_reply_thanks_the_caller_by_name(
+    agent_runtime: AgentRuntime,
+) -> None:
+    result = _assisted_contact_state(
+        "Thanks, Sara — I've saved the contact details.",
+        agent_runtime,
+    )
+    assert result.get("retry_agent") is True
+    note = result["messages"][0].content
+    assert isinstance(note, str) and "Don't greet or thank the caller by name" in note
+
+
+def test_assisted_guard_allows_possessive_name(agent_runtime: AgentRuntime) -> None:
+    result = _assisted_contact_state("Thanks — I've saved Sara's details.", agent_runtime)
+    note = result["messages"][0].content if result.get("messages") else ""
+    assert "Don't greet or thank the caller by name" not in str(note)

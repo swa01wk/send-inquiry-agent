@@ -15,6 +15,9 @@ node_modules/
 dist/
 *.tsbuildinfo
 
+# Live eval output (AGENT-LIVE)
+backend/eval-results/
+
 # Env and local data
 .env
 .env.local

@@ -4,7 +4,7 @@ import { draftFields, fieldDisplay } from '../support/draft'
 import { countDoneEvents, countRetractions, readCapturedEvents } from '../support/events'
 import { appendLiveResult, type LiveScenarioResult } from '../support/liveResults'
 import { countSentences } from '../support/plainLanguage'
-import { afterTurnChecks } from '../support/turnChecks'
+import { afterLiveTurn, doneCount } from '../support/turnChecks'
 
 test.describe('Live OpenAI personas @live', () => {
   test.skip(!process.env.OPENAI_API_KEY && !process.env.E2E_LIVE, 'OPENAI_API_KEY required')
@@ -41,8 +41,10 @@ test.describe('Live OpenAI personas @live', () => {
   })
 
   async function trackTurns(inquiry: InquiryPage, text: string) {
+    const doneBefore = await doneCount(inquiry)
+    const draftBefore = await inquiry.draft()
     await inquiry.say(text)
-    await afterTurnChecks(inquiry)
+    await afterLiveTurn(inquiry, doneBefore, draftBefore)
   }
 
   test('01 shop owner @live', async ({ page }) => {
@@ -185,7 +187,7 @@ test.describe('Live OpenAI personas @live', () => {
     expect(countSentences(reply)).toBeLessThanOrEqual(3)
   })
 
-  test('22 lost mid-way @live', async ({ page }) => {
+  test('22 lost mid-way @flaky @live', async ({ page }) => {
     const inquiry = new InquiryPage(page)
     await inquiry.open()
     await trackTurns(inquiry, '1010123456')

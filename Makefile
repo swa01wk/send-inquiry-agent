@@ -84,7 +84,7 @@ e2e: e2e-int
 
 # AGENT-LIVE: live evaluation. Groups (GROUP=intake, arabic, …) and repeats arrive in step 11d (B1).
 eval-live:
-	$(LOAD_ENV); cd backend && GROUP=$(GROUP) uv run python scripts/eval_live.py
+	$(LOAD_ENV); cd backend && GROUP=$(GROUP) EVAL_REPEATS=$(EVAL_REPEATS) EVAL_TOLERANCE=$(EVAL_TOLERANCE) uv run python scripts/eval_live.py
 
 # Live targets export backend/.env first, so OPENAI_API_KEY and OPENAI_MODEL reach the
 # Playwright process too (the backend reads .env itself; the tests need the key in the shell).

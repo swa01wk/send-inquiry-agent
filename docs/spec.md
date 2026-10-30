@@ -387,13 +387,13 @@ Test layers and when each runs: `docs/specs/testing-strategy.md`.
 | `make test-be` / `make test-fe` / `make test` | pytest / Vitest / both |
 | `make test-agent` | `pytest tests/agent tests/scenarios tests/test_e2e_scripts.py` (moves to `pytest -m agent` in step 11d) |
 | `make e2e-int` | Playwright `@scripted` suites, real frontend + backend, `AGENT_MODE=scripted` (`make e2e` is an alias) |
-| `make eval-live` | `scripts/eval_live.py` with the real model; `GROUP=` is passed through for step 11d |
+| `make eval-live` | `scripts/eval_live.py` with the real model; optional `GROUP=` (default all scenarios; ungrouped scenarios are `intake`), `EVAL_REPEATS` (default 3, 2-of-3 pass rule), `EVAL_TOLERANCE` (default 5 percentage points vs baseline in `docs/eval-notes.md`). Writes JSON + Markdown to `backend/eval-results/` (gitignored). |
 | `make e2e-live` | Playwright `@live` suites with the real model |
 | `make ci` | `check`, `test`, `e2e-int` (run locally before every PR) |
 | `make ci-remote` | `check`, `test` (what CI runs on every PR) |
 | `make gate` | `ci`, `eval-live`, `e2e-live` |
 
-CI: `.github/workflows/ci.yml` runs `backend` (`check-be`, `test-be`) and `frontend` (`check-fe`, `test-fe`) on every PR and push to `main`. Playwright runs locally (`make e2e-int`, `make e2e-live`; Playwright flags via `ARGS=…`), or in CI on demand from `e2e.yml` (`suite: scripted | live`). Nightly live runs need the repository variable `NIGHTLY_LIVE=true`. Step 11d (B1) adds `e2e-fe`, coverage, `scripts/` linting and the `eval-live` job.
+CI: `.github/workflows/ci.yml` runs `backend` (`check-be`, `test-be`) and `frontend` (`check-fe`, `test-fe`) on every PR and push to `main`. Playwright and live eval run locally (`make e2e-int`, `make e2e-live`, `make eval-live`), or in CI on demand from `e2e.yml` (`suite: scripted | live | eval`; uploads `backend/eval-results/` for `eval`). Nightly live runs need the repository variable `NIGHTLY_LIVE=true` (runs `playwright-live` and `eval-live`). Safety invariants I1–I7: `app/agent/invariants.py` (AGENT-LIVE + pytest), `e2e/support/invariants.ts` (E2E-LIVE when `E2E_LIVE=1`).
 
 ## 13. Review lifecycle (L4, Day 4)
 

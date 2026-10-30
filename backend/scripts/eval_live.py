@@ -33,6 +33,16 @@ from app.agent.case_graph import build_case_graph
 from app.agent.eval_checks import off_topic_offers_continue
 from app.agent.graph import build_assisted_graph, build_graph
 from app.agent.guard import reply_asks_for_brand_name
+from app.agent.invariants import (
+    InvariantViolation,
+    TurnContext,
+    check_turn,
+    demo_tokens_from_verification_cards,
+    load_reviewer_names,
+    secrets_from_outbox_messages,
+    session_contact_hints_from_draft,
+    ui_evidence_from_audit,
+)
 from app.agent.model import get_chat_model
 from app.config import get_settings
 from app.domain.draft_ops import add_document, new_inquiry_draft, write_fields
@@ -46,7 +56,6 @@ from app.workflow.models import CaseStatus
 from httpx import ASGITransport, AsyncClient
 
 _APPLICANT = "sara@beanstreet.example"
-_REVIEWERS_JSON = _BACKEND_ROOT / "app" / "data" / "mock_world" / "reviewers.json"
 
 
 async def _read_sse(response: httpx.Response) -> list[tuple[str, dict[str, Any]]]:
@@ -83,6 +92,7 @@ class TurnResult:
     user: str
     assistant: str
     events: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
+    invariant_violations: list[InvariantViolation] = field(default_factory=list)
 
 
 @dataclass
@@ -151,21 +161,21 @@ def _user_confirms(text: str) -> bool:
     )
 
 
-async def _auto_cards(
+async def _auto_card_streams(
     client: AsyncClient,
     session_id: str,
     events: list[tuple[str, dict[str, Any]]],
     *,
     user_text: str,
     submit_otp: bool = True,
-) -> list[tuple[str, dict[str, Any]]]:
-    """Confirm fields / verify the contact when the UI would."""
-    extra: list[tuple[str, dict[str, Any]]] = []
+) -> list[list[tuple[str, dict[str, Any]]]]:
+    """One SSE stream per card action (for per-turn invariant checks)."""
+    streams: list[list[tuple[str, dict[str, Any]]]] = []
     if _user_confirms(user_text):
         for card in _cards(events, "confirm_fields"):
             card_id = card.get("card_id")
             if card_id:
-                extra.extend(
+                streams.append(
                     await _action(client, session_id, "confirm_card", {"card_id": card_id}),
                 )
     if submit_otp:
@@ -175,10 +185,14 @@ async def _auto_cards(
             mobile = payload.get("mobile") or {}
             token = email.get("demo_token")
             if token and not email.get("verified"):
-                extra.extend(await _action(client, session_id, "verify_email", {"token": token}))
+                streams.append(
+                    await _action(client, session_id, "verify_email", {"token": token}),
+                )
             if mobile.get("code_sent") and not mobile.get("verified"):
-                extra.extend(await _action(client, session_id, "submit_otp", {"code": "1234"}))
-    return extra
+                streams.append(
+                    await _action(client, session_id, "submit_otp", {"code": "1234"}),
+                )
+    return streams
 
 
 @dataclass
@@ -192,8 +206,7 @@ class LiveScenario:
 
 
 def _reviewer_names() -> list[str]:
-    data = json.loads(_REVIEWERS_JSON.read_text(encoding="utf-8"))
-    return [str(r["name"]) for r in data["reviewers"]]
+    return load_reviewer_names()
 
 
 def _reply_text(turns: list[TurnResult]) -> str:
@@ -725,6 +738,122 @@ def _retraction_count(turns: list[TurnResult]) -> int:
     return sum(1 for turn in turns for name, _data in turn.events if name == "message_remove")
 
 
+async def _fetch_audit_events(client: AsyncClient, session_id: str) -> list[dict[str, Any]]:
+    response = await client.get(f"/api/dev/audit/{session_id}")
+    if response.status_code == 404:
+        return []
+    response.raise_for_status()
+    body = response.json()
+    return list(body.get("events") or [])
+
+
+async def _fetch_outbox_messages(client: AsyncClient) -> list[dict[str, Any]]:
+    response = await client.get("/api/dev/outbox")
+    response.raise_for_status()
+    return list(response.json().get("messages") or [])
+
+
+def _case_status(app: AppState, session: Session | None) -> str | None:
+    if session is None or not session.case_id:
+        return None
+    case = app.state.services.cases.get(session.case_id)
+    return case.status.value if case else None
+
+
+def _agent_kind(group: str) -> str:
+    return "case" if group == "case" else "intake"
+
+
+async def _invariants_after_stream(
+    client: AsyncClient,
+    app: AppState,
+    session_id: str,
+    events: list[tuple[str, dict[str, Any]]],
+    *,
+    draft_before: InquiryDraft,
+    audit_before: int,
+    scenario: LiveScenario,
+    outbox_messages: list[dict[str, Any]],
+    case_status_before: str | None,
+) -> list[InvariantViolation]:
+    session = await app.state.session_store.get(session_id)
+    draft_after = session.draft if session else draft_before
+    audit_all = await _fetch_audit_events(client, session_id)
+    audit_new = audit_all[audit_before:]
+    ui_cards = [data for name, data in events if name == "ui_card"]
+    secrets = secrets_from_outbox_messages(outbox_messages)
+    for token in demo_tokens_from_verification_cards(ui_cards):
+        secrets.tokens.add(token)
+    ui_evidence = ui_evidence_from_audit(audit_new)
+    has_success = any(data.get("card_type") == "success" for data in ui_cards)
+    ctx = TurnContext(
+        assistant_text=_tokens(events),
+        ui_evidence=ui_evidence,
+        secrets=secrets,
+        draft_before=draft_before,
+        draft_after=draft_after,
+        audit_events_new=audit_new,
+        reviewer_names=_reviewer_names(),
+        session_contact_hints=session_contact_hints_from_draft(draft_after),
+        case_status_before=case_status_before,
+        case_status_after=_case_status(app, session),
+        has_success_card=has_success,
+        agent_kind=_agent_kind(scenario.group),  # type: ignore[arg-type]
+    )
+    return check_turn(ctx)
+
+
+def _scenario_passes_needed(repeats: int) -> int:
+    return repeats - (repeats // 3)
+
+
+def _parse_baseline(notes_path: Path) -> tuple[int, int] | None:
+    if not notes_path.is_file():
+        return None
+    text = notes_path.read_text(encoding="utf-8")
+    matches = re.findall(r"\*\*(\d+)/(\d+)\*\*", text)
+    if not matches:
+        return None
+    passed_s, total_s = matches[-1]
+    return int(passed_s), int(total_s)
+
+
+@dataclass
+class RunAttempt:
+    run: int
+    passed: bool
+    checks: list[tuple[str, bool]]
+    turns: list[TurnResult]
+    invariant_violations: list[tuple[InvariantViolation, int]]
+
+
+@dataclass
+class ScenarioAggregate:
+    name: str
+    group: str
+    passed: bool
+    passes: int
+    runs: list[RunAttempt]
+
+
+@dataclass
+class EvalRunResult:
+    timestamp: str
+    model: str
+    group: str | None
+    eval_repeats: int
+    eval_tolerance: float
+    baseline: dict[str, Any] | None
+    baseline_check: str
+    score_percent: float
+    passed: bool
+    invariant_failures: list[dict[str, Any]]
+    scenarios: list[ScenarioAggregate]
+    scenarios_passed: int
+    scenarios_total: int
+    retractions: int
+
+
 def _check_arabic_user(
     session: Session, turns: list[TurnResult], _app: AppState | None = None
 ) -> list[tuple[str, bool]]:
@@ -1241,32 +1370,169 @@ SCENARIOS: list[LiveScenario] = [
 
 
 async def run_scenario(
-    client: AsyncClient, app: AppState, scenario: LiveScenario
-) -> ScenarioResult:
+    client: AsyncClient,
+    app: AppState,
+    scenario: LiveScenario,
+    *,
+    outbox_messages: list[dict[str, Any]],
+) -> tuple[ScenarioResult, list[tuple[InvariantViolation, int]]]:
     created = await client.post("/api/sessions")
     session_id = created.json()["session_id"]
     turns: list[TurnResult] = []
+    all_violations: list[tuple[InvariantViolation, int]] = []
 
     if scenario.setup is not None:
         override = await scenario.setup(client, session_id, app)
         if override:
             session_id = override
 
-    for user_text in scenario.user_turns:
+    for turn_index, user_text in enumerate(scenario.user_turns, start=1):
+        session = await app.state.session_store.get(session_id)
+        draft_before = session.draft.model_copy(deep=True) if session else new_inquiry_draft()
+        audit_before = len(await _fetch_audit_events(client, session_id))
+        case_before = _case_status(app, session)
+
         events = await _message(client, session_id, user_text)
-        follow_up = await _auto_cards(
-            client,
-            session_id,
-            events,
-            user_text=user_text,
-            submit_otp=scenario.auto_otp,
+        stream_batches: list[list[tuple[str, dict[str, Any]]]] = [events]
+        stream_batches.extend(
+            await _auto_card_streams(
+                client,
+                session_id,
+                events,
+                user_text=user_text,
+                submit_otp=scenario.auto_otp,
+            ),
         )
-        assistant = _tokens(events) + _tokens(follow_up)
-        turns.append(TurnResult(user=user_text, assistant=assistant, events=events + follow_up))
+
+        turn_violations: list[InvariantViolation] = []
+        assistant_parts: list[str] = []
+        combined_events: list[tuple[str, dict[str, Any]]] = []
+        for batch in stream_batches:
+            hits = await _invariants_after_stream(
+                client,
+                app,
+                session_id,
+                batch,
+                draft_before=draft_before,
+                audit_before=audit_before,
+                scenario=scenario,
+                outbox_messages=outbox_messages,
+                case_status_before=case_before,
+            )
+            turn_violations.extend(hits)
+            all_violations.extend((v, turn_index) for v in hits)
+            assistant_parts.append(_tokens(batch))
+            combined_events.extend(batch)
+            session = await app.state.session_store.get(session_id)
+            draft_before = session.draft.model_copy(deep=True) if session else draft_before
+            audit_before = len(await _fetch_audit_events(client, session_id))
+            case_before = _case_status(app, session)
+
+        turns.append(
+            TurnResult(
+                user=user_text,
+                assistant="".join(assistant_parts),
+                events=combined_events,
+                invariant_violations=turn_violations,
+            ),
+        )
 
     session = await app.state.session_store.get(session_id)
     checks = scenario.evaluate(session, turns, app)
-    return ScenarioResult(name=scenario.name, checks=checks, turns=turns)
+    return ScenarioResult(name=scenario.name, checks=checks, turns=turns), all_violations
+
+
+def _format_markdown(result: EvalRunResult, json_path: Path) -> str:
+    lines = [
+        "# AGENT-LIVE eval summary",
+        "",
+        f"- **When:** {result.timestamp}",
+        f"- **Model:** {result.model}",
+        f"- **Group:** {result.group or 'all'}",
+        f"- **Repeats:** {result.eval_repeats}",
+        f"- **Score:** {result.score_percent:.1f}% "
+        f"({result.scenarios_passed}/{result.scenarios_total} scenarios)",
+    ]
+    if result.baseline:
+        base_pct = result.baseline["percent"]
+        lines.append(
+            f"- **Baseline:** {result.baseline['passed']}/{result.baseline['total']} "
+            f"({base_pct:.1f}%), tolerance {result.eval_tolerance} pts "
+            f"→ floor {base_pct - result.eval_tolerance:.1f}%",
+        )
+    lines.append(f"- **Baseline check:** {result.baseline_check}")
+    lines.append(f"- **Overall:** {'PASS' if result.passed else 'FAIL'}")
+    lines.append(f"- **Retractions:** {result.retractions}")
+    lines.append(f"- **JSON:** `{json_path.name}`")
+    lines.append("")
+    if result.invariant_failures:
+        lines.append("## Invariant failures")
+        lines.append("")
+        lines.append("| ID | Scenario | Run | Turn | Detail |")
+        lines.append("| --- | --- | --- | --- | --- |")
+        for row in result.invariant_failures:
+            lines.append(
+                f"| {row['invariant']} | {row['scenario']} | {row['run']} | "
+                f"{row.get('turn', '-')} | {row['detail']} |",
+            )
+        lines.append("")
+    lines.append("## Scenarios")
+    lines.append("")
+    for scenario in result.scenarios:
+        status = "PASS" if scenario.passed else "FAIL"
+        lines.append(
+            f"- **{status}** {scenario.name} ({scenario.passes}/{len(scenario.runs)} runs)"
+        )
+    return "\n".join(lines) + "\n"
+
+
+def _eval_run_to_json(result: EvalRunResult) -> dict[str, Any]:
+    return {
+        "timestamp": result.timestamp,
+        "model": result.model,
+        "group": result.group,
+        "eval_repeats": result.eval_repeats,
+        "eval_tolerance": result.eval_tolerance,
+        "baseline": result.baseline,
+        "baseline_check": result.baseline_check,
+        "score_percent": result.score_percent,
+        "passed": result.passed,
+        "invariant_failures": result.invariant_failures,
+        "scenarios": [
+            {
+                "name": s.name,
+                "group": s.group,
+                "passed": s.passed,
+                "passes": s.passes,
+                "runs": [
+                    {
+                        "run": r.run,
+                        "passed": r.passed,
+                        "checks": [[label, ok] for label, ok in r.checks],
+                        "invariants": [
+                            {"invariant": v.invariant, "detail": v.detail, "turn": turn_no}
+                            for v, turn_no in r.invariant_violations
+                        ],
+                        "turns": [
+                            {
+                                "user": t.user,
+                                "assistant": t.assistant,
+                                "retractions": sum(1 for n, _ in t.events if n == "message_remove"),
+                            }
+                            for t in r.turns
+                        ],
+                    }
+                    for r in s.runs
+                ],
+            }
+            for s in result.scenarios
+        ],
+        "summary": {
+            "scenarios_passed": result.scenarios_passed,
+            "scenarios_total": result.scenarios_total,
+            "retractions": result.retractions,
+        },
+    }
 
 
 async def main() -> int:
@@ -1284,6 +1550,10 @@ async def main() -> int:
         print(f"Cannot run live eval: {exc}", file=sys.stderr)
         return 1
 
+    eval_repeats = max(1, int(os.environ.get("EVAL_REPEATS") or "3"))
+    eval_tolerance = float(os.environ.get("EVAL_TOLERANCE") or "5")
+    passes_needed = _scenario_passes_needed(eval_repeats)
+
     factory = get_chat_model
     application = create_app(settings=settings, model_factory=factory)
     application.state.settings = settings
@@ -1294,6 +1564,7 @@ async def main() -> int:
     application.state.assisted_graph = build_assisted_graph(model_factory=factory)
 
     group_filter = os.environ.get("GROUP", "").strip().lower()
+    group_label: str | None = group_filter or None
     scenarios = SCENARIOS
     if group_filter:
         scenarios = [s for s in SCENARIOS if s.group == group_filter]
@@ -1301,33 +1572,151 @@ async def main() -> int:
             print(f"No scenarios for GROUP={group_filter!r}", file=sys.stderr)
             return 1
 
+    notes_path = _BACKEND_ROOT.parent / "docs" / "eval-notes.md"
+    baseline_pair = _parse_baseline(notes_path) if not group_filter else None
+    baseline_info: dict[str, Any] | None = None
+    if baseline_pair:
+        b_pass, b_total = baseline_pair
+        baseline_info = {
+            "passed": b_pass,
+            "total": b_total,
+            "percent": 100.0 * b_pass / b_total if b_total else 0.0,
+            "source": "docs/eval-notes.md",
+        }
+
     transport = ASGITransport(app=application)
-    results: list[ScenarioResult] = []
+    scenario_aggregates: list[ScenarioAggregate] = []
+    invariant_failures: list[dict[str, Any]] = []
+    retractions = 0
+
     async with AsyncClient(transport=transport, base_url="http://test", timeout=120.0) as client:
+        outbox_messages = await _fetch_outbox_messages(client)
         for scenario in scenarios:
             print(f"\n=== {scenario.name} ===")
-            try:
-                result = await run_scenario(client, application, scenario)
-            except Exception as exc:  # noqa: BLE001 — CLI summary
-                print(f"ERROR: {exc}")
-                results.append(ScenarioResult(scenario.name, [("run completed", False)]))
-                continue
-            results.append(result)
-            for label, ok in result.checks:
-                print(f"  [{'PASS' if ok else 'FAIL'}] {label}")
-            for turn in result.turns:
-                print(f"\n  user: {turn.user}")
-                excerpt = turn.assistant.strip().replace("\n", " ")
-                if len(excerpt) > 400:
-                    excerpt = excerpt[:400] + "…"
-                print(f"  bot:  {excerpt or '(no text)'}")
+            runs: list[RunAttempt] = []
+            for run_index in range(1, eval_repeats + 1):
+                print(f"  --- run {run_index}/{eval_repeats} ---")
+                try:
+                    result, violations = await run_scenario(
+                        client,
+                        application,
+                        scenario,
+                        outbox_messages=outbox_messages,
+                    )
+                    outbox_messages = await _fetch_outbox_messages(client)
+                except Exception as exc:  # noqa: BLE001 — CLI summary
+                    print(f"  ERROR: {exc}")
+                    runs.append(
+                        RunAttempt(
+                            run=run_index,
+                            passed=False,
+                            checks=[("run completed", False)],
+                            turns=[],
+                            invariant_violations=[],
+                        ),
+                    )
+                    continue
+                run_passed = result.passed and not violations
+                for v, turn_no in violations:
+                    invariant_failures.append(
+                        {
+                            "invariant": v.invariant,
+                            "scenario": scenario.name,
+                            "run": run_index,
+                            "turn": turn_no,
+                            "detail": v.detail,
+                        },
+                    )
+                for label, ok in result.checks:
+                    print(f"  [{'PASS' if ok else 'FAIL'}] {label}")
+                if violations:
+                    for v, turn_no in violations:
+                        print(f"  [INVARIANT {v.invariant} turn {turn_no}] {v.detail}")
+                retractions += _retraction_count(result.turns)
+                runs.append(
+                    RunAttempt(
+                        run=run_index,
+                        passed=run_passed,
+                        checks=result.checks,
+                        turns=result.turns,
+                        invariant_violations=violations,
+                    ),
+                )
+            pass_count = sum(1 for r in runs if r.passed)
+            scenario_ok = pass_count >= passes_needed and not any(
+                r.invariant_violations for r in runs
+            )
+            scenario_aggregates.append(
+                ScenarioAggregate(
+                    name=scenario.name,
+                    group=scenario.group,
+                    passed=scenario_ok,
+                    passes=pass_count,
+                    runs=runs,
+                ),
+            )
+            print(f"  Scenario: {'PASS' if scenario_ok else 'FAIL'} ({pass_count}/{eval_repeats})")
 
-    passed = sum(1 for r in results if r.passed)
-    total = len(results)
-    retractions = sum(_retraction_count(r.turns) for r in results)
-    print(f"\nSummary: {passed}/{total} scenarios passed all checks.")
-    print(f"Total retractions (message_remove): {retractions}")
-    return 0 if passed >= total - 1 else 1
+    scenarios_passed = sum(1 for s in scenario_aggregates if s.passed)
+    scenarios_total = len(scenario_aggregates)
+    score_percent = 100.0 * scenarios_passed / scenarios_total if scenarios_total else 0.0
+
+    # Testing strategy §2.5: invariants are hard failures; otherwise the score must be no lower
+    # than the baseline minus EVAL_TOLERANCE. A baseline only compares with a run over the same
+    # scenario set; without one (group runs, or a set that has grown since it was recorded) every
+    # scenario must pass its 2-of-3 rule.
+    invariant_ok = not invariant_failures
+    scenarios_ok = scenarios_passed == scenarios_total
+    baseline_comparable = bool(
+        baseline_info and not group_filter and baseline_info["total"] == scenarios_total
+    )
+    if baseline_comparable and baseline_info:
+        floor = baseline_info["percent"] - eval_tolerance
+        score_ok = score_percent >= floor
+        baseline_check = f"{'pass' if score_ok else 'fail'} (floor {floor:.1f}%)"
+    else:
+        score_ok = scenarios_ok
+        if group_filter:
+            baseline_check = "skipped (group filter); every scenario must pass"
+        elif baseline_info:
+            baseline_check = (
+                f"skipped (baseline covers {baseline_info['total']} scenarios, this run "
+                f"{scenarios_total}; re-recorded in step 12); every scenario must pass"
+            )
+        else:
+            baseline_check = "not configured; every scenario must pass"
+    overall_pass = invariant_ok and score_ok
+
+    timestamp = datetime.now(tz=UTC).strftime("%Y%m%dT%H%M%SZ")
+    eval_result = EvalRunResult(
+        timestamp=timestamp,
+        model=settings.openai_model or os.environ.get("OPENAI_MODEL", "unknown"),
+        group=group_label,
+        eval_repeats=eval_repeats,
+        eval_tolerance=eval_tolerance,
+        baseline=baseline_info,
+        baseline_check=baseline_check,
+        score_percent=score_percent,
+        passed=overall_pass,
+        invariant_failures=invariant_failures,
+        scenarios=scenario_aggregates,
+        scenarios_passed=scenarios_passed,
+        scenarios_total=scenarios_total,
+        retractions=retractions,
+    )
+
+    results_dir = _BACKEND_ROOT / "eval-results"
+    results_dir.mkdir(parents=True, exist_ok=True)
+    json_path = results_dir / f"{timestamp}.json"
+    md_path = results_dir / f"{timestamp}.md"
+    json_path.write_text(
+        json.dumps(_eval_run_to_json(eval_result), indent=2) + "\n", encoding="utf-8"
+    )
+    markdown = _format_markdown(eval_result, json_path)
+    md_path.write_text(markdown, encoding="utf-8")
+    print("\n" + markdown)
+
+    return 0 if overall_pass else 1
 
 
 if __name__ == "__main__":
