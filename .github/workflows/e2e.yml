@@ -55,7 +55,7 @@ jobs:
         run: set -o pipefail; make e2e-fe 2>&1 | tee /tmp/playwright.log
       - name: Write card screenshot baselines
         if: ${{ inputs.update_snapshots }}
-        run: set -o pipefail; make e2e-fe ARGS='--update-snapshots tests/fe/card-screenshots.spec.ts' 2>&1 | tee /tmp/playwright.log
+        run: set -o pipefail; make e2e-fe ARGS='--update-snapshots=all tests/fe/card-screenshots.spec.ts' 2>&1 | tee /tmp/playwright.log
       - name: Show the end of the Playwright output
         if: failure()
         run: |
