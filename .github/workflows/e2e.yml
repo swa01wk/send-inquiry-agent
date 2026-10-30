@@ -52,10 +52,17 @@ jobs:
           (cd e2e && npm ci && npx playwright install --with-deps chromium webkit)
       - name: Frontend Playwright (@fe)
         if: ${{ !inputs.update_snapshots }}
-        run: make e2e-fe
+        run: set -o pipefail; make e2e-fe 2>&1 | tee /tmp/playwright.log
       - name: Write card screenshot baselines
         if: ${{ inputs.update_snapshots }}
-        run: make e2e-fe ARGS='--update-snapshots tests/fe/card-screenshots.spec.ts'
+        run: set -o pipefail; make e2e-fe ARGS='--update-snapshots tests/fe/card-screenshots.spec.ts' 2>&1 | tee /tmp/playwright.log
+      - name: Show the end of the Playwright output
+        if: failure()
+        run: |
+          if [ -f /tmp/playwright.log ]; then
+            body=$(tail -n 60 /tmp/playwright.log | sed -e 's/\x1b\[[0-9;]*m//g' -e 's/%/%25/g' | sed -e ':a;N;$!ba;s/\n/%0A/g')
+            echo "::error title=Playwright output (last 60 lines)::${body}"
+          fi
       - name: Commit card screenshot baselines to this branch
         if: ${{ inputs.update_snapshots && github.ref != 'refs/heads/main' }}
         run: |
@@ -90,7 +97,14 @@ jobs:
           (cd frontend && npm ci)
           (cd e2e && npm ci && npx playwright install --with-deps chromium)
       - name: Demo rehearsal (@demo)
-        run: make e2e-demo
+        run: set -o pipefail; make e2e-demo 2>&1 | tee /tmp/playwright.log
+      - name: Show the end of the Playwright output
+        if: failure()
+        run: |
+          if [ -f /tmp/playwright.log ]; then
+            body=$(tail -n 60 /tmp/playwright.log | sed -e 's/\x1b\[[0-9;]*m//g' -e 's/%/%25/g' | sed -e ':a;N;$!ba;s/\n/%0A/g')
+            echo "::error title=Playwright output (last 60 lines)::${body}"
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
