@@ -14,13 +14,14 @@ const cardScenarios: Array<{ scenario: string; card: string }> = [
   { scenario: 'sign-in-prompt', card: 'sign_in_prompt' },
 ]
 
-// Hide the sticky composer so it doesn't overlap the bottom of the card.
-const HIDE_COMPOSER = 'form:has(> textarea[aria-label="Message"]) { visibility: hidden !important; }'
+// The chat panel has a fixed height with overflow hidden, so a tall card (review) is clipped
+// and the composer shows under it. For the screenshot, let the panel grow and hide the composer.
+const SCREENSHOT_CSS = `
+  :root { --panel-height: 2400px !important; }
+  textarea[aria-label="Message"], button[aria-label="Send message"] { visibility: hidden !important; }
+`
 
 test.describe('Card screenshots @fe', () => {
-  // Tall enough that the longest card (review) fits in the chat scroll area.
-  test.use({ viewport: { width: 1440, height: 2000 } })
-
   for (const { scenario, card } of cardScenarios) {
     test(`${scenario} ${card}`, async ({ page }, testInfo) => {
       test.skip(!process.env.GITHUB_ACTIONS, 'screenshot baselines run in GitHub CI only')
@@ -30,9 +31,9 @@ test.describe('Card screenshots @fe', () => {
       await inquiry.openMock(scenario)
       const locator = inquiry.cards(card)
       await expect(locator).toBeVisible()
+      await page.addStyleTag({ content: SCREENSHOT_CSS })
       await expect(locator).toHaveScreenshot(`${scenario}-${testInfo.project.name}.png`, {
         maxDiffPixels: 100,
-        style: HIDE_COMPOSER,
       })
     })
   }
