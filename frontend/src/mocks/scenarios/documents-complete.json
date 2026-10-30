@@ -1,0 +1,327 @@
+{
+  "name": "documents-complete",
+  "session": {
+    "session_id": "mock-session",
+    "messages": [
+      {
+        "id": "welcome-1",
+        "role": "assistant",
+        "text": "Here is the card for this test scenario."
+      },
+      {
+        "id": "m-static",
+        "role": "assistant",
+        "text": "Please use the card below."
+      }
+    ],
+    "cards": [
+      {
+        "card_id": "documents",
+        "card_type": "document_upload",
+        "message_id": "m-static",
+        "payload": {
+          "mode": "intake",
+          "requested_doc_types": [],
+          "remarks": null,
+          "docs": [
+            {
+              "doc_type": "company_profile",
+              "label": "Company Profile",
+              "required": true,
+              "uploaded": true,
+              "file_name": "BeanStreet_Company_Profile.pdf",
+              "size_bytes": 1884160,
+              "on_file": false
+            },
+            {
+              "doc_type": "brand_profile",
+              "label": "Brand Profile",
+              "required": true,
+              "uploaded": true,
+              "file_name": "BeanStreet_Brand_Deck.pdf",
+              "size_bytes": 3355443,
+              "on_file": false
+            },
+            {
+              "doc_type": "cr_certificate",
+              "label": "CR certificate",
+              "required": false,
+              "uploaded": false,
+              "file_name": null,
+              "size_bytes": null,
+              "on_file": false
+            },
+            {
+              "doc_type": "vat_certificate",
+              "label": "VAT certificate",
+              "required": false,
+              "uploaded": false,
+              "file_name": null,
+              "size_bytes": null,
+              "on_file": false
+            },
+            {
+              "doc_type": "national_id",
+              "label": "National ID / Iqama",
+              "required": false,
+              "uploaded": false,
+              "file_name": null,
+              "size_bytes": null,
+              "on_file": false
+            },
+            {
+              "doc_type": "national_address",
+              "label": "National Address",
+              "required": false,
+              "uploaded": false,
+              "file_name": null,
+              "size_bytes": null,
+              "on_file": false
+            },
+            {
+              "doc_type": "articles_of_association",
+              "label": "Article of Association",
+              "required": false,
+              "uploaded": false,
+              "file_name": null,
+              "size_bytes": null,
+              "on_file": false
+            }
+          ],
+          "required_uploaded": 2,
+          "required_total": 2,
+          "allowed_extensions": [
+            ".doc",
+            ".docx",
+            ".jpg",
+            ".jpeg",
+            ".pdf",
+            ".png",
+            ".xlsx",
+            ".zip"
+          ],
+          "max_mb": 5
+        }
+      }
+    ],
+    "draft": {
+      "phase": "documents",
+      "fields": [
+        {
+          "key": "cr_number",
+          "label": "CR number",
+          "group": "company",
+          "display": "1010123456",
+          "source": "user",
+          "confirmed": true,
+          "required": false
+        },
+        {
+          "key": "company_name",
+          "label": "Company name",
+          "group": "company",
+          "display": "Bean Street Trading Co.",
+          "source": "verified",
+          "confirmed": true,
+          "required": true
+        },
+        {
+          "key": "company_address",
+          "label": "Company address",
+          "group": "company",
+          "display": "King Fahd Road, Al Olaya, Riyadh",
+          "source": "verified",
+          "confirmed": true,
+          "required": true
+        },
+        {
+          "key": "brand_name_en",
+          "label": "Brand name (EN)",
+          "group": "brand",
+          "display": "Bean Street",
+          "source": "user",
+          "confirmed": true,
+          "required": true
+        },
+        {
+          "key": "brand_name_ar",
+          "label": "Brand name (AR)",
+          "group": "brand",
+          "display": "بين ستريت",
+          "source": "derived",
+          "confirmed": true,
+          "required": true
+        },
+        {
+          "key": "unit_type",
+          "label": "Unit type",
+          "group": "brand",
+          "display": "Specialty",
+          "source": "derived",
+          "confirmed": true,
+          "required": true
+        },
+        {
+          "key": "sales_category",
+          "label": "Sales category",
+          "group": "brand",
+          "display": "Food & Beverage · Café",
+          "source": "derived",
+          "confirmed": true,
+          "required": true
+        },
+        {
+          "key": "malls",
+          "label": "Malls",
+          "group": "space",
+          "display": "Riyadh Mall A, Riyadh Mall B",
+          "source": "user",
+          "confirmed": true,
+          "required": true
+        },
+        {
+          "key": "area",
+          "label": "Area",
+          "group": "space",
+          "display": "25 – 35 sqm",
+          "source": "derived",
+          "confirmed": true,
+          "required": false
+        },
+        {
+          "key": "rent",
+          "label": "Rent",
+          "group": "space",
+          "display": "Up to SAR 250,000 / year",
+          "source": "user",
+          "confirmed": true,
+          "required": false
+        },
+        {
+          "key": "lease",
+          "label": "Lease period",
+          "group": "space",
+          "display": "3 years",
+          "source": "user",
+          "confirmed": true,
+          "required": false
+        },
+        {
+          "key": "first_name",
+          "label": "First name",
+          "group": "contact",
+          "display": "Ahmed",
+          "source": "user",
+          "confirmed": true,
+          "required": true
+        },
+        {
+          "key": "last_name",
+          "label": "Last name",
+          "group": "contact",
+          "display": "Al-Harbi",
+          "source": "user",
+          "confirmed": true,
+          "required": true
+        },
+        {
+          "key": "email",
+          "label": "Email",
+          "group": "contact",
+          "display": "ahmed@beanstreet.sa",
+          "source": "user",
+          "confirmed": true,
+          "required": true
+        },
+        {
+          "key": "mobile",
+          "label": "Mobile",
+          "group": "contact",
+          "display": "+966 55 123 4567",
+          "source": "user",
+          "confirmed": true,
+          "required": true
+        }
+      ],
+      "documents": [
+        {
+          "doc_type": "company_profile",
+          "label": "Company Profile",
+          "required": true,
+          "uploaded": true,
+          "file_name": "BeanStreet_Company_Profile.pdf",
+          "size_bytes": 1884160,
+          "on_file": false
+        },
+        {
+          "doc_type": "brand_profile",
+          "label": "Brand Profile",
+          "required": true,
+          "uploaded": true,
+          "file_name": "BeanStreet_Brand_Deck.pdf",
+          "size_bytes": 3355443,
+          "on_file": false
+        },
+        {
+          "doc_type": "cr_certificate",
+          "label": "CR certificate",
+          "required": false,
+          "uploaded": false,
+          "file_name": null,
+          "size_bytes": null,
+          "on_file": false
+        },
+        {
+          "doc_type": "vat_certificate",
+          "label": "VAT certificate",
+          "required": false,
+          "uploaded": false,
+          "file_name": null,
+          "size_bytes": null,
+          "on_file": false
+        },
+        {
+          "doc_type": "national_id",
+          "label": "National ID / Iqama",
+          "required": false,
+          "uploaded": false,
+          "file_name": null,
+          "size_bytes": null,
+          "on_file": false
+        },
+        {
+          "doc_type": "national_address",
+          "label": "National Address",
+          "required": false,
+          "uploaded": false,
+          "file_name": null,
+          "size_bytes": null,
+          "on_file": false
+        },
+        {
+          "doc_type": "articles_of_association",
+          "label": "Article of Association",
+          "required": false,
+          "uploaded": false,
+          "file_name": null,
+          "size_bytes": null,
+          "on_file": false
+        }
+      ],
+      "checks": {
+        "required_filled": 11,
+        "required_total": 11,
+        "unconfirmed": 0,
+        "email_verified": true,
+        "mobile_verified": true,
+        "contact_verified": true,
+        "required_docs_uploaded": 2,
+        "required_docs_total": 2,
+        "terms_accepted": true
+      },
+      "can_submit": true,
+      "changed_keys": [],
+      "follow_on_of": null
+    }
+  }
+}

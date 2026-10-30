@@ -366,7 +366,7 @@ process steps · review time · required documents · what a CR number is · wha
 | `PROACTIVE_TICK_SECONDS` | `60`; how often the background tick runs |
 | `CALL_CENTRE_PHONE` / `CALL_CENTRE_EMAIL` / `CALL_CENTRE_HOURS` | `+966 11 000 0000` / `leasing-callcentre@example.com` / `Sunday to Thursday, 9 am to 5 pm (Riyadh time)` — placeholders until Cenomi confirms; shown on the `handoff` card; mock cases are emailed to `CALL_CENTRE_EMAIL` |
 
-Frontend: `VITE_API_BASE` (default `http://localhost:8000`), `VITE_MOCK` (`1` = run on fixtures), `VITE_E2E` (`1` = send the `X-Test-Scenario` header; e2e only).
+Frontend: `VITE_API_BASE` (default `http://localhost:8000`), `VITE_MOCK` (`1` = run on fixtures; with `?scenario=<name>` on the inquiry page, replays a named fixture from `frontend/src/mocks/scenarios/*.json`; default / unknown name = interactive `demo` flow), `VITE_E2E` (`1` = capture SSE and mock requests for Playwright; send the `X-Test-Scenario` header when not in mock mode).
 
 ## 11. Changes from the POC plan doc
 
@@ -385,15 +385,16 @@ Test layers and when each runs: `docs/specs/testing-strategy.md`.
 | `make check-fe` | ESLint, `tsc -b --noEmit`, Prettier `--check` (frontend) |
 | `make check` | `check-be`, `check-fe` (`make lint` is an alias) |
 | `make test-be` / `make test-fe` / `make test` | pytest / Vitest / both |
-| `make test-agent` | `pytest tests/agent tests/scenarios tests/test_e2e_scripts.py` (moves to `pytest -m agent` in step 11d) |
+| `make test-agent` | `pytest -m agent` (tools, guard, actions, bundles, scenarios; excludes `sandbox` and `live`) |
+| `make e2e-fe` | Playwright `@fe` suites, frontend only (`VITE_MOCK=1`, `e2e/playwright.fe.config.ts`) |
 | `make e2e-int` | Playwright `@scripted` suites, real frontend + backend, `AGENT_MODE=scripted` (`make e2e` is an alias) |
 | `make eval-live` | `scripts/eval_live.py` with the real model; optional `GROUP=` (default all scenarios; ungrouped scenarios are `intake`), `EVAL_REPEATS` (default 3, 2-of-3 pass rule), `EVAL_TOLERANCE` (default 5 percentage points vs baseline in `docs/eval-notes.md`). Writes JSON + Markdown to `backend/eval-results/` (gitignored). |
 | `make e2e-live` | Playwright `@live` suites with the real model |
-| `make ci` | `check`, `test`, `e2e-int` (run locally before every PR) |
+| `make ci` | `check`, `test`, `e2e-fe`, `e2e-int` (Playwright layers run locally before every PR) |
 | `make ci-remote` | `check`, `test` (what CI runs on every PR) |
 | `make gate` | `ci`, `eval-live`, `e2e-live` |
 
-CI: `.github/workflows/ci.yml` runs `backend` (`check-be`, `test-be`) and `frontend` (`check-fe`, `test-fe`) on every PR and push to `main`. Playwright and live eval run locally (`make e2e-int`, `make e2e-live`, `make eval-live`), or in CI on demand from `e2e.yml` (`suite: scripted | live | eval`; uploads `backend/eval-results/` for `eval`). Nightly live runs need the repository variable `NIGHTLY_LIVE=true` (runs `playwright-live` and `eval-live`). Safety invariants I1–I7: `app/agent/invariants.py` (AGENT-LIVE + pytest), `e2e/support/invariants.ts` (E2E-LIVE when `E2E_LIVE=1`).
+CI: `.github/workflows/ci.yml` runs `backend` (`check-be`, `test-be`) and `frontend` (`check-fe`, `test-fe`) on every PR and push to `main`. Playwright and live eval run locally (`make e2e-fe`, `make e2e-int`, `make e2e-live`, `make eval-live`), or in CI on demand from `e2e.yml` (`suite: scripted | live | eval`; uploads `backend/eval-results/` for `eval`). Dev-only `GET /api/dev/audit/{inquiry_id}` (with `/api/dev/outbox`) is documented in §10; INT and later steps assert on it via `e2e/support/events.ts`. Nightly live runs need the repository variable `NIGHTLY_LIVE=true` (runs `playwright-live` and `eval-live`). Safety invariants I1–I7: `app/agent/invariants.py` (AGENT-LIVE + pytest), `e2e/support/invariants.ts` (E2E-LIVE when `E2E_LIVE=1`).
 
 ## 13. Review lifecycle (L4, Day 4)
 

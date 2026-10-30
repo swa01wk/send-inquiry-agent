@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 import type { InquiryPage } from '../pages/inquiry'
 import { readDoneEventCount } from './events'
 import { assertSafetyInvariants, sliceEventsAfterDone } from './invariants'
@@ -47,8 +47,8 @@ export async function doneCount(inquiry: InquiryPage): Promise<number> {
   return readDoneEventCount(inquiry.page)
 }
 
-export async function finishA11y(inquiry: InquiryPage, projectName: string) {
-  const results = await new AxeBuilder({ page: inquiry.page })
+export async function finishA11yOnPage(page: Page, projectName: string) {
+  const results = await new AxeBuilder({ page })
     .include('section[aria-label="Leasing assistant chat"]')
     .disableRules(['scrollable-region-focusable'])
     .analyze()
@@ -57,9 +57,13 @@ export async function finishA11y(inquiry: InquiryPage, projectName: string) {
   )
   expect(serious, 'no serious axe violations').toEqual([])
   if (projectName === 'mobile') {
-    const overflow = await inquiry.page.evaluate(
+    const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
     )
     expect(overflow).toBeTruthy()
   }
+}
+
+export async function finishA11y(inquiry: InquiryPage, projectName: string) {
+  await finishA11yOnPage(inquiry.page, projectName)
 }

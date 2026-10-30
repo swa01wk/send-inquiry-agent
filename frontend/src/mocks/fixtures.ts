@@ -530,3 +530,85 @@ export const quickRepliesCardExample: UiCard = {
     ],
   } satisfies QuickRepliesPayload,
 }
+
+export const basicInfoReviewCardExample: UiCard = {
+  card_id: 'basic-info-review',
+  card_type: 'basic_info_review',
+  message_id: 'm-channel-1',
+  payload: {
+    title: 'Check your details',
+    started_by: 'the Cenomi call centre',
+    rows: [
+      {
+        key: 'company_name',
+        label: 'Company name',
+        display: 'Oasis Coffee',
+        source: 'staff',
+        confirmed: false,
+        required: true,
+      },
+      {
+        key: 'email',
+        label: 'Email',
+        display: 'sara@oasis.sa',
+        source: 'staff',
+        confirmed: false,
+        required: true,
+      },
+    ],
+    missing: [],
+    can_proceed: true,
+    proceeded: false,
+  },
+}
+
+export const sendLinkCardExample: UiCard = {
+  card_id: 'send-link',
+  card_type: 'send_link',
+  message_id: 'm-channel-2',
+  payload: {
+    email_masked: 's***@oasis.sa',
+    can_send: true,
+    missing: [],
+    sent_to_masked: null,
+  },
+}
+
+export const existingCrChoiceCardExample: UiCard = {
+  card_id: 'existing-cr',
+  card_type: 'existing_cr_choice',
+  message_id: 'm-channel-3',
+  payload: {
+    cr_number: '1010000000',
+    company_name: 'Oasis Coffee Company',
+    options: [
+      { value: 'sign_in', label: 'Sign in to Tenant Central' },
+      { value: 'continue', label: 'Continue as a new inquiry' },
+    ],
+    chosen: null,
+  },
+}
+
+export const signInPromptCardExample: UiCard = {
+  card_id: 'sign-in-prompt',
+  card_type: 'sign_in_prompt',
+  message_id: 'm-channel-4',
+  payload: {
+    message: 'This CR is already linked to a Tenant Central account. Sign in to continue.',
+    sign_in_url: '/tenant',
+    button_label: 'Sign in to Tenant Central',
+  },
+}
+
+export const MOCK_WELCOME_MESSAGES = [
+  { id: 'welcome-1', role: 'assistant' as const, text: "Marhaba, and welcome to Cenomi Tenant Central! I'm your leasing assistant." },
+  {
+    id: 'welcome-2',
+    role: 'assistant' as const,
+    text: "I'll help you send a leasing inquiry in a few minutes, no long form. To start, do you have your company's CR number? I'll check whether you already have an account with us.",
+  },
+]
+
+export function defaultMockSessionCards(): UiCard[] {
+  return [{ ...quickRepliesCardExample, message_id: 'welcome-2' }]
+}

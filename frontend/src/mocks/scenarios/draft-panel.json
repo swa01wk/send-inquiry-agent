@@ -1,0 +1,263 @@
+{
+  "name": "draft-panel",
+  "session": {
+    "session_id": "mock-session",
+    "messages": [
+      {
+        "id": "welcome-1",
+        "role": "assistant",
+        "text": "Marhaba, and welcome to Cenomi Tenant Central! I'm your leasing assistant."
+      },
+      {
+        "id": "welcome-2",
+        "role": "assistant",
+        "text": "I'll help you send a leasing inquiry in a few minutes, no long form. To start, do you have your company's CR number? I'll check whether you already have an account with us."
+      }
+    ],
+    "cards": [
+      {
+        "card_id": "quick-replies",
+        "card_type": "quick_replies",
+        "message_id": "welcome-2",
+        "payload": {
+          "options": [
+            {
+              "label": "I have my CR number",
+              "text": "I have my CR number"
+            },
+            {
+              "label": "I don't have it handy",
+              "text": "I don't have it handy"
+            },
+            {
+              "label": "What do I need to get started?",
+              "text": "What do I need to get started?"
+            }
+          ]
+        }
+      }
+    ],
+    "draft": {
+      "phase": "collecting",
+      "fields": [
+        {
+          "key": "cr_number",
+          "label": "CR number",
+          "group": "company",
+          "display": "1010123456",
+          "source": "user",
+          "confirmed": true,
+          "required": false
+        },
+        {
+          "key": "company_name",
+          "label": "Company name",
+          "group": "company",
+          "display": "Bean Street Trading Co.",
+          "source": "verified",
+          "confirmed": false,
+          "required": true
+        },
+        {
+          "key": "company_address",
+          "label": "Company address",
+          "group": "company",
+          "display": "King Fahd Road, Al Olaya, Riyadh",
+          "source": "verified",
+          "confirmed": false,
+          "required": true
+        },
+        {
+          "key": "brand_name_en",
+          "label": "Brand name (EN)",
+          "group": "brand",
+          "display": "Bean Street",
+          "source": "user",
+          "confirmed": true,
+          "required": true
+        },
+        {
+          "key": "brand_name_ar",
+          "label": "Brand name (AR)",
+          "group": "brand",
+          "display": "بين ستريت",
+          "source": "derived",
+          "confirmed": false,
+          "required": true
+        },
+        {
+          "key": "unit_type",
+          "label": "Unit type",
+          "group": "brand",
+          "display": "Specialty",
+          "source": "derived",
+          "confirmed": false,
+          "required": true
+        },
+        {
+          "key": "sales_category",
+          "label": "Sales category",
+          "group": "brand",
+          "display": "Food & Beverage · Café",
+          "source": "derived",
+          "confirmed": false,
+          "required": true
+        },
+        {
+          "key": "malls",
+          "label": "Malls",
+          "group": "space",
+          "display": null,
+          "source": null,
+          "confirmed": false,
+          "required": true
+        },
+        {
+          "key": "area",
+          "label": "Area",
+          "group": "space",
+          "display": "10 – 25,000 sqm",
+          "source": "default",
+          "confirmed": true,
+          "required": false
+        },
+        {
+          "key": "rent",
+          "label": "Rent",
+          "group": "space",
+          "display": null,
+          "source": null,
+          "confirmed": true,
+          "required": false
+        },
+        {
+          "key": "lease",
+          "label": "Lease period",
+          "group": "space",
+          "display": null,
+          "source": null,
+          "confirmed": true,
+          "required": false
+        },
+        {
+          "key": "first_name",
+          "label": "First name",
+          "group": "contact",
+          "display": null,
+          "source": null,
+          "confirmed": false,
+          "required": true
+        },
+        {
+          "key": "last_name",
+          "label": "Last name",
+          "group": "contact",
+          "display": null,
+          "source": null,
+          "confirmed": false,
+          "required": true
+        },
+        {
+          "key": "email",
+          "label": "Email",
+          "group": "contact",
+          "display": null,
+          "source": null,
+          "confirmed": false,
+          "required": true
+        },
+        {
+          "key": "mobile",
+          "label": "Mobile",
+          "group": "contact",
+          "display": null,
+          "source": null,
+          "confirmed": false,
+          "required": true
+        }
+      ],
+      "documents": [
+        {
+          "doc_type": "company_profile",
+          "label": "Company Profile",
+          "required": true,
+          "uploaded": false,
+          "file_name": null,
+          "size_bytes": null,
+          "on_file": false
+        },
+        {
+          "doc_type": "brand_profile",
+          "label": "Brand Profile",
+          "required": true,
+          "uploaded": false,
+          "file_name": null,
+          "size_bytes": null,
+          "on_file": false
+        },
+        {
+          "doc_type": "cr_certificate",
+          "label": "CR certificate",
+          "required": false,
+          "uploaded": false,
+          "file_name": null,
+          "size_bytes": null,
+          "on_file": false
+        },
+        {
+          "doc_type": "vat_certificate",
+          "label": "VAT certificate",
+          "required": false,
+          "uploaded": false,
+          "file_name": null,
+          "size_bytes": null,
+          "on_file": false
+        },
+        {
+          "doc_type": "national_id",
+          "label": "National ID / Iqama",
+          "required": false,
+          "uploaded": false,
+          "file_name": null,
+          "size_bytes": null,
+          "on_file": false
+        },
+        {
+          "doc_type": "national_address",
+          "label": "National Address",
+          "required": false,
+          "uploaded": false,
+          "file_name": null,
+          "size_bytes": null,
+          "on_file": false
+        },
+        {
+          "doc_type": "articles_of_association",
+          "label": "Article of Association",
+          "required": false,
+          "uploaded": false,
+          "file_name": null,
+          "size_bytes": null,
+          "on_file": false
+        }
+      ],
+      "checks": {
+        "required_filled": 4,
+        "required_total": 11,
+        "unconfirmed": 5,
+        "email_verified": false,
+        "mobile_verified": false,
+        "contact_verified": false,
+        "required_docs_uploaded": 0,
+        "required_docs_total": 2,
+        "terms_accepted": false
+      },
+      "can_submit": false,
+      "changed_keys": [
+        "company_name",
+        "company_address"
+      ],
+      "follow_on_of": null
+    }
+  }
+}
