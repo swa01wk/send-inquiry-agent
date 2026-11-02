@@ -6,9 +6,9 @@ import pytest
 from app.config import Settings
 
 from tests.parity.compare import compare_streams
-from tests.parity.normalize import events_from_jsonl, split_turns
+from tests.parity.normalize import chat_turns_for_script, events_from_jsonl
 from tests.parity.recorder import golden_path, record_scenario
-from tests.parity.scenarios import all_scenarios
+from tests.parity.scenarios import ScriptStep, all_scenarios
 
 
 @pytest.mark.asyncio
@@ -37,15 +37,31 @@ async def test_quiet_actions_emit_no_tokens(settings: Settings) -> None:
 
     scenario = scenario_by_name("wrong-otp-three-times")
     events, _session = await record_scenario(settings, scenario)
-    turns = split_turns(events)
+    paired = chat_turns_for_script(scenario.script, events)
 
-    # Turn index after user script: message, confirm, message, confirm, verify_email,
-    # wrong×2, wrong×3 (agent), correct otp, documents_updated.
-    quiet_turn_indices = {4, 5, 6}  # verify_email, wrong, wrong
-    for idx in quiet_turn_indices:
-        assert idx < len(turns), f"expected at least {idx + 1} turns"
-        types = [item["event"] for item in turns[idx]]
-        assert "token" not in types, f"turn {idx} should be quiet, got {types}"
+    def turn_for(step: ScriptStep) -> list[dict]:
+        for script_step, turn in paired:
+            if script_step is step:
+                return turn
+        msg = f"no turn recorded for script step {step!r}"
+        raise AssertionError(msg)
 
-    # Third wrong code runs an agent turn (otp_resent).
-    assert "token" in [item["event"] for item in turns[7]]
+    verify_turn = turn_for(scenario.script[4])  # verify_email
+    assert scenario.script[4].kind == "verify_email"
+    assert "token" not in [item["event"] for item in verify_turn]
+
+    wrong_steps = [
+        step
+        for step in scenario.script
+        if step.kind == "action"
+        and step.action == "submit_otp"
+        and step.payload.get("code") == "0000"
+    ]
+    assert len(wrong_steps) == 3
+    for step in wrong_steps[:2]:
+        types = [item["event"] for item in turn_for(step)]
+        assert "token" not in types, f"wrong OTP should be quiet, got {types}"
+
+    third_wrong = wrong_steps[2]
+    third_types = [item["event"] for item in turn_for(third_wrong)]
+    assert "token" in third_types, f"third wrong OTP should run agent turn, got {third_types}"

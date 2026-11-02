@@ -87,6 +87,24 @@ def events_from_jsonl(text: str) -> list[dict[str, Any]]:
     return [json.loads(line) for line in lines]
 
 
+def chat_turns_for_script(
+    script: list[Any],
+    events: list[dict[str, Any]],
+) -> list[tuple[Any, list[dict[str, Any]]]]:
+    """Pair each non-upload script step with its SSE turn (split on ``done``)."""
+    turns = split_turns(events)
+    paired: list[tuple[Any, list[dict[str, Any]]]] = []
+    turn_index = 0
+    for step in script:
+        if getattr(step, "kind", None) == "upload":
+            continue
+        assert turn_index < len(turns), "fewer chat turns than script steps"
+        paired.append((step, turns[turn_index]))
+        turn_index += 1
+    assert turn_index == len(turns), "more chat turns than script steps"
+    return paired
+
+
 def split_turns(events: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
     turns: list[list[dict[str, Any]]] = []
     current: list[dict[str, Any]] = []

@@ -42,6 +42,57 @@ def _final_draft(events: list[dict[str, Any]]) -> dict[str, Any] | None:
     return None
 
 
+def _reply_text_by_message_id(events: list[dict[str, Any]]) -> list[tuple[str, str]]:
+    """Concatenate token text per message_id, ignoring removed messages."""
+    removed: set[str] = set()
+    parts: dict[str, str] = {}
+    order: list[str] = []
+    for item in events:
+        event_type = item.get("event")
+        data = item.get("data") or {}
+        if event_type == "message_remove":
+            removed.add(str(data.get("message_id", "")))
+            continue
+        if event_type != "token":
+            continue
+        message_id = str(data.get("message_id", ""))
+        if message_id in removed:
+            continue
+        if message_id not in parts:
+            order.append(message_id)
+        parts[message_id] = parts.get(message_id, "") + str(data.get("text", ""))
+    return [(mid, parts[mid]) for mid in order]
+
+
+def _payload_diff_paths(expected: Any, actual: Any, *, prefix: str = "") -> list[str]:
+    if expected == actual:
+        return []
+    if isinstance(expected, dict) and isinstance(actual, dict):
+        paths: list[str] = []
+        for key in sorted(set(expected) | set(actual)):
+            path = f"{prefix}.{key}" if prefix else key
+            if key not in expected:
+                paths.append(f"{path} (missing in expected)")
+            elif key not in actual:
+                paths.append(f"{path} (missing in actual)")
+            else:
+                paths.extend(_payload_diff_paths(expected[key], actual[key], prefix=path))
+        return paths
+    if isinstance(expected, list) and isinstance(actual, list):
+        paths = []
+        max_len = max(len(expected), len(actual))
+        for index in range(max_len):
+            path = f"{prefix}[{index}]"
+            if index >= len(expected):
+                paths.append(f"{path} (missing in expected)")
+            elif index >= len(actual):
+                paths.append(f"{path} (missing in actual)")
+            else:
+                paths.extend(_payload_diff_paths(expected[index], actual[index], prefix=path))
+        return paths
+    return [prefix or "(root)"]
+
+
 def compare_streams(
     expected: list[dict[str, Any]],
     actual: list[dict[str, Any]],
@@ -64,12 +115,20 @@ def compare_streams(
             )
         if exp.get("payload") != act.get("payload"):
             diffs.append(f"ui_card[{index}] payload mismatch ({exp.get('card_type')}):")
+            for path in _payload_diff_paths(exp.get("payload"), act.get("payload")):
+                diffs.append(f"  differs: {path}")
             diffs.append(
                 "  expected: " + json.dumps(exp.get("payload"), ensure_ascii=False, sort_keys=True)
             )
             diffs.append(
                 "  actual:   " + json.dumps(act.get("payload"), ensure_ascii=False, sort_keys=True)
             )
+    exp_replies = _reply_text_by_message_id(expected)
+    act_replies = _reply_text_by_message_id(actual)
+    if exp_replies != act_replies:
+        diffs.append("reply text by message_id:")
+        diffs.append(f"  expected: {exp_replies}")
+        diffs.append(f"  actual:   {act_replies}")
     if _draft_changed_keys(expected) != _draft_changed_keys(actual):
         diffs.append("draft changed_keys sequence:")
         diffs.append(f"  expected: {_draft_changed_keys(expected)}")

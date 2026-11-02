@@ -69,7 +69,11 @@ async def _run_step(
             files={"file": (step.file_name, step.content, "application/pdf")},
         )
         response.raise_for_status()
-        return []
+        body = response.json()
+        return [
+            ("ui_card", body["card"]),
+            ("draft", body["draft"]),
+        ]
     if step.kind == "verify_email":
         token = app.state.services.email_verification.demo_token(session_id)
         assert token
