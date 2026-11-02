@@ -139,6 +139,15 @@ _LEASE_YEARS_RE = re.compile(r"^(\d+|one|two|three|four|five)(?:[\s-]*(?:years?|
 _LEASE_MONTHS_RE = re.compile(r"^(\d+)[\s-]*(?:months?|mos?)$")
 
 
+def _id_from_label(raw: str, kind: str, master: MasterData) -> str | None:
+    """The seeded id whose id or English label matches, ignoring case; else None."""
+    text = normalise_digits(raw).strip().casefold()
+    for item_id in master.ids_for_kind(kind):
+        if text in (item_id.casefold(), (master.label_for(kind, item_id) or "").casefold()):
+            return item_id
+    return None
+
+
 def _period_id(raw: str, kind: str, master: MasterData) -> str | None:
     """Lease or rent period id from its label or the way people say it ("3 years",
     "per year"); None when it doesn't match one seeded period."""
@@ -217,6 +226,9 @@ def validate_master_id(
     label: str,
 ) -> str | ValidationError:
     value = raw.strip() if isinstance(raw, str) else str(raw)
+    if value not in master.ids_for_kind(kind):
+        # The label instead of the id ("Store", "Specialty"): seen in live eval, 2 Nov.
+        value = _id_from_label(value, kind, master) or value
     if value not in master.ids_for_kind(kind) and kind in _PERIOD_KINDS:
         value = _period_id(value, kind, master) or value
     if value not in master.ids_for_kind(kind):

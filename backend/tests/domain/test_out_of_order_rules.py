@@ -189,3 +189,13 @@ def test_lease_as_a_number_or_months(raw: object, expected: str) -> None:
     values, _, errors = _write([("lease_period", raw)])
     assert not errors
     assert values["lease"] == expected
+
+
+@pytest.mark.parametrize(
+    ("kind", "raw", "expected"),
+    [("unit_types", "Store", "store"), ("unit_types", "Specialty", "specialty")],
+)
+def test_master_label_instead_of_id(kind: str, raw: str, expected: str) -> None:
+    # Live eval (2 Nov): the model wrote unit_type "Store" and "Specialty".
+    result = v.validate_master_id(raw, kind=kind, master=load_master_data(), code="x", label="p")
+    assert result == expected
