@@ -13,7 +13,8 @@ from app.agent.model import ScriptedChatModel
 from app.config import Settings
 from app.main import create_app
 from app.services.container import build_services
-from app.sessions import SessionStore
+from app.store.factory import make_session_store
+from app.store.postgres import PostgresInquiryRepository
 from httpx import ASGITransport, AsyncClient
 
 from tests.parity.normalize import normalize_events
@@ -104,8 +105,11 @@ async def parity_client(
     cfg = settings.model_copy(update={"agent_mode": "scripted"})
     application = create_app(settings=cfg, model_factory=factory)
     application.state.settings = cfg
-    application.state.session_store = SessionStore(ttl_minutes=settings.session_ttl_minutes)
-    application.state.services = build_services(settings)
+    session_store = make_session_store(cfg)
+    if cfg.state_backend == "postgres":
+        assert isinstance(session_store.inquiry_repo, PostgresInquiryRepository)
+    application.state.session_store = session_store
+    application.state.services = build_services(cfg)
     application.state.graph = build_graph(model_factory=factory)
     transport = ASGITransport(app=application)
     async with AsyncClient(transport=transport, base_url="http://test") as http:

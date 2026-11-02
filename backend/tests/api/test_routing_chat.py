@@ -65,7 +65,7 @@ async def _seed_collecting(app, session_id: str) -> None:
         master=master,
     )
     session.draft = draft
-    store.save(session)
+    await store.save(session)
 
 
 @pytest.mark.asyncio

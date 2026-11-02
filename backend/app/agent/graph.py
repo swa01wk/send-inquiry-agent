@@ -9,12 +9,14 @@ from typing import Any
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableConfig
+from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import tools_condition
 
 from app.agent.checkpointer import memory_checkpointer
 from app.agent.guard import after_guard, guard_node
+from app.agent.history import trim_messages_for_model
 from app.agent.model import ModelUnavailable, get_chat_model, model_error_kind
 from app.agent.prompts import build_system_message, channel_notes, tenant_account_notes
 from app.agent.runtime import AgentRuntime, runtime_from_config
@@ -70,6 +72,7 @@ def build_agent_graph(
     system_for_turn: Callable[[AgentState, RunnableConfig], SystemMessage],
     guard_node_fn: Callable[[AgentState, RunnableConfig], dict[str, Any]],
     model_factory: Callable[[], BaseChatModel],
+    checkpointer: BaseCheckpointSaver[str] | None = None,
 ) -> CompiledStateGraph[AgentState, None, AgentState, AgentState]:
     default_model = model_factory().bind_tools(tools)
 
@@ -78,8 +81,12 @@ def build_agent_graph(
         configurable = config.get("configurable") or {}
         chat_model = configurable.get("bound_chat_model") or default_model
         system = system_for_turn(state, config)
+        history = trim_messages_for_model(
+            list(state["messages"]),
+            runtime.settings.agent_history_messages,
+        )
         response = _invoke_model(
-            chat_model, [system, *state["messages"]], config, runtime, state["session_id"]
+            chat_model, [system, *history], config, runtime, state["session_id"]
         )
         phase = compute_phase(state["draft"]).value
         return {"messages": [response], "phase": phase, "retry_agent": False}
@@ -97,7 +104,7 @@ def build_agent_graph(
     graph.add_edge("tools", "agent")
     graph.add_conditional_edges("guard", after_guard, {"agent": "agent", "__end__": END})
 
-    return graph.compile(checkpointer=memory_checkpointer())
+    return graph.compile(checkpointer=checkpointer or memory_checkpointer())
 
 
 def system_for_turn(state: AgentState, config: RunnableConfig) -> SystemMessage:
@@ -133,6 +140,7 @@ def guard(state: AgentState, config: RunnableConfig) -> dict[str, Any]:
 
 def build_graph(
     model_factory: Callable[[], BaseChatModel] | None = None,
+    checkpointer: BaseCheckpointSaver[str] | None = None,
 ) -> CompiledStateGraph[AgentState, None, AgentState, AgentState]:
     factory = model_factory or get_chat_model
 
@@ -141,11 +149,13 @@ def build_graph(
         system_for_turn=system_for_turn,
         guard_node_fn=guard,
         model_factory=factory,
+        checkpointer=checkpointer,
     )
 
 
 def build_assisted_graph(
     model_factory: Callable[[], BaseChatModel] | None = None,
+    checkpointer: BaseCheckpointSaver[str] | None = None,
 ) -> CompiledStateGraph[AgentState, None, AgentState, AgentState]:
     """Assisted mode (intake channels §3.2): the intake agent with the assisted allowlist."""
     return build_agent_graph(
@@ -153,4 +163,5 @@ def build_assisted_graph(
         system_for_turn=system_for_turn,
         guard_node_fn=guard,
         model_factory=model_factory or get_chat_model,
+        checkpointer=checkpointer,
     )

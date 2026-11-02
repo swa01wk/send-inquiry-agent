@@ -5,11 +5,15 @@ description = "Send Inquiry Agent POC — FastAPI backend"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "alembic>=1.14.0",
     "email-validator>=2.0.0",
     "fastapi>=0.115.0",
     "langchain-core>=0.3.0",
     "langchain-openai>=0.2.0",
     "langgraph>=0.2.0",
+    "langgraph-checkpoint-postgres>=2.0.0",
+    "psycopg[binary,pool]>=3.2.0",
+    "sqlalchemy[asyncio]>=2.0.0",
     "pydantic>=2.0",
     "pydantic-settings>=2.0.0",
     "python-multipart>=0.0.9",

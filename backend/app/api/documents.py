@@ -43,7 +43,32 @@ async def upload_document(
     master: MasterData = Depends(get_master_data),
     settings: Settings = Depends(get_settings),
 ) -> UploadDocumentResponse:
-    parsed = parse_doc_type(doc_type)
+    lease_id = await store.begin_turn(session_id)
+    try:
+        return await _upload_document(
+            session_id,
+            parsed_doc_type=doc_type,
+            file=file,
+            store=store,
+            services=services,
+            master=master,
+            settings=settings,
+        )
+    finally:
+        await store.end_turn(session_id, lease_id)
+
+
+async def _upload_document(
+    session_id: str,
+    *,
+    parsed_doc_type: str,
+    file: UploadFile,
+    store: SessionStore,
+    services: ServiceContainer,
+    master: MasterData,
+    settings: Settings,
+) -> UploadDocumentResponse:
+    parsed = parse_doc_type(parsed_doc_type)
     if parsed is None:
         raise ApiError(
             400,
@@ -110,7 +135,7 @@ async def upload_document(
         actor="user",
         payload={"doc_type": parsed.value, "ext": ext, "size_bytes": ref.size_bytes},
     )
-    store.save(session)
+    await store.save(session)
     draft = build_draft_summary(session.draft, master, changed_keys=[])
     document = DocumentResponse(
         doc_type=ref.doc_type.value,
@@ -133,6 +158,29 @@ async def delete_document(
     master: MasterData = Depends(get_master_data),
     settings: Settings = Depends(get_settings),
 ) -> DeleteDocumentResponse:
+    lease_id = await store.begin_turn(session_id)
+    try:
+        return await _delete_document(
+            session_id,
+            doc_type=doc_type,
+            store=store,
+            services=services,
+            master=master,
+            settings=settings,
+        )
+    finally:
+        await store.end_turn(session_id, lease_id)
+
+
+async def _delete_document(
+    session_id: str,
+    *,
+    doc_type: str,
+    store: SessionStore,
+    services: ServiceContainer,
+    master: MasterData,
+    settings: Settings,
+) -> DeleteDocumentResponse:
     parsed = parse_doc_type(doc_type)
     if parsed is None:
         raise ApiError(
@@ -154,7 +202,7 @@ async def delete_document(
     services.audit.record(
         session_id, "document_removed", actor="user", payload={"doc_type": parsed.value}
     )
-    store.save(session)
+    await store.save(session)
     draft = build_draft_summary(session.draft, master, changed_keys=[])
     return DeleteDocumentResponse(card=card, draft=draft)
 

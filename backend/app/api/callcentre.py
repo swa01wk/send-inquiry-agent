@@ -102,7 +102,7 @@ async def new_inquiry(
     services.audit.record(
         session.id, "inquiry_created", actor="staff", payload={"channel": "assisted"}
     )
-    store.save(session)
+    await store.save(session)
     return CreateSessionResponse(
         session_id=session.id,
         messages=[message],
@@ -160,5 +160,5 @@ async def open_handoff(
     services.audit.record(
         session.id, "inquiry_created", actor="staff", payload={"channel": "assisted"}
     )
-    store.save(session)
+    await store.save(session)
     return resume_payload(session, master)

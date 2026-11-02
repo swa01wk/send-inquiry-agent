@@ -1,4 +1,19 @@
 services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: inquiry
+      POSTGRES_PASSWORD: inquiry
+      POSTGRES_DB: inquiry
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U inquiry -d inquiry']
+      interval: 2s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
   backend:
     image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
     working_dir: /app
@@ -9,7 +24,15 @@ services:
       - '${BACKEND_HOST_PORT:-8000}:8000'
     env_file:
       - backend/.env
-    command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      STATE_BACKEND: postgres
+      DATABASE_URL: postgresql+psycopg://inquiry:inquiry@postgres:5432/inquiry
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "uv run alembic upgrade head &&
+      uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
 
   frontend:
     image: node:20-bookworm-slim
@@ -28,3 +51,4 @@ services:
 volumes:
   frontend_node_modules:
   backend_venv:
+  postgres_data:

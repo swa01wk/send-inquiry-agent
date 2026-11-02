@@ -21,7 +21,12 @@ async def test_session_create_get_touch():
 async def test_session_ttl_expiry():
     store = SessionStore(ttl_minutes=30)
     session = await store.create()
-    store._sessions[session.id].last_seen = datetime.now(tz=UTC) - timedelta(minutes=31)
+    stale = datetime.now(tz=UTC) - timedelta(minutes=31)
+    session.last_seen = stale
+    store._cache[session.id] = session
+    handle = store._handles.get(session.id)
+    assert handle is not None
+    handle.last_seen_at = stale
 
     with pytest.raises(SessionNotFound):
         await store.get(session.id)
@@ -37,7 +42,7 @@ async def test_snapshots_survive_restart(tmp_path):
     session.add_message("u_1", "user", "Hi, I'd like a kiosk")
     session.remember_card({"card_id": "verification", "card_type": "verification", "payload": {}})
     session.draft.email_verified = True
-    store.save(session)
+    await store.save(session)
 
     restarted = SessionStore(ttl_minutes=120, data_dir=str(tmp_path))
     restored = await restarted.get(session.id)
@@ -50,8 +55,13 @@ async def test_snapshots_survive_restart(tmp_path):
 async def test_revive_reaches_an_idle_session_by_link(tmp_path):
     store = SessionStore(ttl_minutes=30, data_dir=str(tmp_path))
     session = await store.create()
-    store.save(session)
-    store._sessions[session.id].last_seen = datetime.now(tz=UTC) - timedelta(minutes=31)
+    await store.save(session)
+    stale = datetime.now(tz=UTC) - timedelta(minutes=31)
+    session.last_seen = stale
+    store._cache[session.id] = session
+    handle = store._handles.get(session.id)
+    assert handle is not None
+    handle.last_seen_at = stale
     with pytest.raises(SessionNotFound):
         await store.get(session.id)
     revived = await store.revive(session.id)

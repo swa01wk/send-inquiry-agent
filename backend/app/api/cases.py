@@ -103,5 +103,5 @@ async def open_case(
     for card in cards:
         card.message_id = message_id
         session.remember_card(card.model_dump())
-    store.save(session)
+    await store.save(session)
     return resume_payload(session, master)
