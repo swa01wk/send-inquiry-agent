@@ -48,6 +48,8 @@ def _display_str(draft: InquiryDraft, key: FieldKey) -> str | None:
 
 def _make_master_validator(kind: str, code: str, label: str) -> Callable[[Any, MasterData], Any]:
     def _validate(raw: Any, master: MasterData) -> str | v.ValidationError:
+        if kind in ("lease_periods", "rent_periods") and isinstance(raw, int):
+            raw = str(raw)  # a lease of 3 means 3 years
         if not isinstance(raw, str):
             return v.ValidationError(code=code, message=f"Invalid {label}.")
         return v.validate_master_id(raw, kind=kind, master=master, code=code, label=label)

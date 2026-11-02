@@ -71,7 +71,9 @@ class InquiryDraft(BaseModel):
 | `rent_max` | Rent max (SAR) | space | int | no | ≥ rent_min |
 | `lease_period` | Lease period | space | enum id | no | master `lease_periods` |
 
-**Space values as people write them.** Area and rent accept a whole number written the usual ways — `250,000`, `250k`, `30 sqm`, `about 30`, `up to 250,000 SAR per year` — and keep only the number (`validation._normalised_number`); `30.5` or words still fail. `lease_period` and `rent_period` accept the id, its label or a common phrase (`3 years`, `three years`, `3-year` → `3y`; `per year`, `annual` → `yearly`; `a month` → `monthly`) and store the id (`validation._period_id`); a period not in master data (`4 years`, `weekly`) still fails.
+**Space values as people write them.** Area and rent accept a whole number written the usual ways — `250,000`, `250k`, `30 sqm`, `about 30`, `up to 250,000 SAR per year` — and keep only the number (`validation._normalised_number`); `30.5` or words still fail. `lease_period` and `rent_period` accept the id, its label or a common phrase (`3 years`, `three years`, `3-year` → `3y`; `per year`, `annual` → `yearly`; `a month` → `monthly`) and store the id (`validation._period_id`); a period not in master data (`4 years`, `weekly`) still fails. A lease may also be a number of years (`3`) or months (`36 months`).
+
+**`area` and `rent` pseudo keys.** `write_fields` (so `update_draft`) also accepts `area` and `rent`, the names of the summary rows, which the model uses too (2 Nov live-eval trace). One value or a range (`30 sqm` → 30–30; `25-35 sqm`; `200-250k`) is split into the min and max fields and each side goes through its own validator. A one-sided rent is the budget cap (`rent_max`) unless it says "from" or "at least" (`rent_min`). "Per year" or "a month" in a rent fills `rent_period` unless the same write sets it. A derived `area` or `rent` is shown on the confirm card as the fields it wrote.
 | `first_name` | First name | contact | str | yes | 1–50 chars |
 | `last_name` | Last name | contact | str | yes | 1–50 chars |
 | `email` | Email | contact | str | yes | valid email |

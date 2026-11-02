@@ -71,8 +71,21 @@ PROTECTED_WRITE_KEYS = frozenset(
 )
 
 
+_WRITABLE_KEYS = ", ".join(
+    [k.value for k in FieldKey if k is not FieldKey.MOBILE and k is not FieldKey.LANDLINE]
+    + ["contact_number", "landline (only when they say it's a landline)"]
+)
+
+
 class DraftFieldUpdate(BaseModel):
-    key: str
+    key: str = Field(
+        description=(
+            f"One of: {_WRITABLE_KEYS}. Space: `area` (sqm, one value or a range like "
+            "'25-35') or area_min/area_max; `rent` (SAR, e.g. '250000 per year' or a range) "
+            "or rent_min/rent_max; rent_period `yearly`/`monthly`; lease_period `1y`, `2y`, "
+            "`3y` or `5y`. Any other key is rejected."
+        ),
+    )
     value: object
     source: Literal["user", "derived"]
     evidence: str | None = Field(
@@ -465,9 +478,12 @@ def update_draft(
     updated, malls_filled = fill_mentioned_malls(updated, user_text, rt.master)
     if malls_filled and FieldKey.MALLS.value not in written:
         written = [*written, FieldKey.MALLS.value]
-    derived_keys = {item.key for item in fields if item.source == "derived"}
+    derived_keys = {
+        key for item in fields if item.source == "derived" for key in _written_by(item.key)
+    }
     derived_written = [key for key in written if key in derived_keys]
-    requested_keys = {item.key for item in fields}
+    # Pseudo keys report through the fields they write (or their own error).
+    requested_keys = {item.key for item in fields if item.key not in _PSEUDO_KEY_TARGETS}
     unchanged = sorted(requested_keys - set(written) - set(errors) - set(rejected))
 
     cards_update = cards_shown
@@ -520,6 +536,9 @@ def update_draft(
         parts.append(f"Unchanged: {', '.join(unchanged)}.")
     if errors:
         parts.append("Errors: " + "; ".join(f"{k}: {v.message}" for k, v in errors.items()))
+        if any(err.code == "unknown_field" for err in errors.values()):
+            # Seen in live eval: invented keys such as area_min_sqm or rent_annual_sar.
+            parts.append(f"Use only these keys, then call update_draft again: {_WRITABLE_KEYS}.")
     if rejected:
         parts.append("Rejected: " + "; ".join(rejected))
     if evidence_dropped:
@@ -535,6 +554,18 @@ def update_draft(
         confirm_card_keys=confirm_card_keys,
         confirm_card_turns=confirm_card_turns,
     )
+
+
+# Pseudo keys that write other fields (draft_ops.write_fields): `area` and `rent` are the
+# summary rows' names, which the model uses too (eval trace, 2 Nov 2026).
+_PSEUDO_KEY_TARGETS: dict[str, tuple[str, ...]] = {
+    "area": (FieldKey.AREA_MIN.value, FieldKey.AREA_MAX.value),
+    "rent": (FieldKey.RENT_MIN.value, FieldKey.RENT_MAX.value, FieldKey.RENT_PERIOD.value),
+}
+
+
+def _written_by(key: str) -> tuple[str, ...]:
+    return _PSEUDO_KEY_TARGETS.get(key, (key,))
 
 
 def _last_user_text(state: AgentState) -> str:

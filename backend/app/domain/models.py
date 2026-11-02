@@ -53,6 +53,9 @@ class WriteKey(StrEnum):
     """Keys accepted by write_fields (includes pseudo keys)."""
 
     CONTACT_NUMBER = "contact_number"
+    # The summary rows' names: one value or a range, split into min/max (spec §2).
+    AREA = "area"
+    RENT = "rent"
 
 
 class DocType(StrEnum):

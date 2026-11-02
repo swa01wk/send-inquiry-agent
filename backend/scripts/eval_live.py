@@ -100,6 +100,7 @@ class ScenarioResult:
     name: str
     checks: list[tuple[str, bool]]
     turns: list[TurnResult] = field(default_factory=list)
+    session_id: str = ""
 
     @property
     def passed(self) -> bool:
@@ -547,7 +548,11 @@ def _check_out_of_order(
             "what's next names the open step",
             any(word in last for word in ("email", "link", "code", "document", "upload")),
         ),
-        ("no 'last step' while open", "last step" not in last),
+        (
+            # "Once those are done, the review card is the last step" is fine (guard rule 7).
+            "no 'last step' while open",
+            "last step" not in last or any(word in last for word in ("email", "link", "code")),
+        ),
     ]
 
 
@@ -1482,7 +1487,37 @@ async def run_scenario(
 
     session = await app.state.session_store.get(session_id)
     checks = scenario.evaluate(session, turns, app)
-    return ScenarioResult(name=scenario.name, checks=checks, turns=turns), all_violations
+    return (
+        ScenarioResult(name=scenario.name, checks=checks, turns=turns, session_id=session_id),
+        all_violations,
+    )
+
+
+async def _print_failed_run_trace(graph: Any, session_id: str) -> None:
+    """For a failed run: each user turn, the tool calls with their arguments, the tool
+    results and the replies, from the checkpoint (the CI log has no other trace)."""
+    snapshot = await graph.aget_state({"configurable": {"thread_id": session_id}})
+    for message in (snapshot.values or {}).get("messages", []):
+        content = message.content if isinstance(message.content, str) else str(message.content)
+        kind = type(message).__name__
+        if kind == "HumanMessage":
+            print(f"    > user: {content[:300]}")
+        elif kind == "AIMessage":
+            for call in getattr(message, "tool_calls", None) or []:
+                args = json.dumps(call.get("args", {}), ensure_ascii=False)
+                print(f"    > tool {call.get('name')}: {args[:1200]}")
+            if content.strip():
+                print(f"    > reply: {content[:400]}")
+        elif kind == "ToolMessage":
+            print(f"    > result: {content[:400]}")
+
+
+def _scenario_filter(scenarios: list[LiveScenario]) -> list[LiveScenario]:
+    """`SCENARIO=<text>`: only scenarios whose name contains it (case-insensitive)."""
+    wanted = os.environ.get("SCENARIO", "").strip().lower()
+    if not wanted:
+        return scenarios
+    return [s for s in scenarios if wanted in s.name.lower()]
 
 
 def _format_markdown(result: EvalRunResult, json_path: Path) -> str:
@@ -1607,13 +1642,21 @@ async def main() -> int:
     application.state.assisted_graph = build_assisted_graph(model_factory=factory)
 
     group_filter = os.environ.get("GROUP", "").strip().lower()
-    group_label: str | None = group_filter or None
     scenarios = SCENARIOS
     if group_filter:
         scenarios = [s for s in SCENARIOS if s.group == group_filter]
         if not scenarios:
             print(f"No scenarios for GROUP={group_filter!r}", file=sys.stderr)
             return 1
+    filtered = _scenario_filter(scenarios)
+    if not filtered:
+        print(f"No scenarios match SCENARIO={os.environ.get('SCENARIO')!r}", file=sys.stderr)
+        return 1
+    if len(filtered) != len(scenarios):
+        # A subset run never compares against the full baseline.
+        group_filter = group_filter or "scenario"
+    scenarios = filtered
+    group_label: str | None = group_filter or None
 
     notes_path = _BACKEND_ROOT.parent / "docs" / "eval-notes.md"
     baseline_pair = _parse_baseline(notes_path) if not group_filter else None
@@ -1675,6 +1718,16 @@ async def main() -> int:
                 if violations:
                     for v, turn_no in violations:
                         print(f"  [INVARIANT {v.invariant} turn {turn_no}] {v.detail}")
+                if not run_passed and result.session_id:
+                    graph = (
+                        application.state.assisted_graph
+                        if scenario.group == "channels"
+                        else application.state.graph
+                    )
+                    try:
+                        await _print_failed_run_trace(graph, result.session_id)
+                    except Exception as exc:  # noqa: BLE001 — diagnostics only
+                        print(f"    (no trace: {exc})")
                 retractions += _retraction_count(result.turns)
                 runs.append(
                     RunAttempt(
