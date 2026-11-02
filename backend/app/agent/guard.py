@@ -19,6 +19,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langgraph.config import get_stream_writer
 
 from app.agent.brand_infer import fill_brands_from_user_message, user_message_names_brand
+from app.agent.bundles import still_needed_line
 from app.agent.confirm_policy import keys_blocked_from_confirmation
 from app.agent.contact_infer import (
     contact_fields_ready,
@@ -36,7 +37,7 @@ from app.api.cards import (
 from app.api.channel_cards import basic_info_missing, build_send_link_card
 from app.api.schemas import UiCard
 from app.domain.models import NEEDS_CONFIRMATION, FieldKey
-from app.domain.rules import compute_phase, contact_verified
+from app.domain.rules import compute_phase, contact_verified, remaining_steps
 from app.domain.summary import build_draft_summary
 from app.domain.validation import normalise_digits
 
@@ -336,6 +337,49 @@ def _unknown_mall_note(
     )
 
 
+# Talk that sends the user to Submit: "last step", "everything's in", "press Submit",
+# "submit when you're ready", "ready to submit", "the review card". Curly apostrophes too.
+_SUBMIT_TALK_RE = re.compile(
+    r"\b(?:last|final) step\b"
+    r"|\beverything(?:['\u2019]s| is)\s+(?:in|done|ready|set|complete)\b"
+    r"|\ball set\b"
+    r"|\bready to submit\b"
+    r"|\b(?:press|click|hit|tap)\s+(?:the\s+)?submit\b"
+    r"|\bsubmit\s+(?:it\s+)?(?:when|once|whenever)\s+you(?:['\u2019]re| are)\s+ready\b"
+    r"|\breview card\b",
+    re.IGNORECASE,
+)
+# A reply that names what is still open is fine ("once you've opened the email link, the
+# review card appears").
+_OPEN_STEP_RE: dict[str, re.Pattern[str]] = {
+    "verify_email": re.compile(r"\bemail\b|\blink\b", re.IGNORECASE),
+    "verify_mobile": re.compile(r"\bcode\b|\bsms\b|\btext message\b", re.IGNORECASE),
+    "documents": re.compile(r"\bdocument|\bupload|\bprofile\b", re.IGNORECASE),
+}
+
+
+def _premature_submit_note(state: AgentState, draft: Any, ai_text: str) -> str | None:
+    """The reply points to Submit while verification or documents are still open.
+
+    Seen when documents came before the email link (Nov 2026 manual test): the agent said
+    "everything's in" and "last step" with the email still unverified.
+    """
+    if state.get("assisted") or not ai_text or draft.reference:
+        return None
+    steps = remaining_steps(draft)
+    if not steps or "cr" in steps or "fields" in steps:
+        return None  # still collecting: other rules apply
+    open_steps = [step for step in steps if step in _OPEN_STEP_RE]
+    if not open_steps or not _SUBMIT_TALK_RE.search(ai_text):
+        return None
+    if any(_OPEN_STEP_RE[step].search(ai_text) for step in open_steps):
+        return None
+    return (
+        f"{GUARD_PREFIX} Not ready to submit yet. {still_needed_line(draft)} "
+        "Reply again: say briefly what's left and point to that card."
+    )
+
+
 def _unconfirm_doubted_fields(state: AgentState) -> tuple[Any, list[str]]:
     user_text, _ = _current_turn(state)
     blocked = keys_blocked_from_confirmation(user_text)
@@ -472,6 +516,7 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
         else:
             note = (
                 _assisted_application_link_note(state, draft, turn_messages, cards_shown)
+                or _premature_submit_note(state, draft, ai_text)
                 or _assisted_verification_claim_note(state, ai_text)
                 or _assisted_addresses_caller_note(state, draft, ai_text)
                 or _brand_reask_note({**state, "draft": draft}, ai_text)

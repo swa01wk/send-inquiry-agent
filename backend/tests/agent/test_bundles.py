@@ -125,3 +125,44 @@ def test_contact_bundle_after_brand() -> None:
     assert "contact" in hint
     assert "Phone number" in hint
     assert "not yet accepted" in hint
+
+
+def _uploaded(draft):
+    from datetime import UTC, datetime
+
+    from app.domain.draft_ops import add_document
+    from app.domain.models import DocType
+
+    for doc_type, file_id in ((DocType.COMPANY_PROFILE, "co-1"), (DocType.BRAND_PROFILE, "br-1")):
+        draft, _ = add_document(
+            draft,
+            doc_type,
+            file_id=file_id,
+            file_name=f"{file_id}.pdf",
+            size_bytes=100,
+            max_bytes=5 * 1024 * 1024,
+            uploaded_at=datetime(2026, 1, 1, tzinfo=UTC),
+        )
+    return draft
+
+
+def test_documents_before_the_email_link_still_name_the_link() -> None:
+    # Nov 2026 manual test: documents uploaded and mobile verified, email link not opened;
+    # the agent called it the last step. The hint must say what's still open.
+    draft = _uploaded(_ready_for_verification())
+    draft.email_link_sent_to = "sara@example.com"
+    draft.otp_sent_to = "+966501234567"
+    draft.mobile_verified = True
+    hint = next_bundle_hint(draft)
+    assert "Still needed before submit (any order): the email link" in hint
+    assert "only the terms" not in hint
+    assert "SMS code" not in hint.split("Still needed")[1]
+
+
+def test_only_terms_left_points_to_the_review_card() -> None:
+    draft = _uploaded(_ready_for_verification())
+    draft.email_verified = True
+    draft.mobile_verified = True
+    hint = next_bundle_hint(draft)
+    assert "only the terms" in hint
+    assert "show_review" in hint

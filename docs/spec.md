@@ -70,6 +70,8 @@ class InquiryDraft(BaseModel):
 | `rent_min` | Rent min (SAR) | space | int | no | ≥ 0 |
 | `rent_max` | Rent max (SAR) | space | int | no | ≥ rent_min |
 | `lease_period` | Lease period | space | enum id | no | master `lease_periods` |
+
+**Space values as people write them.** Area and rent accept a whole number written the usual ways — `250,000`, `250k`, `30 sqm`, `about 30`, `up to 250,000 SAR per year` — and keep only the number (`validation._normalised_number`); `30.5` or words still fail. `lease_period` and `rent_period` accept the id, its label or a common phrase (`3 years`, `three years`, `3-year` → `3y`; `per year`, `annual` → `yearly`; `a month` → `monthly`) and store the id (`validation._period_id`); a period not in master data (`4 years`, `weekly`) still fails.
 | `first_name` | First name | contact | str | yes | 1–50 chars |
 | `last_name` | Last name | contact | str | yes | 1–50 chars |
 | `email` | Email | contact | str | yes | valid email |
@@ -114,6 +116,10 @@ Blockers, in this order:
 
 `existing_account` if cr existing → `submitted` if reference → `gate` if cr unknown → `collecting` if any blocker 3–4 → `verifying` if any blocker 5 → `documents` if blocker 6 → `review`.
 
+### What's left (`domain/rules.py: remaining_steps`)
+
+The phase is a single label; the user can still do things in any order (upload documents before opening the email link, correct a value after the verification card). `remaining_steps(draft)` lists everything still needed before submit, from the blockers, in the usual order: `cr`, `fields` (blockers 3–4), `verify_email`, `verify_mobile`, `documents`, `terms`. Empty once submitted or for an existing account. The agent's hint (`bundles.still_needed_line`), the guard (§5 rule 7), the `documents_complete` note and the draft checks (`remaining`, `next_step`) all read it, so nothing points to Submit while anything but the terms is left.
+
 ## 3. Agent tools (`backend/app/agent/tools.py`)
 
 All tools return a short factual string for the LLM. Tools that change state return `Command(update=...)` with a `ToolMessage`, and emit `draft` (and cards) via the stream writer.
@@ -139,6 +145,8 @@ There is no submit tool and no verify tool: both happen through UI actions, so t
 
 ## 4. UI actions (handled in the chat endpoint before the graph runs)
 
+**Quiet actions.** When the card already shows the outcome, no agent turn runs: the endpoint streams the action's `ui_card` and `draft` events, then `done`, and adds no reply and no note to the graph. Quiet: `otp_failed` with attempts left, a manual `resend_email_link` or `resend_otp` (sent or `resend_throttled`), `email_verified` or `mobile_verified` while the other channel is still pending, and `document_number_set`. Everything else runs the graph as below — including `verification_complete`, the automatic resend after the last wrong code, `documents_complete`, errors and submit.
+
 | Action | Payload | Backend does, then runs the graph with a `[ui_event]` note |
 | --- | --- | --- |
 | `select_malls` | `{mall_ids: list[str]}` | Validate (1 to `max_malls_per_inquiry` malls); write `malls` as user, confirmed. Note: `malls_selected: <name>` or `malls_invalid <code>` |
@@ -149,7 +157,7 @@ There is no submit tool and no verify tool: both happen through UI actions, so t
 | `edit_field` | `{key, value}` | Validate; write as user, confirmed. Note: `field_edited <key>` |
 | `confirm_card` | `{card_id}` | Confirm all fields on that confirm card. Note: `fields_confirmed <keys>`; `fields_already_confirmed` when everything on the card is already confirmed (the card is re-sent; not a failure); `confirm_failed` for an unknown card; `confirm_failed stale_card` for a card of an earlier inquiry in the chat |
 | `accept_and_submit` | `{terms_accepted: true}` | **Submit once:** if a reference exists, re-emit the same `success` card (note `submitted reference=<ref> (repeat)`). Otherwise set `terms_accepted`; run `can_submit`; if clear, `SubmitService.submit` with idempotency key `inq:<session_id>:v<inquiry_seq>` (`v1`, then `v2`… for follow-on inquiries) → set `reference`, send `submission_email` (verified email) and `submission_sms` (verified mobile), emit `success` with the private `tracking_url`. Note: `submitted reference=<ref>`, `submit_blocked <blockers>`, `submit_pending timeout\|unavailable` (nothing lost; Submit again returns the same reference) or `submit_failed rejected\|invalid` |
-| `documents_updated` | `{}` | Recompute required documents from the draft. Note: `documents_complete` or `documents_pending <doc_types>` |
+| `documents_updated` | `{}` | Recompute required documents from the draft. Note: `documents_complete` (+ ` still_needed=<steps>` when `remaining_steps` has more than documents and terms, e.g. `still_needed=verify_email`) or `documents_pending <doc_types>` |
 | `set_document_number` | `{key, value}` | Validate and write the document number field as user, confirmed. Note: `document_number_set <key>` or `document_number_invalid <key> <code>` |
 | `cr_check` | `{cr_number}` | The CR check from a card (form mode): same rules as `verify_cr` (existing account, `allow_inquiry`, or new with the company name and address prefilled on a confirm card). Note: `cr_checked existing\|existing_allowed\|new`, `cr_invalid <code>`, `cr_already_done` or `service_error cr <kind>` |
 | `cr_skip` | `{}` | Skip the CR (form mode). Note: `cr_skipped` or `cr_already_done` |
@@ -183,6 +191,7 @@ After the agent's final reply each turn:
 4. If phase is `existing_account`, ensure the reply points to Sign In.
 5. Doubt: when the user doubts a derived or prefilled value ("not sure about the category", «مو متأكد من الفئة»), that field is un-confirmed (values the user typed are left alone). Doubt is attributed to the nearest field named after the doubt phrase, else before it, in the same sentence.
 6. When `malls` is empty and the user's message names exactly one seed mall (same mention rules as `filter_mall_ids`), write that mall id as `user` (naming two or more writes nothing, so the agent asks which one) (see `fill_mentioned_malls` in `mall_match.py`). Also runs after `update_draft` when malls were omitted. Mall mention: the full normalised mall name (or optional `aliases` on a mall in master data) must appear as whole words in the user message (`\b` boundaries, optional leading “the”); city or country tokens alone do not match.
+7. Not ready to submit (`_premature_submit_note`): after collection, if verification or documents are still open (`remaining_steps`) and the reply sends the user to Submit ("last step", "everything's in", "press Submit", "submit when you're ready", "the review card") without naming what's open (email or link; code or SMS; documents or upload) → add a note with `still_needed_line` and route back to `agent` once. Not in assisted mode.
 
 ## 6. REST API (`/api`)
 
@@ -251,12 +260,13 @@ At the start of each turn the frontend clears the previous `quick_replies` chips
   "phase": "collecting",
   "fields": [{"key": "company_name", "label": "Company name", "group": "company", "display": "Bean Street Trading Co.", "source": "verified", "confirmed": false, "required": true}],
   "documents": [{"doc_type": "company_profile", "label": "Company Profile", "required": true, "uploaded": false, "file_name": null, "size_bytes": null}],
-  "checks": {"required_filled": 7, "required_total": 11, "unconfirmed": 2, "email_verified": false, "mobile_verified": false, "contact_verified": false, "required_docs_uploaded": 0, "required_docs_total": 2, "terms_accepted": false},
+  "checks": {"required_filled": 7, "required_total": 11, "unconfirmed": 2, "email_verified": false, "mobile_verified": false, "contact_verified": false, "required_docs_uploaded": 0, "required_docs_total": 2, "terms_accepted": false, "remaining": ["fields", "verify_email", "verify_mobile", "documents", "terms"], "next_step": "fields"},
   "can_submit": false,
   "changed_keys": ["company_name", "company_address"],
   "follow_on_of": null
 }
 ```
+`checks.remaining` is `remaining_steps(draft)` and `checks.next_step` its first item (`null` when nothing is left); the UI uses them for the step tabs and the next-step prompt, so a stage done out of order still shows as done.
 `follow_on_of` is the earlier reference on a follow-on inquiry; the chat shows a "New inquiry" divider when it changes.
 Groups in order: company, brand, space, contact. Area shows as one row (`area`), rent as one row (`rent`), lease as one row.
 

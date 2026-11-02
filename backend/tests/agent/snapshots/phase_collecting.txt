@@ -104,4 +104,4 @@ Missing required: Brand name (EN), Brand name (AR), Unit type, Sales category, M
 Needs confirmation: none
 Email verified: no · Mobile verified: not needed (no mobile) · Required documents: 0/2 · Terms accepted: no
 Next question (brand and space): ask for Brand name (EN), Mall, what they sell and the kind of space (kiosk, shop, media) together, in one natural question.
-Size, budget and lease are optional: keep defaults unless offered; mention once that they can add them.
+Size, budget and lease are optional: keep defaults unless offered; mention once that they can add them. If the user gave one and update_draft rejected it, say which value didn't fit and ask for it once; never drop it silently.

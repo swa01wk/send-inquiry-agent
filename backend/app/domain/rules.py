@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from app.domain.fields import FIELD_BY_KEY, FieldGroup, document_definitions
 from app.domain.models import NEEDS_CONFIRMATION, Blocker, FieldKey, InquiryDraft, Phase
 
@@ -82,6 +84,35 @@ def can_submit(draft: InquiryDraft) -> list[Blocker]:
         blockers.append(Blocker.terms_not_accepted())
 
     return blockers
+
+
+RemainingStep = Literal["cr", "fields", "verify_email", "verify_mobile", "documents", "terms"]
+
+
+def remaining_steps(draft: InquiryDraft) -> list[RemainingStep]:
+    """What is still needed before submit, derived from `can_submit`, in the usual order.
+
+    The user can do these in any order (documents before verification is fine); the
+    list says what is left, not what comes next in a script. Empty once submitted or
+    when the CR already has an account (nothing to submit here).
+    """
+    if draft.reference or draft.cr_status == "existing":
+        return []
+    tokens = [b.token for b in can_submit(draft)]
+    steps: list[RemainingStep] = []
+    if "cr_pending" in tokens:
+        steps.append("cr")
+    if any(t.startswith(("missing_field:", "unconfirmed_field:")) for t in tokens):
+        steps.append("fields")
+    if "email_not_verified" in tokens:
+        steps.append("verify_email")
+    if "mobile_not_verified" in tokens:
+        steps.append("verify_mobile")
+    if any(t.startswith("missing_document:") for t in tokens):
+        steps.append("documents")
+    if "terms_not_accepted" in tokens:
+        steps.append("terms")
+    return steps
 
 
 def compute_phase(draft: InquiryDraft) -> Phase:

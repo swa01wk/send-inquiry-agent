@@ -523,6 +523,34 @@ def _check_cr_happy(
     ]
 
 
+def _check_out_of_order(
+    session: Session, turns: list[TurnResult], _app: AppState | None = None
+) -> list[tuple[str, bool]]:
+    """Nov 2026 manual test: space values dropped, Submit pointed to too early."""
+    draft = session.draft
+    area_min = draft.fields[FieldKey.AREA_MIN].value
+    area_max = draft.fields[FieldKey.AREA_MAX].value
+    last = turns[-1].assistant.lower() if turns else ""
+    return [
+        (
+            "area around 30 sqm kept",
+            isinstance(area_min, int)
+            and isinstance(area_max, int)
+            and area_min <= 30 <= area_max
+            and (area_min, area_max) != (10, 25000),
+        ),
+        ("rent 250,000 kept", draft.fields[FieldKey.RENT_MAX].value == 250000),
+        ("rent period yearly", draft.fields[FieldKey.RENT_PERIOD].value == "yearly"),
+        ("lease 3 years", draft.fields[FieldKey.LEASE_PERIOD].value == "3y"),
+        ("correction to store kept", draft.fields[FieldKey.UNIT_TYPE].value == "store"),
+        (
+            "what's next names the open step",
+            any(word in last for word in ("email", "link", "code", "document", "upload")),
+        ),
+        ("no 'last step' while open", "last step" not in last),
+    ]
+
+
 def _check_skip_cr(
     session: Session, _turns: list[TurnResult], _app: AppState | None = None
 ) -> list[tuple[str, bool]]:
@@ -1144,6 +1172,21 @@ SCENARIOS: list[LiveScenario] = [
             "Yes, all correct.",
         ],
         _check_cr_happy,
+    ),
+    LiveScenario(
+        "O out of order: space values, late correction, what's next",
+        [
+            "My CR number is 1010123456",
+            "Yes, that's correct",
+            "Bean Street specialty coffee kiosk at Riyadh Mall A — about 30 sqm, budget up to "
+            "250,000 SAR per year, 3-year lease. Sara Ali, sara@beanstreet.example, "
+            "+966501234567",
+            "Yes, all correct",
+            "Actually we want a full store unit, not specialty or kiosk.",
+            "What's next? Can you give me the submit button?",
+        ],
+        _check_out_of_order,
+        auto_otp=False,
     ),
     LiveScenario(
         "2 skip CR",

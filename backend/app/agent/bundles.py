@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from app.api.channel_cards import basic_info_missing
 from app.domain.fields import FIELD_BY_KEY
 from app.domain.models import NEEDS_CONFIRMATION, FieldKey, InquiryDraft, Source
-from app.domain.rules import contact_verified
+from app.domain.rules import contact_verified, remaining_steps
 
 
 @dataclass(frozen=True)
@@ -155,7 +155,9 @@ def next_bundle_hint(
         if bundle is BRAND_AND_SPACE:
             lines.append(
                 "Size, budget and lease are optional: keep defaults unless offered; "
-                "mention once that they can add them."
+                "mention once that they can add them. If the user gave one and "
+                "update_draft rejected it, say which value didn't fit and ask for it once; "
+                "never drop it silently."
             )
             ar_field = draft.fields[FieldKey.BRAND_NAME_AR]
             if (
@@ -189,6 +191,31 @@ def next_bundle_hint(
                 "Next: start verification (send_verification): an email link, plus an SMS "
                 "code if they gave a mobile."
             )
-    else:
-        lines.append("Next: documents card, then the review card.")
+    lines.append(still_needed_line(draft))
     return "\n".join(lines)
+
+
+_STILL_NEEDED_LABELS: dict[str, str] = {
+    "verify_email": "the email link (verification card)",
+    "verify_mobile": "the SMS code (verification card)",
+    "documents": "the required documents (documents card; request_documents if it isn't showing)",
+    "terms": "the terms and Submit (review card, once everything else is done)",
+}
+
+
+def still_needed_line(draft: InquiryDraft) -> str:
+    """What's left before submit, from `can_submit`; the user may do it in any order."""
+    steps = [step for step in remaining_steps(draft) if step in _STILL_NEEDED_LABELS]
+    if not steps:
+        return "Still needed before submit: nothing."
+    if steps == ["terms"]:
+        return (
+            "Still needed before submit: only the terms. Call show_review if the review card "
+            "isn't showing; the user ticks the box and presses Submit there."
+        )
+    left = "; ".join(_STILL_NEEDED_LABELS[step] for step in steps)
+    return (
+        f"Still needed before submit (any order): {left}. Don't call anything the last step "
+        "or point to Submit while more than the terms is left. If the user asks what's next "
+        "or for the submit button, name what's left and point to that card."
+    )

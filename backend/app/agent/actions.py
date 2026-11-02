@@ -43,7 +43,7 @@ from app.domain import draft_ops
 from app.domain import validation as v
 from app.domain.fields import document_definitions
 from app.domain.models import NEEDS_CONFIRMATION, DocType, FieldKey, InquiryDraft, Source
-from app.domain.rules import can_submit, contact_verified
+from app.domain.rules import can_submit, contact_verified, remaining_steps
 from app.domain.summary import build_draft_summary
 from app.domain.tenant_prefill import prefill_from_tenant
 from app.domain.validation import validate_malls
@@ -63,6 +63,9 @@ class ActionResult:
     note: HumanMessage
     events: list[SseEvent] = field(default_factory=list)
     changed_keys: list[str] = field(default_factory=list)
+    # Quiet: the card already shows the outcome (a wrong code, a resend, one channel of
+    # two verified), so no agent turn runs and no reply is added (spec §6, card actions).
+    quiet: bool = False
 
 
 _SETTABLE_DOCUMENT_NUMBER_KEYS = frozenset(
@@ -176,7 +179,13 @@ def _audit(
     runtime.services.audit.record(session.id, event, actor=actor, payload=dict(payload))
 
 
-def _throttled(runtime: AgentRuntime, session: Session, channel: str) -> ActionResult | None:
+def _throttled(
+    runtime: AgentRuntime,
+    session: Session,
+    channel: str,
+    *,
+    quiet: bool = False,
+) -> ActionResult | None:
     wait = runtime.services.resend.wait_seconds(session.id, channel)  # type: ignore[arg-type]
     if not wait:
         return None
@@ -184,6 +193,7 @@ def _throttled(runtime: AgentRuntime, session: Session, channel: str) -> ActionR
     return ActionResult(
         note=HumanMessage(content=f"[ui_event] resend_throttled {wait}"),
         events=_verification_events(session, session.draft, runtime, []),
+        quiet=quiet,
     )
 
 
@@ -224,6 +234,8 @@ async def _verify_email(
         note=_verification_note("email_verified", draft),
         events=_verification_events(session, draft, runtime, ["email_verified"]),
         changed_keys=["email_verified"],
+        # One channel of two: the card shows the tick; the agent speaks when both are done.
+        quiet=not contact_verified(draft),
     )
 
 
@@ -237,7 +249,7 @@ async def _resend_email_link(
     email = draft.fields[FieldKey.EMAIL].value
     if not email:
         return ActionResult(note=HumanMessage(content="[ui_event] email_link_blocked no_email"))
-    if (throttled := _throttled(runtime, session, "email")) is not None:
+    if (throttled := _throttled(runtime, session, "email", quiet=True)) is not None:
         return throttled
     try:
         await runtime.services.gateway.call(
@@ -262,6 +274,7 @@ async def _resend_email_link(
     return ActionResult(
         note=HumanMessage(content="[ui_event] email_link_resent"),
         events=_verification_events(session, draft, runtime, []),
+        quiet=True,
     )
 
 
@@ -300,6 +313,7 @@ async def _submit_otp(
             note=_verification_note("mobile_verified", draft),
             events=_verification_events(session, draft, runtime, ["mobile_verified"]),
             changed_keys=["mobile_verified"],
+            quiet=not contact_verified(draft),
         )
 
     _audit(runtime, session, "verification_result", channel="sms", result="wrong_code")
@@ -340,6 +354,7 @@ async def _submit_otp(
         ),
         events=_verification_events(session, draft, runtime, ["otp_attempts_left"]),
         changed_keys=["otp_attempts_left"],
+        quiet=True,
     )
 
 
@@ -355,7 +370,7 @@ async def _resend_otp(
         return ActionResult(
             note=HumanMessage(content="[ui_event] otp_send_blocked no_mobile"),
         )
-    if (throttled := _throttled(runtime, session, "sms")) is not None:
+    if (throttled := _throttled(runtime, session, "sms", quiet=True)) is not None:
         return throttled
     try:
         await runtime.services.gateway.call(
@@ -382,6 +397,7 @@ async def _resend_otp(
         note=HumanMessage(content="[ui_event] otp_resent"),
         events=_verification_events(session, draft, runtime, ["otp_attempts_left"]),
         changed_keys=["otp_attempts_left"],
+        quiet=True,
     )
 
 
@@ -470,7 +486,11 @@ async def _documents_updated(
         if required and doc_type not in draft.documents
     ]
     if not pending:
-        return ActionResult(note=HumanMessage(content="[ui_event] documents_complete"))
+        # Documents can come before verification; say what's still open so the agent
+        # doesn't point to Submit too early.
+        left = [step for step in remaining_steps(draft) if step not in ("documents", "terms")]
+        tail = f" still_needed={','.join(left)}" if left else ""
+        return ActionResult(note=HumanMessage(content=f"[ui_event] documents_complete{tail}"))
     return ActionResult(
         note=HumanMessage(content=f"[ui_event] documents_pending {' '.join(pending)}"),
     )
@@ -523,6 +543,7 @@ async def _set_document_number(
         note=HumanMessage(content=f"[ui_event] document_number_set {key}"),
         events=[_card_event(session, card), _draft_event(draft, runtime, written)],
         changed_keys=written,
+        quiet=True,
     )
 
 

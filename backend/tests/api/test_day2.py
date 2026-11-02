@@ -158,8 +158,9 @@ async def test_resend_is_throttled_with_a_countdown(client, app) -> None:
     first = await _action(client, session.id, "resend_email_link")
     assert _cards(first, "verification")
     second = await _action(client, session.id, "resend_email_link")
-    notes = await _notes(app, session.id)
-    assert notes[-1].startswith("[ui_event] resend_throttled ")
+    # The card shows the countdown, so no agent turn runs (quiet card action, spec §6).
+    assert not [name for name, _ in second if name == "token"]
+    assert not any("resend" in note for note in await _notes(app, session.id))
     card = _cards(second, "verification")[-1]
     assert card["payload"]["email"]["resend_available_at"] is not None
     sent = app.state.services.notifications.messages(to=EMAIL)
