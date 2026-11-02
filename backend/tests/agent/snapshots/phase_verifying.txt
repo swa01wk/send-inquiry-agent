@@ -104,3 +104,4 @@ Missing required: none
 Needs confirmation: none
 Email verified: no · Mobile verified: no · Required documents: 0/2 · Terms accepted: no
 Next: start verification (send_verification): an email link, plus an SMS code if they gave a mobile.
+Still needed before submit (any order): the email link (verification card); the SMS code (verification card); the required documents (documents card; request_documents if it isn't showing); the terms and Submit (review card, once everything else is done). Don't call anything the last step or point to Submit while more than the terms is left. If the user asks what's next or for the submit button, name what's left and point to that card.

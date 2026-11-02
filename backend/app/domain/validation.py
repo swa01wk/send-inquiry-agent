@@ -38,8 +38,29 @@ def normalise_digits(text: str) -> str:
     return text.translate(_DIGIT_MAP)
 
 
+# How people write an area or a rent: "250,000", "250k", "30 sqm", "about 30",
+# "up to 250,000 SAR per year". Only the number is kept; the period is a separate field.
+_NUMBER_TEXT_RE = re.compile(
+    r"(?:about|around|approx(?:imately)?\.?|roughly|~|up to|max(?:imum)?|at most|min(?:imum)?)?"
+    r"\s*(?:sar|sr)?\s*(\d[\d,\u066c]*(?:\.\d+)?)\s*(k|thousand)?"
+    r"\s*(?:sqm|sq\.?\s*m|m2|m\u00b2|square\s+met(?:er|re)s?|sar|sr|riyals?)?"
+    r"(?:\s*(?:per|a|an|/)\s*(?:year|annum|month|yr|mo))?\.?",
+    re.IGNORECASE,
+)
+
+
 def _normalised_number(raw: int | str) -> int | str:
-    return normalise_digits(raw).strip() if isinstance(raw, str) else raw
+    """A whole number from a plain number or the way people write one; else the text."""
+    if not isinstance(raw, str):
+        return raw
+    text = normalise_digits(raw).strip()
+    match = _NUMBER_TEXT_RE.fullmatch(text)
+    if match is None:
+        return text
+    number = float(match.group(1).replace(",", "").replace("\u066c", ""))
+    if match.group(2):
+        number *= 1000
+    return int(number) if number.is_integer() else text
 
 
 class ValidationError(BaseModel):
@@ -108,6 +129,35 @@ def validate_brand_name_ar(raw: str) -> str | ValidationError:
     return value
 
 
+_PERIOD_KINDS = frozenset({"lease_periods", "rent_periods"})
+_RENT_PERIOD_WORDS = {
+    "yearly": ("year", "yearly", "annual", "annually", "per year", "a year", "per annum", "pa"),
+    "monthly": ("month", "monthly", "per month", "a month", "pm"),
+}
+_NUMBER_WORDS = {"one": "1", "two": "2", "three": "3", "four": "4", "five": "5"}
+_LEASE_YEARS_RE = re.compile(r"^(\d+|one|two|three|four|five)[\s-]*(?:years?|yrs?|y)$")
+
+
+def _period_id(raw: str, kind: str, master: MasterData) -> str | None:
+    """Lease or rent period id from its label or the way people say it ("3 years",
+    "per year"); None when it doesn't match one seeded period."""
+    text = normalise_digits(raw).strip().casefold().strip(".")
+    for item_id in master.ids_for_kind(kind):
+        labels = {item_id.casefold(), (master.label_for(kind, item_id) or "").casefold()}
+        if text in labels:
+            return item_id
+    if kind == "rent_periods":
+        for item_id, words in _RENT_PERIOD_WORDS.items():
+            if text.lstrip("/ ") in words:
+                return item_id
+        return None
+    match = _LEASE_YEARS_RE.match(text)
+    if match is None:
+        return None
+    years = _NUMBER_WORDS.get(match.group(1), match.group(1))
+    return f"{years}y"
+
+
 def validate_master_id(
     raw: str,
     *,
@@ -117,6 +167,8 @@ def validate_master_id(
     label: str,
 ) -> str | ValidationError:
     value = raw.strip() if isinstance(raw, str) else str(raw)
+    if value not in master.ids_for_kind(kind) and kind in _PERIOD_KINDS:
+        value = _period_id(value, kind, master) or value
     if value not in master.ids_for_kind(kind):
         return ValidationError(code=code, message=f"Unknown {label}.")
     if kind == "unit_types" and value not in get_policy().product_lines:

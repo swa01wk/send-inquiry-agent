@@ -103,4 +103,4 @@ Collected: Company name=Bean Street Trading Co. (user, confirmed), Company addre
 Missing required: none
 Needs confirmation: none
 Email verified: yes · Mobile verified: yes · Required documents: 0/2 · Terms accepted: no
-Next: documents card, then the review card.
+Still needed before submit (any order): the required documents (documents card; request_documents if it isn't showing); the terms and Submit (review card, once everything else is done). Don't call anything the last step or point to Submit while more than the terms is left. If the user asks what's next or for the submit button, name what's left and point to that card.

@@ -88,6 +88,7 @@ async def chat_stream(
     audit = services.audit
     before_draft = session.draft.model_copy(deep=True)
     action_events: list[SseEvent] = []
+    action_quiet = False
     route_decision = None
     user_text: str | None = None
     turn_user_message = HumanMessage(content="")
@@ -118,6 +119,7 @@ async def chat_stream(
             await store.end_turn(session_id)
             raise
         action_events = result.events
+        action_quiet = result.quiet
         turn_user_message = result.note
         note = str(result.note.content).removeprefix("[ui_event]").strip()
         audit.record(
@@ -156,6 +158,13 @@ async def chat_stream(
                 item = _scoped(item, session)
                 observe(item)
                 yield _sse(item)
+            if action_quiet:
+                # The card already shows the outcome (wrong code, resend, one channel of two
+                # verified): no agent turn, so no extra reply (spec §6, quiet card actions).
+                yield _sse(
+                    SseEvent(event="done", data={"phase": compute_phase(session.draft).value})
+                )
+                return
             if session.form_mode and user_text is None:
                 # Form mode (L3 §3.14): the action is applied; no agent turn runs. The phase
                 # decides the next card.

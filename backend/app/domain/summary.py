@@ -15,7 +15,7 @@ from app.domain.fields import (
 )
 from app.domain.master import MasterData
 from app.domain.models import NEEDS_CONFIRMATION, FieldKey, InquiryDraft
-from app.domain.rules import can_submit, compute_phase, contact_verified
+from app.domain.rules import can_submit, compute_phase, contact_verified, remaining_steps
 
 
 class DraftFieldRow(BaseModel):
@@ -50,6 +50,10 @@ class DraftChecks(BaseModel):
     required_docs_uploaded: int
     required_docs_total: int = 2
     terms_accepted: bool
+    # What is still needed before submit (`rules.remaining_steps`), in the usual order;
+    # the user may do them in any order. `next_step` is the first, or None when done.
+    remaining: list[str] = Field(default_factory=list)
+    next_step: str | None = None
 
 
 class DraftSummary(BaseModel):
@@ -251,6 +255,7 @@ def build_draft_summary(
             )
         )
 
+    remaining = remaining_steps(draft)
     checks = DraftChecks(
         required_filled=_count_required_filled(draft),
         unconfirmed=_count_unconfirmed(draft),
@@ -260,6 +265,8 @@ def build_draft_summary(
         required_docs_uploaded=required_docs_uploaded,
         required_docs_total=required_docs_total,
         terms_accepted=draft.terms_accepted,
+        remaining=list(remaining),
+        next_step=remaining[0] if remaining else None,
     )
 
     return DraftSummary(

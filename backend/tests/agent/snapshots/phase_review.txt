@@ -103,4 +103,4 @@ Collected: Company name=Bean Street Trading Co. (user, confirmed), Company addre
 Missing required: none
 Needs confirmation: none
 Email verified: yes · Mobile verified: yes · Required documents: 2/2 · Terms accepted: no
-Next: documents card, then the review card.
+Still needed before submit: only the terms. Call show_review if the review card isn't showing; the user ticks the box and presses Submit there.

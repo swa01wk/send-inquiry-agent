@@ -211,7 +211,7 @@ async def test_scenario_07_wrong_otp_three_times_resend(settings) -> None:
         session.draft.otp_sent_to = "+966501234567"
         await app.state.services.otp.send(session_id, "+966501234567")
 
-        for _ in range(3):
+        for attempt in range(3):
             events = await chat_action(
                 client,
                 session_id,
@@ -219,6 +219,14 @@ async def test_scenario_07_wrong_otp_three_times_resend(settings) -> None:
                 {"code": "0000"},
             )
             text = token_text(events).lower()
+            if attempt < 2:
+                # The card shows "That code didn't match. N attempts left"; no agent turn
+                # (quiet card action, spec §6).
+                assert text == ""
+                card = ui_cards(events, "verification")[-1]
+                assert card["payload"]["mobile"]["attempts_left"] == 2 - attempt
+                continue
+            # Out of attempts: a new code went out, and the agent says so.
             assert "sorry" in text or "didn't" in text or "try" in text or "attempt" in text
 
         session = await app.state.session_store.get(session_id)
