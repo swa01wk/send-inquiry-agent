@@ -135,7 +135,8 @@ _RENT_PERIOD_WORDS = {
     "monthly": ("month", "monthly", "per month", "a month", "pm"),
 }
 _NUMBER_WORDS = {"one": "1", "two": "2", "three": "3", "four": "4", "five": "5"}
-_LEASE_YEARS_RE = re.compile(r"^(\d+|one|two|three|four|five)[\s-]*(?:years?|yrs?|y)$")
+_LEASE_YEARS_RE = re.compile(r"^(\d+|one|two|three|four|five)(?:[\s-]*(?:years?|yrs?|y))?$")
+_LEASE_MONTHS_RE = re.compile(r"^(\d+)[\s-]*(?:months?|mos?)$")
 
 
 def _period_id(raw: str, kind: str, master: MasterData) -> str | None:
@@ -151,11 +152,60 @@ def _period_id(raw: str, kind: str, master: MasterData) -> str | None:
             if text.lstrip("/ ") in words:
                 return item_id
         return None
+    text = text.removesuffix(" lease").strip()
+    months = _LEASE_MONTHS_RE.match(text)
+    if months is not None:
+        count = int(months.group(1))
+        return f"{count // 12}y" if count and count % 12 == 0 else None
     match = _LEASE_YEARS_RE.match(text)
     if match is None:
         return None
     years = _NUMBER_WORDS.get(match.group(1), match.group(1))
     return f"{years}y"
+
+
+_RANGE_RE = re.compile(
+    r"(\d[\d,\u066c]*(?:\.\d+)?\s*k?)\s*(?:-|\u2013|\u2014|to|and)\s*(\d[\d,\u066c]*(?:\.\d+)?\s*k?)",
+    re.IGNORECASE,
+)
+_FIRST_NUMBER_RE = re.compile(r"\d[\d,\u066c]*(?:\.\d+)?\s*k?", re.IGNORECASE)
+_RENT_FLOOR_RE = re.compile(r"\b(?:from|at least|min(?:imum)?|starting)\b", re.IGNORECASE)
+
+
+def split_amount(raw: object) -> tuple[object, object] | None:
+    """`(low, high)` from "25-35 sqm", "between 200k and 250k", or `(n, n)` from one
+    value ("30 sqm", 250000). None when there's no number. Each side still goes through
+    the field's own validator."""
+    if isinstance(raw, int | float) and not isinstance(raw, bool):
+        return raw, raw
+    if not isinstance(raw, str):
+        return None
+    text = normalise_digits(raw)
+    if (pair := _RANGE_RE.search(text)) is not None:
+        low, high = pair.group(1).strip(), pair.group(2).strip()
+        if high.lower().endswith("k") and not low.lower().endswith("k"):
+            low = f"{low}k"  # "200-250k" means 200k to 250k
+        return low, high
+    if (single := _FIRST_NUMBER_RE.search(text)) is None:
+        return None
+    return single.group(0).strip(), single.group(0).strip()
+
+
+def rent_is_floor(raw: object) -> bool:
+    """ "from 200k", "at least 200k": a one-sided rent is a minimum, otherwise a budget cap."""
+    return isinstance(raw, str) and _RENT_FLOOR_RE.search(raw) is not None
+
+
+def rent_period_in(raw: object) -> str | None:
+    """ "per year" / "a month" inside a rent value; the period id or None."""
+    if not isinstance(raw, str):
+        return None
+    text = raw.casefold()
+    if re.search(r"\b(?:year|yearly|annual|annually|annum|yr)\b", text):
+        return "yearly"
+    if re.search(r"\b(?:month|monthly|mo)\b", text):
+        return "monthly"
+    return None
 
 
 def validate_master_id(

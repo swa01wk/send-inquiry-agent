@@ -465,9 +465,12 @@ def update_draft(
     updated, malls_filled = fill_mentioned_malls(updated, user_text, rt.master)
     if malls_filled and FieldKey.MALLS.value not in written:
         written = [*written, FieldKey.MALLS.value]
-    derived_keys = {item.key for item in fields if item.source == "derived"}
+    derived_keys = {
+        key for item in fields if item.source == "derived" for key in _written_by(item.key)
+    }
     derived_written = [key for key in written if key in derived_keys]
-    requested_keys = {item.key for item in fields}
+    # Pseudo keys report through the fields they write (or their own error).
+    requested_keys = {item.key for item in fields if item.key not in _PSEUDO_KEY_TARGETS}
     unchanged = sorted(requested_keys - set(written) - set(errors) - set(rejected))
 
     cards_update = cards_shown
@@ -535,6 +538,18 @@ def update_draft(
         confirm_card_keys=confirm_card_keys,
         confirm_card_turns=confirm_card_turns,
     )
+
+
+# Pseudo keys that write other fields (draft_ops.write_fields): `area` and `rent` are the
+# summary rows' names, which the model uses too (eval trace, 2 Nov 2026).
+_PSEUDO_KEY_TARGETS: dict[str, tuple[str, ...]] = {
+    "area": (FieldKey.AREA_MIN.value, FieldKey.AREA_MAX.value),
+    "rent": (FieldKey.RENT_MIN.value, FieldKey.RENT_MAX.value, FieldKey.RENT_PERIOD.value),
+}
+
+
+def _written_by(key: str) -> tuple[str, ...]:
+    return _PSEUDO_KEY_TARGETS.get(key, (key,))
 
 
 def _last_user_text(state: AgentState) -> str:

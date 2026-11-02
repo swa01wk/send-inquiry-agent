@@ -343,3 +343,38 @@ async def test_update_draft_user_change_refreshes_confirm_card(agent_runtime, st
     unit_row = next(f for f in fields if f["key"] == FieldKey.UNIT_TYPE.value)
     assert unit_row["display"] == "Store"
     assert unit_row["source"] == "user"
+
+
+def test_update_draft_area_and_rent_rows_show_on_the_confirm_card(agent_runtime, stream_events):
+    # Live eval trace (2 Nov): `area` / `rent` were "Unknown field"; derived values must
+    # also reach the confirm card, or they could never be confirmed.
+    text = "about 30 sqm, budget up to 250,000 SAR per year, 3-year lease"
+    state = initial_agent_state(session_id="sess-1", draft=new_inquiry_draft(), phase="collecting")
+    state["messages"] = [HumanMessage(content=text)]
+    events, writer = stream_events
+    runtime = make_tool_runtime(state=state, agent_runtime=agent_runtime, writer=writer)
+    result = update_draft.invoke(
+        {
+            "fields": [
+                {"key": "area", "value": "30 sqm", "source": "derived", "evidence": "30 sqm"},
+                {
+                    "key": "rent",
+                    "value": "250000 SAR per year",
+                    "source": "derived",
+                    "evidence": "250,000 SAR per year",
+                },
+                {"key": "lease_period", "value": 3, "source": "derived", "evidence": "3-year"},
+            ],
+            "state": state,
+            "runtime": runtime,
+        }
+    )
+    draft = result.update["draft"]
+    assert draft.fields[FieldKey.AREA_MIN].value == 30
+    assert draft.fields[FieldKey.RENT_MAX].value == 250000
+    assert draft.fields[FieldKey.LEASE_PERIOD].value == "3y"
+    content = result.update["messages"][0].content
+    assert "Errors" not in content and "Unchanged" not in content
+    cards = [e["data"] for e in events if e.get("type") == "ui_card"]
+    shown = {row["key"] for card in cards for row in card["payload"]["fields"]}
+    assert {"area_min", "area_max", "rent_max", "rent_period", "lease_period"} <= shown

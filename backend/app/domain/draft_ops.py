@@ -39,7 +39,21 @@ def write_fields(
     written_keys: list[str] = []
     errors: dict[str, v.ValidationError] = {}
 
+    explicit = {key_str for key_str, _value, _source in entries}
     for key_str, value, source in entries:
+        if key_str in (WriteKey.AREA.value, WriteKey.RENT.value):
+            _apply_amount(
+                updated,
+                key_str,
+                value,
+                source,
+                written_keys,
+                errors,
+                master,
+                explicit=explicit,
+                evidence=quotes.get(key_str) if source == Source.DERIVED else None,
+            )
+            continue
         if key_str == WriteKey.CONTACT_NUMBER.value:
             classified = v.classify_contact_number(str(value))
             if isinstance(classified, v.ValidationError):
@@ -82,6 +96,45 @@ def write_fields(
         deduped.append(key)
 
     return updated, deduped, errors
+
+
+def _apply_amount(
+    draft: InquiryDraft,
+    key_str: str,
+    value: Any,
+    source: Source,
+    written_keys: list[str],
+    errors: dict[str, v.ValidationError],
+    master: MasterData,
+    *,
+    explicit: set[str],
+    evidence: str | None,
+) -> None:
+    """`area` / `rent` (the summary rows' names, which the model also uses): one value or
+    a range, written to the min/max fields. A one-sided rent is the budget cap unless it
+    says "from" or "at least"; "per year" / "a month" fills the rent period when the same
+    write doesn't set it."""
+    pair = v.split_amount(value)
+    if pair is None:
+        errors[key_str] = v.ValidationError(
+            code=f"invalid_{key_str}",
+            message=f"{'Area' if key_str == 'area' else 'Rent'} must be a number or a range.",
+        )
+        return
+    low, high = pair
+    if key_str == WriteKey.AREA.value:
+        targets = [(FieldKey.AREA_MIN, low), (FieldKey.AREA_MAX, high)]
+    elif low != high:
+        targets = [(FieldKey.RENT_MIN, low), (FieldKey.RENT_MAX, high)]
+    elif v.rent_is_floor(value):
+        targets = [(FieldKey.RENT_MIN, low)]
+    else:
+        targets = [(FieldKey.RENT_MAX, high)]
+    if key_str == WriteKey.RENT.value and FieldKey.RENT_PERIOD.value not in explicit:
+        if (period := v.rent_period_in(value)) is not None:
+            targets.append((FieldKey.RENT_PERIOD, period))
+    for target, raw in targets:
+        _apply_field(draft, target, raw, source, written_keys, errors, master, evidence=evidence)
 
 
 def _apply_field(

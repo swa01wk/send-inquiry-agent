@@ -124,3 +124,68 @@ def test_periods_from_labels_and_common_phrases(kind: str, raw: str, expected: s
 def test_periods_not_in_master_data_are_rejected(kind: str, raw: str) -> None:
     result = v.validate_master_id(raw, kind=kind, master=load_master_data(), code="x", label="p")
     assert isinstance(result, v.ValidationError)
+
+
+# Live eval trace (2 Nov): the model wrote `area: "30 sqm"`, `rent: "250000 SAR per year"`
+# (the summary rows' names) and `lease_period: 3`; all three were rejected.
+
+
+def _write(entries):
+    from app.domain.draft_ops import write_fields
+    from app.domain.models import FieldKey, Source
+
+    draft, written, errors = write_fields(
+        new_inquiry_draft(),
+        [(key, value, Source.DERIVED) for key, value in entries],
+        master=load_master_data(),
+    )
+    fields = draft.fields
+    values = {
+        "area": (fields[FieldKey.AREA_MIN].value, fields[FieldKey.AREA_MAX].value),
+        "rent": (fields[FieldKey.RENT_MIN].value, fields[FieldKey.RENT_MAX].value),
+        "rent_period": fields[FieldKey.RENT_PERIOD].value,
+        "lease": fields[FieldKey.LEASE_PERIOD].value,
+    }
+    return values, written, errors
+
+
+def test_area_and_rent_keys_from_the_eval_trace() -> None:
+    values, written, errors = _write(
+        [("area", "30 sqm"), ("rent", "250000 SAR per year"), ("lease_period", 3)]
+    )
+    assert not errors
+    assert values == {
+        "area": (30, 30),
+        "rent": (None, 250000),
+        "rent_period": "yearly",
+        "lease": "3y",
+    }
+    assert {"area_min", "area_max", "rent_max", "rent_period", "lease_period"} <= set(written)
+
+
+def test_ranges_and_floors() -> None:
+    values, _, errors = _write([("area", "25-35 sqm"), ("rent", "200-250k a month")])
+    assert not errors
+    assert values["area"] == (25, 35)
+    assert values["rent"] == (200000, 250000)
+    assert values["rent_period"] == "monthly"
+    floor, _, _ = _write([("rent", "from 180,000"), ("rent_period", "yearly")])
+    assert floor["rent"] == (180000, None)
+    assert floor["rent_period"] == "yearly"
+
+
+def test_an_explicit_rent_period_wins_over_the_rent_text() -> None:
+    values, _, _ = _write([("rent_period", "monthly"), ("rent", "250k per year")])
+    assert values["rent_period"] == "monthly"
+
+
+def test_area_without_a_number_is_an_error() -> None:
+    _, _, errors = _write([("area", "big")])
+    assert errors["area"].code == "invalid_area"
+
+
+@pytest.mark.parametrize(("raw", "expected"), [(3, "3y"), ("36 months", "3y"), ("2", "2y")])
+def test_lease_as_a_number_or_months(raw: object, expected: str) -> None:
+    values, _, errors = _write([("lease_period", raw)])
+    assert not errors
+    assert values["lease"] == expected
