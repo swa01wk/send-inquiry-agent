@@ -2,7 +2,10 @@ import { isDemoScenario, mockScenarioFromUrl } from '../scenarioUrl'
 import { assertFeScenario } from './validate'
 import type { FeScenario } from './types'
 
-const jsonModules = import.meta.glob('./*.json', { eager: true, import: 'default' })
+const jsonModules = {
+  ...import.meta.glob('./*.json', { eager: true, import: 'default' }),
+  ...import.meta.glob('./parity/*.json', { eager: true, import: 'default' }),
+}
 
 const byName = new Map<string, FeScenario>()
 

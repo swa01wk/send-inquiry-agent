@@ -101,6 +101,36 @@ export class FeInquiryPage {
     await this.waitForTurnDone(doneBefore)
   }
 
+  async verifyEmail() {
+    const card = this.cards('verification')
+    const doneBefore = await readDoneEventCount(this.page)
+    await card.getByRole('button', { name: /open verification link/i }).click()
+    await this.waitForTurnDone(doneBefore)
+  }
+
+  async enterCode(code: string) {
+    const card = this.cards('verification')
+    await card.locator('#otp-code').fill(code)
+    const doneBefore = await readDoneEventCount(this.page)
+    await card.getByRole('button', { name: 'Verify', exact: true }).click()
+    await this.waitForTurnDone(doneBefore)
+  }
+
+  async upload(docLabel: string, fileName: string) {
+    const row = this.page
+      .getByTestId('document-checklist-card')
+      .locator('[data-testid^="doc-row-"]')
+      .filter({ hasText: docLabel })
+    const [fileChooser] = await Promise.all([
+      this.page.waitForEvent('filechooser'),
+      row.getByRole('button', { name: /Upload|Replace/i }).click(),
+    ])
+    await fileChooser.setFiles(path.join(feFixtures, fileName))
+    await expect(row.getByTestId('doc-status')).toContainText(new RegExp(fileName, 'i'), {
+      timeout: 15_000,
+    })
+  }
+
   async pickMalls(names: string[]) {
     for (const name of names) {
       await this.page.getByRole('button', { name, exact: true }).click()

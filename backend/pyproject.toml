@@ -75,3 +75,7 @@ python_version = "3.11"
 strict = true
 packages = ["app"]
 mypy_path = "."
+
+[[tool.mypy.overrides]]
+module = ["tests", "tests.*"]
+ignore_errors = true

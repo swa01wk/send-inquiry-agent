@@ -1,0 +1,62 @@
+id: landline-only
+layers:
+- agent_det
+model_steps:
+- content: ''
+  tool_calls:
+  - name: skip_cr
+    args: {}
+    id: ll1
+    type: tool_call
+- content: No problem — what is your registered company name and address?
+- content: ''
+  tool_calls:
+  - name: update_draft
+    args:
+      fields:
+      - key: company_name
+        value: Acme Trading LLC
+        source: user
+      - key: company_address
+        value: King Abdullah Road, Riyadh
+        source: user
+      - key: brand_name_en
+        value: Bean Street
+        source: user
+      - key: brand_name_ar
+        value: بين ستريت
+        source: derived
+      - key: unit_type
+        value: specialty
+        source: derived
+      - key: sales_category
+        value: fnb_cafe
+        source: derived
+      - key: malls
+        value:
+        - riyadh-mall-a
+        source: user
+      - key: first_name
+        value: Sara
+        source: user
+      - key: last_name
+        value: Ali
+        source: user
+      - key: email
+        value: sara@beanstreet.example
+        source: user
+      - key: landline
+        value: '+96611234567'
+        source: user
+    id: ll2
+    type: tool_call
+- content: Please confirm the derived brand details.
+- content: ''
+  tool_calls:
+  - name: send_verification
+    args:
+      resend: false
+    id: ll3
+    type: tool_call
+- content: Open the link we emailed you — no SMS code is needed for a landline.
+title: Landline-only contact
