@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createSession, removeDocument, uploadDocument } from '../api/client'
 import { StreamAbortError, streamChat } from '../api/stream'
 import { E2E_MODE, MOCK_MODE } from '../config'
@@ -9,6 +9,7 @@ import type { ChatRequest, SseEvent } from '../types/contracts'
 const GENERIC_ERROR = 'Sorry, something went wrong on our side. Please try again.'
 const RATE_LIMIT_MESSAGE = "You're sending messages a little fast. Give it a moment and try again."
 const SESSION_EXPIRED_MESSAGE = 'This chat has expired. Start a new inquiry to continue.'
+const QUIET_TYPING_DELAY_MS = 400
 
 function friendlyStreamError(code: string, message: string): { code: string; message: string } {
   if (code === 'rate_limited') return { code, message: RATE_LIMIT_MESSAGE }
@@ -21,9 +22,21 @@ function savedKeys(key: string): string[] {
   return key === 'contact_number' ? ['mobile', 'landline'] : [key]
 }
 
+function actionQueueKey(action: string, payload: Record<string, unknown>): string {
+  return `${action}:${JSON.stringify(payload)}`
+}
+
 export function useChatSession() {
   const { state, dispatch, initialSession } = useChatStore()
   const abortRef = useRef<AbortController | null>(null)
+  const actionQueueRef = useRef<ChatRequest[]>([])
+  const queuedKeysRef = useRef<Set<string>>(new Set())
+  const [queuedActions, setQueuedActions] = useState<Set<string>>(() => new Set())
+  const [actionTypingDelay, setActionTypingDelay] = useState(false)
+
+  const syncQueuedUi = useCallback(() => {
+    setQueuedActions(new Set(queuedKeysRef.current))
+  }, [])
 
   const runStream = useCallback(
     async (body: ChatRequest) => {
@@ -80,6 +93,35 @@ export function useChatSession() {
     [dispatch, state.sessionId, state.status],
   )
 
+  const flushActionQueue = useCallback(() => {
+    if (state.status !== 'idle' || !state.sessionId) return
+    while (actionQueueRef.current.length > 0) {
+      const next = actionQueueRef.current[0]
+      if (next.type !== 'action') {
+        actionQueueRef.current.shift()
+        continue
+      }
+      const key = actionQueueKey(next.action, next.payload)
+      actionQueueRef.current.shift()
+      queuedKeysRef.current.delete(key)
+      syncQueuedUi()
+      setActionTypingDelay(true)
+      void runStream(next)
+      return
+    }
+  }, [runStream, state.sessionId, state.status, syncQueuedUi])
+
+  useEffect(() => {
+    flushActionQueue()
+  }, [flushActionQueue, state.status])
+
+  useEffect(() => {
+    if (state.status !== 'error') return
+    actionQueueRef.current = []
+    queuedKeysRef.current.clear()
+    syncQueuedUi()
+  }, [state.status, syncQueuedUi])
+
   useEffect(() => {
     let cancelled = false
     ;(async () => {
@@ -120,22 +162,65 @@ export function useChatSession() {
     [],
   )
 
+  useEffect(() => {
+    if (state.status !== 'streaming') {
+      setActionTypingDelay(false)
+    }
+  }, [state.status])
+
+  useEffect(() => {
+    if (!actionTypingDelay || state.status !== 'streaming') return
+    const timer = window.setTimeout(() => {
+      setActionTypingDelay(false)
+    }, QUIET_TYPING_DELAY_MS)
+    return () => window.clearTimeout(timer)
+  }, [actionTypingDelay, state.status])
+
+  useEffect(() => {
+    if (!state.awaitingReply) {
+      setActionTypingDelay(false)
+    }
+  }, [state.awaitingReply])
+
   const sendMessage = useCallback(
     (text: string) => {
       const trimmed = text.trim()
       if (!trimmed || state.status === 'streaming') return
+      setActionTypingDelay(false)
       dispatch({ type: 'userMessage', text: trimmed })
       void runStream({ type: 'message', text: trimmed })
     },
     [dispatch, runStream, state.status],
   )
 
+  const enqueueAction = useCallback(
+    (action: string, payload: Record<string, unknown>) => {
+      const key = actionQueueKey(action, payload)
+      if (queuedKeysRef.current.has(key)) return
+      queuedKeysRef.current.add(key)
+      actionQueueRef.current.push({ type: 'action', action, payload })
+      syncQueuedUi()
+    },
+    [syncQueuedUi],
+  )
+
   const sendAction = useCallback(
     (action: string, payload: Record<string, unknown>) => {
-      if (state.status === 'streaming') return
+      if (state.status === 'streaming') {
+        enqueueAction(action, payload)
+        return
+      }
+      setActionTypingDelay(true)
       void runStream({ type: 'action', action, payload })
     },
-    [runStream, state.status],
+    [enqueueAction, runStream, state.status],
+  )
+
+  const isActionQueued = useCallback(
+    (action: string, payload: Record<string, unknown>) => {
+      return queuedActions.has(actionQueueKey(action, payload))
+    },
+    [queuedActions],
   )
 
   const editReviewField = useCallback(
@@ -232,6 +317,9 @@ export function useChatSession() {
 
   const restart = useCallback(async () => {
     abortRef.current?.abort()
+    actionQueueRef.current = []
+    queuedKeysRef.current.clear()
+    syncQueuedUi()
     if (MOCK_MODE) resetMockSessionState()
     dispatch({ type: 'reset' })
     try {
@@ -250,12 +338,15 @@ export function useChatSession() {
         pendingRetry: null,
       })
     }
-  }, [dispatch])
+  }, [dispatch, syncQueuedUi])
+
+  const showTyping = state.status === 'streaming' && state.awaitingReply && !actionTypingDelay
 
   return {
     ...state,
     sendMessage,
     sendAction,
+    isActionQueued,
     editReviewField,
     uploadDocument: uploadDocumentForType,
     removeDocument: removeDocumentForType,
@@ -263,5 +354,6 @@ export function useChatSession() {
     retry,
     restart,
     isStreaming: state.status === 'streaming',
+    showTyping,
   }
 }

@@ -22,9 +22,15 @@ interface CardSlotProps {
   card: UiCard
   actions: ChatCardActions
   focusOnMount?: boolean
+  highlighted?: boolean
 }
 
-export function CardSlot({ card, actions, focusOnMount = false }: CardSlotProps) {
+export function CardSlot({
+  card,
+  actions,
+  focusOnMount = false,
+  highlighted = false,
+}: CardSlotProps) {
   const rootRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -36,7 +42,11 @@ export function CardSlot({ card, actions, focusOnMount = false }: CardSlotProps)
   }, [focusOnMount, card.card_id])
 
   return (
-    <div ref={rootRef} className={styles.slot} data-testid={`card-slot-${card.card_id}`}>
+    <div
+      ref={rootRef}
+      className={`${styles.slot}${highlighted ? ` ${styles.highlight}` : ''}`}
+      data-testid={`card-slot-${card.card_id}`}
+    >
       {card.card_type === 'confirm_fields' ? (
         <ConfirmFieldsCard
           cardId={card.card_id}
@@ -58,6 +68,11 @@ export function CardSlot({ card, actions, focusOnMount = false }: CardSlotProps)
           onResendEmailLink={() => actions.sendAction('resend_email_link', {})}
           onVerifyCode={(code) => actions.sendAction('submit_otp', { code })}
           onResendCode={() => actions.sendAction('resend_otp', {})}
+          demoLinkWaiting={
+            actions.isActionQueued?.('verify_email', {
+              token: card.payload.email.demo_token ?? '',
+            }) ?? false
+          }
         />
       ) : null}
       {card.card_type === 'document_upload' ? (

@@ -249,6 +249,9 @@ export interface ReviewGroup {
   rows: ReviewGroupRow[]
 }
 
+export type RemainingStep =
+  'cr' | 'fields' | 'verify_email' | 'verify_mobile' | 'documents' | 'terms'
+
 export interface DraftChecks {
   required_filled: number
   required_total: number
@@ -260,6 +263,8 @@ export interface DraftChecks {
   required_docs_uploaded: number
   required_docs_total: number
   terms_accepted: boolean
+  remaining: RemainingStep[]
+  next_step: RemainingStep | null
 }
 
 export interface ReviewPayload {

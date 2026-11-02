@@ -47,6 +47,8 @@ describe('VerifyPage', () => {
           required_docs_uploaded: 0,
           required_docs_total: 2,
           terms_accepted: false,
+          remaining: ['verify_mobile', 'documents', 'terms'],
+          next_step: 'verify_mobile',
         },
         can_submit: false,
         changed_keys: [],

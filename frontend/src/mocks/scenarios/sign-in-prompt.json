@@ -239,7 +239,9 @@
         "contact_verified": false,
         "required_docs_uploaded": 0,
         "required_docs_total": 2,
-        "terms_accepted": false
+        "terms_accepted": false,
+        "remaining": ["verify_email", "terms"],
+        "next_step": "verify_email"
       },
       "can_submit": false,
       "changed_keys": [],

@@ -93,6 +93,15 @@ function validateSseEvent(raw: unknown, filePath: string, at: string): void {
       if (typeof data.phase !== 'string' || typeof data.can_submit !== 'boolean') {
         throw new Error(path(filePath, `${at}.data must include phase and can_submit`))
       }
+      if (!isRecord(data.checks)) {
+        throw new Error(path(filePath, `${at}.data.checks must be an object`))
+      }
+      if (!Array.isArray(data.checks.remaining)) {
+        throw new Error(path(filePath, `${at}.data.checks.remaining must be an array`))
+      }
+      if (data.checks.next_step !== null && typeof data.checks.next_step !== 'string') {
+        throw new Error(path(filePath, `${at}.data.checks.next_step must be a string or null`))
+      }
       break
     default:
       break
@@ -132,6 +141,16 @@ function validateSession(raw: unknown, filePath: string): FeScenario['session'] 
   }
   if (!isRecord(raw.draft)) {
     throw new Error(path(filePath, 'session.draft must be an object'))
+  }
+  const draft = raw.draft
+  if (!isRecord(draft.checks)) {
+    throw new Error(path(filePath, 'session.draft.checks must be an object'))
+  }
+  if (!Array.isArray(draft.checks.remaining)) {
+    throw new Error(path(filePath, 'session.draft.checks.remaining must be an array'))
+  }
+  if (draft.checks.next_step !== null && typeof draft.checks.next_step !== 'string') {
+    throw new Error(path(filePath, 'session.draft.checks.next_step must be a string or null'))
   }
   return raw as unknown as FeScenario['session']
 }

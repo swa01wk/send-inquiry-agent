@@ -308,7 +308,9 @@
         "contact_verified": true,
         "required_docs_uploaded": 2,
         "required_docs_total": 2,
-        "terms_accepted": true
+        "terms_accepted": true,
+        "remaining": ["verify_email", "terms"],
+        "next_step": "verify_email"
       },
       "can_submit": true,
       "changed_keys": [],
