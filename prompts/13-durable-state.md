@@ -4,6 +4,15 @@ Read first: @docs/specs/m0-modular-core.md (section 5) @backend/app/sessions.py 
 
 **Start in plan mode:** propose the repository interface, the table schema and the migration, and how `SessionStore` adapts. Wait for approval before writing code.
 
+## Since this prompt was written (read before planning)
+The Day 1–5 breadth build and steps 11c–12 changed what this step starts from:
+- **Persistence already exists.** `app/persistence.py` writes JSON snapshots of sessions and the simulated systems to `DATA_DIR`, and the history is restored after a restart (`events._history_messages`). Keep that working with `STATE_BACKEND=memory`, and say in the plan whether the JSON snapshot becomes the memory backend's persistence or stays beside it.
+- **`Session` has grown.** It now has `transcript`, `cards`, `confirm_card_turns`, `turn_index`, `inquiry_seq`, `form_mode`, `mode`, `case_id`, `contacts_draft`, `channel`, `created_by`, `tenant_id`, `staff_id`, `link_sent_to`, `complete_nonce`, `closed`, `existing_cr_choice`, `test_scenario` and `script_step`. The plan must list **every** field and say where it lives: on the `Inquiry`, on the session handle, or derived. `cards_shown`, `card_counter` and `confirm_card_keys` aren't the only ones to move.
+- **Cases** (`app/workflow/store.py`, L4) have their own store. They stay out of scope here unless §5 says otherwise; say so in the plan.
+- **Quiet card actions** (spec §4) end the turn without running the graph. They still take the turn lease and save the inquiry.
+- **The parity suite** (`tests/parity/`, step 12) is the regression net. It must pass unchanged with both backends: run it with `STATE_BACKEND=postgres` too. A golden that changes means behaviour changed, so stop and say why.
+- **Live-eval baseline:** 27/27 on 3 Nov (`docs/eval-notes.md`). Run `make eval-live` once at the end. It must not drop below the baseline floor.
+
 ## Goal
 Make an inquiry survive restarts and multiple workers, without changing any API or SSE contract.
 
