@@ -405,8 +405,10 @@ def update_draft(
     cards_shown = list(state["cards_shown"])
     entries: list[tuple[str, object, Source]] = []
     rejected: list[str] = []
+    arabic_brand_en_redirect = False
 
     user_text = _last_user_text(state)
+    keys_in_call = {item.key for item in fields}
     for item in fields:
         if item.key in PROTECTED_WRITE_KEYS:
             rejected.append(f"{item.key}: protected")
@@ -453,6 +455,15 @@ def update_draft(
                 continue
             entries.append((item.key, accepted, _write_source(item.source, state)))
             continue
+        if item.key == FieldKey.BRAND_NAME_EN.value:
+            val = item.value
+            if isinstance(val, str) and v.ARABIC_RE.search(val):
+                if FieldKey.BRAND_NAME_AR.value not in keys_in_call:
+                    entries.append(
+                        (FieldKey.BRAND_NAME_AR.value, val, _write_source("user", state)),
+                    )
+                arabic_brand_en_redirect = True
+                continue
         entries.append((item.key, item.value, _write_source(item.source, state)))
 
     if not entries and rejected:
@@ -544,6 +555,11 @@ def update_draft(
     if evidence_dropped:
         parts.append(
             "Evidence ignored (not the user's exact words): " + ", ".join(evidence_dropped) + "."
+        )
+    if arabic_brand_en_redirect:
+        parts.append(
+            "Arabic brand saved as brand_name_ar; now save a Latin spelling as "
+            "brand_name_en (source derived).",
         )
     return _tool_result(
         runtime,

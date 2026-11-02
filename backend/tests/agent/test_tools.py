@@ -131,6 +131,26 @@ async def test_send_verification_landline_only_sends_no_code(agent_runtime, stre
     assert agent_runtime.services.otp.send_count("sess-1") == 0
 
 
+def test_update_draft_redirects_arabic_brand_name_en(agent_runtime, stream_events):
+    state = initial_agent_state(session_id="sess-1", draft=new_inquiry_draft(), phase="collecting")
+    state["messages"] = [HumanMessage(content="العلامة بين ستريت")]
+    events, writer = stream_events
+    runtime = make_tool_runtime(state=state, agent_runtime=agent_runtime, writer=writer)
+    result = update_draft.invoke(
+        {
+            "fields": [{"key": "brand_name_en", "value": "بين ستريت", "source": "user"}],
+            "state": state,
+            "runtime": runtime,
+        }
+    )
+    content = result.update["messages"][0].content
+    draft = result.update["draft"]
+    assert draft.fields[FieldKey.BRAND_NAME_EN].value is None
+    assert draft.fields[FieldKey.BRAND_NAME_AR].value == "بين ستريت"
+    assert "Arabic brand saved as brand_name_ar" in content
+    assert "Latin spelling as brand_name_en" in content
+
+
 def test_update_draft_rejects_two_malls(agent_runtime, stream_events):
     state = initial_agent_state(session_id="sess-1", draft=new_inquiry_draft(), phase="collecting")
     state["messages"] = [HumanMessage(content="Riyadh Mall A or Mall of Arabia")]

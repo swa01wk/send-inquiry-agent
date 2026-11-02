@@ -132,6 +132,7 @@ async def chat_stream(
         try:
             await store.save(session)
         except TurnConflict as exc:
+            await store.end_turn(session_id, lease_id)
             raise ApiError(
                 409,
                 "turn_conflict",

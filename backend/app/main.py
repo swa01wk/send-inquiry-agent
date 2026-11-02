@@ -40,6 +40,7 @@ from app.domain.master import configure_master_data, load_master_data
 from app.policy.config import PolicyError, install_policy, load_policy
 from app.proactive.engine import tick
 from app.services.container import build_services
+from app.store.demo_reset import truncate_postgres_demo_state
 from app.store.factory import make_session_store
 from app.store.migrations import assert_postgres_schema_at_head
 from app.store.purge import purge_expired_inquiries
@@ -114,6 +115,8 @@ def create_app(
 
     async def reset_demo() -> None:
         """Delete every demo record (dev tools only) and rebuild the state from scratch."""
+        if cfg.state_backend == "postgres" and cfg.database_url:
+            await truncate_postgres_demo_state(cfg.database_url)
         if cfg.data_dir:
             for name in DEMO_DATA_DIRS:
                 shutil.rmtree(Path(cfg.data_dir) / name, ignore_errors=True)
