@@ -71,8 +71,21 @@ PROTECTED_WRITE_KEYS = frozenset(
 )
 
 
+_WRITABLE_KEYS = ", ".join(
+    [k.value for k in FieldKey if k is not FieldKey.MOBILE and k is not FieldKey.LANDLINE]
+    + ["contact_number", "landline (only when they say it's a landline)"]
+)
+
+
 class DraftFieldUpdate(BaseModel):
-    key: str
+    key: str = Field(
+        description=(
+            f"One of: {_WRITABLE_KEYS}. Space: `area` (sqm, one value or a range like "
+            "'25-35') or area_min/area_max; `rent` (SAR, e.g. '250000 per year' or a range) "
+            "or rent_min/rent_max; rent_period `yearly`/`monthly`; lease_period `1y`, `2y`, "
+            "`3y` or `5y`. Any other key is rejected."
+        ),
+    )
     value: object
     source: Literal["user", "derived"]
     evidence: str | None = Field(
@@ -523,6 +536,9 @@ def update_draft(
         parts.append(f"Unchanged: {', '.join(unchanged)}.")
     if errors:
         parts.append("Errors: " + "; ".join(f"{k}: {v.message}" for k, v in errors.items()))
+        if any(err.code == "unknown_field" for err in errors.values()):
+            # Seen in live eval: invented keys such as area_min_sqm or rent_annual_sar.
+            parts.append(f"Use only these keys, then call update_draft again: {_WRITABLE_KEYS}.")
     if rejected:
         parts.append("Rejected: " + "; ".join(rejected))
     if evidence_dropped:

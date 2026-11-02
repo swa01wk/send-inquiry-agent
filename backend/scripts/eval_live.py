@@ -548,7 +548,11 @@ def _check_out_of_order(
             "what's next names the open step",
             any(word in last for word in ("email", "link", "code", "document", "upload")),
         ),
-        ("no 'last step' while open", "last step" not in last),
+        (
+            # "Once those are done, the review card is the last step" is fine (guard rule 7).
+            "no 'last step' while open",
+            "last step" not in last or any(word in last for word in ("email", "link", "code")),
+        ),
     ]
 
 

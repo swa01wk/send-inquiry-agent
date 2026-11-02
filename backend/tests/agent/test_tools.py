@@ -378,3 +378,21 @@ def test_update_draft_area_and_rent_rows_show_on_the_confirm_card(agent_runtime,
     cards = [e["data"] for e in events if e.get("type") == "ui_card"]
     shown = {row["key"] for card in cards for row in card["payload"]["fields"]}
     assert {"area_min", "area_max", "rent_max", "rent_period", "lease_period"} <= shown
+
+
+def test_update_draft_unknown_key_lists_the_valid_keys(agent_runtime, stream_events):
+    # Live eval trace (2 Nov): invented keys area_min_sqm, rent_annual_sar.
+    state = initial_agent_state(session_id="sess-1", draft=new_inquiry_draft(), phase="collecting")
+    state["messages"] = [HumanMessage(content="about 30 sqm")]
+    events, writer = stream_events
+    runtime = make_tool_runtime(state=state, agent_runtime=agent_runtime, writer=writer)
+    result = update_draft.invoke(
+        {
+            "fields": [{"key": "area_min_sqm", "value": 30, "source": "user"}],
+            "state": state,
+            "runtime": runtime,
+        }
+    )
+    content = result.update["messages"][0].content
+    assert "Unknown field: area_min_sqm" in content
+    assert "Use only these keys" in content and "area_min" in content
