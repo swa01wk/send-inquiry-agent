@@ -20,7 +20,9 @@ export function scrollToProgressStage(
   if (target.kind === 'selector') {
     el = document.querySelector(target.selector)
   } else {
-    el = document.querySelector(`[data-testid="confirm-fields-${target.cardId}"]`)
+    el =
+      document.querySelector(`[data-testid="card-slot-${target.cardId}"]`) ??
+      document.querySelector(`[data-testid="confirm-fields-${target.cardId}"]`)
   }
   if (!el || !(el instanceof HTMLElement)) return false
 

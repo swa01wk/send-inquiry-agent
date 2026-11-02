@@ -2,7 +2,8 @@ import { render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { verificationCardExample } from '../../mocks/fixtures'
 import type { ChatMessage } from '../../state/chatStore'
-import { NextStepStrip, shouldShowNextStepStrip } from './NextStepStrip'
+import { NextStepStrip } from './NextStepStrip'
+import { shouldShowNextStepStrip } from './nextStepStripVisibility'
 
 describe('NextStepStrip', () => {
   beforeEach(() => {

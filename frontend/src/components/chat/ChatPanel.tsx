@@ -7,7 +7,7 @@ import { ErrorBubble } from './ErrorBubble'
 import { MessageList } from './MessageList'
 import { NextStepStrip } from './NextStepStrip'
 import { scrollToProgressStage, scrollToSelector } from './progressScroll'
-import type { ProgressStageKey } from './inquiryProgress'
+import { stageScrollTarget, type ProgressStageKey } from './inquiryProgress'
 import { SuggestionChips } from './SuggestionChips'
 
 const GENERIC_ERROR = 'Sorry, something went wrong on our side. Please try again.'
@@ -48,6 +48,11 @@ export function ChatPanel({ draftPanelVisible, onToggleDraftPanel }: ChatPanelPr
     [cards],
   )
 
+  const assistedIntake = useMemo(
+    () => Object.values(cards).some((c) => c.card_type === 'send_link'),
+    [cards],
+  )
+
   const focusComposer = useCallback((placeholder: string) => {
     setComposerPlaceholder(placeholder)
     setComposerFocusNonce((n) => n + 1)
@@ -81,32 +86,9 @@ export function ChatPanel({ draftPanelVisible, onToggleDraftPanel }: ChatPanelPr
       if (!draft) return
       const scrolled = scrollToProgressStage(stage, draft, cards, messages)
       if (!scrolled) return
-      const confirmId =
-        stage === 'company' || stage === 'brand' || stage === 'space'
-          ? messages
-              .flatMap((m) => m.cardIds)
-              .reverse()
-              .find((id) => {
-                const card = cards[id]
-                return (
-                  card?.card_type === 'confirm_fields' &&
-                  card.payload.fields.some(
-                    (f) => draft?.fields.find((d) => d.key === f.key)?.group === stage,
-                  )
-                )
-              })
-          : null
-      const targetId =
-        confirmId ??
-        (stage === 'contact'
-          ? Object.values(cards).find((c) => c.card_type === 'verification')?.card_id
-          : stage === 'documents'
-            ? Object.values(cards).find((c) => c.card_type === 'document_upload')?.card_id
-            : stage === 'review'
-              ? Object.values(cards).find((c) => c.card_type === 'review')?.card_id
-              : null)
-      if (targetId) {
-        setHighlightCardId(targetId)
+      const target = stageScrollTarget(stage, draft, cards, messages)
+      if (target?.kind === 'card') {
+        setHighlightCardId(target.cardId)
         window.setTimeout(() => setHighlightCardId(null), 1200)
       }
     },
@@ -155,6 +137,7 @@ export function ChatPanel({ draftPanelVisible, onToggleDraftPanel }: ChatPanelPr
           phase={phase}
           cards={cards}
           messages={messages}
+          assistedIntake={assistedIntake}
           formModeActive={formModeActive}
           onShow={onShowNextStep}
         />

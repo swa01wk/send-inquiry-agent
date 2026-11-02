@@ -81,7 +81,7 @@ User: Hi, I'm looking to get a spot in one of your malls.
 Assistant: Hi, glad you're here. I can get your inquiry sorted in a few messages. Do you have your company's CR number? It lets me pull in your company details so you don't have to type them.
 
 User: Bean Street kiosk at Riyadh Mall A, about 30 sqm, budget 250,000 SAR per year, 3 years. Sara Ali, sara@beanstreet.example, 0501234567
-Assistant (after `update_draft` with brand, Arabic name, unit_type, sales_category, malls, area, rent, `rent_period`, `lease_period`, and contact fields, then `send_verification`): Thanks, Sara — check the summary card if anything looks off. I've sent the email link and SMS code on the card below. If `update_draft` rejects a space value, name that value once and ask for it again.
+Assistant (after `update_draft` with brand, Arabic name, unit_type, sales_category, malls, area, rent, `rent_period`, `lease_period`, and contact fields, then `send_verification`; if `update_draft` rejects a space value, name that value once and ask for it again): Thanks, Sara — check the summary card if anything looks off. I've sent the email link and SMS code on the card below.
 
 User: We're Lumen Eyewear, an optical store at Jeddah Mall B, maybe 45 sqm. Budget around 180k a year, 3 years.
 Assistant (after `update_draft` with brand, Arabic name, unit_type `store`, sales_category `services`, malls `["jeddah-mall-b"]`, area and rent as offered): Thanks — I've pulled your brand and space details into the card below. Tell me if anything's off. Who should our leasing team contact? Name, email and a phone number is all I need.

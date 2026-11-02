@@ -118,7 +118,7 @@ export function currentProgressStage(phase: Phase, draft: DraftSummary | null): 
   if (phase === 'submitted') return 'review'
   const step: RemainingStep | null = draft.checks.next_step
   if (!step) {
-    return phase === 'review' ? 'review' : 'review'
+    return 'review'
   }
   if (step === 'cr') return 'company'
   if (step === 'fields') return firstFieldGapGroup(draft)
@@ -177,6 +177,19 @@ export function latestConfirmCardIdForGroup(
   return null
 }
 
+export function latestCardIdInTranscript(
+  cardType: UiCard['card_type'],
+  cards: Record<string, UiCard>,
+  messages: ChatMessage[],
+): string | null {
+  const ids = cardIdsInTranscript(messages)
+  for (let i = ids.length - 1; i >= 0; i -= 1) {
+    const card = cards[ids[i]]
+    if (card?.card_type === cardType) return card.card_id
+  }
+  return null
+}
+
 export function stageScrollTarget(
   stage: ProgressStageKey,
   draft: DraftSummary,
@@ -184,19 +197,16 @@ export function stageScrollTarget(
   messages: ChatMessage[],
 ): { kind: 'selector'; selector: string } | { kind: 'card'; cardId: string } | null {
   if (stage === 'contact') {
-    return Object.values(cards).some((c) => c.card_type === 'verification')
-      ? { kind: 'selector', selector: '[data-testid="verification-card"]' }
-      : null
+    const cardId = latestCardIdInTranscript('verification', cards, messages)
+    return cardId ? { kind: 'card', cardId } : null
   }
   if (stage === 'documents') {
-    return Object.values(cards).some((c) => c.card_type === 'document_upload')
-      ? { kind: 'selector', selector: '[data-testid="document-checklist-card"]' }
-      : null
+    const cardId = latestCardIdInTranscript('document_upload', cards, messages)
+    return cardId ? { kind: 'card', cardId } : null
   }
   if (stage === 'review') {
-    return Object.values(cards).some((c) => c.card_type === 'review')
-      ? { kind: 'selector', selector: '[data-testid="review-card"]' }
-      : null
+    const cardId = latestCardIdInTranscript('review', cards, messages)
+    return cardId ? { kind: 'card', cardId } : null
   }
   const group = CONFIRM_GROUP[stage]
   if (!group) return null

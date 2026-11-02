@@ -75,4 +75,37 @@ describe('useChatSession action queue', () => {
     await waitFor(() => expect(result.current.isStreaming).toBe(false))
     await waitFor(() => expect(streamChat).toHaveBeenCalledTimes(2))
   })
+
+  it('clears the action queue when the stream fails', async () => {
+    let resolveStream: (() => void) | null = null
+    vi.spyOn(stream, 'streamChat').mockImplementation(async (_sessionId, body, onEvent) => {
+      if (body.type === 'message') {
+        await new Promise<void>((resolve) => {
+          resolveStream = resolve
+        })
+        onEvent({ event: 'error', data: { code: 'agent_error', message: 'fail' } })
+        return 'error'
+      }
+      return 'ok'
+    })
+
+    const { result } = renderHook(() => useChatSession(), { wrapper })
+    await waitFor(() => expect(result.current.sessionId).toBe('sess-q'))
+
+    act(() => {
+      result.current.sendMessage('hello')
+    })
+    await waitFor(() => expect(result.current.isStreaming).toBe(true))
+
+    act(() => {
+      result.current.sendAction('verify_email', { token: 'tok-1' })
+    })
+    expect(result.current.isActionQueued('verify_email', { token: 'tok-1' })).toBe(true)
+
+    await act(async () => {
+      resolveStream?.()
+    })
+    await waitFor(() => expect(result.current.status).toBe('error'))
+    expect(result.current.isActionQueued('verify_email', { token: 'tok-1' })).toBe(false)
+  })
 })

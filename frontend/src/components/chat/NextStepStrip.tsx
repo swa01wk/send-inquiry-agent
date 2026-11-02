@@ -3,6 +3,7 @@ import type { DraftSummary } from '../../types/contracts'
 import type { ChatMessage } from '../../state/chatStore'
 import type { UiCard } from '../../types/contracts'
 import { NEXT_STEP_STRIP_COPY, nextStepStripStep, stageScrollTarget } from './inquiryProgress'
+import { shouldShowNextStepStrip } from './nextStepStripVisibility'
 import styles from './NextStepStrip.module.css'
 
 interface NextStepStripProps {
@@ -22,34 +23,16 @@ function scrollSelectorForStep(
   messages: ChatMessage[],
 ): string | null {
   if (!step) return null
-  if (step === 'verify_email' || step === 'verify_mobile') {
-    const target = stageScrollTarget('contact', draft, cards, messages)
-    return target?.kind === 'selector' ? target.selector : null
-  }
-  if (step === 'documents') {
-    const target = stageScrollTarget('documents', draft, cards, messages)
-    return target?.kind === 'selector' ? target.selector : null
-  }
-  const target = stageScrollTarget('review', draft, cards, messages)
-  return target?.kind === 'selector' ? target.selector : null
-}
-
-export function shouldShowNextStepStrip({
-  draft,
-  phase,
-  assistedIntake,
-  formModeActive,
-}: {
-  draft: DraftSummary | null
-  phase: DraftSummary['phase']
-  assistedIntake?: boolean
-  formModeActive?: boolean
-}): boolean {
-  if (!draft || phase === 'submitted' || assistedIntake || formModeActive) return false
-  const step = nextStepStripStep(draft.checks.next_step)
-  if (!step) return false
-  if (draft.checks.next_step === 'cr' || draft.checks.next_step === 'fields') return false
-  return true
+  const stage =
+    step === 'verify_email' || step === 'verify_mobile'
+      ? 'contact'
+      : step === 'documents'
+        ? 'documents'
+        : 'review'
+  const target = stageScrollTarget(stage, draft, cards, messages)
+  if (!target) return null
+  if (target.kind === 'selector') return target.selector
+  return `[data-testid="card-slot-${target.cardId}"]`
 }
 
 export function NextStepStrip({

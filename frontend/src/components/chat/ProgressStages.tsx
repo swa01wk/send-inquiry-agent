@@ -3,14 +3,14 @@ import type { ChatMessage } from '../../state/chatStore'
 import type { UiCard } from '../../types/contracts'
 import {
   PROGRESS_STAGE_KEYS,
-  PROGRESS_STAGE_LABELS,
   stageTabEnabled,
   stageVisualState,
   type ProgressStageKey,
 } from './inquiryProgress'
+import { stageLabel } from './progressStagesHelpers'
+import styles from './ProgressStages.module.css'
 
 export type { ProgressStageKey } from './inquiryProgress'
-import styles from './ProgressStages.module.css'
 
 interface ProgressStagesProps {
   phase: Phase
@@ -19,18 +19,6 @@ interface ProgressStagesProps {
   messages: ChatMessage[]
   onStageClick?: (stage: ProgressStageKey) => void
 }
-
-export function stageLabel(
-  key: ProgressStageKey,
-  visual: ReturnType<typeof stageVisualState>,
-): string {
-  const label = PROGRESS_STAGE_LABELS[key]
-  if (visual === 'done') return `✓ ${label}`
-  return label
-}
-
-// Re-export for tests that import stageText naming from prompt
-export { stageLabel as stageText }
 
 export function ProgressStages({
   phase,

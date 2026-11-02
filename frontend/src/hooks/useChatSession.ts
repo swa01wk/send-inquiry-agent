@@ -116,6 +116,13 @@ export function useChatSession() {
   }, [flushActionQueue, state.status])
 
   useEffect(() => {
+    if (state.status !== 'error') return
+    actionQueueRef.current = []
+    queuedKeysRef.current.clear()
+    syncQueuedUi()
+  }, [state.status, syncQueuedUi])
+
+  useEffect(() => {
     let cancelled = false
     ;(async () => {
       try {
