@@ -50,6 +50,14 @@ class InquiryDraft(BaseModel):
     follow_on_of: str | None = None         # the submitted reference this inquiry follows on from
 ```
 
+### Durable inquiry (`backend/app/store/models.py`, M0 §5)
+
+The **inquiry** is the durable case; a **session handle** (`session_id` in the API) points at the current inquiry. In M0 they start as the same UUID; after `start_follow_on` a new inquiry row is created and the handle is repointed while the submitted row stays `submitted`.
+
+`Inquiry` carries `InquiryDraft`, card bookkeeping (`cards_shown`, `confirm_card_keys`, `card_counter`), workflow `InquiryStatus`, optimistic `version`, `submit_key`, `reference`, and a `session_state` jsonb blob (transcript, cards, turn counters, form mode, and similar). Postgres columns match [m0-modular-core.md §5.3](specs/m0-modular-core.md); `inquiry_events.inquiry_id` is nullable for case-scoped events (step 15).
+
+`InquiryRepository` (`memory` | `postgres`): `create(*, channel=…)`, `get`, `save` (bumps `version`; raises `VersionConflict`), `touch` (only `last_seen_at` / `expires_at`, no version bump), `acquire_turn` / `renew_turn` / `release_turn`, `purge_expired`. `SessionStore` adapts the repository; `begin_turn` returns a lease id and `end_turn(session_id, lease_id)` releases it. A failed save after one reload raises `turn_conflict` (409 or SSE `error` with code `turn_conflict`).
+
 **Arabic digits.** Every numeric rule (CR, phone numbers, VAT, National ID, area, rent, the OTP code) runs on `validation.normalise_digits(text)`, which maps Arabic-Indic (`٠–٩`) and Eastern Arabic-Indic (`۰–۹`) digits to ASCII. Contact detection (`contact_infer`), the guard's checks and the tools see normalised text too (L3 §3.10).
 
 ### Field keys
@@ -364,6 +372,12 @@ process steps · review time · required documents · what a CR number is · wha
 | `DEV_TOOLS` | `false`; `true` mounts `/api/dev/outbox` and `/api/dev/audit/{id}` (refused unless `INTEGRATIONS=mock`) |
 | `MOCK_FAULTS` | empty; `service:kind[:count],…` injects faults into the simulated systems |
 | `DATA_DIR` | empty = memory only; a directory = restart-safe JSON snapshots of sessions, the simulated systems' state (outbox, submissions, links, OTP, sends) and the audit log |
+| `STATE_BACKEND` | `memory` (`postgres` for docker-compose dev) |
+| `DATABASE_URL` | — (required when `STATE_BACKEND=postgres`; SQLAlchemy URL `postgresql+psycopg://…`) |
+| `TEST_DATABASE_URL` | — (pytest `@pytest.mark.postgres` only) |
+| `TURN_LEASE_SECONDS` | `120` |
+| `DRAFT_RETENTION_DAYS` | `30` (`expires_at = last_seen_at + retention`; refreshed on `touch`) |
+| `AGENT_HISTORY_MESSAGES` | `40` (model input trimmed at user / `[ui_event]` turn boundaries) |
 | `PUBLIC_BASE_URL` | `http://localhost:5173` (links in emails and SMS) |
 | `RESUME_TOKEN_SECRET` | `dev-only-change-me` (signs verification, resume and tracking links; set a real secret outside dev) |
 | `EMAIL_LINK_TTL_HOURS` / `RESUME_TTL_DAYS` / `TRACK_TTL_DAYS` | `72` / `7` / `365` |
