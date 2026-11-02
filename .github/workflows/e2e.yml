@@ -8,7 +8,8 @@ name: e2e
 #   Run workflow → suite "fe": the FE layer (@fe), frontend mock only (`make e2e-fe`).
 #     With "update_snapshots" on a branch other than main, the card screenshot baselines are
 #     (re)written on ubuntu-latest and committed to that branch.
-#   Run workflow → suite "demo": the Day 5 demo rehearsal (`make e2e-demo`, @demo).
+#   Run workflow → suite "demo": the Day 5 demo rehearsal (`make e2e-demo`, @demo); set
+#     state_backend=postgres to rehearse on the store `make demo` uses.
 # Nightly live runs are opt-in: set the repository variable NIGHTLY_LIVE=true (model cost).
 
 on:
@@ -32,6 +33,11 @@ on:
         description: Rewrite the card screenshot baselines (fe suite only)
         type: boolean
         default: false
+      state_backend:
+        description: Backend state store (demo suite only); postgres is what `make demo` runs
+        type: choice
+        options: [memory, postgres]
+        default: memory
   schedule:
     - cron: '30 21 * * *' # 03:00 IST / 00:30 Asia/Riyadh
 
@@ -86,6 +92,24 @@ jobs:
   playwright-demo:
     if: github.event_name == 'workflow_dispatch' && inputs.suite == 'demo'
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: inquiry
+          POSTGRES_PASSWORD: inquiry
+          POSTGRES_DB: inquiry
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U inquiry -d inquiry"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # The backend web server inherits these (Playwright webServer env extends process.env).
+      STATE_BACKEND: ${{ inputs.state_backend || 'memory' }}
+      DATABASE_URL: postgresql+psycopg://inquiry:inquiry@localhost:5432/inquiry
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -101,6 +125,9 @@ jobs:
           (cd backend && uv sync)
           (cd frontend && npm ci)
           (cd e2e && npm ci && npx playwright install --with-deps chromium)
+      - name: Alembic migrate (postgres)
+        if: ${{ inputs.state_backend == 'postgres' }}
+        run: cd backend && uv run alembic upgrade head
       - name: Demo rehearsal (@demo)
         run: set -o pipefail; make e2e-demo 2>&1 | tee /tmp/playwright.log
       - name: Show the end of the Playwright output
