@@ -8,6 +8,7 @@ from typing import Any
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableConfig
+from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph.state import CompiledStateGraph
 
 from app.agent.case_guard import case_guard_node
@@ -21,6 +22,7 @@ from app.agent.state import AgentState
 
 def build_case_graph(
     model_factory: Callable[[], BaseChatModel] | None = None,
+    checkpointer: BaseCheckpointSaver | None = None,
 ) -> CompiledStateGraph[AgentState, None, AgentState, AgentState]:
     factory = model_factory or get_chat_model
 
@@ -36,4 +38,5 @@ def build_case_graph(
         system_for_turn=system_for_turn,
         guard_node_fn=guard,
         model_factory=factory,
+        checkpointer=checkpointer,
     )

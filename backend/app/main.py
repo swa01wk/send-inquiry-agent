@@ -7,6 +7,7 @@ import contextlib
 import logging
 import shutil
 from collections.abc import AsyncIterator, Callable
+from typing import Any
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -16,6 +17,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from slowapi.middleware import SlowAPIMiddleware
 
 from app.agent.case_graph import build_case_graph
+from app.agent.checkpointer import memory_checkpointer, postgres_checkpointer
 from app.agent.graph import build_assisted_graph, build_graph
 from app.agent.model import ScriptedChatModel, get_chat_model
 from app.agent.reviewer_graph import build_reviewer_graph
@@ -92,16 +94,21 @@ def create_app(
 
     chat_model_factory = model_factory or default_model_factory
 
-    def init_state(app: FastAPI) -> None:
+    def init_state(app: FastAPI, *, checkpointer: Any = None) -> None:
         """Sessions, services and graphs (start-up, and again after a demo reset)."""
+        cp = checkpointer or memory_checkpointer()
+        app.state.checkpointer = cp
         app.state.settings = cfg
         app.state.policy = policy
         app.state.session_store = make_session_store(cfg)
         app.state.services = build_services(cfg)
-        app.state.graph = build_graph(model_factory=chat_model_factory)
-        app.state.case_graph = build_case_graph(model_factory=chat_model_factory)
+        app.state.graph = build_graph(model_factory=chat_model_factory, checkpointer=cp)
+        app.state.case_graph = build_case_graph(model_factory=chat_model_factory, checkpointer=cp)
         app.state.reviewer_graph = build_reviewer_graph(model_factory=chat_model_factory)
-        app.state.assisted_graph = build_assisted_graph(model_factory=chat_model_factory)
+        app.state.assisted_graph = build_assisted_graph(
+            model_factory=chat_model_factory,
+            checkpointer=cp,
+        )
 
     async def reset_demo() -> None:
         """Delete every demo record (dev tools only) and rebuild the state from scratch."""
@@ -115,7 +122,7 @@ def create_app(
                     shutil.rmtree(child, ignore_errors=True)
                 else:
                     child.unlink(missing_ok=True)
-        init_state(app)
+        init_state(app, checkpointer=getattr(app.state, "checkpointer", None))
         logger.info("demo reset")
 
     async def proactive_loop() -> None:
@@ -133,7 +140,23 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        init_state(app)
+        if cfg.state_backend == "postgres":
+            if not cfg.database_url:
+                msg = "DATABASE_URL is required when STATE_BACKEND=postgres"
+                raise RuntimeError(msg)
+            async with postgres_checkpointer(cfg.database_url) as checkpointer:
+                await checkpointer.setup()
+                init_state(app, checkpointer=checkpointer)
+                task = asyncio.create_task(proactive_loop()) if cfg.proactive_enabled else None
+                try:
+                    yield
+                finally:
+                    if task is not None:
+                        task.cancel()
+                        with contextlib.suppress(asyncio.CancelledError):
+                            await task
+            return
+        init_state(app, checkpointer=memory_checkpointer())
         task = asyncio.create_task(proactive_loop()) if cfg.proactive_enabled else None
         yield
         if task is not None:
