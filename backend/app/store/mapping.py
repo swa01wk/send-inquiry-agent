@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.domain.models import InquiryDraft
-from app.store.models import Inquiry, InquiryStatus, SessionState
+from app.store.models import Inquiry, InquiryStatus, SessionState, owned_reference
 from app.store.tables import InquiryRow
 
 
@@ -33,7 +33,7 @@ def inquiry_from_row(row: InquiryRow) -> Inquiry:
 
 
 def row_values_from_inquiry(inquiry: Inquiry) -> dict[str, Any]:
-    reference = inquiry.reference or inquiry.draft.reference
+    reference = owned_reference(inquiry)
     return {
         "status": inquiry.status.value,
         "draft": inquiry.draft.model_dump(mode="json"),

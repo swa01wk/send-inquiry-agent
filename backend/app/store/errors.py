@@ -13,3 +13,11 @@ class TurnInProgress(Exception):
 
 class VersionConflict(Exception):
     pass
+
+
+class DuplicateReference(Exception):
+    """Another inquiry already owns this reference (the column is unique in Postgres)."""
+
+    def __init__(self, reference: str) -> None:
+        super().__init__(reference)
+        self.reference = reference

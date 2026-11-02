@@ -24,3 +24,6 @@ test_turn_lease_acquire_and_conflict = contract.test_turn_lease_acquire_and_conf
 test_turn_lease_expired_takeover = contract.test_turn_lease_expired_takeover
 test_purge_expired_drafts_only = contract.test_purge_expired_drafts_only
 test_get_missing = contract.test_get_missing
+test_case_row_does_not_claim_the_submitted_reference = (
+    contract.test_case_row_does_not_claim_the_submitted_reference
+)

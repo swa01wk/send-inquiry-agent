@@ -105,7 +105,7 @@ def legacy_inquiry_from_session(session: Session) -> Inquiry:
         cards_shown=sorted(session.cards_shown),
         confirm_card_keys=dict(session.confirm_card_keys),
         card_counter=session.card_counter,
-        reference=session.draft.reference,
+        reference=None if session.case_id else session.draft.reference,
         version=session._version,
         created_at=session.created_at,
         updated_at=session.last_seen,

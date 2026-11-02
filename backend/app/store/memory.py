@@ -9,8 +9,13 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from app.domain.draft_ops import new_inquiry_draft
-from app.store.errors import InquiryNotFound, TurnInProgress, VersionConflict
-from app.store.models import Inquiry, InquiryStatus, SessionState
+from app.store.errors import (
+    DuplicateReference,
+    InquiryNotFound,
+    TurnInProgress,
+    VersionConflict,
+)
+from app.store.models import Inquiry, InquiryStatus, SessionState, owned_reference
 
 
 @dataclass
@@ -79,8 +84,13 @@ class InMemoryInquiryRepository:
             updated = inquiry.model_copy(deep=True)
             updated.version = stored.version + 1
             updated.updated_at = now
-            if updated.reference is None and updated.draft.reference:
-                updated.reference = updated.draft.reference
+            updated.reference = owned_reference(updated)
+            if updated.reference and any(
+                other.reference == updated.reference
+                for other_id, other in self._inquiries.items()
+                if other_id != inquiry.id
+            ):
+                raise DuplicateReference(updated.reference)
             if updated.status == InquiryStatus.DRAFT and updated.draft.reference:
                 updated.status = InquiryStatus.SUBMITTED
             self._inquiries[inquiry.id] = updated
