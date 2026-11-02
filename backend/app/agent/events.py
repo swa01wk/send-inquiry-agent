@@ -58,7 +58,7 @@ def _graph_config(
     settings: Settings | None = None,
 ) -> RunnableConfig:
     configurable: dict[str, object] = {
-        "thread_id": session.id,
+        "thread_id": session.inquiry_id or session.id,
         "runtime": runtime,
     }
     tools = CASE_TOOLS if session.mode == "case" else ASSISTED_TOOLS if session.assisted else TOOLS

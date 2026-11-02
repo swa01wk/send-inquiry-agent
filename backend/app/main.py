@@ -38,7 +38,7 @@ from app.domain.master import configure_master_data, load_master_data
 from app.policy.config import PolicyError, install_policy, load_policy
 from app.proactive.engine import tick
 from app.services.container import build_services
-from app.sessions import SessionStore
+from app.store.factory import make_session_store
 
 logger = logging.getLogger(__name__)
 
@@ -96,9 +96,7 @@ def create_app(
         """Sessions, services and graphs (start-up, and again after a demo reset)."""
         app.state.settings = cfg
         app.state.policy = policy
-        app.state.session_store = SessionStore(
-            ttl_minutes=cfg.session_ttl_minutes, data_dir=cfg.data_dir
-        )
+        app.state.session_store = make_session_store(cfg)
         app.state.services = build_services(cfg)
         app.state.graph = build_graph(model_factory=chat_model_factory)
         app.state.case_graph = build_case_graph(model_factory=chat_model_factory)

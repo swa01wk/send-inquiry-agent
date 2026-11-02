@@ -110,7 +110,7 @@ async def upload_document(
         actor="user",
         payload={"doc_type": parsed.value, "ext": ext, "size_bytes": ref.size_bytes},
     )
-    store.save(session)
+    await store.save(session)
     draft = build_draft_summary(session.draft, master, changed_keys=[])
     document = DocumentResponse(
         doc_type=ref.doc_type.value,
@@ -154,7 +154,7 @@ async def delete_document(
     services.audit.record(
         session_id, "document_removed", actor="user", payload={"doc_type": parsed.value}
     )
-    store.save(session)
+    await store.save(session)
     draft = build_draft_summary(session.draft, master, changed_keys=[])
     return DeleteDocumentResponse(card=card, draft=draft)
 

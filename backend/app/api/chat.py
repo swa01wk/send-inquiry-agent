@@ -65,11 +65,11 @@ async def chat_stream(
     services: ServiceContainer = Depends(get_services),
     settings: Settings = Depends(get_settings),
 ) -> EventSourceResponse:
-    await store.begin_turn(session_id)
+    lease_id = await store.begin_turn(session_id)
     try:
         session = await store.touch(session_id)
     except Exception:
-        await store.end_turn(session_id)
+        await store.end_turn(session_id, lease_id)
         raise
 
     if session.mode == "case":
@@ -116,7 +116,7 @@ async def chat_stream(
         try:
             result = await handle_ui_action(body.action, body.payload, session, runtime)
         except Exception:
-            await store.end_turn(session_id)
+            await store.end_turn(session_id, lease_id)
             raise
         action_events = result.events
         action_quiet = result.quiet
@@ -128,7 +128,7 @@ async def chat_stream(
             actor="user",
             payload={"action": body.action, "outcome": note.split(" ", 1)[0]},
         )
-        store.save(session)
+        await store.save(session)
 
     async def event_generator() -> AsyncIterator[dict[str, str]]:
         nonlocal turn_user_message
@@ -232,7 +232,7 @@ async def chat_stream(
                 actor="user" if user_text is None else "agent",
                 via="card" if user_text is None else "agent",
             )
-            store.save(session)
-            await store.end_turn(session_id)
+            await store.save(session)
+            await store.end_turn(session_id, lease_id)
 
     return EventSourceResponse(event_generator())

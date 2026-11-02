@@ -45,6 +45,8 @@ class Session:
     draft: InquiryDraft
     created_at: datetime
     last_seen: datetime
+    inquiry_id: str = ""
+    _version: int = field(default=0, repr=False)
     cards_shown: set[str] = field(default_factory=set)
     card_counter: int = 0
     confirm_card_keys: dict[str, list[str]] = field(default_factory=dict)
@@ -101,6 +103,8 @@ class Session:
     def to_json(self) -> dict[str, Any]:
         return {
             "id": self.id,
+            "inquiry_id": self.inquiry_id or self.id,
+            "_version": self._version,
             "draft": self.draft.model_dump(mode="json"),
             "created_at": self.created_at.isoformat(),
             "last_seen": self.last_seen.isoformat(),
@@ -130,8 +134,11 @@ class Session:
 
     @classmethod
     def from_json(cls, raw: dict[str, Any]) -> Session:
+        sid = str(raw["id"])
         return cls(
-            id=str(raw["id"]),
+            id=sid,
+            inquiry_id=str(raw.get("inquiry_id", sid)),
+            _version=int(raw.get("_version", 0)),
             draft=InquiryDraft.model_validate(raw["draft"]),
             created_at=datetime.fromisoformat(raw["created_at"]),
             last_seen=datetime.fromisoformat(raw["last_seen"]),
@@ -164,44 +171,162 @@ _SAFE_ID = re.compile(r"^[A-Za-z0-9-]{1,64}$")
 
 
 class SessionStore:
-    def __init__(self, ttl_minutes: int, data_dir: str | None = None) -> None:
+    def __init__(
+        self,
+        repo: Any | None = None,
+        *,
+        ttl_minutes: int,
+        data_dir: str | None = None,
+        handle_store: Any | None = None,
+        postgres_handles: bool = False,
+    ) -> None:
+        from app.store.handle_store import HandleRecord, MemoryHandleStore
+        from app.store.memory import InMemoryInquiryRepository
+        from app.store.repository import InquiryRepository
+
+        if repo is None:
+            repo = InMemoryInquiryRepository()
+        self._repo: InquiryRepository = repo
+        self._HandleRecord = HandleRecord
         self._ttl = timedelta(minutes=ttl_minutes)
         self._data_dir = data_dir
-        self._sessions: dict[str, Session] = {}
+        self._postgres_handles = postgres_handles
+        if handle_store is not None:
+            self._handles = handle_store
+        elif postgres_handles:
+            msg = "postgres handle store required when postgres_handles=True"
+            raise ValueError(msg)
+        else:
+            self._handles = MemoryHandleStore()
+        self._memory_repo = repo if isinstance(repo, InMemoryInquiryRepository) else None
+        self._cache: dict[str, Session] = {}
         self._locks: dict[str, asyncio.Lock] = {}
         self._turn_locks: dict[str, asyncio.Lock] = {}
         self._meta_lock = asyncio.Lock()
         self._load_snapshots()
 
-    # ---- persistence -----------------------------------------------------------
-
     def _file(self, session_id: str) -> JsonFile:
         return JsonFile(data_path(self._data_dir, "sessions", f"{session_id}.json"))
 
     def _load_snapshots(self) -> None:
+        if self._memory_repo is None:
+            return
         directory = data_path(self._data_dir, "sessions")
         if directory is None or not directory.exists():
             return
+        from app.store.session_bridge import handle_from_session, legacy_inquiry_from_session
+
         loaded = 0
         for path in sorted(Path(directory).glob("*.json")):
             try:
                 session = Session.from_json(JsonFile(path).load({}))
-            except Exception:  # a damaged snapshot shouldn't stop the app
+            except Exception:
                 logger.warning("skipping unreadable session snapshot %s", path.name)
                 continue
+            inquiry = legacy_inquiry_from_session(session)
+            self._memory_repo.bootstrap(inquiry)
+            self._handles.put(
+                self._HandleRecord(
+                    id=session.id,
+                    inquiry_id=inquiry.id,
+                    created_at=session.created_at,
+                    last_seen_at=session.last_seen,
+                    state=handle_from_session(session),
+                )
+            )
             self._register(session)
             loaded += 1
         if loaded:
             logger.info("restored %d session(s) from %s", loaded, directory)
 
     def _register(self, session: Session) -> None:
-        self._sessions[session.id] = session
+        self._cache[session.id] = session
         self._locks.setdefault(session.id, asyncio.Lock())
         self._turn_locks.setdefault(session.id, asyncio.Lock())
 
-    def save(self, session: Session) -> None:
-        """Write the session's snapshot (no-op without DATA_DIR)."""
-        self._file(session.id).save(session.to_json())
+    async def _load_session(self, session_id: str) -> Session:
+        from app.store.errors import InquiryNotFound as StoreInquiryNotFound
+        from app.store.session_bridge import session_from_parts
+
+        if self._postgres_handles:
+            handle = await self._handles.get(session_id)
+        else:
+            handle = self._handles.get(session_id)
+        if handle is None:
+            raise SessionNotFound(session_id)
+        try:
+            inquiry = await self._repo.get(handle.inquiry_id)
+        except StoreInquiryNotFound as exc:
+            raise SessionNotFound(session_id) from exc
+        last_seen = handle.last_seen_at
+        if self._is_expired_at(last_seen):
+            raise SessionNotFound(session_id)
+        return session_from_parts(
+            handle_id=handle.id,
+            inquiry=inquiry,
+            handle=handle.state,
+            last_seen=handle.last_seen_at,
+            created_at=handle.created_at,
+        )
+
+    async def _maybe_fork_follow_on(self, session: Session) -> None:
+        from app.store.models import InquiryStatus
+        from app.store.session_bridge import apply_session_to_inquiry, inquiry_id_for
+
+        inquiry = await self._repo.get(inquiry_id_for(session))
+        if inquiry.status != InquiryStatus.SUBMITTED or not inquiry.draft.reference:
+            return
+        if not session.draft.follow_on_of or session.draft.reference:
+            return
+        if session.draft.follow_on_of != inquiry.draft.reference:
+            return
+        new_inquiry = await self._repo.create(
+            channel=session.channel,
+            created_by=session.created_by,
+            tenant_id=session.tenant_id,
+            staff_id=session.staff_id,
+            mode=session.mode,
+            case_id=session.case_id,
+        )
+        new_inquiry = apply_session_to_inquiry(session, new_inquiry)
+        saved = await self._repo.save(new_inquiry)
+        session.inquiry_id = str(saved.id)
+        session._version = saved.version
+        if self._postgres_handles:
+            handle = await self._handles.get(session.id)
+        else:
+            handle = self._handles.get(session.id)
+        if handle is not None:
+            handle.inquiry_id = saved.id
+            if self._postgres_handles:
+                await self._handles.put(handle)
+            else:
+                self._handles.put(handle)
+
+    async def save(self, session: Session) -> None:  # noqa: PLR0912
+        from app.store.session_bridge import apply_session_to_inquiry, handle_from_session, inquiry_id_for
+
+        await self._maybe_fork_follow_on(session)
+        inquiry = await self._repo.get(inquiry_id_for(session))
+        inquiry.version = session._version
+        to_save = apply_session_to_inquiry(session, inquiry)
+        saved = await self._repo.save(to_save)
+        session._version = saved.version
+        if self._postgres_handles:
+            handle = await self._handles.get(session.id)
+        else:
+            handle = self._handles.get(session.id)
+        if handle is not None:
+            handle.state = handle_from_session(session)
+            handle.last_seen_at = session.last_seen
+            handle.inquiry_id = saved.id
+            if self._postgres_handles:
+                await self._handles.put(handle)
+            else:
+                self._handles.put(handle)
+        self._cache[session.id] = session
+        if self._memory_repo is not None:
+            self._file(session.id).save(session.to_json())
 
     # ---- lifecycle ------------------------------------------------------------
 
@@ -216,19 +341,33 @@ class SessionStore:
         tenant_id: str | None = None,
         staff_id: str | None = None,
     ) -> Session:
-        session_id = str(uuid.uuid4())
-        now = datetime.now(tz=UTC)
-        session = Session(
-            id=session_id,
-            draft=draft if draft is not None else new_inquiry_draft(),
-            created_at=now,
-            last_seen=now,
-            mode=mode,
-            case_id=case_id,
+        from app.store.session_bridge import session_from_parts
+
+        inquiry = await self._repo.create(
             channel=channel,
             created_by=created_by,
             tenant_id=tenant_id,
             staff_id=staff_id,
+            mode=mode,
+            case_id=case_id,
+        )
+        if draft is not None:
+            inquiry.draft = draft
+            inquiry = await self._repo.save(inquiry)
+        hid = str(inquiry.id)
+        if self._postgres_handles:
+            handle = await self._handles.create(inquiry_id=inquiry.id, handle_id=hid)
+        else:
+            handle = self._handles.create(inquiry_id=inquiry.id, handle_id=hid)
+        handle.state.mode = mode
+        if created_by is not None:
+            handle.state.created_by = created_by
+        session = session_from_parts(
+            handle_id=handle.id,
+            inquiry=inquiry,
+            handle=handle.state,
+            last_seen=handle.last_seen_at,
+            created_at=handle.created_at,
         )
         async with self._meta_lock:
             self._register(session)
@@ -237,65 +376,106 @@ class SessionStore:
     async def get(self, session_id: str) -> Session:
         lock = await self._lock_for(session_id)
         async with lock:
-            session = self._sessions.get(session_id)
+            session = self._cache.get(session_id)
             if session is None:
-                raise SessionNotFound(session_id)
+                session = await self._load_session(session_id)
+                self._cache[session_id] = session
             if self._is_expired(session):
                 self._forget(session_id)
                 raise SessionNotFound(session_id)
             return session
 
+    def _is_expired_at(self, last_seen: datetime) -> bool:
+        return datetime.now(tz=UTC) - last_seen > self._ttl
+
     async def touch(self, session_id: str) -> Session:
+        from app.store.session_bridge import inquiry_id_for
+
         session = await self.get(session_id)
-        session.last_seen = datetime.now(tz=UTC)
+        now = datetime.now(tz=UTC)
+        touched = await self._repo.touch(inquiry_id_for(session), now=now)
+        session.last_seen = touched.last_seen_at
+        session._version = touched.version
+        if self._postgres_handles:
+            handle = await self._handles.get(session_id)
+        else:
+            handle = self._handles.get(session_id)
+        if handle is not None:
+            handle.last_seen_at = touched.last_seen_at
+            if self._postgres_handles:
+                await self._handles.put(handle)
+            else:
+                self._handles.put(handle)
         return session
 
     async def revive(self, session_id: str) -> Session:
-        """A session reached through a signed link, even if idle past the TTL.
-
-        Links (verification, resume) outlive the chat TTL. The session comes back from
-        memory or, with DATA_DIR, from its snapshot.
-        """
         if not _SAFE_ID.match(session_id):
             raise SessionNotFound(session_id)
         async with self._meta_lock:
-            session = self._sessions.get(session_id)
+            session = self._cache.get(session_id)
             if session is None:
-                raw = self._file(session_id).load(None)
-                if raw is None:
-                    raise SessionNotFound(session_id)
-                session = Session.from_json(raw)
-                self._register(session)
+                if self._memory_repo is not None:
+                    raw = self._file(session_id).load(None)
+                    if raw is not None:
+                        from app.store.session_bridge import (
+                            handle_from_session,
+                            legacy_inquiry_from_session,
+                        )
+
+                        session = Session.from_json(raw)
+                        inquiry = legacy_inquiry_from_session(session)
+                        self._memory_repo.bootstrap(inquiry)
+                        self._handles.put(
+                            self._HandleRecord(
+                                id=session.id,
+                                inquiry_id=inquiry.id,
+                                created_at=session.created_at,
+                                last_seen_at=session.last_seen,
+                                state=handle_from_session(session),
+                            )
+                        )
+                        self._register(session)
+                if session is None:
+                    try:
+                        session = await self._load_session(session_id)
+                        self._register(session)
+                    except SessionNotFound:
+                        raise
         session.last_seen = datetime.now(tz=UTC)
+        await self.touch(session_id)
         return session
 
-    async def begin_turn(self, session_id: str) -> None:
-        async with self._meta_lock:
-            turn_lock = self._turn_locks.get(session_id)
-            if turn_lock is None:
-                raise SessionNotFound(session_id)
-        if turn_lock.locked():
-            raise TurnInProgress
-        await turn_lock.acquire()
+    async def begin_turn(self, session_id: str) -> str:
+        from app.store.errors import TurnInProgress as RepoTurnInProgress
+        from app.store.session_bridge import inquiry_id_for
 
-    async def end_turn(self, session_id: str) -> None:
-        async with self._meta_lock:
-            turn_lock = self._turn_locks.get(session_id)
-            if turn_lock is None:
-                return
-        if turn_lock.locked():
-            turn_lock.release()
+        session = await self.get(session_id)
+        from app.config import get_settings
+
+        lease_s = get_settings().turn_lease_seconds
+        try:
+            return await self._repo.acquire_turn(inquiry_id_for(session), lease_s)
+        except RepoTurnInProgress as exc:
+            raise TurnInProgress from exc
+
+    async def end_turn(self, session_id: str, lease_id: str) -> None:
+        from app.store.session_bridge import inquiry_id_for
+
+        session = await self.get(session_id)
+        await self._repo.release_turn(inquiry_id_for(session), lease_id)
 
     async def _lock_for(self, session_id: str) -> asyncio.Lock:
         async with self._meta_lock:
-            lock = self._locks.get(session_id)
-            if lock is None:
-                raise SessionNotFound(session_id)
-            return lock
+            if session_id not in self._locks:
+                if self._postgres_handles or self._handles.get(session_id) is not None:
+                    self._locks[session_id] = asyncio.Lock()
+                    self._turn_locks[session_id] = asyncio.Lock()
+                else:
+                    raise SessionNotFound(session_id)
+            return self._locks[session_id]
 
     def _forget(self, session_id: str) -> None:
-        # Memory only: the snapshot stays so a signed link can revive the session.
-        self._sessions.pop(session_id, None)
+        self._cache.pop(session_id, None)
         self._locks.pop(session_id, None)
         self._turn_locks.pop(session_id, None)
 

@@ -221,7 +221,7 @@ async def raise_inquiry(
     )
     session.add_message(message.id, "assistant", message.text)
     session.remember_card(card.model_dump())
-    store.save(session)
+    await store.save(session)
     return CreateSessionResponse(
         session_id=session.id,
         messages=[message],

@@ -61,7 +61,7 @@ async def create_session(
     services.audit.record(
         session.id, "inquiry_created", actor="user", payload={"channel": "self_service"}
     )
-    store.save(session)
+    await store.save(session)
     draft = build_draft_summary(session.draft, master, changed_keys=[])
     return CreateSessionResponse(
         session_id=session.id,
@@ -117,5 +117,5 @@ async def resume_session(
         session = await store.revive(claims.subject)
     except SessionNotFound as exc:
         raise ApiError(404, "inquiry_not_found", "We couldn't find that inquiry.") from exc
-    store.save(session)
+    await store.save(session)
     return resume_payload(session, master)

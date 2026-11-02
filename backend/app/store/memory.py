@@ -125,6 +125,10 @@ class InMemoryInquiryRepository:
             if lease is not None and lease.lease_id == lease_id:
                 del self._leases[inquiry_id]
 
+    def bootstrap(self, inquiry: Inquiry) -> None:
+        """Restore an inquiry from a JSON snapshot (memory backend only)."""
+        self._inquiries[inquiry.id] = inquiry.model_copy(deep=True)
+
     async def purge_expired(self, now: datetime) -> list[UUID]:
         async with self._lock:
             ts = self._now(now)

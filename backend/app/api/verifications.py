@@ -123,7 +123,7 @@ async def verify_email_link(
         actor="user",
         payload={"channel": "email", "result": "verified"},
     )
-    store.save(session)
+    await store.save(session)
     return VerifyEmailResponse(
         status="verified",
         session_id=session.id,
@@ -184,7 +184,7 @@ async def complete_application(
     services.storage.copy_session_files(staff_session.id, session.id)  # type: ignore[attr-defined]
     staff_session.complete_nonce = None  # single use
     staff_session.closed = "handed_to_applicant"
-    store.save(staff_session)
+    await store.save(staff_session)
 
     master = load_master_data()
     runtime = AgentRuntime(services=services, master=master, settings=settings)
@@ -205,7 +205,7 @@ async def complete_application(
         actor="user",
         payload={"channel": "email", "result": "verified"},
     )
-    store.save(session)
+    await store.save(session)
     return VerifyEmailResponse(
         status="verified",
         session_id=session.id,

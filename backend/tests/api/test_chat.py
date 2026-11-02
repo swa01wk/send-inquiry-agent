@@ -180,7 +180,7 @@ async def test_accept_and_submit_success_reference(client: AsyncClient, app) -> 
 async def test_concurrent_chat_returns_409(client: AsyncClient, app) -> None:
     store = app.state.session_store
     session = await store.create()
-    await store.begin_turn(session.id)
+    lease_id = await store.begin_turn(session.id)
     try:
         response = await client.post(
             f"/api/sessions/{session.id}/chat",
@@ -189,7 +189,7 @@ async def test_concurrent_chat_returns_409(client: AsyncClient, app) -> None:
         assert response.status_code == 409
         assert response.json()["error"]["code"] == "turn_in_progress"
     finally:
-        await store.end_turn(session.id)
+        await store.end_turn(session.id, lease_id)
 
 
 @pytest.mark.asyncio
