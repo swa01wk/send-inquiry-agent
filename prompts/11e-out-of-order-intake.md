@@ -105,7 +105,7 @@ Keep `backend/app/agent/system_prompt.md` and `docs/agent-system-prompt.md` in s
     ```
 
 ### Scripted e2e
-15. Quiet actions remove the agent turns that used to follow `email_verified` (when the mobile is still pending), `otp_failed`, manual resends and `document_number_set`. Re-align the step lists in `backend/tests/e2e_scripts/` that consumed those turns: at least `s1-happy-path`, `12-wrong-code`, `13-wrong-files`, `18-demo-sequence` and `a2-applicant`. Use `backend/scripts/generate_e2e_scripts.py` where it covers the script.
+15. Quiet actions remove the agent turns that used to follow `email_verified` (when the mobile is still pending), `otp_failed`, manual resends and `document_number_set`. The scripted suite still passed on the backend PR (76/76, `e2e.yml` run 41442787865), because cards come from the guard and the phase. Even so, check that the step lists in `backend/tests/e2e_scripts/` still read in order (for example `s1-happy-path` and `18-demo-sequence`) whenever you touch them.
 16. **New story S14: documents before verification** (`e2e/tests/s14-out-of-order.spec.ts`, scripted `s14-out-of-order.json`). The story runs in this order:
     1. CR, then the bundle message.
     2. Enter the SMS code.
