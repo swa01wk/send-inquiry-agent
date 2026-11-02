@@ -24,6 +24,10 @@ on:
         type: choice
         options: [intake, case, channels, all]
         default: intake
+      scenario:
+        description: eval-live scenarios whose name contains this text (eval suite only; empty = all)
+        type: string
+        default: ''
       update_snapshots:
         description: Rewrite the card screenshot baselines (fe suite only)
         type: boolean
@@ -192,6 +196,7 @@ jobs:
       OPENAI_MODEL: ${{ vars.OPENAI_MODEL || secrets.OPENAI_MODEL }}
       EVAL_REPEATS: "3"
       EVAL_TOLERANCE: "5"
+      SCENARIO: ${{ inputs.scenario }}
     steps:
       - name: Check OpenAI settings
         run: |
