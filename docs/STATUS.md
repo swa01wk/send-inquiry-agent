@@ -12,7 +12,7 @@ The single place to see what's built, what's next and how the agent maps to the 
 
 **Status values:** ✅ Done · 🟡 In progress, or built at demo depth during the breadth days · ⬜ Not started · ⛔ Blocked · ➖ Waived (with reason)
 
-**Last updated:** 2 Nov 2026 · step 12 baseline parity (B0); earlier: 11e out-of-order intake, 5-day close-out (30 Oct)
+**Last updated:** 3 Nov 2026 · step 12 done (parity suite, live-eval baseline 27/27); earlier: 11e out-of-order intake, 5-day close-out (30 Oct)
 
 ## 0. Delivery plan
 
@@ -77,9 +77,9 @@ Each step is one Cursor prompt in `prompts/` and normally one PR.
 | 00–11, 11b | `00`–`11b` | v1 POC, POC assumptions, UI fixes, Playwright suites | — | ✅ | #1–#13 | Live e2e: desktop 14/14; mobile test 14 fix in #13, needs a live run to confirm |
 | 11c | `11c-pre-baseline-fixes.md` | Confirm only what was shown; turn on documents complete; Office removed; document numbers on the documents card; landline and `written_keys` fixes | P1–P5 | ✅ | #25, #26 | #26: a corrected document number clears its card error |
 | 11d | `11d-test-harness.md` | Six test layers with one command each, frontend Playwright, eval repeats and invariants, scenario catalogue, `ci.yml`, PR template | — | ✅ | Day 1 harness PR; B1 FE slice | Make targets, `ci.yml`, PR template, markers/coverage/catalogue/prompt snapshots, AGENT-LIVE + E2E-LIVE invariants, `@flaky`, `eval-live` CI job, `make e2e-fe` with JSON mock scenarios and `@fe` suites |
-| 11e | `11e-out-of-order-intake.md` | Out-of-order intake: independent step tabs, tab click shows its card, next-step strip, queued card clicks, prompt rules for `still_needed` | — | 🟡 | | Backend + frontend + agent prompt; S14 scripted e2e; AGENT-LIVE pending |
-| 12 | `12-baseline-parity.md` | Golden transcripts, `make golden`, frontend fixtures from goldens, live-eval baseline | G1 | 🟡 | | Seven goldens in `tests/parity/golden/`, `make golden`, FE export + `@fe` parity replay; live-eval baseline pending (after #55) |
-| 13 | `13-durable-state.md` | Inquiry store (memory, Postgres), turn lease, checkpointer, bounded history, retention | G2 | 🟢 | | `app/store/` repository + session handles; Alembic `0001_inquiries`; lease + `turn_conflict`; Postgres checkpointer; hourly purge; CI postgres job |
+| 11e | `11e-out-of-order-intake.md` | Out-of-order intake: independent step tabs, tab click shows its card, next-step strip, queued card clicks, prompt rules for `still_needed` | — | ✅ | | Backend + frontend + agent prompt; S14 scripted e2e; AGENT-LIVE 27/27 incl. O out of order 3/3 (3 Nov) |
+| 12 | `12-baseline-parity.md` | Golden transcripts, `make golden`, frontend fixtures from goldens, live-eval baseline | G1 | ✅ | | Seven goldens in `tests/parity/golden/`, `make golden`, FE export + `@fe` parity replay; live-eval baseline 27/27 (3 Nov, `docs/eval-notes.md`) |
+| 13 | `13-durable-state.md` | Inquiry store (memory, Postgres), turn lease, checkpointer, bounded history, retention | G2 | 🟡 | | `app/store/` repository + session handles; Alembic `0001_inquiries`; lease + `turn_conflict`; Postgres checkpointer; hourly purge; CI postgres job |
 | 14 | `14-workflow-gateway-submit.md` | State machine (L4 rows defined), tool gateway, idempotent submit | G3, G5, G6 | 🟡 | Day 2 backend PR | Day 2: thin gateway (timeouts, four error kinds, faults, audited calls), submit once with an idempotency key. Left: retries, reconciliation (`submit_pending` follow-up), `InquiryPayload`, state machine (Day 4) |
 | 15 | `15-audit-trail.md` | Redacted, append-only audit trail | G4 | 🟡 | Day 2 backend PR | Day 2: audit log v0 with a redaction allowlist, `GET /api/dev/audit/{id}`. Left: `inquiry_events` table, correlation ids, `audit_dump.py` |
 | 16 | `16-supervisor-registry.md` | Supervisor, agent registry, `status` agent, Postgres CI matrix | G1, G7 | ⬜ | | Closes the M0 gate |
