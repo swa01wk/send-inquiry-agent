@@ -23,6 +23,7 @@ backend/eval-results/
 .env.local
 .uploads/
 .data/
+backend/.golden-uploads/
 
 # OS / editors
 .DS_Store

@@ -1,0 +1,38 @@
+id: two-malls-named
+layers:
+- agent_det
+model_steps:
+- content: ''
+  tool_calls:
+  - name: skip_cr
+    args: {}
+    id: tm1
+    type: tool_call
+- content: No problem — what is your registered company name and address?
+- content: ''
+  tool_calls:
+  - name: update_draft
+    args:
+      fields:
+      - key: company_name
+        value: Acme Trading LLC
+        source: user
+      - key: company_address
+        value: King Abdullah Road, Riyadh
+        source: user
+      - key: brand_name_en
+        value: Bean Street
+        source: user
+      - key: brand_name_ar
+        value: بين ستريت
+        source: derived
+      - key: unit_type
+        value: specialty
+        source: derived
+      - key: sales_category
+        value: fnb_cafe
+        source: derived
+    id: tm2
+    type: tool_call
+- content: You named two malls — which one should we start with for this inquiry?
+title: Two malls named in one message

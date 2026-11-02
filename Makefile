@@ -4,7 +4,7 @@
 
 .PHONY: dev demo dev-backend dev-frontend \
 	check check-be check-fe lint \
-	test test-be test-fe test-agent \
+	test test-be test-fe test-agent golden \
 	e2e e2e-fe e2e-int e2e-demo e2e-demo-headed e2e-demo-step e2e-live e2e-report eval-live \
 	ci ci-remote gate
 
@@ -58,6 +58,11 @@ test: test-be test-fe
 # Moves to `pytest -m agent` when step 11d registers the markers (B1).
 test-agent:
 	cd backend && uv run pytest -m "agent and not sandbox and not live"
+
+# Regenerate parity goldens and matching frontend mock scenarios (deliberate commit).
+golden:
+	cd backend && uv run python scripts/record_goldens.py && uv run python scripts/export_fe_fixtures.py
+	cd frontend && npx prettier --write src/mocks/scenarios/parity
 
 # Playwright runs locally before every PR (not in CI on PRs; testing strategy §6).
 # Deps install only when missing; pass Playwright flags with ARGS, e.g.

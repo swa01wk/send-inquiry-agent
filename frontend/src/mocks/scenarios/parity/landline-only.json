@@ -1,0 +1,3690 @@
+{
+  "name": "landline-only",
+  "session": {
+    "session_id": "mock-session",
+    "messages": [
+      {
+        "id": "welcome-1",
+        "role": "assistant",
+        "text": "Marhaba, and welcome to Cenomi Tenant Central! I'm your leasing assistant."
+      },
+      {
+        "id": "welcome-2",
+        "role": "assistant",
+        "text": "I'll help you send a leasing inquiry in a few minutes, no long form. To start, do you have your company's CR number? I'll check whether you already have an account with us."
+      }
+    ],
+    "cards": [
+      {
+        "card_id": "quick-replies",
+        "card_type": "quick_replies",
+        "message_id": "m1",
+        "payload": {
+          "options": [
+            {
+              "label": "I have my CR number",
+              "text": "I have my CR number",
+              "action": "focus_input",
+              "placeholder": "Type your 10-digit CR number"
+            },
+            {
+              "label": "I don't have it handy",
+              "text": "I don't have it handy",
+              "action": "send",
+              "placeholder": null
+            },
+            {
+              "label": "What do I need to get started?",
+              "text": "What do I need to get started?",
+              "action": "send",
+              "placeholder": null
+            }
+          ]
+        }
+      }
+    ],
+    "draft": {
+      "phase": "gate",
+      "fields": [
+        {
+          "key": "cr_number",
+          "label": "CR number",
+          "group": "company",
+          "display": null,
+          "source": null,
+          "confirmed": false,
+          "required": false
+        },
+        {
+          "key": "company_name",
+          "label": "Company name",
+          "group": "company",
+          "display": null,
+          "source": null,
+          "confirmed": false,
+          "required": true
+        },
+        {
+          "key": "company_address",
+          "label": "Company address",
+          "group": "company",
+          "display": null,
+          "source": null,
+          "confirmed": false,
+          "required": true
+        },
+        {
+          "key": "brand_name_en",
+          "label": "Brand name (EN)",
+          "group": "brand",
+          "display": null,
+          "source": null,
+          "confirmed": false,
+          "required": true
+        },
+        {
+          "key": "brand_name_ar",
+          "label": "Brand name (AR)",
+          "group": "brand",
+          "display": null,
+          "source": null,
+          "confirmed": false,
+          "required": true
+        },
+        {
+          "key": "unit_type",
+          "label": "Unit type",
+          "group": "brand",
+          "display": null,
+          "source": null,
+          "confirmed": false,
+          "required": true
+        },
+        {
+          "key": "sales_category",
+          "label": "Sales category",
+          "group": "brand",
+          "display": null,
+          "source": null,
+          "confirmed": false,
+          "required": true
+        },
+        {
+          "key": "malls",
+          "label": "Mall",
+          "group": "space",
+          "display": null,
+          "source": null,
+          "confirmed": false,
+          "required": true
+        },
+        {
+          "key": "area",
+          "label": "Area",
+          "group": "space",
+          "display": "10 – 25000 sqm",
+          "source": "default",
+          "confirmed": true,
+          "required": false
+        },
+        {
+          "key": "rent",
+          "label": "Rent",
+          "group": "space",
+          "display": null,
+          "source": null,
+          "confirmed": true,
+          "required": false
+        },
+        {
+          "key": "lease",
+          "label": "Lease period",
+          "group": "space",
+          "display": null,
+          "source": null,
+          "confirmed": true,
+          "required": false
+        },
+        {
+          "key": "first_name",
+          "label": "First name",
+          "group": "contact",
+          "display": null,
+          "source": null,
+          "confirmed": false,
+          "required": true
+        },
+        {
+          "key": "last_name",
+          "label": "Last name",
+          "group": "contact",
+          "display": null,
+          "source": null,
+          "confirmed": false,
+          "required": true
+        },
+        {
+          "key": "email",
+          "label": "Email",
+          "group": "contact",
+          "display": null,
+          "source": null,
+          "confirmed": false,
+          "required": true
+        },
+        {
+          "key": "mobile",
+          "label": "Mobile",
+          "group": "contact",
+          "display": null,
+          "source": null,
+          "confirmed": false,
+          "required": false
+        },
+        {
+          "key": "landline",
+          "label": "Office landline",
+          "group": "contact",
+          "display": null,
+          "source": null,
+          "confirmed": false,
+          "required": false
+        }
+      ],
+      "documents": [
+        {
+          "doc_type": "company_profile",
+          "label": "Company Profile",
+          "required": true,
+          "uploaded": false,
+          "file_name": null,
+          "size_bytes": null,
+          "on_file": false
+        },
+        {
+          "doc_type": "brand_profile",
+          "label": "Brand Profile",
+          "required": true,
+          "uploaded": false,
+          "file_name": null,
+          "size_bytes": null,
+          "on_file": false
+        },
+        {
+          "doc_type": "cr_certificate",
+          "label": "CR certificate",
+          "required": false,
+          "uploaded": false,
+          "file_name": null,
+          "size_bytes": null,
+          "on_file": false
+        },
+        {
+          "doc_type": "vat_certificate",
+          "label": "VAT certificate",
+          "required": false,
+          "uploaded": false,
+          "file_name": null,
+          "size_bytes": null,
+          "on_file": false
+        },
+        {
+          "doc_type": "national_id",
+          "label": "National ID / Iqama",
+          "required": false,
+          "uploaded": false,
+          "file_name": null,
+          "size_bytes": null,
+          "on_file": false
+        },
+        {
+          "doc_type": "national_address",
+          "label": "National Address",
+          "required": false,
+          "uploaded": false,
+          "file_name": null,
+          "size_bytes": null,
+          "on_file": false
+        },
+        {
+          "doc_type": "articles_of_association",
+          "label": "Article of Association",
+          "required": false,
+          "uploaded": false,
+          "file_name": null,
+          "size_bytes": null,
+          "on_file": false
+        }
+      ],
+      "checks": {
+        "required_filled": 0,
+        "required_total": 11,
+        "unconfirmed": 0,
+        "email_verified": false,
+        "mobile_verified": false,
+        "contact_verified": false,
+        "required_docs_uploaded": 0,
+        "required_docs_total": 2,
+        "terms_accepted": false,
+        "remaining": ["cr", "fields", "verify_email", "documents", "terms"],
+        "next_step": "cr"
+      },
+      "can_submit": false,
+      "changed_keys": [],
+      "follow_on_of": null
+    }
+  },
+  "turns": [
+    {
+      "when": {
+        "type": "message",
+        "textEquals": "I don't have my CR with me — can we skip it?"
+      },
+      "events": [
+        {
+          "event": "draft",
+          "data": {
+            "phase": "collecting",
+            "fields": [
+              {
+                "key": "cr_number",
+                "label": "CR number",
+                "group": "company",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": false
+              },
+              {
+                "key": "company_name",
+                "label": "Company name",
+                "group": "company",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": true
+              },
+              {
+                "key": "company_address",
+                "label": "Company address",
+                "group": "company",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": true
+              },
+              {
+                "key": "brand_name_en",
+                "label": "Brand name (EN)",
+                "group": "brand",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": true
+              },
+              {
+                "key": "brand_name_ar",
+                "label": "Brand name (AR)",
+                "group": "brand",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": true
+              },
+              {
+                "key": "unit_type",
+                "label": "Unit type",
+                "group": "brand",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": true
+              },
+              {
+                "key": "sales_category",
+                "label": "Sales category",
+                "group": "brand",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": true
+              },
+              {
+                "key": "malls",
+                "label": "Mall",
+                "group": "space",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": true
+              },
+              {
+                "key": "area",
+                "label": "Area",
+                "group": "space",
+                "display": "10 – 25000 sqm",
+                "source": "default",
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "rent",
+                "label": "Rent",
+                "group": "space",
+                "display": null,
+                "source": null,
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "lease",
+                "label": "Lease period",
+                "group": "space",
+                "display": null,
+                "source": null,
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "first_name",
+                "label": "First name",
+                "group": "contact",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": true
+              },
+              {
+                "key": "last_name",
+                "label": "Last name",
+                "group": "contact",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": true
+              },
+              {
+                "key": "email",
+                "label": "Email",
+                "group": "contact",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": true
+              },
+              {
+                "key": "mobile",
+                "label": "Mobile",
+                "group": "contact",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": false
+              },
+              {
+                "key": "landline",
+                "label": "Office landline",
+                "group": "contact",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": false
+              }
+            ],
+            "documents": [
+              {
+                "doc_type": "company_profile",
+                "label": "Company Profile",
+                "required": true,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "brand_profile",
+                "label": "Brand Profile",
+                "required": true,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "cr_certificate",
+                "label": "CR certificate",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "vat_certificate",
+                "label": "VAT certificate",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "national_id",
+                "label": "National ID / Iqama",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "national_address",
+                "label": "National Address",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "articles_of_association",
+                "label": "Article of Association",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              }
+            ],
+            "checks": {
+              "required_filled": 0,
+              "required_total": 11,
+              "unconfirmed": 0,
+              "email_verified": false,
+              "mobile_verified": false,
+              "contact_verified": false,
+              "required_docs_uploaded": 0,
+              "required_docs_total": 2,
+              "terms_accepted": false,
+              "remaining": ["fields", "verify_email", "documents", "terms"],
+              "next_step": "fields"
+            },
+            "can_submit": false,
+            "changed_keys": ["cr_status"],
+            "follow_on_of": null
+          }
+        },
+        {
+          "event": "token",
+          "data": {
+            "message_id": "m1",
+            "text": "No problem — what is your registered company name and address?"
+          }
+        },
+        {
+          "event": "draft",
+          "data": {
+            "phase": "collecting",
+            "fields": [
+              {
+                "key": "cr_number",
+                "label": "CR number",
+                "group": "company",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": false
+              },
+              {
+                "key": "company_name",
+                "label": "Company name",
+                "group": "company",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": true
+              },
+              {
+                "key": "company_address",
+                "label": "Company address",
+                "group": "company",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": true
+              },
+              {
+                "key": "brand_name_en",
+                "label": "Brand name (EN)",
+                "group": "brand",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": true
+              },
+              {
+                "key": "brand_name_ar",
+                "label": "Brand name (AR)",
+                "group": "brand",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": true
+              },
+              {
+                "key": "unit_type",
+                "label": "Unit type",
+                "group": "brand",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": true
+              },
+              {
+                "key": "sales_category",
+                "label": "Sales category",
+                "group": "brand",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": true
+              },
+              {
+                "key": "malls",
+                "label": "Mall",
+                "group": "space",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": true
+              },
+              {
+                "key": "area",
+                "label": "Area",
+                "group": "space",
+                "display": "10 – 25000 sqm",
+                "source": "default",
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "rent",
+                "label": "Rent",
+                "group": "space",
+                "display": null,
+                "source": null,
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "lease",
+                "label": "Lease period",
+                "group": "space",
+                "display": null,
+                "source": null,
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "first_name",
+                "label": "First name",
+                "group": "contact",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": true
+              },
+              {
+                "key": "last_name",
+                "label": "Last name",
+                "group": "contact",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": true
+              },
+              {
+                "key": "email",
+                "label": "Email",
+                "group": "contact",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": true
+              },
+              {
+                "key": "mobile",
+                "label": "Mobile",
+                "group": "contact",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": false
+              },
+              {
+                "key": "landline",
+                "label": "Office landline",
+                "group": "contact",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": false
+              }
+            ],
+            "documents": [
+              {
+                "doc_type": "company_profile",
+                "label": "Company Profile",
+                "required": true,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "brand_profile",
+                "label": "Brand Profile",
+                "required": true,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "cr_certificate",
+                "label": "CR certificate",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "vat_certificate",
+                "label": "VAT certificate",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "national_id",
+                "label": "National ID / Iqama",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "national_address",
+                "label": "National Address",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "articles_of_association",
+                "label": "Article of Association",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              }
+            ],
+            "checks": {
+              "required_filled": 0,
+              "required_total": 11,
+              "unconfirmed": 0,
+              "email_verified": false,
+              "mobile_verified": false,
+              "contact_verified": false,
+              "required_docs_uploaded": 0,
+              "required_docs_total": 2,
+              "terms_accepted": false,
+              "remaining": ["fields", "verify_email", "documents", "terms"],
+              "next_step": "fields"
+            },
+            "can_submit": false,
+            "changed_keys": [],
+            "follow_on_of": null
+          }
+        },
+        {
+          "event": "done",
+          "data": {
+            "phase": "collecting"
+          }
+        }
+      ]
+    },
+    {
+      "when": {
+        "type": "message",
+        "textEquals": "Acme Trading LLC, King Abdullah Road, Riyadh. Bean Street café kiosk at Riyadh Mall A. Sara Ali, sara@beanstreet.example, office landline 011234567."
+      },
+      "events": [
+        {
+          "event": "draft",
+          "data": {
+            "phase": "collecting",
+            "fields": [
+              {
+                "key": "cr_number",
+                "label": "CR number",
+                "group": "company",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": false
+              },
+              {
+                "key": "company_name",
+                "label": "Company name",
+                "group": "company",
+                "display": "Acme Trading LLC",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "company_address",
+                "label": "Company address",
+                "group": "company",
+                "display": "King Abdullah Road, Riyadh",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "brand_name_en",
+                "label": "Brand name (EN)",
+                "group": "brand",
+                "display": "Bean Street",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "brand_name_ar",
+                "label": "Brand name (AR)",
+                "group": "brand",
+                "display": "بين ستريت",
+                "source": "derived",
+                "confirmed": false,
+                "required": true
+              },
+              {
+                "key": "unit_type",
+                "label": "Unit type",
+                "group": "brand",
+                "display": "Specialty",
+                "source": "derived",
+                "confirmed": false,
+                "required": true
+              },
+              {
+                "key": "sales_category",
+                "label": "Sales category",
+                "group": "brand",
+                "display": "Food & Beverage · Café",
+                "source": "derived",
+                "confirmed": false,
+                "required": true
+              },
+              {
+                "key": "malls",
+                "label": "Mall",
+                "group": "space",
+                "display": "Riyadh Mall A",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "area",
+                "label": "Area",
+                "group": "space",
+                "display": "10 – 25000 sqm",
+                "source": "default",
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "rent",
+                "label": "Rent",
+                "group": "space",
+                "display": null,
+                "source": null,
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "lease",
+                "label": "Lease period",
+                "group": "space",
+                "display": null,
+                "source": null,
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "first_name",
+                "label": "First name",
+                "group": "contact",
+                "display": "Sara",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "last_name",
+                "label": "Last name",
+                "group": "contact",
+                "display": "Ali",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "email",
+                "label": "Email",
+                "group": "contact",
+                "display": "sara@beanstreet.example",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "mobile",
+                "label": "Mobile",
+                "group": "contact",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": false
+              },
+              {
+                "key": "landline",
+                "label": "Office landline",
+                "group": "contact",
+                "display": "+96611234567",
+                "source": "user",
+                "confirmed": true,
+                "required": false
+              }
+            ],
+            "documents": [
+              {
+                "doc_type": "company_profile",
+                "label": "Company Profile",
+                "required": true,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "brand_profile",
+                "label": "Brand Profile",
+                "required": true,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "cr_certificate",
+                "label": "CR certificate",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "vat_certificate",
+                "label": "VAT certificate",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "national_id",
+                "label": "National ID / Iqama",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "national_address",
+                "label": "National Address",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "articles_of_association",
+                "label": "Article of Association",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              }
+            ],
+            "checks": {
+              "required_filled": 11,
+              "required_total": 11,
+              "unconfirmed": 3,
+              "email_verified": false,
+              "mobile_verified": false,
+              "contact_verified": false,
+              "required_docs_uploaded": 0,
+              "required_docs_total": 2,
+              "terms_accepted": false,
+              "remaining": ["fields", "verify_email", "documents", "terms"],
+              "next_step": "fields"
+            },
+            "can_submit": false,
+            "changed_keys": [
+              "company_name",
+              "company_address",
+              "brand_name_en",
+              "brand_name_ar",
+              "unit_type",
+              "sales_category",
+              "malls",
+              "first_name",
+              "last_name",
+              "email",
+              "landline"
+            ],
+            "follow_on_of": null
+          }
+        },
+        {
+          "event": "token",
+          "data": {
+            "message_id": "m2",
+            "text": "Please confirm the derived brand details."
+          }
+        },
+        {
+          "event": "message_remove",
+          "data": {
+            "message_id": "m2"
+          }
+        },
+        {
+          "event": "token",
+          "data": {
+            "message_id": "m3",
+            "text": "Open the link we emailed you — no SMS code is needed for a landline."
+          }
+        },
+        {
+          "event": "draft",
+          "data": {
+            "phase": "collecting",
+            "fields": [
+              {
+                "key": "cr_number",
+                "label": "CR number",
+                "group": "company",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": false
+              },
+              {
+                "key": "company_name",
+                "label": "Company name",
+                "group": "company",
+                "display": "Acme Trading LLC",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "company_address",
+                "label": "Company address",
+                "group": "company",
+                "display": "King Abdullah Road, Riyadh",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "brand_name_en",
+                "label": "Brand name (EN)",
+                "group": "brand",
+                "display": "Bean Street",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "brand_name_ar",
+                "label": "Brand name (AR)",
+                "group": "brand",
+                "display": "بين ستريت",
+                "source": "derived",
+                "confirmed": false,
+                "required": true
+              },
+              {
+                "key": "unit_type",
+                "label": "Unit type",
+                "group": "brand",
+                "display": "Specialty",
+                "source": "derived",
+                "confirmed": false,
+                "required": true
+              },
+              {
+                "key": "sales_category",
+                "label": "Sales category",
+                "group": "brand",
+                "display": "Food & Beverage · Café",
+                "source": "derived",
+                "confirmed": false,
+                "required": true
+              },
+              {
+                "key": "malls",
+                "label": "Mall",
+                "group": "space",
+                "display": "Riyadh Mall A",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "area",
+                "label": "Area",
+                "group": "space",
+                "display": "10 – 25000 sqm",
+                "source": "default",
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "rent",
+                "label": "Rent",
+                "group": "space",
+                "display": null,
+                "source": null,
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "lease",
+                "label": "Lease period",
+                "group": "space",
+                "display": null,
+                "source": null,
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "first_name",
+                "label": "First name",
+                "group": "contact",
+                "display": "Sara",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "last_name",
+                "label": "Last name",
+                "group": "contact",
+                "display": "Ali",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "email",
+                "label": "Email",
+                "group": "contact",
+                "display": "sara@beanstreet.example",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "mobile",
+                "label": "Mobile",
+                "group": "contact",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": false
+              },
+              {
+                "key": "landline",
+                "label": "Office landline",
+                "group": "contact",
+                "display": "+96611234567",
+                "source": "user",
+                "confirmed": true,
+                "required": false
+              }
+            ],
+            "documents": [
+              {
+                "doc_type": "company_profile",
+                "label": "Company Profile",
+                "required": true,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "brand_profile",
+                "label": "Brand Profile",
+                "required": true,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "cr_certificate",
+                "label": "CR certificate",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "vat_certificate",
+                "label": "VAT certificate",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "national_id",
+                "label": "National ID / Iqama",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "national_address",
+                "label": "National Address",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "articles_of_association",
+                "label": "Article of Association",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              }
+            ],
+            "checks": {
+              "required_filled": 11,
+              "required_total": 11,
+              "unconfirmed": 3,
+              "email_verified": false,
+              "mobile_verified": false,
+              "contact_verified": false,
+              "required_docs_uploaded": 0,
+              "required_docs_total": 2,
+              "terms_accepted": false,
+              "remaining": ["fields", "verify_email", "documents", "terms"],
+              "next_step": "fields"
+            },
+            "can_submit": false,
+            "changed_keys": [],
+            "follow_on_of": null
+          }
+        },
+        {
+          "event": "ui_card",
+          "data": {
+            "card_id": "confirm-1",
+            "card_type": "confirm_fields",
+            "message_id": "m3",
+            "payload": {
+              "title": "Please confirm these details",
+              "fields": [
+                {
+                  "key": "brand_name_ar",
+                  "label": "Brand name (AR)",
+                  "display": "بين ستريت",
+                  "source": "derived",
+                  "confirmed": false,
+                  "evidence": null
+                },
+                {
+                  "key": "unit_type",
+                  "label": "Unit type",
+                  "display": "Specialty",
+                  "source": "derived",
+                  "confirmed": false,
+                  "evidence": null
+                },
+                {
+                  "key": "sales_category",
+                  "label": "Sales category",
+                  "display": "Food & Beverage · Café",
+                  "source": "derived",
+                  "confirmed": false,
+                  "evidence": null
+                }
+              ],
+              "all_confirmed": false
+            }
+          }
+        },
+        {
+          "event": "ui_card",
+          "data": {
+            "card_id": "verification",
+            "card_type": "verification",
+            "message_id": "m3",
+            "payload": {
+              "email": {
+                "masked": "s***@beanstreet.example",
+                "link_sent": true,
+                "verified": false,
+                "demo_token": "EMAIL_TOKEN",
+                "resend_available_at": "TIMESTAMP"
+              },
+              "mobile": null,
+              "all_verified": false
+            }
+          }
+        },
+        {
+          "event": "done",
+          "data": {
+            "phase": "collecting"
+          }
+        }
+      ]
+    },
+    {
+      "when": {
+        "type": "action",
+        "action": "confirm_card"
+      },
+      "events": [
+        {
+          "event": "draft",
+          "data": {
+            "phase": "verifying",
+            "fields": [
+              {
+                "key": "cr_number",
+                "label": "CR number",
+                "group": "company",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": false
+              },
+              {
+                "key": "company_name",
+                "label": "Company name",
+                "group": "company",
+                "display": "Acme Trading LLC",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "company_address",
+                "label": "Company address",
+                "group": "company",
+                "display": "King Abdullah Road, Riyadh",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "brand_name_en",
+                "label": "Brand name (EN)",
+                "group": "brand",
+                "display": "Bean Street",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "brand_name_ar",
+                "label": "Brand name (AR)",
+                "group": "brand",
+                "display": "بين ستريت",
+                "source": "derived",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "unit_type",
+                "label": "Unit type",
+                "group": "brand",
+                "display": "Specialty",
+                "source": "derived",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "sales_category",
+                "label": "Sales category",
+                "group": "brand",
+                "display": "Food & Beverage · Café",
+                "source": "derived",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "malls",
+                "label": "Mall",
+                "group": "space",
+                "display": "Riyadh Mall A",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "area",
+                "label": "Area",
+                "group": "space",
+                "display": "10 – 25000 sqm",
+                "source": "default",
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "rent",
+                "label": "Rent",
+                "group": "space",
+                "display": null,
+                "source": null,
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "lease",
+                "label": "Lease period",
+                "group": "space",
+                "display": null,
+                "source": null,
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "first_name",
+                "label": "First name",
+                "group": "contact",
+                "display": "Sara",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "last_name",
+                "label": "Last name",
+                "group": "contact",
+                "display": "Ali",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "email",
+                "label": "Email",
+                "group": "contact",
+                "display": "sara@beanstreet.example",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "mobile",
+                "label": "Mobile",
+                "group": "contact",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": false
+              },
+              {
+                "key": "landline",
+                "label": "Office landline",
+                "group": "contact",
+                "display": "+96611234567",
+                "source": "user",
+                "confirmed": true,
+                "required": false
+              }
+            ],
+            "documents": [
+              {
+                "doc_type": "company_profile",
+                "label": "Company Profile",
+                "required": true,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "brand_profile",
+                "label": "Brand Profile",
+                "required": true,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "cr_certificate",
+                "label": "CR certificate",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "vat_certificate",
+                "label": "VAT certificate",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "national_id",
+                "label": "National ID / Iqama",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "national_address",
+                "label": "National Address",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "articles_of_association",
+                "label": "Article of Association",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              }
+            ],
+            "checks": {
+              "required_filled": 11,
+              "required_total": 11,
+              "unconfirmed": 0,
+              "email_verified": false,
+              "mobile_verified": false,
+              "contact_verified": false,
+              "required_docs_uploaded": 0,
+              "required_docs_total": 2,
+              "terms_accepted": false,
+              "remaining": ["verify_email", "documents", "terms"],
+              "next_step": "verify_email"
+            },
+            "can_submit": false,
+            "changed_keys": ["brand_name_ar", "unit_type", "sales_category"],
+            "follow_on_of": null
+          }
+        },
+        {
+          "event": "ui_card",
+          "data": {
+            "card_id": "confirm-1",
+            "card_type": "confirm_fields",
+            "message_id": null,
+            "payload": {
+              "title": "Please confirm these details",
+              "fields": [
+                {
+                  "key": "brand_name_ar",
+                  "label": "Brand name (AR)",
+                  "display": "بين ستريت",
+                  "source": "derived",
+                  "confirmed": true,
+                  "evidence": null
+                },
+                {
+                  "key": "unit_type",
+                  "label": "Unit type",
+                  "display": "Specialty",
+                  "source": "derived",
+                  "confirmed": true,
+                  "evidence": null
+                },
+                {
+                  "key": "sales_category",
+                  "label": "Sales category",
+                  "display": "Food & Beverage · Café",
+                  "source": "derived",
+                  "confirmed": true,
+                  "evidence": null
+                }
+              ],
+              "all_confirmed": true
+            }
+          }
+        },
+        {
+          "event": "token",
+          "data": {
+            "message_id": "m4",
+            "text": "Company Profile and Brand Profile are required. Optional documents can follow."
+          }
+        },
+        {
+          "event": "draft",
+          "data": {
+            "phase": "verifying",
+            "fields": [
+              {
+                "key": "cr_number",
+                "label": "CR number",
+                "group": "company",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": false
+              },
+              {
+                "key": "company_name",
+                "label": "Company name",
+                "group": "company",
+                "display": "Acme Trading LLC",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "company_address",
+                "label": "Company address",
+                "group": "company",
+                "display": "King Abdullah Road, Riyadh",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "brand_name_en",
+                "label": "Brand name (EN)",
+                "group": "brand",
+                "display": "Bean Street",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "brand_name_ar",
+                "label": "Brand name (AR)",
+                "group": "brand",
+                "display": "بين ستريت",
+                "source": "derived",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "unit_type",
+                "label": "Unit type",
+                "group": "brand",
+                "display": "Specialty",
+                "source": "derived",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "sales_category",
+                "label": "Sales category",
+                "group": "brand",
+                "display": "Food & Beverage · Café",
+                "source": "derived",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "malls",
+                "label": "Mall",
+                "group": "space",
+                "display": "Riyadh Mall A",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "area",
+                "label": "Area",
+                "group": "space",
+                "display": "10 – 25000 sqm",
+                "source": "default",
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "rent",
+                "label": "Rent",
+                "group": "space",
+                "display": null,
+                "source": null,
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "lease",
+                "label": "Lease period",
+                "group": "space",
+                "display": null,
+                "source": null,
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "first_name",
+                "label": "First name",
+                "group": "contact",
+                "display": "Sara",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "last_name",
+                "label": "Last name",
+                "group": "contact",
+                "display": "Ali",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "email",
+                "label": "Email",
+                "group": "contact",
+                "display": "sara@beanstreet.example",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "mobile",
+                "label": "Mobile",
+                "group": "contact",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": false
+              },
+              {
+                "key": "landline",
+                "label": "Office landline",
+                "group": "contact",
+                "display": "+96611234567",
+                "source": "user",
+                "confirmed": true,
+                "required": false
+              }
+            ],
+            "documents": [
+              {
+                "doc_type": "company_profile",
+                "label": "Company Profile",
+                "required": true,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "brand_profile",
+                "label": "Brand Profile",
+                "required": true,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "cr_certificate",
+                "label": "CR certificate",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "vat_certificate",
+                "label": "VAT certificate",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "national_id",
+                "label": "National ID / Iqama",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "national_address",
+                "label": "National Address",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "articles_of_association",
+                "label": "Article of Association",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              }
+            ],
+            "checks": {
+              "required_filled": 11,
+              "required_total": 11,
+              "unconfirmed": 0,
+              "email_verified": false,
+              "mobile_verified": false,
+              "contact_verified": false,
+              "required_docs_uploaded": 0,
+              "required_docs_total": 2,
+              "terms_accepted": false,
+              "remaining": ["verify_email", "documents", "terms"],
+              "next_step": "verify_email"
+            },
+            "can_submit": false,
+            "changed_keys": [],
+            "follow_on_of": null
+          }
+        },
+        {
+          "event": "ui_card",
+          "data": {
+            "card_id": "documents",
+            "card_type": "document_upload",
+            "message_id": "m4",
+            "payload": {
+              "mode": "intake",
+              "requested_doc_types": [],
+              "remarks": null,
+              "docs": [
+                {
+                  "doc_type": "company_profile",
+                  "label": "Company Profile",
+                  "required": true,
+                  "uploaded": false,
+                  "file_name": null,
+                  "size_bytes": null,
+                  "on_file": false
+                },
+                {
+                  "doc_type": "brand_profile",
+                  "label": "Brand Profile",
+                  "required": true,
+                  "uploaded": false,
+                  "file_name": null,
+                  "size_bytes": null,
+                  "on_file": false
+                },
+                {
+                  "doc_type": "cr_certificate",
+                  "label": "CR certificate",
+                  "required": false,
+                  "uploaded": false,
+                  "file_name": null,
+                  "size_bytes": null,
+                  "on_file": false
+                },
+                {
+                  "doc_type": "vat_certificate",
+                  "label": "VAT certificate",
+                  "required": false,
+                  "uploaded": false,
+                  "file_name": null,
+                  "size_bytes": null,
+                  "on_file": false
+                },
+                {
+                  "doc_type": "national_id",
+                  "label": "National ID / Iqama",
+                  "required": false,
+                  "uploaded": false,
+                  "file_name": null,
+                  "size_bytes": null,
+                  "on_file": false
+                },
+                {
+                  "doc_type": "national_address",
+                  "label": "National Address",
+                  "required": false,
+                  "uploaded": false,
+                  "file_name": null,
+                  "size_bytes": null,
+                  "on_file": false
+                },
+                {
+                  "doc_type": "articles_of_association",
+                  "label": "Article of Association",
+                  "required": false,
+                  "uploaded": false,
+                  "file_name": null,
+                  "size_bytes": null,
+                  "on_file": false
+                }
+              ],
+              "numbers": [
+                {
+                  "key": "cr_number",
+                  "label": "CR number",
+                  "value": null,
+                  "editable": false,
+                  "error": null
+                },
+                {
+                  "key": "vat_number",
+                  "label": "VAT number",
+                  "value": null,
+                  "editable": true,
+                  "error": null
+                },
+                {
+                  "key": "national_id_number",
+                  "label": "National ID / Iqama",
+                  "value": null,
+                  "editable": true,
+                  "error": null
+                },
+                {
+                  "key": "national_address",
+                  "label": "National address",
+                  "value": null,
+                  "editable": true,
+                  "error": null
+                }
+              ],
+              "required_uploaded": 0,
+              "required_total": 2,
+              "allowed_extensions": [
+                ".doc",
+                ".docx",
+                ".jpeg",
+                ".jpg",
+                ".pdf",
+                ".png",
+                ".xlsx",
+                ".zip"
+              ],
+              "max_mb": 5
+            }
+          }
+        },
+        {
+          "event": "done",
+          "data": {
+            "phase": "verifying"
+          }
+        }
+      ]
+    },
+    {
+      "when": {
+        "type": "action",
+        "action": "verify_email"
+      },
+      "events": [
+        {
+          "event": "ui_card",
+          "data": {
+            "card_id": "verification",
+            "card_type": "verification",
+            "message_id": null,
+            "payload": {
+              "email": {
+                "masked": "s***@beanstreet.example",
+                "link_sent": true,
+                "verified": true,
+                "demo_token": null,
+                "resend_available_at": null
+              },
+              "mobile": null,
+              "all_verified": true
+            }
+          }
+        },
+        {
+          "event": "draft",
+          "data": {
+            "phase": "documents",
+            "fields": [
+              {
+                "key": "cr_number",
+                "label": "CR number",
+                "group": "company",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": false
+              },
+              {
+                "key": "company_name",
+                "label": "Company name",
+                "group": "company",
+                "display": "Acme Trading LLC",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "company_address",
+                "label": "Company address",
+                "group": "company",
+                "display": "King Abdullah Road, Riyadh",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "brand_name_en",
+                "label": "Brand name (EN)",
+                "group": "brand",
+                "display": "Bean Street",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "brand_name_ar",
+                "label": "Brand name (AR)",
+                "group": "brand",
+                "display": "بين ستريت",
+                "source": "derived",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "unit_type",
+                "label": "Unit type",
+                "group": "brand",
+                "display": "Specialty",
+                "source": "derived",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "sales_category",
+                "label": "Sales category",
+                "group": "brand",
+                "display": "Food & Beverage · Café",
+                "source": "derived",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "malls",
+                "label": "Mall",
+                "group": "space",
+                "display": "Riyadh Mall A",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "area",
+                "label": "Area",
+                "group": "space",
+                "display": "10 – 25000 sqm",
+                "source": "default",
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "rent",
+                "label": "Rent",
+                "group": "space",
+                "display": null,
+                "source": null,
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "lease",
+                "label": "Lease period",
+                "group": "space",
+                "display": null,
+                "source": null,
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "first_name",
+                "label": "First name",
+                "group": "contact",
+                "display": "Sara",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "last_name",
+                "label": "Last name",
+                "group": "contact",
+                "display": "Ali",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "email",
+                "label": "Email",
+                "group": "contact",
+                "display": "sara@beanstreet.example",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "mobile",
+                "label": "Mobile",
+                "group": "contact",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": false
+              },
+              {
+                "key": "landline",
+                "label": "Office landline",
+                "group": "contact",
+                "display": "+96611234567",
+                "source": "user",
+                "confirmed": true,
+                "required": false
+              }
+            ],
+            "documents": [
+              {
+                "doc_type": "company_profile",
+                "label": "Company Profile",
+                "required": true,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "brand_profile",
+                "label": "Brand Profile",
+                "required": true,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "cr_certificate",
+                "label": "CR certificate",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "vat_certificate",
+                "label": "VAT certificate",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "national_id",
+                "label": "National ID / Iqama",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "national_address",
+                "label": "National Address",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "articles_of_association",
+                "label": "Article of Association",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              }
+            ],
+            "checks": {
+              "required_filled": 11,
+              "required_total": 11,
+              "unconfirmed": 0,
+              "email_verified": true,
+              "mobile_verified": false,
+              "contact_verified": true,
+              "required_docs_uploaded": 0,
+              "required_docs_total": 2,
+              "terms_accepted": false,
+              "remaining": ["documents", "terms"],
+              "next_step": "documents"
+            },
+            "can_submit": false,
+            "changed_keys": ["email_verified"],
+            "follow_on_of": null
+          }
+        },
+        {
+          "event": "token",
+          "data": {
+            "message_id": "m5",
+            "text": "Please review everything on the card when you're ready."
+          }
+        },
+        {
+          "event": "draft",
+          "data": {
+            "phase": "documents",
+            "fields": [
+              {
+                "key": "cr_number",
+                "label": "CR number",
+                "group": "company",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": false
+              },
+              {
+                "key": "company_name",
+                "label": "Company name",
+                "group": "company",
+                "display": "Acme Trading LLC",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "company_address",
+                "label": "Company address",
+                "group": "company",
+                "display": "King Abdullah Road, Riyadh",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "brand_name_en",
+                "label": "Brand name (EN)",
+                "group": "brand",
+                "display": "Bean Street",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "brand_name_ar",
+                "label": "Brand name (AR)",
+                "group": "brand",
+                "display": "بين ستريت",
+                "source": "derived",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "unit_type",
+                "label": "Unit type",
+                "group": "brand",
+                "display": "Specialty",
+                "source": "derived",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "sales_category",
+                "label": "Sales category",
+                "group": "brand",
+                "display": "Food & Beverage · Café",
+                "source": "derived",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "malls",
+                "label": "Mall",
+                "group": "space",
+                "display": "Riyadh Mall A",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "area",
+                "label": "Area",
+                "group": "space",
+                "display": "10 – 25000 sqm",
+                "source": "default",
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "rent",
+                "label": "Rent",
+                "group": "space",
+                "display": null,
+                "source": null,
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "lease",
+                "label": "Lease period",
+                "group": "space",
+                "display": null,
+                "source": null,
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "first_name",
+                "label": "First name",
+                "group": "contact",
+                "display": "Sara",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "last_name",
+                "label": "Last name",
+                "group": "contact",
+                "display": "Ali",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "email",
+                "label": "Email",
+                "group": "contact",
+                "display": "sara@beanstreet.example",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "mobile",
+                "label": "Mobile",
+                "group": "contact",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": false
+              },
+              {
+                "key": "landline",
+                "label": "Office landline",
+                "group": "contact",
+                "display": "+96611234567",
+                "source": "user",
+                "confirmed": true,
+                "required": false
+              }
+            ],
+            "documents": [
+              {
+                "doc_type": "company_profile",
+                "label": "Company Profile",
+                "required": true,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "brand_profile",
+                "label": "Brand Profile",
+                "required": true,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "cr_certificate",
+                "label": "CR certificate",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "vat_certificate",
+                "label": "VAT certificate",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "national_id",
+                "label": "National ID / Iqama",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "national_address",
+                "label": "National Address",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "articles_of_association",
+                "label": "Article of Association",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              }
+            ],
+            "checks": {
+              "required_filled": 11,
+              "required_total": 11,
+              "unconfirmed": 0,
+              "email_verified": true,
+              "mobile_verified": false,
+              "contact_verified": true,
+              "required_docs_uploaded": 0,
+              "required_docs_total": 2,
+              "terms_accepted": false,
+              "remaining": ["documents", "terms"],
+              "next_step": "documents"
+            },
+            "can_submit": false,
+            "changed_keys": [],
+            "follow_on_of": null
+          }
+        },
+        {
+          "event": "done",
+          "data": {
+            "phase": "documents"
+          }
+        }
+      ]
+    },
+    {
+      "when": {
+        "type": "action",
+        "action": "documents_updated"
+      },
+      "events": [
+        {
+          "event": "ui_card",
+          "data": {
+            "card_id": "documents",
+            "card_type": "document_upload",
+            "message_id": null,
+            "payload": {
+              "mode": "intake",
+              "requested_doc_types": [],
+              "remarks": null,
+              "docs": [
+                {
+                  "doc_type": "company_profile",
+                  "label": "Company Profile",
+                  "required": true,
+                  "uploaded": true,
+                  "file_name": "company_profile.pdf",
+                  "size_bytes": 16,
+                  "on_file": false
+                },
+                {
+                  "doc_type": "brand_profile",
+                  "label": "Brand Profile",
+                  "required": true,
+                  "uploaded": false,
+                  "file_name": null,
+                  "size_bytes": null,
+                  "on_file": false
+                },
+                {
+                  "doc_type": "cr_certificate",
+                  "label": "CR certificate",
+                  "required": false,
+                  "uploaded": false,
+                  "file_name": null,
+                  "size_bytes": null,
+                  "on_file": false
+                },
+                {
+                  "doc_type": "vat_certificate",
+                  "label": "VAT certificate",
+                  "required": false,
+                  "uploaded": false,
+                  "file_name": null,
+                  "size_bytes": null,
+                  "on_file": false
+                },
+                {
+                  "doc_type": "national_id",
+                  "label": "National ID / Iqama",
+                  "required": false,
+                  "uploaded": false,
+                  "file_name": null,
+                  "size_bytes": null,
+                  "on_file": false
+                },
+                {
+                  "doc_type": "national_address",
+                  "label": "National Address",
+                  "required": false,
+                  "uploaded": false,
+                  "file_name": null,
+                  "size_bytes": null,
+                  "on_file": false
+                },
+                {
+                  "doc_type": "articles_of_association",
+                  "label": "Article of Association",
+                  "required": false,
+                  "uploaded": false,
+                  "file_name": null,
+                  "size_bytes": null,
+                  "on_file": false
+                }
+              ],
+              "numbers": [
+                {
+                  "key": "cr_number",
+                  "label": "CR number",
+                  "value": null,
+                  "editable": false,
+                  "error": null
+                },
+                {
+                  "key": "vat_number",
+                  "label": "VAT number",
+                  "value": null,
+                  "editable": true,
+                  "error": null
+                },
+                {
+                  "key": "national_id_number",
+                  "label": "National ID / Iqama",
+                  "value": null,
+                  "editable": true,
+                  "error": null
+                },
+                {
+                  "key": "national_address",
+                  "label": "National address",
+                  "value": null,
+                  "editable": true,
+                  "error": null
+                }
+              ],
+              "required_uploaded": 1,
+              "required_total": 2,
+              "allowed_extensions": [
+                ".doc",
+                ".docx",
+                ".jpeg",
+                ".jpg",
+                ".pdf",
+                ".png",
+                ".xlsx",
+                ".zip"
+              ],
+              "max_mb": 5
+            }
+          }
+        },
+        {
+          "event": "draft",
+          "data": {
+            "phase": "documents",
+            "fields": [
+              {
+                "key": "cr_number",
+                "label": "CR number",
+                "group": "company",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": false
+              },
+              {
+                "key": "company_name",
+                "label": "Company name",
+                "group": "company",
+                "display": "Acme Trading LLC",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "company_address",
+                "label": "Company address",
+                "group": "company",
+                "display": "King Abdullah Road, Riyadh",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "brand_name_en",
+                "label": "Brand name (EN)",
+                "group": "brand",
+                "display": "Bean Street",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "brand_name_ar",
+                "label": "Brand name (AR)",
+                "group": "brand",
+                "display": "بين ستريت",
+                "source": "derived",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "unit_type",
+                "label": "Unit type",
+                "group": "brand",
+                "display": "Specialty",
+                "source": "derived",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "sales_category",
+                "label": "Sales category",
+                "group": "brand",
+                "display": "Food & Beverage · Café",
+                "source": "derived",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "malls",
+                "label": "Mall",
+                "group": "space",
+                "display": "Riyadh Mall A",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "area",
+                "label": "Area",
+                "group": "space",
+                "display": "10 – 25000 sqm",
+                "source": "default",
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "rent",
+                "label": "Rent",
+                "group": "space",
+                "display": null,
+                "source": null,
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "lease",
+                "label": "Lease period",
+                "group": "space",
+                "display": null,
+                "source": null,
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "first_name",
+                "label": "First name",
+                "group": "contact",
+                "display": "Sara",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "last_name",
+                "label": "Last name",
+                "group": "contact",
+                "display": "Ali",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "email",
+                "label": "Email",
+                "group": "contact",
+                "display": "sara@beanstreet.example",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "mobile",
+                "label": "Mobile",
+                "group": "contact",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": false
+              },
+              {
+                "key": "landline",
+                "label": "Office landline",
+                "group": "contact",
+                "display": "+96611234567",
+                "source": "user",
+                "confirmed": true,
+                "required": false
+              }
+            ],
+            "documents": [
+              {
+                "doc_type": "company_profile",
+                "label": "Company Profile",
+                "required": true,
+                "uploaded": true,
+                "file_name": "company_profile.pdf",
+                "size_bytes": 16,
+                "on_file": false
+              },
+              {
+                "doc_type": "brand_profile",
+                "label": "Brand Profile",
+                "required": true,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "cr_certificate",
+                "label": "CR certificate",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "vat_certificate",
+                "label": "VAT certificate",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "national_id",
+                "label": "National ID / Iqama",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "national_address",
+                "label": "National Address",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "articles_of_association",
+                "label": "Article of Association",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              }
+            ],
+            "checks": {
+              "required_filled": 11,
+              "required_total": 11,
+              "unconfirmed": 0,
+              "email_verified": true,
+              "mobile_verified": false,
+              "contact_verified": true,
+              "required_docs_uploaded": 1,
+              "required_docs_total": 2,
+              "terms_accepted": false,
+              "remaining": ["documents", "terms"],
+              "next_step": "documents"
+            },
+            "can_submit": false,
+            "changed_keys": [],
+            "follow_on_of": null
+          }
+        },
+        {
+          "event": "ui_card",
+          "data": {
+            "card_id": "documents",
+            "card_type": "document_upload",
+            "message_id": null,
+            "payload": {
+              "mode": "intake",
+              "requested_doc_types": [],
+              "remarks": null,
+              "docs": [
+                {
+                  "doc_type": "company_profile",
+                  "label": "Company Profile",
+                  "required": true,
+                  "uploaded": true,
+                  "file_name": "company_profile.pdf",
+                  "size_bytes": 16,
+                  "on_file": false
+                },
+                {
+                  "doc_type": "brand_profile",
+                  "label": "Brand Profile",
+                  "required": true,
+                  "uploaded": true,
+                  "file_name": "brand_profile.pdf",
+                  "size_bytes": 16,
+                  "on_file": false
+                },
+                {
+                  "doc_type": "cr_certificate",
+                  "label": "CR certificate",
+                  "required": false,
+                  "uploaded": false,
+                  "file_name": null,
+                  "size_bytes": null,
+                  "on_file": false
+                },
+                {
+                  "doc_type": "vat_certificate",
+                  "label": "VAT certificate",
+                  "required": false,
+                  "uploaded": false,
+                  "file_name": null,
+                  "size_bytes": null,
+                  "on_file": false
+                },
+                {
+                  "doc_type": "national_id",
+                  "label": "National ID / Iqama",
+                  "required": false,
+                  "uploaded": false,
+                  "file_name": null,
+                  "size_bytes": null,
+                  "on_file": false
+                },
+                {
+                  "doc_type": "national_address",
+                  "label": "National Address",
+                  "required": false,
+                  "uploaded": false,
+                  "file_name": null,
+                  "size_bytes": null,
+                  "on_file": false
+                },
+                {
+                  "doc_type": "articles_of_association",
+                  "label": "Article of Association",
+                  "required": false,
+                  "uploaded": false,
+                  "file_name": null,
+                  "size_bytes": null,
+                  "on_file": false
+                }
+              ],
+              "numbers": [
+                {
+                  "key": "cr_number",
+                  "label": "CR number",
+                  "value": null,
+                  "editable": false,
+                  "error": null
+                },
+                {
+                  "key": "vat_number",
+                  "label": "VAT number",
+                  "value": null,
+                  "editable": true,
+                  "error": null
+                },
+                {
+                  "key": "national_id_number",
+                  "label": "National ID / Iqama",
+                  "value": null,
+                  "editable": true,
+                  "error": null
+                },
+                {
+                  "key": "national_address",
+                  "label": "National address",
+                  "value": null,
+                  "editable": true,
+                  "error": null
+                }
+              ],
+              "required_uploaded": 2,
+              "required_total": 2,
+              "allowed_extensions": [
+                ".doc",
+                ".docx",
+                ".jpeg",
+                ".jpg",
+                ".pdf",
+                ".png",
+                ".xlsx",
+                ".zip"
+              ],
+              "max_mb": 5
+            }
+          }
+        },
+        {
+          "event": "draft",
+          "data": {
+            "phase": "review",
+            "fields": [
+              {
+                "key": "cr_number",
+                "label": "CR number",
+                "group": "company",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": false
+              },
+              {
+                "key": "company_name",
+                "label": "Company name",
+                "group": "company",
+                "display": "Acme Trading LLC",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "company_address",
+                "label": "Company address",
+                "group": "company",
+                "display": "King Abdullah Road, Riyadh",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "brand_name_en",
+                "label": "Brand name (EN)",
+                "group": "brand",
+                "display": "Bean Street",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "brand_name_ar",
+                "label": "Brand name (AR)",
+                "group": "brand",
+                "display": "بين ستريت",
+                "source": "derived",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "unit_type",
+                "label": "Unit type",
+                "group": "brand",
+                "display": "Specialty",
+                "source": "derived",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "sales_category",
+                "label": "Sales category",
+                "group": "brand",
+                "display": "Food & Beverage · Café",
+                "source": "derived",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "malls",
+                "label": "Mall",
+                "group": "space",
+                "display": "Riyadh Mall A",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "area",
+                "label": "Area",
+                "group": "space",
+                "display": "10 – 25000 sqm",
+                "source": "default",
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "rent",
+                "label": "Rent",
+                "group": "space",
+                "display": null,
+                "source": null,
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "lease",
+                "label": "Lease period",
+                "group": "space",
+                "display": null,
+                "source": null,
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "first_name",
+                "label": "First name",
+                "group": "contact",
+                "display": "Sara",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "last_name",
+                "label": "Last name",
+                "group": "contact",
+                "display": "Ali",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "email",
+                "label": "Email",
+                "group": "contact",
+                "display": "sara@beanstreet.example",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "mobile",
+                "label": "Mobile",
+                "group": "contact",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": false
+              },
+              {
+                "key": "landline",
+                "label": "Office landline",
+                "group": "contact",
+                "display": "+96611234567",
+                "source": "user",
+                "confirmed": true,
+                "required": false
+              }
+            ],
+            "documents": [
+              {
+                "doc_type": "company_profile",
+                "label": "Company Profile",
+                "required": true,
+                "uploaded": true,
+                "file_name": "company_profile.pdf",
+                "size_bytes": 16,
+                "on_file": false
+              },
+              {
+                "doc_type": "brand_profile",
+                "label": "Brand Profile",
+                "required": true,
+                "uploaded": true,
+                "file_name": "brand_profile.pdf",
+                "size_bytes": 16,
+                "on_file": false
+              },
+              {
+                "doc_type": "cr_certificate",
+                "label": "CR certificate",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "vat_certificate",
+                "label": "VAT certificate",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "national_id",
+                "label": "National ID / Iqama",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "national_address",
+                "label": "National Address",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "articles_of_association",
+                "label": "Article of Association",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              }
+            ],
+            "checks": {
+              "required_filled": 11,
+              "required_total": 11,
+              "unconfirmed": 0,
+              "email_verified": true,
+              "mobile_verified": false,
+              "contact_verified": true,
+              "required_docs_uploaded": 2,
+              "required_docs_total": 2,
+              "terms_accepted": false,
+              "remaining": ["terms"],
+              "next_step": "terms"
+            },
+            "can_submit": false,
+            "changed_keys": [],
+            "follow_on_of": null
+          }
+        },
+        {
+          "event": "token",
+          "data": {
+            "message_id": "m6",
+            "text": "(no more scripted steps)"
+          }
+        },
+        {
+          "event": "draft",
+          "data": {
+            "phase": "review",
+            "fields": [
+              {
+                "key": "cr_number",
+                "label": "CR number",
+                "group": "company",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": false
+              },
+              {
+                "key": "company_name",
+                "label": "Company name",
+                "group": "company",
+                "display": "Acme Trading LLC",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "company_address",
+                "label": "Company address",
+                "group": "company",
+                "display": "King Abdullah Road, Riyadh",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "brand_name_en",
+                "label": "Brand name (EN)",
+                "group": "brand",
+                "display": "Bean Street",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "brand_name_ar",
+                "label": "Brand name (AR)",
+                "group": "brand",
+                "display": "بين ستريت",
+                "source": "derived",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "unit_type",
+                "label": "Unit type",
+                "group": "brand",
+                "display": "Specialty",
+                "source": "derived",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "sales_category",
+                "label": "Sales category",
+                "group": "brand",
+                "display": "Food & Beverage · Café",
+                "source": "derived",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "malls",
+                "label": "Mall",
+                "group": "space",
+                "display": "Riyadh Mall A",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "area",
+                "label": "Area",
+                "group": "space",
+                "display": "10 – 25000 sqm",
+                "source": "default",
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "rent",
+                "label": "Rent",
+                "group": "space",
+                "display": null,
+                "source": null,
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "lease",
+                "label": "Lease period",
+                "group": "space",
+                "display": null,
+                "source": null,
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "first_name",
+                "label": "First name",
+                "group": "contact",
+                "display": "Sara",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "last_name",
+                "label": "Last name",
+                "group": "contact",
+                "display": "Ali",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "email",
+                "label": "Email",
+                "group": "contact",
+                "display": "sara@beanstreet.example",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "mobile",
+                "label": "Mobile",
+                "group": "contact",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": false
+              },
+              {
+                "key": "landline",
+                "label": "Office landline",
+                "group": "contact",
+                "display": "+96611234567",
+                "source": "user",
+                "confirmed": true,
+                "required": false
+              }
+            ],
+            "documents": [
+              {
+                "doc_type": "company_profile",
+                "label": "Company Profile",
+                "required": true,
+                "uploaded": true,
+                "file_name": "company_profile.pdf",
+                "size_bytes": 16,
+                "on_file": false
+              },
+              {
+                "doc_type": "brand_profile",
+                "label": "Brand Profile",
+                "required": true,
+                "uploaded": true,
+                "file_name": "brand_profile.pdf",
+                "size_bytes": 16,
+                "on_file": false
+              },
+              {
+                "doc_type": "cr_certificate",
+                "label": "CR certificate",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "vat_certificate",
+                "label": "VAT certificate",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "national_id",
+                "label": "National ID / Iqama",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "national_address",
+                "label": "National Address",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "articles_of_association",
+                "label": "Article of Association",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              }
+            ],
+            "checks": {
+              "required_filled": 11,
+              "required_total": 11,
+              "unconfirmed": 0,
+              "email_verified": true,
+              "mobile_verified": false,
+              "contact_verified": true,
+              "required_docs_uploaded": 2,
+              "required_docs_total": 2,
+              "terms_accepted": false,
+              "remaining": ["terms"],
+              "next_step": "terms"
+            },
+            "can_submit": false,
+            "changed_keys": [],
+            "follow_on_of": null
+          }
+        },
+        {
+          "event": "ui_card",
+          "data": {
+            "card_id": "review",
+            "card_type": "review",
+            "message_id": "m6",
+            "payload": {
+              "groups": [
+                {
+                  "title": "Company",
+                  "rows": [
+                    {
+                      "key": "cr_number",
+                      "label": "CR number",
+                      "display": null,
+                      "source": null,
+                      "confirmed": false,
+                      "required": false
+                    },
+                    {
+                      "key": "company_name",
+                      "label": "Company name",
+                      "display": "Acme Trading LLC",
+                      "source": "user",
+                      "confirmed": true,
+                      "required": true
+                    },
+                    {
+                      "key": "company_address",
+                      "label": "Company address",
+                      "display": "King Abdullah Road, Riyadh",
+                      "source": "user",
+                      "confirmed": true,
+                      "required": true
+                    }
+                  ]
+                },
+                {
+                  "title": "Brand",
+                  "rows": [
+                    {
+                      "key": "brand_name_en",
+                      "label": "Brand name (EN)",
+                      "display": "Bean Street",
+                      "source": "user",
+                      "confirmed": true,
+                      "required": true
+                    },
+                    {
+                      "key": "brand_name_ar",
+                      "label": "Brand name (AR)",
+                      "display": "بين ستريت",
+                      "source": "derived",
+                      "confirmed": true,
+                      "required": true
+                    },
+                    {
+                      "key": "unit_type",
+                      "label": "Unit type",
+                      "display": "Specialty",
+                      "source": "derived",
+                      "confirmed": true,
+                      "required": true
+                    },
+                    {
+                      "key": "sales_category",
+                      "label": "Sales category",
+                      "display": "Food & Beverage · Café",
+                      "source": "derived",
+                      "confirmed": true,
+                      "required": true
+                    }
+                  ]
+                },
+                {
+                  "title": "Space",
+                  "rows": [
+                    {
+                      "key": "malls",
+                      "label": "Mall",
+                      "display": "Riyadh Mall A",
+                      "source": "user",
+                      "confirmed": true,
+                      "required": true
+                    },
+                    {
+                      "key": "area",
+                      "label": "Area",
+                      "display": "10 – 25000 sqm",
+                      "source": "default",
+                      "confirmed": true,
+                      "required": false
+                    },
+                    {
+                      "key": "rent",
+                      "label": "Rent",
+                      "display": null,
+                      "source": null,
+                      "confirmed": true,
+                      "required": false
+                    },
+                    {
+                      "key": "lease",
+                      "label": "Lease period",
+                      "display": null,
+                      "source": null,
+                      "confirmed": true,
+                      "required": false
+                    }
+                  ]
+                },
+                {
+                  "title": "Contact",
+                  "rows": [
+                    {
+                      "key": "first_name",
+                      "label": "First name",
+                      "display": "Sara",
+                      "source": "user",
+                      "confirmed": true,
+                      "required": true
+                    },
+                    {
+                      "key": "last_name",
+                      "label": "Last name",
+                      "display": "Ali",
+                      "source": "user",
+                      "confirmed": true,
+                      "required": true
+                    },
+                    {
+                      "key": "email",
+                      "label": "Email",
+                      "display": "sara@beanstreet.example",
+                      "source": "user",
+                      "confirmed": true,
+                      "required": true
+                    },
+                    {
+                      "key": "mobile",
+                      "label": "Mobile",
+                      "display": null,
+                      "source": null,
+                      "confirmed": false,
+                      "required": false
+                    },
+                    {
+                      "key": "landline",
+                      "label": "Office landline",
+                      "display": "+96611234567",
+                      "source": "user",
+                      "confirmed": true,
+                      "required": false
+                    }
+                  ]
+                }
+              ],
+              "documents": [
+                {
+                  "doc_type": "company_profile",
+                  "label": "Company Profile",
+                  "required": true,
+                  "uploaded": true,
+                  "file_name": "company_profile.pdf",
+                  "size_bytes": 16,
+                  "on_file": false
+                },
+                {
+                  "doc_type": "brand_profile",
+                  "label": "Brand Profile",
+                  "required": true,
+                  "uploaded": true,
+                  "file_name": "brand_profile.pdf",
+                  "size_bytes": 16,
+                  "on_file": false
+                },
+                {
+                  "doc_type": "cr_certificate",
+                  "label": "CR certificate",
+                  "required": false,
+                  "uploaded": false,
+                  "file_name": null,
+                  "size_bytes": null,
+                  "on_file": false
+                },
+                {
+                  "doc_type": "vat_certificate",
+                  "label": "VAT certificate",
+                  "required": false,
+                  "uploaded": false,
+                  "file_name": null,
+                  "size_bytes": null,
+                  "on_file": false
+                },
+                {
+                  "doc_type": "national_id",
+                  "label": "National ID / Iqama",
+                  "required": false,
+                  "uploaded": false,
+                  "file_name": null,
+                  "size_bytes": null,
+                  "on_file": false
+                },
+                {
+                  "doc_type": "national_address",
+                  "label": "National Address",
+                  "required": false,
+                  "uploaded": false,
+                  "file_name": null,
+                  "size_bytes": null,
+                  "on_file": false
+                },
+                {
+                  "doc_type": "articles_of_association",
+                  "label": "Article of Association",
+                  "required": false,
+                  "uploaded": false,
+                  "file_name": null,
+                  "size_bytes": null,
+                  "on_file": false
+                }
+              ],
+              "checks": {
+                "required_filled": 11,
+                "required_total": 11,
+                "unconfirmed": 0,
+                "email_verified": true,
+                "mobile_verified": false,
+                "contact_verified": true,
+                "required_docs_uploaded": 2,
+                "required_docs_total": 2,
+                "terms_accepted": false,
+                "remaining": ["terms"],
+                "next_step": "terms"
+              },
+              "can_submit": false,
+              "terms_accepted": false,
+              "blockers": ["terms_not_accepted"]
+            }
+          }
+        },
+        {
+          "event": "done",
+          "data": {
+            "phase": "review"
+          }
+        }
+      ]
+    }
+  ]
+}

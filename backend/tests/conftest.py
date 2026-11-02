@@ -23,6 +23,7 @@ _DIR_MARKERS: dict[str, list[str]] = {
     "policy": ["unit"],
     "proactive": ["unit"],
     "scenarios": ["agent"],
+    "parity": ["parity", "agent"],
     "security": ["unit"],
     "services": ["unit", "contract"],
 }
