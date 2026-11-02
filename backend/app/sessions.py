@@ -39,6 +39,10 @@ class TurnInProgress(Exception):
     """Raised when a chat turn is already running for this session."""
 
 
+class TurnConflict(Exception):
+    """Optimistic save failed twice; the client should retry the turn."""
+
+
 @dataclass
 class Session:
     id: str
@@ -303,7 +307,23 @@ class SessionStore:
             else:
                 self._handles.put(handle)
 
-    async def save(self, session: Session) -> None:  # noqa: PLR0912
+    async def save(self, session: Session, *, retry_on_conflict: bool = True) -> None:
+        from app.store.errors import VersionConflict as StoreVersionConflict
+        from app.store.session_bridge import apply_session_to_inquiry, handle_from_session, inquiry_id_for
+
+        try:
+            await self._save_once(session)
+        except StoreVersionConflict:
+            if not retry_on_conflict:
+                raise TurnConflict from None
+            fresh = await self._load_session(session.id)
+            session._version = fresh._version
+            try:
+                await self._save_once(session)
+            except StoreVersionConflict as exc:
+                raise TurnConflict from exc
+
+    async def _save_once(self, session: Session) -> None:  # noqa: PLR0912
         from app.store.session_bridge import apply_session_to_inquiry, handle_from_session, inquiry_id_for
 
         await self._maybe_fork_follow_on(session)
@@ -463,6 +483,17 @@ class SessionStore:
 
         session = await self.get(session_id)
         await self._repo.release_turn(inquiry_id_for(session), lease_id)
+
+    async def renew_turn(self, session_id: str, lease_id: str) -> None:
+        from app.config import get_settings
+        from app.store.session_bridge import inquiry_id_for
+
+        session = await self.get(session_id)
+        await self._repo.renew_turn(
+            inquiry_id_for(session),
+            lease_id,
+            get_settings().turn_lease_seconds,
+        )
 
     async def _lock_for(self, session_id: str) -> asyncio.Lock:
         async with self._meta_lock:

@@ -43,7 +43,32 @@ async def upload_document(
     master: MasterData = Depends(get_master_data),
     settings: Settings = Depends(get_settings),
 ) -> UploadDocumentResponse:
-    parsed = parse_doc_type(doc_type)
+    lease_id = await store.begin_turn(session_id)
+    try:
+        return await _upload_document(
+            session_id,
+            parsed_doc_type=doc_type,
+            file=file,
+            store=store,
+            services=services,
+            master=master,
+            settings=settings,
+        )
+    finally:
+        await store.end_turn(session_id, lease_id)
+
+
+async def _upload_document(
+    session_id: str,
+    *,
+    parsed_doc_type: str,
+    file: UploadFile,
+    store: SessionStore,
+    services: ServiceContainer,
+    master: MasterData,
+    settings: Settings,
+) -> UploadDocumentResponse:
+    parsed = parse_doc_type(parsed_doc_type)
     if parsed is None:
         raise ApiError(
             400,
@@ -132,6 +157,29 @@ async def delete_document(
     services: ServiceContainer = Depends(get_services),
     master: MasterData = Depends(get_master_data),
     settings: Settings = Depends(get_settings),
+) -> DeleteDocumentResponse:
+    lease_id = await store.begin_turn(session_id)
+    try:
+        return await _delete_document(
+            session_id,
+            doc_type=doc_type,
+            store=store,
+            services=services,
+            master=master,
+            settings=settings,
+        )
+    finally:
+        await store.end_turn(session_id, lease_id)
+
+
+async def _delete_document(
+    session_id: str,
+    *,
+    doc_type: str,
+    store: SessionStore,
+    services: ServiceContainer,
+    master: MasterData,
+    settings: Settings,
 ) -> DeleteDocumentResponse:
     parsed = parse_doc_type(doc_type)
     if parsed is None:

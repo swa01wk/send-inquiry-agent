@@ -10,6 +10,8 @@ emits ``retract_reply`` and we tell the frontend to remove that bubble.
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import logging
 import uuid
 from collections.abc import AsyncIterator
@@ -189,6 +191,8 @@ async def run_turn(
     *,
     runtime: AgentRuntime,
     settings: Settings | None = None,
+    store: Any | None = None,
+    lease_id: str | None = None,
 ) -> AsyncIterator[SseEvent]:
     user_text = _text_of(user_input)
     if session.channel == "existing_tenant" and session.tenant_id:
@@ -256,6 +260,19 @@ async def run_turn(
     streamed_token_chars = 0
     retractions = 0
     final_messages: list[BaseMessage] = []
+
+    renew_task: asyncio.Task[None] | None = None
+    if store is not None and lease_id:
+
+        async def _renew_lease() -> None:
+            while True:
+                await asyncio.sleep(30)
+                try:
+                    await store.renew_turn(session.id, lease_id)
+                except Exception:
+                    return
+
+        renew_task = asyncio.create_task(_renew_lease())
 
     try:
         async for mode, chunk in graph.astream(
@@ -429,3 +446,8 @@ async def run_turn(
                 "message": "Sorry, something went wrong on our side. Please try again.",
             },
         )
+    finally:
+        if renew_task is not None:
+            renew_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await renew_task

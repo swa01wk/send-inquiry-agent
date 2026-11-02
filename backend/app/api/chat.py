@@ -19,6 +19,7 @@ from app.agent.router import Intent, record_routing_audit, route_message
 from app.agent.runtime import AgentRuntime
 from app.api.cards import remember_confirm_card_keys, scope_card_data
 from app.api.deps import get_services, get_session_store, get_settings
+from app.api.errors import ApiError
 from app.api.limiter import limiter
 from app.api.schemas import ChatRequestAction, ChatRequestMessage, UiCard
 from app.audit.draft_changes import record_draft_changes
@@ -27,7 +28,7 @@ from app.domain.master import load_master_data
 from app.domain.rules import compute_phase
 from app.domain.summary import build_draft_summary
 from app.services.container import ServiceContainer
-from app.sessions import Session, SessionStore
+from app.sessions import Session, SessionStore, TurnConflict
 
 router = APIRouter(prefix="/api/sessions", tags=["chat"])
 
@@ -128,7 +129,14 @@ async def chat_stream(
             actor="user",
             payload={"action": body.action, "outcome": note.split(" ", 1)[0]},
         )
-        await store.save(session)
+        try:
+            await store.save(session)
+        except TurnConflict as exc:
+            raise ApiError(
+                409,
+                "turn_conflict",
+                "This turn couldn't be saved because the inquiry changed elsewhere. Please try again.",
+            ) from exc
 
     async def event_generator() -> AsyncIterator[dict[str, str]]:
         nonlocal turn_user_message
@@ -212,6 +220,8 @@ async def chat_stream(
                 turn_user_message,
                 runtime=runtime,
                 settings=settings,
+                store=store,
+                lease_id=lease_id,
             ):
                 item = _scoped(item, session)
                 observe(item)
@@ -232,7 +242,21 @@ async def chat_stream(
                 actor="user" if user_text is None else "agent",
                 via="card" if user_text is None else "agent",
             )
-            await store.save(session)
+            try:
+                await store.save(session)
+            except TurnConflict:
+                yield _sse(
+                    SseEvent(
+                        event="error",
+                        data={
+                            "code": "turn_conflict",
+                            "message": (
+                                "This turn couldn't be saved because the inquiry changed "
+                                "elsewhere. Please try again."
+                            ),
+                        },
+                    )
+                )
             await store.end_turn(session_id, lease_id)
 
     return EventSourceResponse(event_generator())

@@ -12,7 +12,7 @@ from slowapi.errors import RateLimitExceeded
 from app.api.schemas import ErrorBody, ErrorEnvelope
 from app.gateway import GatewayError
 from app.services.errors import ReferenceNotFoundError
-from app.sessions import SessionNotFound, TurnInProgress
+from app.sessions import SessionNotFound, TurnConflict, TurnInProgress
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +51,14 @@ def register_exception_handlers(app: FastAPI) -> None:
             409,
             "turn_in_progress",
             "Please wait for the assistant to finish before sending another message.",
+        )
+
+    @app.exception_handler(TurnConflict)
+    async def _turn_conflict(_request: Request, _exc: TurnConflict) -> JSONResponse:
+        return error_response(
+            409,
+            "turn_conflict",
+            "This turn couldn't be saved because the inquiry changed elsewhere. Please try again.",
         )
 
     @app.exception_handler(SessionNotFound)
