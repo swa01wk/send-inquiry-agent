@@ -5,4 +5,5 @@ export interface ChatCardActions {
   removeDocument: (docType: string) => Promise<void>
   setDocumentNumber: (key: string, value: string) => void
   mallsConfirmed: boolean
+  isActionQueued?: (action: string, payload: Record<string, unknown>) => boolean
 }

@@ -23,6 +23,7 @@ HAND_WRITTEN_E2E_SCRIPTS = frozenset(
         "r1-yardi-suggest",
         "r2-tenant-reminder",
         "s1-happy-path",
+        "s14-out-of-order",
         "s13-form-mode",
         "s3-submit-timeout",
         "t1-contacts",

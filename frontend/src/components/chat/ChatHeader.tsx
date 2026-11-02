@@ -1,14 +1,18 @@
 import { DEMO_MODE, MOCK_MODE } from '../../config'
-import type { DraftSummary, Phase } from '../../types/contracts'
-import { ProgressStages } from './ProgressStages'
+import type { DraftSummary, Phase, UiCard } from '../../types/contracts'
+import type { ChatMessage } from '../../state/chatStore'
+import { ProgressStages, type ProgressStageKey } from './ProgressStages'
 import styles from './ChatHeader.module.css'
 
 interface ChatHeaderProps {
   phase: Phase
   draft: DraftSummary | null
+  cards: Record<string, UiCard>
+  messages: ChatMessage[]
   draftPanelVisible: boolean
   onToggleDraftPanel: () => void
   onRestart: () => void
+  onStageClick: (stage: ProgressStageKey) => void
 }
 
 const showRestart = DEMO_MODE || import.meta.env.DEV || MOCK_MODE
@@ -16,9 +20,12 @@ const showRestart = DEMO_MODE || import.meta.env.DEV || MOCK_MODE
 export function ChatHeader({
   phase,
   draft,
+  cards,
+  messages,
   draftPanelVisible,
   onToggleDraftPanel,
   onRestart,
+  onStageClick,
 }: ChatHeaderProps) {
   return (
     <header className={styles.header}>
@@ -45,7 +52,13 @@ export function ChatHeader({
           ) : null}
         </div>
       </div>
-      <ProgressStages phase={phase} draft={draft} />
+      <ProgressStages
+        phase={phase}
+        draft={draft}
+        cards={cards}
+        messages={messages}
+        onStageClick={onStageClick}
+      />
     </header>
   )
 }

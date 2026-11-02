@@ -14,6 +14,7 @@ interface MessageListProps {
   isStreaming: boolean
   /** Show the typing dots (streaming, but no reply text yet). */
   showTyping?: boolean
+  highlightCardId?: string | null
   cardActions: ChatCardActions
 }
 
@@ -22,6 +23,7 @@ export function MessageList({
   cards,
   isStreaming,
   showTyping = isStreaming,
+  highlightCardId = null,
   cardActions,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -102,6 +104,7 @@ export function MessageList({
                     card={cards[cardId]}
                     actions={cardActions}
                     focusOnMount={cardId === focusCardId}
+                    highlighted={cardId === highlightCardId}
                   />
                 ))}
               </div>

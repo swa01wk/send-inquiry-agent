@@ -1,0 +1,94 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "verify_cr",
+        "args": {
+          "cr_number": "1010123456"
+        },
+        "id": "s14-1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Got your CR — check the company card."
+  },
+  {
+    "content": "Please confirm your company details on the card."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            { "key": "brand_name_en", "value": "Bean Street", "source": "user" },
+            { "key": "brand_name_ar", "value": "بين ستريت", "source": "derived" },
+            { "key": "unit_type", "value": "specialty", "source": "derived" },
+            { "key": "sales_category", "value": "fnb_cafe", "source": "derived" },
+            { "key": "malls", "value": ["riyadh-mall-a"], "source": "user" },
+            { "key": "area_min", "value": 30, "source": "user" },
+            { "key": "area_max", "value": 30, "source": "user" },
+            { "key": "rent_max", "value": 250000, "source": "user" },
+            { "key": "rent_period", "value": "yearly", "source": "user" },
+            { "key": "lease_period", "value": "3y", "source": "user" },
+            { "key": "first_name", "value": "Sara", "source": "user" },
+            { "key": "last_name", "value": "Ali", "source": "user" },
+            { "key": "email", "value": "sara@beanstreet.example", "source": "user" },
+            { "key": "contact_number", "value": "0501234567", "source": "user" }
+          ]
+        },
+        "id": "s14-2",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "send_verification",
+        "args": { "resend": false },
+        "id": "s14-3",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "request_documents",
+        "args": {},
+        "id": "s14-3b",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Thanks, Sara — use the verification card for the email link and SMS code. You can upload documents whenever you're ready."
+  },
+  {
+    "content": "Check the summary card and confirm anything that needs updating."
+  },
+  {
+    "content": "Thanks for the documents — please open the email link on the verification card to finish verifying your contact details."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "show_review",
+        "args": {},
+        "id": "s14-4",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "You're verified — review everything on the card and submit when you're ready."
+  }
+]

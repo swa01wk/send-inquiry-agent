@@ -26,6 +26,8 @@ const baseDraft = (): DraftSummary => ({
     required_docs_uploaded: 1,
     required_docs_total: 2,
     terms_accepted: false,
+    remaining: ['documents', 'terms'],
+    next_step: 'documents',
   },
   can_submit: false,
   changed_keys: [],

@@ -10,6 +10,7 @@ interface VerificationCardProps {
   onResendEmailLink: () => void
   onVerifyCode: (code: string) => void
   onResendCode: () => void
+  demoLinkWaiting?: boolean
 }
 
 function CheckIcon() {
@@ -104,6 +105,7 @@ export function VerificationCard({
   onResendEmailLink,
   onVerifyCode,
   onResendCode,
+  demoLinkWaiting = false,
 }: VerificationCardProps) {
   const { email, mobile } = payload
 
@@ -133,8 +135,9 @@ export function VerificationCard({
                 type="button"
                 className={shared.secondaryBtn}
                 onClick={() => onVerifyEmail(email.demo_token ?? '')}
+                aria-busy={demoLinkWaiting}
               >
-                Open verification link (demo)
+                {demoLinkWaiting ? 'Waiting…' : 'Open verification link (demo)'}
               </button>
             ) : null}
             <ResendButton

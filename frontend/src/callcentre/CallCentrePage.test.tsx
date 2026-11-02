@@ -31,6 +31,8 @@ const sessionResponse = {
       required_docs_uploaded: 0,
       required_docs_total: 0,
       terms_accepted: false,
+      remaining: ['cr', 'fields'],
+      next_step: 'cr',
     },
     can_submit: false,
     changed_keys: [],

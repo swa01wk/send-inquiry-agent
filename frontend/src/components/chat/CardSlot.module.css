@@ -1,3 +1,24 @@
 .slot {
   width: 100%;
 }
+
+.highlight {
+  animation: progress-card-highlight 1.2s ease-out;
+}
+
+@keyframes progress-card-highlight {
+  0% {
+    box-shadow: 0 0 0 3px var(--color-brand);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .highlight {
+    animation: none;
+    outline: 2px solid var(--color-brand);
+    outline-offset: 4px;
+  }
+}
