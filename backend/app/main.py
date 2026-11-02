@@ -41,6 +41,7 @@ from app.policy.config import PolicyError, install_policy, load_policy
 from app.proactive.engine import tick
 from app.services.container import build_services
 from app.store.factory import make_session_store
+from app.store.purge import purge_expired_inquiries
 
 logger = logging.getLogger(__name__)
 
@@ -125,6 +126,18 @@ def create_app(
         init_state(app, checkpointer=getattr(app.state, "checkpointer", None))
         logger.info("demo reset")
 
+    async def purge_loop() -> None:
+        while True:
+            await asyncio.sleep(3600)
+            try:
+                await purge_expired_inquiries(
+                    app.state.session_store.inquiry_repo,
+                    settings=cfg,
+                    checkpointer=getattr(app.state, "checkpointer", None),
+                )
+            except Exception:
+                logger.exception("purge_expired failed")
+
     async def proactive_loop() -> None:
         """The periodic tick (L5 §3.1): triggers fire without anyone pressing a button."""
         while True:
@@ -147,18 +160,26 @@ def create_app(
             async with postgres_checkpointer(cfg.database_url) as checkpointer:
                 await checkpointer.setup()
                 init_state(app, checkpointer=checkpointer)
+                purge_task = asyncio.create_task(purge_loop())
                 task = asyncio.create_task(proactive_loop()) if cfg.proactive_enabled else None
                 try:
                     yield
                 finally:
+                    purge_task.cancel()
+                    with contextlib.suppress(asyncio.CancelledError):
+                        await purge_task
                     if task is not None:
                         task.cancel()
                         with contextlib.suppress(asyncio.CancelledError):
                             await task
             return
         init_state(app, checkpointer=memory_checkpointer())
+        purge_task = asyncio.create_task(purge_loop())
         task = asyncio.create_task(proactive_loop()) if cfg.proactive_enabled else None
         yield
+        purge_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await purge_task
         if task is not None:
             task.cancel()
             with contextlib.suppress(asyncio.CancelledError):

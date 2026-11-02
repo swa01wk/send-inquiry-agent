@@ -209,6 +209,10 @@ class SessionStore:
         self._meta_lock = asyncio.Lock()
         self._load_snapshots()
 
+    @property
+    def inquiry_repo(self) -> Any:
+        return self._repo
+
     def _file(self, session_id: str) -> JsonFile:
         return JsonFile(data_path(self._data_dir, "sessions", f"{session_id}.json"))
 
