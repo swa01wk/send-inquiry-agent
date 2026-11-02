@@ -107,7 +107,8 @@ class InMemoryInquiryRepository:
             if lease is not None and lease.until > now:
                 raise TurnInProgress
             lease_id = uuid.uuid4().hex
-            self._leases[inquiry_id] = _Lease(lease_id=lease_id, until=now + timedelta(seconds=lease_s))
+            until = now + timedelta(seconds=lease_s)
+            self._leases[inquiry_id] = _Lease(lease_id=lease_id, until=until)
             return lease_id
 
     async def renew_turn(self, inquiry_id: UUID, lease_id: str, lease_s: int) -> None:

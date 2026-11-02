@@ -5,7 +5,6 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pytest
-
 from app.store.errors import InquiryNotFound, TurnInProgress, VersionConflict
 from app.store.memory import InMemoryInquiryRepository
 from app.store.models import InquiryStatus
@@ -67,8 +66,6 @@ async def test_turn_lease_acquire_and_conflict(memory_repo: InMemoryInquiryRepos
 async def test_turn_lease_expired_takeover(memory_repo: InMemoryInquiryRepository) -> None:
     inquiry = await memory_repo.create()
     lease = await memory_repo.acquire_turn(inquiry.id, lease_s=1)
-    past = datetime.now(tz=UTC) + timedelta(seconds=2)
-    # Simulate expiry by renewing with 0 then waiting — release and acquire after time
     await memory_repo.release_turn(inquiry.id, lease)
     lease2 = await memory_repo.acquire_turn(inquiry.id, lease_s=120)
     assert lease2
