@@ -459,8 +459,11 @@ def update_draft(
             val = item.value
             if isinstance(val, str) and v.ARABIC_RE.search(val):
                 if FieldKey.BRAND_NAME_AR.value not in keys_in_call:
+                    # Keep the model's own source: a heuristic redirect never upgrades a
+                    # value to `user` (guard rule; a product word like «قهوة» must stay
+                    # confirmable).
                     entries.append(
-                        (FieldKey.BRAND_NAME_AR.value, val, _write_source("user", state)),
+                        (FieldKey.BRAND_NAME_AR.value, val, _write_source(item.source, state)),
                     )
                 arabic_brand_en_redirect = True
                 continue
