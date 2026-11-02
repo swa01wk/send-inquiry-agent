@@ -1,8 +1,7 @@
 """Agent history trimming at turn boundaries."""
 
-from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
-
 from app.agent.history import trim_messages_for_model
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
 
 def test_trim_starts_at_user_message_not_mid_tool_pair() -> None:

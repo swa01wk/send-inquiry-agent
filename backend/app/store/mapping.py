@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from app.domain.models import InquiryDraft
 from app.store.models import Inquiry, InquiryStatus, SessionState
 from app.store.tables import InquiryRow
@@ -30,7 +32,7 @@ def inquiry_from_row(row: InquiryRow) -> Inquiry:
     )
 
 
-def row_values_from_inquiry(inquiry: Inquiry) -> dict:
+def row_values_from_inquiry(inquiry: Inquiry) -> dict[str, Any]:
     reference = inquiry.reference or inquiry.draft.reference
     return {
         "status": inquiry.status.value,
@@ -40,7 +42,6 @@ def row_values_from_inquiry(inquiry: Inquiry) -> dict:
         "card_counter": inquiry.card_counter,
         "submit_key": inquiry.submit_key,
         "reference": reference,
-        "version": inquiry.version,
         "updated_at": inquiry.updated_at,
         "last_seen_at": inquiry.last_seen_at,
         "expires_at": inquiry.expires_at,

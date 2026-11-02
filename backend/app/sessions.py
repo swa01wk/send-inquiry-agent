@@ -16,13 +16,11 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
-import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from app.domain.draft_ops import new_inquiry_draft
 from app.domain.models import InquiryDraft
 from app.persistence import JsonFile, data_path
 
@@ -313,7 +311,6 @@ class SessionStore:
 
     async def save(self, session: Session, *, retry_on_conflict: bool = True) -> None:
         from app.store.errors import VersionConflict as StoreVersionConflict
-        from app.store.session_bridge import apply_session_to_inquiry, handle_from_session, inquiry_id_for
 
         try:
             await self._save_once(session)
@@ -328,7 +325,11 @@ class SessionStore:
                 raise TurnConflict from exc
 
     async def _save_once(self, session: Session) -> None:  # noqa: PLR0912
-        from app.store.session_bridge import apply_session_to_inquiry, handle_from_session, inquiry_id_for
+        from app.store.session_bridge import (
+            apply_session_to_inquiry,
+            handle_from_session,
+            inquiry_id_for,
+        )
 
         await self._maybe_fork_follow_on(session)
         inquiry = await self._repo.get(inquiry_id_for(session))

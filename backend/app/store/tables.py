@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import (
@@ -28,9 +29,11 @@ class InquiryRow(Base):
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True)
     status: Mapped[str] = mapped_column(String(32), nullable=False)
-    draft: Mapped[dict] = mapped_column(JSONB, nullable=False)
-    cards_shown: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
-    confirm_card_keys: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    draft: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    cards_shown: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    confirm_card_keys: Mapped[dict[str, list[str]]] = mapped_column(
+        JSONB, nullable=False, default=dict
+    )
     card_counter: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     submit_key: Mapped[str | None] = mapped_column(String(128), unique=True, nullable=True)
     reference: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
@@ -47,7 +50,7 @@ class InquiryRow(Base):
     case_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     tenant_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     staff_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    session_state: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    session_state: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
 
     __table_args__ = (Index("ix_inquiries_status_expires_at", "status", "expires_at"),)
 
@@ -60,7 +63,7 @@ class SessionHandleRow(Base):
         PG_UUID(as_uuid=True), ForeignKey("inquiries.id"), nullable=False
     )
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    handle_state: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    handle_state: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
 
 
 class InquiryEventRow(Base):
@@ -75,7 +78,7 @@ class InquiryEventRow(Base):
     actor: Mapped[str] = mapped_column(String(32), nullable=False)
     type: Mapped[str] = mapped_column(String(64), nullable=False)
     correlation_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    payload: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
 
     __table_args__ = (
         UniqueConstraint("inquiry_id", "seq", name="uq_inquiry_events_inquiry_seq"),

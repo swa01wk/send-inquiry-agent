@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime, timedelta
+from typing import Any, cast
 from uuid import UUID
 
 from sqlalchemy import select, update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.domain.draft_ops import new_inquiry_draft
@@ -127,15 +129,14 @@ class PostgresInquiryRepository:
                 update(InquiryRow)
                 .where(
                     InquiryRow.id == inquiry_id,
-                    (InquiryRow.turn_lease_until.is_(None))
-                    | (InquiryRow.turn_lease_until < now),
+                    (InquiryRow.turn_lease_until.is_(None)) | (InquiryRow.turn_lease_until < now),
                 )
                 .values(
                     turn_lease_id=lease_id,
                     turn_lease_until=lease_until,
                 )
             )
-            result = await session.execute(stmt)
+            result = cast(CursorResult[Any], await session.execute(stmt))
             if result.rowcount == 0:
                 await session.rollback()
                 row = await session.get(InquiryRow, inquiry_id)
@@ -169,9 +170,8 @@ class PostgresInquiryRepository:
     async def purge_expired(self, now: datetime) -> list[UUID]:
         ts = self._now(now)
         async with self._sessions() as session:
-            stmt = (
-                select(InquiryRow.id)
-                .where(InquiryRow.status == InquiryStatus.DRAFT.value, InquiryRow.expires_at < ts)
+            stmt = select(InquiryRow.id).where(
+                InquiryRow.status == InquiryStatus.DRAFT.value, InquiryRow.expires_at < ts
             )
             result = await session.execute(stmt)
             ids = [row[0] for row in result.all()]

@@ -135,7 +135,10 @@ async def chat_stream(
             raise ApiError(
                 409,
                 "turn_conflict",
-                "This turn couldn't be saved because the inquiry changed elsewhere. Please try again.",
+                (
+                    "This turn couldn't be saved because the inquiry changed "
+                    "elsewhere. Please try again."
+                ),
             ) from exc
 
     async def event_generator() -> AsyncIterator[dict[str, str]]:

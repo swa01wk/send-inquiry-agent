@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from contextlib import AbstractAsyncContextManager
+
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
@@ -28,7 +30,9 @@ def psycopg_conn_string(database_url: str) -> str:
     return database_url
 
 
-def postgres_checkpointer(database_url: str):
+def postgres_checkpointer(
+    database_url: str,
+) -> AbstractAsyncContextManager[AsyncPostgresSaver]:
     """Async context manager yielding a configured ``AsyncPostgresSaver``."""
     return AsyncPostgresSaver.from_conn_string(
         psycopg_conn_string(database_url),

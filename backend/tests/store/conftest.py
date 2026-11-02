@@ -14,7 +14,7 @@ def pytest_configure(config: pytest.Config) -> None:
 
 
 @pytest.fixture
-async def postgres_repo() -> PostgresInquiryRepository:
+async def pg_repo() -> PostgresInquiryRepository:
     url = os.environ.get("TEST_DATABASE_URL")
     if not url:
         pytest.skip("TEST_DATABASE_URL not set")

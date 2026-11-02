@@ -7,9 +7,9 @@ import contextlib
 import logging
 import shutil
 from collections.abc import AsyncIterator, Callable
-from typing import Any
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -41,6 +41,7 @@ from app.policy.config import PolicyError, install_policy, load_policy
 from app.proactive.engine import tick
 from app.services.container import build_services
 from app.store.factory import make_session_store
+from app.store.migrations import assert_postgres_schema_at_head
 from app.store.purge import purge_expired_inquiries
 
 logger = logging.getLogger(__name__)
@@ -157,6 +158,7 @@ def create_app(
             if not cfg.database_url:
                 msg = "DATABASE_URL is required when STATE_BACKEND=postgres"
                 raise RuntimeError(msg)
+            assert_postgres_schema_at_head(cfg.database_url)
             async with postgres_checkpointer(cfg.database_url) as checkpointer:
                 await checkpointer.setup()
                 init_state(app, checkpointer=checkpointer)

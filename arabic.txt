@@ -1,0 +1,125 @@
+if [ -f backend/.env ]; then set -a; . ./backend/.env; set +a; fi; cd backend && GROUP= EVAL_REPEATS= EVAL_TOLERANCE= uv run python scripts/eval_live.py
+
+=== Arabic user ===
+  --- run 1/3 ---
+  [PASS] replies contain Arabic letters
+  [FAIL] no message_remove events
+  [PASS] required fields filled (missing: none)
+  [PASS] verification card shown
+    > user: السلام عليكم، نريد افتتاح كشك قهوة
+    > tool suggest_replies: {"options": ["عندي رقم السجل التجاري", "ما عندي السجل التجاري", "أكمل بدون السجل التجاري"]}
+    > result: Quick replies suggested.
+    > reply: وعليكم السلام، أهلاً فيك. بما أنكم ناوين كشك قهوة، نقدر نبدأ بسرعة من السجل التجاري إذا كان متوفر. عندك رقم السجل التجاري، أو تحب تكمل بدونّه؟
+    > user: [ui_event] guard: The user's last message looks like it contains inquiry details you did not save. If it does, call update_draft with every field you can find in it, then reply. If it doesn't, simply reply again.
+    > tool update_draft: {"fields": [{"key": "unit_type", "value": "specialty", "source": "derived", "evidence": "نريد افتتاح كشك قهوة"}, {"key": "sales_category", "value": "fnb_cafe", "source": "derived", "evidence": "نريد افتتاح كشك قهوة"}]}
+    > result: Updated: unit_type, sales_category.
+    > reply: فهمت، كشك القهوة واضح. حفظت نوع الوحدة والتصنيف المبدئيين على البطاقة، وباقي لنا رقم السجل التجاري إذا عندكم. إذا ما عندكم السجل، أقدر أكمل بدونّه أيضًا.
+    > user: رقم السجل 1010123456
+    > tool verify_cr: {"cr_number": "1010123456"}
+    > result: CR verified as new. Company details prefilled for confirmation.
+    > tool confirm_fields: {"keys": ["company_name", "company_address", "unit_type", "sales_category"]}
+    > result: Confirmed: unit_type, sales_category.
+    > reply: تم، رقم السجل تحقق وبيانات الشركة ظهرت على البطاقة للمراجعة. الخطوة التالية: اسم العلامة التي تريدون افتتاحها، وأي مدينة أو مول مستهدف. إذا تحب، تقدر تضيف المساحة أو الميزانية أيضًا.
+    > user: اسم العلامة بين ستريت، كشك قهوة مختصة في Riyadh Mall A
+    > tool update_draft: {"fields": [{"key": "brand_name_en", "value": "بين ستريت", "source": "user"}, {"key": "brand_name_ar", "value": "بين ستريت", "source": "user"}, {"key": "malls", "value": ["riyadh-mall-a"], "source": "user"}]}
+    > result: Updated: brand_name_ar, malls. Errors: brand_name_en: Brand name (EN) must use Latin characters.
+    > tool update_draft: {"fields": [{"key": "brand_name_en", "value": "Bean Street", "source": "derived", "evidence": "اسم العلامة بين ستريت"}, {"key": "brand_name_ar", "value": "بين ستريت", "source": "user"}, {"key": "malls", "value": ["riyadh-mall-a"], "source": "user"}]}
+    > result: Updated: brand_name_en. Unchanged: brand_name_ar, malls.
+    > reply: تمام، اسم العلامة والمول انحفظوا على البطاقة. بقي فقط بيانات التواصل للشخص اللي يتواصل معه فريق التأجير: الاسم، البريد الإلكتروني، ورقم الجوال.
+    > user: سارة علي، sara@beanstreet.example، 0501234567
+    > tool update_draft: {"fields": [{"key": "first_name", "value": "سارة", "source": "user"}, {"key": "last_name", "value": "علي", "source": "user"}, {"key": "email", "value": "sara@beanstreet.example", "source": "user"}, {"key": "contact_number", "value": "0501234567", "source": "user"}]}
+    > result: Updated: first_name, last_name, email, mobile. Unchanged: contact_number.
+    > tool send_verification: {}
+    > result: Sent: email verification link and mobile code.
+    > reply: شكراً يا سارة. أرسلت لك رابط التحقق على البريد ورمزًا عبر الجوال. افتحي الرابط، ثم أدخلي الرمز في خانة التحقق على البطاقة، وبعدها نكمل الخطوة التالية.
+    > user: [ui_event] mobile_verified verification_complete
+    > reply: تم، رقم الجوال تحقق. افتحي بطاقة المستندات الآن، وإذا ظهر لك شيء ناقص أرفقيه هناك، وبعدها ننتقل لبطاقة المراجعة.
+  --- run 2/3 ---
+  [PASS] replies contain Arabic letters
+  [FAIL] no message_remove events
+  [PASS] required fields filled (missing: none)
+  [PASS] verification card shown
+    > user: السلام عليكم، نريد افتتاح كشك قهوة
+    > tool suggest_replies: {"options": ["لدي رقم السجل التجاري", "لا أملك رقم السجل التجاري", "أرسل لي ما هو المطلوب بعد ذلك"]}
+    > result: Quick replies suggested.
+    > reply: وعليكم السلام، أهلاً فيك. نقدر نبدأ بسرعة لو عندكم رقم السجل التجاري، وإذا ما هو موجود نكمل باسم الشركة وعنوانها.
+    > user: [ui_event] guard: The user's last message looks like it contains inquiry details you did not save. If it does, call update_draft with every field you can find in it, then reply. If it doesn't, simply reply again.
+    > tool suggest_replies: {"options": ["لدي رقم السجل التجاري", "لا أملك رقم السجل التجاري", "أريد المتابعة باسم الشركة وعنوانها"]}
+    > result: Quick replies suggested.
+    > reply: تمام، إذا عندكم رقم السجل التجاري أرسله لي هنا. وإذا ما هو متوفر، نقدر نكمل باسم الشركة وعنوانها.
+    > user: رقم السجل 1010123456
+    > tool verify_cr: {"cr_number": "1010123456"}
+    > result: CR verified as new. Company details prefilled for confirmation.
+    > tool update_draft: {"fields": [{"key": "cr_number", "value": "1010123456", "source": "user"}, {"key": "company_name", "value": "Bean Street Trading Co.", "source": "derived", "evidence": "رقم السجل 1010123456"}, {"key": "company_address", "value": "King Fahd Road, Al Olaya, Riyadh", "source": "derived", "evidence": "رقم السجل 1010123456"}]}
+    > result: Unchanged: company_address, company_name, cr_number.
+    > reply: تم، أخذت رقم السجل وظهرت بيانات الشركة. نحتاج الآن اسم العلامة وما الذي تبيعونه وأي نوع مساحة تبحثون عنه، ومعها المول إذا كان محددًا.
+    > user: اسم العلامة بين ستريت، كشك قهوة مختصة في Riyadh Mall A
+    > tool update_draft: {"fields": [{"key": "brand_name_en", "value": "Bean Street", "source": "user"}, {"key": "brand_name_ar", "value": "بين ستريت", "source": "derived", "evidence": "اسم العلامة بين ستريت"}, {"key": "unit_type", "value": "specialty", "source": "derived", "evidence": "كشك قهوة مختصة"}, {"key": "sales_category", "value": "fnb_cafe", "source": "derived", "evidence": "كشك قهوة مختصة"}, {"key": "malls", "value": ["riyadh-mall-a"], "source": "user"}]}
+    > tool confirm_fields: {"keys": ["company_name", "company_address"]}
+    > result: Updated: brand_name_en, brand_name_ar, unit_type, sales_category, malls.
+    > result: Confirmed: company_name, company_address.
+    > reply: وصلتني التفاصيل، وطلع معها المول والـكشك القهوة المختصة. باقي فقط بيانات التواصل: من الشخص الذي نرسل له التفاصيل، مع الاسم والبريد الإلكتروني ورقم الجوال.
+    > user: سارة علي، sara@beanstreet.example، 0501234567
+    > tool update_draft: {"fields": [{"key": "first_name", "value": "سارة", "source": "user"}, {"key": "last_name", "value": "علي", "source": "user"}, {"key": "email", "value": "sara@beanstreet.example", "source": "user"}, {"key": "contact_number", "value": "0501234567", "source": "user"}]}
+    > tool send_verification: {"resend": false}
+    > tool confirm_fields: {"keys": ["brand_name_ar", "unit_type", "sales_category"]}
+    > result: Updated: first_name, last_name, email, mobile. Unchanged: contact_number.
+    > result: Sent: email verification link and mobile code.
+    > result: Confirmed: brand_name_ar, unit_type, sales_category.
+    > reply: تم يا سارة، أرسلنا رابط التحقق على البريد ورمزًا على الجوال. بعد فتح الرابط وإدخال الرمز في البطاقة، نكمل مباشرة إلى المستندات.
+    > user: [ui_event] mobile_verified verification_complete
+    > tool request_documents: {}
+    > result: Document checklist shown.
+    > reply: ممتاز، تم التحقق. بطاقة المستندات ظهرت الآن؛ المطلوب للتقديم هو ملف الشركة وملف العلامة، والمستندات الأخرى اختيارية.
+  --- run 3/3 ---
+  [PASS] replies contain Arabic letters
+  [FAIL] no message_remove events
+  [PASS] required fields filled (missing: none)
+  [PASS] verification card shown
+    > user: السلام عليكم، نريد افتتاح كشك قهوة
+    > tool suggest_replies: {"options": ["أعطني رقم السجل التجاري", "ما عندنا سجل تجاري بعد", "أكمل مع اسم الشركة والعنوان"]}
+    > result: Quick replies suggested.
+    > reply: وعليكم السلام. عشان نبدأ أسرع، أرسل رقم السجل التجاري إن وجد. وإذا ما عندكم سجل بعد، نقدر نكمل باسم الشركة والعنوان.
+    > user: [ui_event] guard: The user's last message looks like it contains inquiry details you did not save. If it does, call update_draft with every field you can find in it, then reply. If it doesn't, simply reply again.
+    > tool update_draft: {"fields": [{"key": "brand_name_en", "value": "قهوة", "source": "derived", "evidence": "نريد افتتاح كشك قهوة"}, {"key": "brand_name_ar", "value": "قهوة", "source": "derived", "evidence": "نريد افتتاح كشك قهوة"}, {"key": "unit_type", "value": "specialty", "source": "derived", "evidence": "نريد افتتاح كشك قهوة"}, {"key": "sales_category", "value": "fnb_cafe", "source": "derived", "evidence": "نريد افتتاح كشك قهوة"}]}
+    > result: Updated: brand_name_ar, unit_type, sales_category. Errors: brand_name_en: Brand name (EN) must use Latin characters.
+    > reply: فهمت، عندكم كشك قهوة. سجلت نوع المساحة ونشاطه، وباقي اسم العلامة بالإنجليزية أو رقم السجل التجاري عشان نكمل بسرعة. إذا عندكم السجل التجاري، اكتبه هنا فقط.
+    > user: رقم السجل 1010123456
+    > tool verify_cr: {"cr_number": "1010123456"}
+    > result: CR verified as new. Company details prefilled for confirmation.
+    > reply: تمام، تم التحقق من السجل التجاري وظهرت بيانات الشركة للتأكيد. الآن نحتاج اسم العلامة بالإنجليزية والمول اللي تفضلونه، وإذا تحبون تقدرون تضيفون المساحة أو الميزانية أيضًا.
+    > user: اسم العلامة بين ستريت، كشك قهوة مختصة في Riyadh Mall A
+    > tool update_draft: {"fields": [{"key": "brand_name_en", "value": "Bean Street", "source": "user"}, {"key": "malls", "value": ["riyadh-mall-a"], "source": "user"}]}
+    > tool confirm_fields: {"keys": ["company_name", "company_address", "brand_name_ar", "unit_type", "sales_category"]}
+    > result: Updated: brand_name_en, malls.
+    > result: Confirmed: company_name, company_address, brand_name_ar, unit_type, sales_category.
+    > reply: تم تثبيت بيانات الشركة والعلامة، واسم العلامة والـكشك في Riyadh Mall A محفوظين. الآن نحتاج فقط اسم الشخص للتواصل معه، والإيميل، ورقم الجوال أو الهاتف.
+    > user: سارة علي، sara@beanstreet.example، 0501234567
+    > tool update_draft: {"fields": [{"key": "first_name", "value": "سارة", "source": "user"}, {"key": "last_name", "value": "علي", "source": "user"}, {"key": "email", "value": "sara@beanstreet.example", "source": "user"}, {"key": "contact_number", "value": "0501234567", "source": "user"}]}
+    > tool send_verification: {"resend": false}
+    > tool request_documents: {}
+    > result: Updated: first_name, last_name, email, mobile. Unchanged: contact_number.
+    > result: Sent: email verification link and mobile code.
+    > result: Document checklist shown.
+    > reply: شكرًا يا سارة. تم إرسال رابط التحقق إلى البريد ورمز الجوال، وبطاقة المستندات أصبحت جاهزة أيضًا. ابدئي بالرابط والرمز، وبعدها ارفعي المستندات المطلوبة في البطاقة.
+    > user: [ui_event] mobile_verified verification_complete
+    > reply: تمت المراجعة، والجوال صار موثق. الخطوة التالية هي بطاقة المستندات: المطلوب للتقديم هو ملف الشركة وملف العلامة، والباقي اختياري.
+  Scenario: FAIL (0/3)
+
+# AGENT-LIVE eval summary
+
+- **When:** 20261102T210901Z
+- **Model:** gpt-5.4-mini
+- **Group:** scenario
+- **Repeats:** 3
+- **Score:** 0.0% (0/1 scenarios)
+- **Baseline check:** skipped (group filter); every scenario must pass
+- **Overall:** FAIL
+- **Retractions:** 3
+- **JSON:** `20261102T210901Z.json`
+
+## Scenarios
+
+- **FAIL** Arabic user (0/3 runs)
+
+make: *** [Makefile:96: eval-live] Error 1

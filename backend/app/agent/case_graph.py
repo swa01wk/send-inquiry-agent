@@ -22,7 +22,7 @@ from app.agent.state import AgentState
 
 def build_case_graph(
     model_factory: Callable[[], BaseChatModel] | None = None,
-    checkpointer: BaseCheckpointSaver | None = None,
+    checkpointer: BaseCheckpointSaver[str] | None = None,
 ) -> CompiledStateGraph[AgentState, None, AgentState, AgentState]:
     factory = model_factory or get_chat_model
 

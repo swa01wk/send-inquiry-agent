@@ -7,11 +7,10 @@ import subprocess
 import sys
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-
 from app.sessions import SessionStore
 from app.store.memory import InMemoryInquiryRepository
 from app.store.postgres import PostgresInquiryRepository
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 pytestmark = pytest.mark.postgres
 

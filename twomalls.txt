@@ -1,0 +1,30 @@
+if [ -f backend/.env ]; then set -a; . ./backend/.env; set +a; fi; cd backend && GROUP= EVAL_REPEATS= EVAL_TOLERANCE= uv run python scripts/eval_live.py
+
+=== Two malls named ===
+  --- run 1/3 ---
+  [PASS] at most one mall saved
+  [PASS] asks which mall to start with
+  --- run 2/3 ---
+  [PASS] at most one mall saved
+  [PASS] asks which mall to start with
+  --- run 3/3 ---
+  [PASS] at most one mall saved
+  [PASS] asks which mall to start with
+  Scenario: PASS (3/3)
+
+# AGENT-LIVE eval summary
+
+- **When:** 20261102T210929Z
+- **Model:** gpt-5.4-mini
+- **Group:** scenario
+- **Repeats:** 3
+- **Score:** 100.0% (1/1 scenarios)
+- **Baseline check:** skipped (group filter); every scenario must pass
+- **Overall:** PASS
+- **Retractions:** 0
+- **JSON:** `20261102T210929Z.json`
+
+## Scenarios
+
+- **PASS** Two malls named (3/3 runs)
+

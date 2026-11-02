@@ -10,8 +10,8 @@ pytestmark = pytest.mark.postgres
 
 
 @pytest.fixture
-def memory_repo(postgres_repo: PostgresInquiryRepository) -> PostgresInquiryRepository:
-    return postgres_repo
+def memory_repo(pg_repo: PostgresInquiryRepository) -> PostgresInquiryRepository:
+    return pg_repo
 
 
 test_create_and_get = contract.test_create_and_get

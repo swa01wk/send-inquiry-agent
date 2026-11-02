@@ -102,8 +102,12 @@ class Settings(BaseSettings):
         validation_alias="STATE_BACKEND",
     )
     database_url: str | None = Field(default=None, validation_alias="DATABASE_URL")
-    turn_lease_seconds: int = Field(default=120, ge=30, le=600, validation_alias="TURN_LEASE_SECONDS")
-    draft_retention_days: int = Field(default=30, ge=1, le=365, validation_alias="DRAFT_RETENTION_DAYS")
+    turn_lease_seconds: int = Field(
+        default=120, ge=30, le=600, validation_alias="TURN_LEASE_SECONDS"
+    )
+    draft_retention_days: int = Field(
+        default=30, ge=1, le=365, validation_alias="DRAFT_RETENTION_DAYS"
+    )
     agent_history_messages: int = Field(
         default=40,
         ge=10,
