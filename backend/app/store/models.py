@@ -71,3 +71,17 @@ class Inquiry(BaseModel):
 
     def set_cards_shown(self, value: set[str] | list[str]) -> None:
         self.cards_shown = sorted(value)
+
+
+def owned_reference(inquiry: Inquiry) -> str | None:
+    """The reference this row records in the unique `reference` column.
+
+    Only the intake inquiry owns its reference. A case-chat row (`case_id` set, opened from a
+    case or tracking link) is seeded with a copy of the submitted draft, reference included;
+    it must not claim the same reference, or the second row breaks the unique constraint.
+    """
+    if inquiry.reference:
+        return inquiry.reference
+    if inquiry.case_id:
+        return None
+    return inquiry.draft.reference

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from uuid import uuid4
 
 import pytest
 from app.store.errors import InquiryNotFound, TurnInProgress, VersionConflict
@@ -87,3 +88,22 @@ async def test_get_missing(memory_repo: InMemoryInquiryRepository) -> None:
 
     with pytest.raises(InquiryNotFound):
         await memory_repo.get(uuid.uuid4())
+
+
+async def test_case_row_does_not_claim_the_submitted_reference(
+    memory_repo: InMemoryInquiryRepository,
+) -> None:
+    """A case-chat row is seeded with the submitted draft; the reference stays with intake."""
+    reference = f"GEO-STR-{uuid4().hex[:8].upper()}"
+    intake = await memory_repo.create()
+    intake.draft.reference = reference
+    intake = await memory_repo.save(intake)
+    assert intake.reference == reference
+
+    case_row = await memory_repo.create(mode="case", case_id=reference)
+    case_row.draft = intake.draft.model_copy(deep=True)
+    case_row = await memory_repo.save(case_row)
+    assert case_row.reference is None
+    assert case_row.draft.reference == reference
+    case_row.card_counter = 1
+    assert (await memory_repo.save(case_row)).version == 2

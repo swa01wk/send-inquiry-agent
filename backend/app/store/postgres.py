@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.domain.draft_ops import new_inquiry_draft
 from app.store.errors import InquiryNotFound, TurnInProgress, VersionConflict
 from app.store.mapping import inquiry_from_row, row_values_from_inquiry
-from app.store.models import Inquiry, InquiryStatus, SessionState
+from app.store.models import Inquiry, InquiryStatus, SessionState, owned_reference
 from app.store.tables import InquiryRow
 
 
@@ -79,8 +79,7 @@ class PostgresInquiryRepository:
 
     async def save(self, inquiry: Inquiry) -> Inquiry:
         to_save = inquiry.model_copy(deep=True)
-        if to_save.reference is None and to_save.draft.reference:
-            to_save.reference = to_save.draft.reference
+        to_save.reference = owned_reference(to_save)
         if to_save.status == InquiryStatus.DRAFT and to_save.draft.reference:
             to_save.status = InquiryStatus.SUBMITTED
         values = row_values_from_inquiry(to_save)
