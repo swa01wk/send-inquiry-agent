@@ -56,7 +56,7 @@ All rows are due by Mon 9 Nov, for the 10 Nov re-demo. Each is checked on the da
 | # | Criterion | Proved by | Day |
 | --- | --- | --- | --- |
 | D1 | The public chat never asks for, accepts, looks up or repeats a CR number. A typed CR number gets the sign-in reply and is never stored. | INV8 on every live turn; `tests/agent/test_cr_question.py`; Playwright `rd-cr-question`; live eval `cr_privacy` 3/3 | R1 |
-| D2 | "Yes, I have a CR" shows the sign-in card, which lands on Leasing Opportunities. "No" continues the inquiry in chat. | `rd-cr-question`; `tests/api/test_cr_question.py` | R1 |
+| D2 | "Yes, I have a CR" shows the sign-in card, which lands on Leasing Opportunities. "No" continues the inquiry in chat. | `rd-cr-question`; `tests/api/test_cr_question_api.py` | R1 |
 | D3 | The call-centre path is unchanged: staff still enter and check CRs (§7.1.1 a2, §7.1.2 a2). | `a2-call-centre`, `a2-existing-cr`, `a2-guest-service` still pass | R1 |
 | D4 | First-level events can be fired only by the Lease Admin of the case's region. Final-level events can be fired only by the RLM or RPLM of the product line. Any other role is refused. | `tests/lifecycle/test_review_levels.py` (a wrong-role case for every reviewer event) | R1 |
 | D5 | The Lease Admin approves or rejects each document, with remarks. First-level approval is refused until every required document is approved. | `tests/lifecycle/test_document_review.py`; Playwright `rd-document-approval` | R2 |

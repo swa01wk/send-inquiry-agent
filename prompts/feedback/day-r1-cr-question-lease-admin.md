@@ -52,7 +52,7 @@ Every new case lands in the Lease Admin's queue for first-level review, with an 
 
 **Tests in the backend PR**
 - `tests/agent/test_cr_question.py`: scrubber, policy and channel, tool lists, both answers, `verify_cr` off, hint, I8.
-- `tests/api/test_cr_question.py`: welcome card, Yes, No, a bad payload, a typed CR number never kept, `cr_check` off.
+- `tests/api/test_cr_question_api.py`: welcome card, Yes, No, a bad payload, a typed CR number never kept, `cr_check` off.
 - `tests/lifecycle/test_review_levels.py` (`lease_admin`): every reviewer row has a level, routing, the approval email and its link, first level for the Lease Admin only, final level for the RLM only, and the brief role.
 - `tests/services/test_document_review.py` (`contract`) and `tests/security/test_document_text_isolation.py`.
 
