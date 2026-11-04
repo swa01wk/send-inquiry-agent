@@ -117,6 +117,58 @@ stateDiagram-v2
 
 Inside `draft`, the intake phase (gate → collecting → verifying → documents → review) is computed from the draft by `compute_phase`, as today. `awaiting_applicant` (assisted inquiries waiting for the link to be opened) is a draft sub-state.
 
+### 2.4 Three-lane flow after the 3–4 Nov demo feedback (tenant · agent · human)
+
+Agreed 4 Nov 2026 ([demo feedback spec](specs/demo-feedback.md)), and it replaces the public-page CR lookup in §2.1. The agent lane names which agent or service acts at each step. Every approval sits in the human lane, and the agent lane never approves, rejects or changes a case on its own (ADR-R6). All of it is built in days R1–R5 for the 10 Nov re-demo, except the lead codes (marked *later*).
+
+```mermaid
+flowchart LR
+  subgraph T["Tenant"]
+    direction TB
+    T1(["Opens 'Send us an inquiry'"])
+    T2{"Do you have a CR?"}
+    T3["Signs in to Tenant Central<br/>→ Leasing Opportunities"]
+    T4["Types details, or uploads<br/>company and brand profiles"]
+    T5["Email link + mobile OTP"]
+    T6["Uploads both profiles"]
+    T7["Confirms values; review card;<br/>consent; Submit"]
+    T8["Re-uploads a rejected document<br/>(case chat)"]
+    T9["Signatory? Yes / No;<br/>billing and other contacts"]
+    T10["Fixes a rejected contact"]
+    T11(["Tracking page: outcome<br/>and codes (later)"])
+  end
+  subgraph A["Agent and system"]
+    direction TB
+    A1["Intake agent: asks the CR question;<br/>never takes a CR number"]
+    A2["Intake agent: company from Yardi<br/>by CR; asks for the new brand"]
+    A3["Intake agent: collects what's missing;<br/>offers type or upload"]
+    A4["Document review service:<br/>expiry dates, fields, checks"]
+    A5["Code: mismatch flags;<br/>submit once; route to Lease Admin"]
+    A6["'Inquiry for approval' email (F7);<br/>reviewer assistant: brief, expiry chips"]
+    A7["Case agent: explains rejection<br/>and asks only for that document"]
+    A8["Case agent: signatory question;<br/>collects contacts"]
+    A9["Code: Azure AD invitations;<br/>lead to Yardi; codes (later)"]
+  end
+  subgraph H["Human action (Cenomi)"]
+    direction TB
+    H1["Lease Admin: confirms expiry;<br/>approves or rejects each document"]
+    H2["Lease Admin: approves first level"]
+    H3["Lease Admin: approves or rejects<br/>each contact"]
+    H4["RLM / RPLM: final review<br/>(sales data, Yardi re-link); approves"]
+  end
+
+  T1 --> A1 --> T2
+  T2 -- "Yes" --> T3 --> A2 --> T4
+  T2 -- "No" --> A3 --> T4
+  T4 --> T5 --> T6 --> A4 --> T7 --> A5 --> A6 --> H1
+  H1 -- "rejected" --> A7 --> T8 --> H1
+  H1 -- "all approved" --> H2 --> A8 --> T9 --> H3
+  H3 -- "rejected" --> T10 --> H3
+  H3 -- "all approved" --> H4 --> A9 --> T11
+```
+
+Signed-in tenants skip the email link and OTP (T5), because Azure AD has already verified them.
+
 ---
 
 ## 3. The lifecycle stage by stage

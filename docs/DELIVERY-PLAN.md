@@ -224,6 +224,71 @@ About 12 working days, with a thin L5 already running from Day 5.
 | L4 | X1–X9 | Sprint 2, by Mon 30 Nov |
 | L5 | Y1–Y6 | Closing, about Wed 16 Dec |
 
+The M0, L3 and L4 targets above are from 26 Oct. Part C proposes new dates after the re-demo days.
+
+---
+
+# Part C — re-demo days (added 4 Nov 2026, PRD v1.1)
+
+The client's 3–4 Nov demo feedback is built in five days, R1–R5 (Thu 5 – Mon 9 Nov, including the weekend), which run like Part A. Everything ships before the re-demo on Tue 10 Nov.
+- The scope, with its gate rows D1–D15, is in [`docs/specs/demo-feedback.md`](specs/demo-feedback.md). §1 there lists the feedback points in scope: F1–F3, F5–F8, F14–F16 and F19, plus the Lease Admin, expiry and contact approval.
+- The day prompts are in [`prompts/feedback/`](../prompts/feedback/README.md).
+- The feedback, decisions and client questions are tracked in the [implementation tracker](https://claude.ai/artifact/U4cXzYrjUKofTVjWR4oEHx).
+
+**Naming:**
+
+| Prefix | Means |
+| --- | --- |
+| F1–F20 | Client feedback |
+| I1–I19 | Improvements |
+| M1–M12 | Client questions |
+| R1–R5 | Build days |
+| D1–D15 | Gate rows |
+
+## C1. How the work is split
+
+The split is the same as §A1:
+- **Claude** builds the backend and the screens that don't involve the model (reviewer console rows, `/dev`, seed data, the approval email) as PRs from the project chat, with backend tests and the day's Playwright specs.
+- **Swaroop** owns the agent prompts, tools and guards, the chat cards, the live evals and tuning, in Cursor.
+
+Each day's backend PR merges first, and every PR branches from `main`. Start a day with "Start Day R*n* backend".
+
+## C2. The days
+
+| Day | Date | Feedback | Claude (backend + deterministic UI) | Swaroop (agent + chat) | End-of-day check |
+| --- | --- | --- | --- | --- | --- |
+| **Docs** | Wed 4 Nov | F14, F15 | Docs PR #60: change spec, three-lane flow (`docs/POC-LIFECYCLE.md` §2.4), assumptions, golden rule 5 reworded, PRD v1.1, testing §9, day prompts, STATUS rows | Review and merge | CI green |
+| **R1** | Thu 5 Nov | F1, F2, F7, F8 | `cr_question` card builder and `cr_answer` action; CR scrubber; `SELF_SERVICE_TOOLS`; invariant I8; Lease Admin role, `EVENT_LEVEL`, routing, reviewers, console queue, `/dev` persona; "Inquiry for approval" email with a case link; `DocumentReviewService` with expiry mock; contract and isolation tests; `rd-cr-question` | `CrQuestionCard`; intake prompt without a CR lookup; reply guard; scripts; re-recorded goldens; `cr_privacy` eval group | No CR lookup on the public page; cases reach the Lease Admin by email and queue; expiry stored on uploads |
+| **R2** | Fri 6 Nov | F8, F16, F19 | Document decisions and expiry status; document and contact events with guards; approval blockers; console document and contact rows; `signatory_question` card builder and action; fixtures; `rd-document-approval`, `rd-expiry` | `SignatoryQuestionCard`; contacts-card chips; case-agent wording for rejected or expired documents and contacts; `signatory` eval group; golden | Every document and contact approved individually; signatory question |
+| **R3** | Sat 7 Nov | F6 | Mock field extraction; `document_fill` and `document_checks`; re-upload reset; brief flags; `rd-type-or-upload` | Type-or-upload choice; mismatch wording; confirm-card evidence; `document_extract` eval group | Type or upload; mismatches flagged, never blocking |
+| **R4** | Sun 8 Nov | F3 | `YardiService.company_by_cr`; signed-in prefill from Yardi; both profiles required; `rd-signed-in-new-brand` | Existing-tenant prompt for a new brand; `channels` eval | Signed-in new brand with the company from Yardi |
+| **R5** | Mon 9 Nov | F5, F14, F15 | `make demo` on Postgres; `seed_demo.py`; reseeding reset; `demo.spec.ts` for 10 Nov with three contexts and a restart | Demo script turn by turn; live tuning; `eval-live` and `e2e-live`; rehearsal; machine check; share the flow and design doc | `make e2e-demo` green twice, including a restart |
+| — | **Tue 10 Nov** | | **Re-demo with Muzammil** | | |
+
+**Not in this round:**
+- F4: request access, parked (M3);
+- F9: the UAT walkthrough (I7), best effort once the logins arrive (M11);
+- F10: the real document review agent, mocked (M4);
+- F11: lead codes (I14), done after the re-demo in Sprint 1;
+- F20: the CR certificate, parked (M1).
+
+## C3. Effect on Sprint 1 and the gates (proposed, to agree)
+
+R1–R5 use Thu 5, Fri 6 and Mon 9 Nov plus the weekend, and the re-demo takes Tue 10 Nov. That's four of Sprint 1's working days. The proposal shifts each later gate by those four days:
+
+| Gate | 26 Oct target | Proposed |
+| --- | --- | --- |
+| Demo feedback D1–D15 | — | Mon 9 Nov (re-demo Tue 10 Nov) |
+| M0 G1–G7 | Fri 13 Nov | Thu 19 Nov |
+| L3 E1–E10 (and C1–C4, C6) | Mon 16 Nov | Fri 20 Nov |
+| L4 X1–X9 (and C5) | Mon 30 Nov | Fri 4 Dec |
+| L5 Y1–Y6 | about Wed 16 Dec | about Wed 16 Dec, with the §B3 slip order if needed |
+
+Lead codes (I14) go into Sprint 1 after the re-demo. Part of the re-demo work also counts towards these gates:
+- the document review service behind the gateway and its contract tests count for step 18;
+- the new stories count for the L3 and L4 story sets;
+- the review-level authorization tests count for X2.
+
 ---
 
 ## Inputs to ask Cenomi for
