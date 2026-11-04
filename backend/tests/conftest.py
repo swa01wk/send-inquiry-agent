@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import pytest
-from app.policy.config import get_policy, use_policy
+from app.policy.config import PolicyConfig, get_policy, use_policy
 
 pytest_plugins = ["tests.api.conftest"]
 
@@ -56,16 +56,25 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
 
 
 @pytest.fixture(autouse=True)
-def _restore_policy(request: pytest.FixtureRequest):
+def _restore_policy(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch):
     """Each test starts with the active policy and can't leak a swapped one into the next.
 
     Tests written before the Lease Admin level (demo feedback §3.2, day R1) run with one
     reviewer role doing both levels (`first_level_review_role: null`), as they were
     written. Tests marked `lease_admin` run with the shipped policy (Lease Admin first).
+    `create_app` installs the policy file it loads, so the loader it calls is wrapped too.
     """
     policy = get_policy()
     if request.node.get_closest_marker("lease_admin") is None:
         policy = policy.with_changes(first_level_review_role=None)
+        import app.main as main_module
+
+        real_load = main_module.load_policy
+
+        def _one_reviewer_role(path: str | Path | None = None) -> PolicyConfig:
+            return real_load(path).with_changes(first_level_review_role=None)
+
+        monkeypatch.setattr(main_module, "load_policy", _one_reviewer_role)
     with use_policy(policy):
         yield
 
