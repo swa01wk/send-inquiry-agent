@@ -1,6 +1,6 @@
-# Feedback Day F1 (Thu 5 Nov): "Do you have a CR?", Lease Admin, document review service
+# Re-demo Day R1 (Thu 5 Nov): "Do you have a CR?", Lease Admin and the approval email, document review service
 
-Read first: @docs/specs/demo-feedback.md (§1, §2 rows D1–D4 and D9, §3.1–3.3, §4, §6) @docs/assumptions.md (Demo feedback assumptions) @docs/spec.md @docs/agent-system-prompt.md @prompts/feedback/README.md
+Read first: @docs/specs/demo-feedback.md (§1, §2 rows D1–D4, D9 and D14, §3.1–3.3, §4, §6) @docs/assumptions.md (Demo feedback assumptions) @docs/spec.md @docs/agent-system-prompt.md @prompts/feedback/README.md
 
 ## Goal
 The public chat opens with "Do you have a CR?":
@@ -8,7 +8,7 @@ The public chat opens with "Do you have a CR?":
 - **No** carries on in chat.
 - The public page never asks for, accepts, looks up or repeats a CR number.
 
-Every new case lands in the Lease Admin's queue for first-level review, and RLM or RPLM review it after that. Company and brand profiles are sent to a document review service, and its expiry date is stored on the document.
+Every new case lands in the Lease Admin's queue for first-level review, with an "Inquiry for approval" email that opens the case (F7). RLM or RPLM review it after that. Company and brand profiles are sent to a document review service, and its expiry date is stored on the document.
 
 ## Backend PR (Claude): lands first; use it, don't rebuild it
 
@@ -31,6 +31,7 @@ Every new case lands in the Lease Admin's queue for first-level review, and RLM 
 - `EVENT_LEVEL` in `machine.py`, with `_check_actor` choosing the role by level.
 - `reviewers.json` gains a Lease Admin per region and a manager.
 - Notifications: `review_assigned` goes to the Lease Admin at routing and to the final queue at `approved_first`.
+- Approval email (F7, spec §3.2): the routing email reads "Inquiry for approval: {brand}, {mall}" and links to `/review/cases/{reference}?as=<reviewer id>`. With dev tools on, `?as=` signs in that mock reviewer and opens the case. `e2e/support/outbox.ts` gets a helper to open it.
 - Console:
   - the queue filters by the signed-in role's level;
   - stage labels: "First review — Lease Admin" and "Final review — RLM / RPLM";
@@ -49,8 +50,9 @@ Every new case lands in the Lease Admin's queue for first-level review, and RLM 
 - `tests/agent/test_cr_question.py`: the scrubber, the action, the tool list per channel, audit redaction.
 - `tests/api/test_cr_question.py`.
 - `tests/lifecycle/test_review_levels.py`: a wrong-role case for every reviewer event.
+- `tests/lifecycle/test_effects.py`: the approval email goes once, to the Lease Admin of the region, with a working link (D14).
 - Updated T1/T2 and the console specs.
-- Playwright `f1-cr-question` (`@scripted`), with its scripts in `backend/tests/e2e_scripts/`.
+- Playwright `rd-cr-question` (`@scripted`), with its scripts in `backend/tests/e2e_scripts/`.
 
 ## Your track (Cursor): agent and chat
 1. **`CrQuestionCard`** (`frontend/src/components/cards/`):
@@ -66,14 +68,14 @@ Every new case lands in the Lease Admin's queue for first-level review, and RLM 
    - Under "Rules in force", replace "Existing tenants (the CR already has a Tenant Central account)…" with the self-service rule above. The assisted rule stays.
    - Never say whether a CR, company or person is known to Cenomi.
 3. **Guard:** if the model's reply contains a CR-format number on the self-service channel, retract and retry once, with the note `[guard] cr_number_in_reply` (same pattern as the other guard retries).
-4. **Scripted mode:** scripts for `f1-cr-question` (yes, no, typed number), regenerated with `generate_e2e_scripts.py`.
+4. **Scripted mode:** scripts for `rd-cr-question` (yes, no, typed number), regenerated with `generate_e2e_scripts.py`.
 5. **Goldens:** re-record the goldens that start with a CR lookup under `ask_then_sign_in` (`make golden`). Their `lookup` versions stay as `*-lookup` goldens, and the frontend fixtures are re-exported.
 6. **Live eval group `cr_privacy`** in `scripts/eval_live.py`, with the five scenarios in spec §6. Add `I8` to `e2e/support/invariants.ts`.
 7. **Prompt snapshot:** update it, with the reason in the PR.
 
 ## Tests
 - Vitest for `CrQuestionCard`; `make e2e-fe`.
-- `make e2e-int`: `f1-cr-question` passes; S1–S3, S13, S14, T1, T2 and the `a2-*` suites still pass.
+- `make e2e-int`: `rd-cr-question` passes; S1–S3, S13, S14, T1, T2 and the `a2-*` suites still pass.
 - AGENT-LIVE: `cr_privacy` ×3 at 3/3, plus `intake` (which holds the routing and out-of-order scenarios) and `channels` within tolerance of the step 12 baseline. Run one group with `GROUP=<name> make eval-live`.
 - E2E-LIVE smoke: one self-service persona, with I8 on.
 
@@ -81,6 +83,6 @@ Every new case lands in the Lease Admin's queue for first-level review, and RLM 
 - [ ] New chat → "Do you have a CR?" card. **Yes** → sign-in card → `/tenant/opportunities`. **No** → company and brand questions.
 - [ ] Type "my CR is 1010000000": sign-in reply, and the number appears in neither the draft panel, the SSE events nor the audit (`GET /api/dev/audit/{id}`).
 - [ ] Call-centre console: an executive enters a CR exactly as before (`a2-existing-cr` passes).
-- [ ] Submit a no-CR inquiry → it's in the **Lease Admin** queue, not RLM's. RLM opening it gets `not_in_queue`.
+- [ ] Submit a no-CR inquiry → "Inquiry for approval" email in the dev inbox → its link opens the case for the **Lease Admin**. It's not in RLM's queue, and RLM opening it gets `not_in_queue`.
 - [ ] Upload `brand_profile.pdf` → `GET /api/dev/audit/{id}` shows the `document_review` call and an expiry date.
-- [ ] `docs/STATUS.md` Feedback F1 ✅; `docs/spec.md` updated (spec §7, F1 row); tracker I2, I3, I8 set to Done.
+- [ ] `docs/STATUS.md` Re-demo R1 ✅; `docs/spec.md` updated (spec §7, R1 row); tracker I2, I3, I8, I13 set to Done.

@@ -1,6 +1,6 @@
 # Demo feedback (3–4 Nov 2026)
 
-**Status:** agreed 4 Nov 2026 (PRD v1.1, `docs/PRD.md` §11) · **Delivery:** days F1–F5, `prompts/feedback/` ([DELIVERY-PLAN](../DELIVERY-PLAN.md) Part C) · **Re-demo:** Tue 10 Nov 2026 · **Tracker:** [demo feedback implementation tracker](https://claude.ai/artifact/U4cXzYrjUKofTVjWR4oEHx) (F1–F20, I1–I19, M1–M12)
+**Status:** agreed 4 Nov 2026 (PRD v1.1, `docs/PRD.md` §11) · **Delivery:** days R1–R5 (Thu 5 – Mon 9 Nov), `prompts/feedback/` ([DELIVERY-PLAN](../DELIVERY-PLAN.md) Part C) · **Re-demo:** Tue 10 Nov 2026 · **Tracker:** [demo feedback implementation tracker](https://claude.ai/artifact/U4cXzYrjUKofTVjWR4oEHx) (F1–F20, I1–I19, M1–M12)
 
 This spec changes what the 5-day slice built, in response to the client's demo feedback. It doesn't replace the M0, L3, L4 or L5 specs. Where it changes one of them, the section here says so, and the PR that builds it updates `docs/spec.md`.
 
@@ -13,43 +13,67 @@ The client accepted conversational intake and verification inside the chat. He a
 3. **Check the documents against the answers**, and fill what can be filled from them (F6, F20).
 4. **Fewer steps.** Ask one authorised-signatory question instead of showing a contact form (F19).
 
-Our 4 Nov review turned these into one intake flow with two paths and a shared review. Slice A (F1–F3) ships before the re-demo. Slice B (F4–F5) follows in Sprint 1.
+Our 4 Nov review turned these into one intake flow with two paths and a shared review. All of it ships before the re-demo, in five days (R1–R5, including Sat 7 and Sun 8 Nov).
+
+**Naming.** F1–F20 are the client's feedback points, I1–I19 the improvements, M1–M12 the questions for the client, R1–R5 the build days, D1–D15 this spec's gate rows and ADR-R1–R7 its design rules.
+
+**In scope for the re-demo (agreed 4 Nov):**
+
+| Feedback | Improvements | Day |
+| --- | --- | --- |
+| F1, F2: no CR lookup on the public page; Yes → sign in and land on the inquiry page | I2, I3 | R1 |
+| F3: registered companies aren't asked for what Cenomi holds | I9 (company from Yardi by CR; a new brand still needs both profiles) | R4 |
+| F5: don't open with one message holding every field | I15 (turn-by-turn demo script) | R5 |
+| F6: check the documents against the answers | I19 (type or upload, with profile checks), on the mocked document review service (I12 interface) | R1 (service), R3 |
+| F7: the reviewer starts from an "inquiry for approval" notification | I13, light version: an email to the Lease Admin with a link straight to the case; no notification-agent integration | R1 |
+| F8: approve documents before first-level approval | I4, plus I18 (expiry) and I8 (Lease Admin as first-level reviewer) | R1, R2 |
+| F14, F15: agree the three-lane flow; add the approvals to the design doc | I1 (`docs/POC-LIFECYCLE.md` §2.4; design doc) | Docs PR, R5 |
+| F16: re-uploads and resubmitted contacts need approval again | I4, I5 (per-contact approval, which also covers F12 and F18) | R2 |
+| F19: "Are you the authorised signatory?" instead of a contact form | I16 | R2 |
+| Demo stability (our side) | I6 | R5 |
+
+**Not in this round:**
+- F4: request access (parked, M3);
+- F9: UAT walkthrough (I7, best effort once there are logins, M11);
+- F10: connecting the real document review agent (mocked, M4);
+- F11: lead codes (I14, after the re-demo);
+- F20: CR certificate (parked, M1).
 
 ```
-Do you have a CR? ── No ──▶ chat intake: type the details, or upload the profiles to fill them (B)
-        │                    email link + OTP · both profiles · expiry extracted · checks (B)
-        └─ Yes ─▶ Sign in ─▶ Leasing Opportunities: company from Yardi by CR (B) · both profiles
+Do you have a CR? ── No ──▶ chat intake: type the details, or upload the profiles to fill them
+        │                    email link + OTP · both profiles · expiry extracted · checks
+        └─ Yes ─▶ Sign in ─▶ Leasing Opportunities: company from Yardi by CR · both profiles
                                                    │
-Review, both paths: Lease Admin confirms expiry and approves each document → approves first level
+Review, both paths: "Inquiry for approval" email → Lease Admin confirms expiry and approves each document → approves first level
   → contacts request ("Are you the authorised signatory?") → Lease Admin approves each contact
-  → RLM / RPLM final review and approval → Yardi (company and brand codes shown, B)
+  → RLM / RPLM final review and approval → Yardi
 ```
 
 ## 2. Gate
 
-The rows are checked on the day named. A row's test must pass in CI (or, for Playwright, locally with the result in the PR). All rows are Must unless marked.
+All rows are due by Mon 9 Nov, for the 10 Nov re-demo. Each is checked on the day named. A row's test must pass in CI (or, for Playwright, locally with the result in the PR). All rows are Must unless marked.
 
 | # | Criterion | Proved by | Day |
 | --- | --- | --- | --- |
-| D1 | The public chat never asks for, accepts, looks up or repeats a CR number. A typed CR number gets the sign-in reply and is never stored. | INV8 on every live turn; `tests/agent/test_cr_question.py`; Playwright `f1-cr-question`; live eval `cr_privacy` 3/3 | F1 |
-| D2 | "Yes, I have a CR" shows the sign-in card, which lands on Leasing Opportunities. "No" continues the inquiry in chat. | `f1-cr-question`; `tests/api/test_cr_question.py` | F1 |
-| D3 | The call-centre path is unchanged: staff still enter and check CRs (§7.1.1 a2, §7.1.2 a2). | `a2-call-centre`, `a2-existing-cr`, `a2-guest-service` still pass | F1 |
-| D4 | First-level events can be fired only by the Lease Admin of the case's region. Final-level events can be fired only by the RLM or RPLM of the product line. Any other role is refused. | `tests/lifecycle/test_review_levels.py` (a wrong-role case for every reviewer event) | F1 |
-| D5 | The Lease Admin approves or rejects each document, with remarks. First-level approval is refused until every required document is approved. | `tests/lifecycle/test_document_review.py`; Playwright `f2-document-approval` | F2 |
-| D6 | Expiry: the date is extracted, then confirmed by the Lease Admin. Its status (expired, expiring soon, valid) comes from `policy.yaml` and the clock. An expired document can't be approved. Nothing is approved or rejected automatically. | `tests/lifecycle/test_document_expiry.py` (simulated clock); Playwright `f3-expiry` | F2 |
-| D7 | A re-uploaded document goes back to pending. An approval sent for a file that has since been replaced is refused. | `tests/lifecycle/test_document_review.py::test_stale_file` | F2 |
-| D8 | The Lease Admin approves or rejects each contact the tenant enters. A "Yes, I'm the authorised signatory" answer needs no separate approval. Final approval needs the required contacts approved. | `tests/lifecycle/test_contact_review.py`; Playwright `f4-contact-approval`; live eval `signatory` 3/3 | F2 |
-| D9 | `DocumentReviewService` sits behind an interface with a mock and contract tests. A timeout leaves the document "check pending" and never blocks a decision. The service returns typed fields only, and no document text reaches a prompt. | `tests/services/test_document_review.py` (`-m contract`); `tests/security/test_document_text_isolation.py` | F1 |
-| D10 | The re-demo runs end to end on Postgres, including a backend restart. | `make e2e-demo` (`demo.spec.ts`, three browser contexts) | F3 |
-| D11 | Type or upload: extracted values are `derived`, carry their document as evidence, and are confirmed before submit. A re-upload sets them back to unconfirmed. | `tests/agent/test_document_extract.py`; Playwright `f5-type-or-upload`; live eval `document_extract` 3/3 | F4 |
-| D12 | A difference between a profile and a typed value warns the applicant and flags it in the case brief. It never blocks submit. | `tests/domain/test_document_checks.py`; `f5-type-or-upload` | F4 |
-| D13 | Signed in: company details come from Yardi by CR and are confirmed by the tenant. Both profiles are required, and the company profile is checked against the Yardi record. | `tests/agent/test_signed_in_new_brand.py`; Playwright `f6-signed-in-new-brand` | F5 |
-| D14 | After Yardi accepts the lead, the company and brand codes show on the case page, the status page and the `case_status` card. | Extended `t1-lifecycle-to-yardi` | F5 |
-| D15 | No regression: the step 12 live-eval baseline holds within `EVAL_TOLERANCE`. Changed goldens are re-recorded in the PR that changes them, with the reason. | `make eval-live`; `make golden` | F3, F5 |
+| D1 | The public chat never asks for, accepts, looks up or repeats a CR number. A typed CR number gets the sign-in reply and is never stored. | INV8 on every live turn; `tests/agent/test_cr_question.py`; Playwright `rd-cr-question`; live eval `cr_privacy` 3/3 | R1 |
+| D2 | "Yes, I have a CR" shows the sign-in card, which lands on Leasing Opportunities. "No" continues the inquiry in chat. | `rd-cr-question`; `tests/api/test_cr_question.py` | R1 |
+| D3 | The call-centre path is unchanged: staff still enter and check CRs (§7.1.1 a2, §7.1.2 a2). | `a2-call-centre`, `a2-existing-cr`, `a2-guest-service` still pass | R1 |
+| D4 | First-level events can be fired only by the Lease Admin of the case's region. Final-level events can be fired only by the RLM or RPLM of the product line. Any other role is refused. | `tests/lifecycle/test_review_levels.py` (a wrong-role case for every reviewer event) | R1 |
+| D5 | The Lease Admin approves or rejects each document, with remarks. First-level approval is refused until every required document is approved. | `tests/lifecycle/test_document_review.py`; Playwright `rd-document-approval` | R2 |
+| D6 | Expiry: the date is extracted, then confirmed by the Lease Admin. Its status (expired, expiring soon, valid) comes from `policy.yaml` and the clock. An expired document can't be approved. Nothing is approved or rejected automatically. | `tests/lifecycle/test_document_expiry.py` (simulated clock); Playwright `rd-expiry` | R2 |
+| D7 | A re-uploaded document goes back to pending. An approval sent for a file that has since been replaced is refused. | `tests/lifecycle/test_document_review.py::test_stale_file` | R2 |
+| D8 | The Lease Admin approves or rejects each contact the tenant enters. A "Yes, I'm the authorised signatory" answer needs no separate approval. Final approval needs the required contacts approved. | `tests/lifecycle/test_contact_review.py`; Playwright `rd-contact-approval`; live eval `signatory` 3/3 | R2 |
+| D9 | `DocumentReviewService` sits behind an interface with a mock and contract tests. A timeout leaves the document "check pending" and never blocks a decision. The service returns typed fields only, and no document text reaches a prompt. | `tests/services/test_document_review.py` (`-m contract`); `tests/security/test_document_text_isolation.py` | R1 |
+| D10 | The re-demo runs end to end on Postgres, including a backend restart. | `make e2e-demo` (`demo.spec.ts`, three browser contexts) | R5 |
+| D11 | Type or upload: extracted values are `derived`, carry their document as evidence, and are confirmed before submit. A re-upload sets them back to unconfirmed. | `tests/agent/test_document_extract.py`; Playwright `rd-type-or-upload`; live eval `document_extract` 3/3 | R3 |
+| D12 | A difference between a profile and a typed value warns the applicant and flags it in the case brief. It never blocks submit. | `tests/domain/test_document_checks.py`; `rd-type-or-upload` | R3 |
+| D13 | Signed in: company details come from Yardi by CR and are confirmed by the tenant. Both profiles are required, and the company profile is checked against the Yardi record. | `tests/agent/test_signed_in_new_brand.py`; Playwright `rd-signed-in-new-brand` | R4 |
+| D14 | F7: when a case reaches the Lease Admin, they get an "Inquiry for approval" email whose link opens that case in the console. | `tests/lifecycle/test_effects.py` (outbox); Playwright `rd-document-approval` opens the case from the email | R1 |
+| D15 | No regression: the step 12 live-eval baseline holds within `EVAL_TOLERANCE`. Changed goldens are re-recorded in the PR that changes them, with the reason. | `make eval-live`; `make golden` | R5 |
 
 ## 3. Work items
 
-### 3.1 "Do you have a CR?" on the public page (FB1; I2, I3; Must)
+### 3.1 "Do you have a CR?" on the public page (R1; F1, F2; I2, I3)
 
 **Behaviour.**
 - A self-service session opens with the welcome message and a `cr_question` card: **Yes, I have a CR** and **No, I don't**.
@@ -79,7 +103,7 @@ The rows are checked on the day named. A row's test must pass in CI (or, for Pla
 
 **Acceptance:** D1–D3. Goldens that start with a CR lookup are re-recorded under `ask_then_sign_in`, and their old form keeps running under `lookup`.
 
-### 3.2 Lease Admin as first-level reviewer (FB2; I8; Must)
+### 3.2 Lease Admin as first-level reviewer, and the approval email (R1; F7, F8; I8, I13 light)
 
 **Data.**
 - `ReviewRole` gains `lease_admin`, labelled "Lease Admin".
@@ -93,7 +117,7 @@ The rows are checked on the day named. A row's test must pass in CI (or, for Pla
 - `_check_actor` reads the role for the event's level from the queue. There are no role-name conditionals in shared code; a startup test fails if a reviewer event has no level.
 
 **Routing and notifications.**
-- `routed` notifies the Lease Admin queue (`review_assigned`).
+- `routed` notifies the Lease Admin queue (`review_assigned`). For F7 the email reads "Inquiry for approval: {brand}, {mall}" and links to `<PUBLIC_BASE_URL>/review/cases/{reference}`. Opening it signs in the mock reviewer named in the link (dev tools only) and opens the case. There's no notification-agent integration (D14).
 - `approved_first` notifies the final queue (`review_assigned` with `level: final`).
 - The L5 stalled-review trigger notifies the queue of the level that's waiting.
 
@@ -105,7 +129,7 @@ The rows are checked on the day named. A row's test must pass in CI (or, for Pla
 
 **Acceptance:** D4. The existing stories T1 and T2 are updated so the first level is acted on by the Lease Admin.
 
-### 3.3 Document review service (FB3 thin, FB7 full; I12; Must)
+### 3.3 Document review service (R1 interface and expiry, R3 fields; F6, F8; I12 mock)
 
 The agent never reads document content. A separate service does, and returns typed results only.
 
@@ -119,7 +143,7 @@ class DocumentReviewResult(BaseModel):
     file_id: str
     status: Literal["done", "pending", "failed"]
     expiry_date: date | None = None
-    fields: dict[str, ExtractedValue] = {}   # F4: company_name, company_address, brand_name_en, sales_category
+    fields: dict[str, ExtractedValue] = {}   # R3: company_name, company_address, brand_name_en, sales_category
     checked_at: datetime
 
 class DocumentReviewService(Protocol):
@@ -128,13 +152,13 @@ class DocumentReviewService(Protocol):
 
 **Mock** (`app/services/document_review.py`):
 - results come from `mock_world/document_review.json`, keyed by file name: `*expired*` gives a date 30 days ago, `*soon*` gives today plus 7 days, and anything else gives today plus 365 days;
-- F4 adds field values per scenario file in `e2e/fixtures/files/`;
+- R3 adds field values per scenario file in `e2e/fixtures/files/`;
 - the expected answers can be read without opening any file.
 
 **Calls.**
 - The upload handler calls the service through the gateway (`"document_review", "review"`) after a company or brand profile is saved, and stores the result on `DocumentRef.review`.
 - A timeout or outage stores `status: "pending"` and audits the failure. The console shows "check pending", and the Lease Admin can still decide.
-- F1 ships the interface, the expiry-only mock and contract tests. F4 adds the fields.
+- R1 ships the interface, the expiry-only mock and contract tests. R3 adds the fields.
 
 **Isolation.**
 - Tool results and notes may say that expiry or fields were extracted. They never contain document text.
@@ -143,7 +167,7 @@ class DocumentReviewService(Protocol):
 
 **Acceptance:** D9.
 
-### 3.4 Per-document approval and expiry (FB4; I4, I18; Must)
+### 3.4 Per-document approval and expiry (R2; F8, F16; I4, I18)
 
 **Data** (on the case, not the applicant's draft):
 
@@ -182,7 +206,7 @@ Case.document_decisions: dict[DocType, DocumentDecision]   # one per uploaded in
   - `document_rejected:<type>` for each rejected one;
   - `expiry_unconfirmed:<type>`.
 - `documents_resubmitted` resets the decision for each re-uploaded type to `pending`, with the new `file_id` and the new review result.
-- **Expired documents:** the console marks the row "Expired on …" and preselects Reject, with the remark "This document expired on {date}. Please upload a current one." The Lease Admin presses the button. The system never fires the event itself (ADR-F6).
+- **Expired documents:** the console marks the row "Expired on …" and preselects Reject, with the remark "This document expired on {date}. Please upload a current one." The Lease Admin presses the button. The system never fires the event itself (ADR-R6).
 
 **Console.**
 - Each document row has a viewer link, the expiry status chip, an editable expiry date, and **Approve** and **Reject** (remarks required).
@@ -195,7 +219,7 @@ Case.document_decisions: dict[DocType, DocumentDecision]   # one per uploaded in
 
 **Acceptance:** D5–D7.
 
-### 3.5 Per-contact approval and the signatory question (FB5; I5, I16; Must)
+### 3.5 Per-contact approval and the signatory question (R2; F16, F19; I5, I16)
 
 **Data.**
 
@@ -232,14 +256,14 @@ class TenantContact(BaseModel):            # existing fields kept
 
 **Acceptance:** D8.
 
-### 3.6 Demo hardening (FB6; I6, I15; Must)
+### 3.6 Demo hardening (R5; F5; I6, I15)
 
 **Demo stack.**
 - `make demo` runs on Postgres (`docker-compose.demo.yml`, step 13 store).
 - `scripts/seed_demo.py` seeds three cases:
   - first review, with one expiring-soon and one expired profile;
   - second review, with contacts waiting for approval;
-  - approved, with codes from F5 once that day lands.
+  - approved and sent to Yardi.
 - `POST /api/dev/reset` reseeds.
 
 **Rehearsal.**
@@ -250,13 +274,13 @@ class TenantContact(BaseModel):            # existing fields kept
 
 **Acceptance:** D10.
 
-### 3.7 Type or upload, with profile checks (FB7; I19; Must for slice B)
+### 3.7 Type or upload, with profile checks (R3; F6; I19)
 
 **Choice.**
 - On the no-CR path, the agent offers once, in one line: type the company and brand details, or upload the company and brand profiles and the agent fills them in.
 - Either answer is accepted, and the agent doesn't push one.
 
-**Upload path.** The F4 mock returns these fields:
+**Upload path.** The R3 mock returns these fields:
 - company profile: `company_name`, `company_address`;
 - brand profile: `brand_name_en`, `sales_category` (mapped to master data ids).
 
@@ -270,17 +294,17 @@ They're written with `source: derived`, evidence `"Company Profile: <file name>,
 - It never blocks submit.
 - After submit, the case brief shows each flag to the Lease Admin.
 
-**Re-upload.** Values extracted from a replaced file go back to unconfirmed and are re-checked (ADR-F4).
+**Re-upload.** Values extracted from a replaced file go back to unconfirmed and are re-checked (ADR-R4).
 
 **Questions.** The agent never asks for a value a document has already given. The `unnecessary_questions` KPI (§6) counts any that slip through.
 
 **Acceptance:** D11, D12.
 
-### 3.8 Signed-in tenant, new brand (FB8; I9, I14; Must for slice B)
+### 3.8 Signed-in tenant, new brand (R4; F3; I9)
 
 **Company from Yardi.**
 - Today, signed-in prefill reads the mock Tenant Central record (`tenants.json`).
-- F5 adds `YardiService.company_by_cr(cr_number)`: the mock Yardi companies gain `cr_number`, `address` and `codes`, linked to `tenants.json`.
+- R4 adds `YardiService.company_by_cr(cr_number)`: the mock Yardi companies gain `cr_number` and `address`, linked to `tenants.json`.
 - Company name and address are prefilled as `verified` and confirmed by the tenant on the basic-info card.
 
 **Brand and documents.**
@@ -288,46 +312,43 @@ They're written with `source: derived`, evidence `"Company Profile: <file name>,
 - Both profiles are required. Documents already on file aren't reused for these two (assumption: a new brand under the same company).
 - The company profile is checked against the Yardi record, using the same checks and flags as §3.7.
 
-**Codes.**
-- The `send_lead` mock returns `company_code` and `brand_code`, stored on `YardiLink`.
-- The case page, status page and `case_status` card show them after `sent_to_yardi`.
-
-**Acceptance:** D13, D14.
+**Acceptance:** D13.
 
 ### 3.9 Parked
 
 | Item | Why parked | Until |
 | --- | --- | --- |
-| Request access (I10, FB9) | Outside §7.1; needs the client's agreement and a PRD change | M3 |
+| Request access (I10, F4) | Outside §7.1; needs the client's agreement and a PRD change | M3 |
 | CR without a login (CR-3) | Out of scope for now | M2 |
 | CR certificate extraction and cross-check (I17, I11) | The client hasn't said whether the CR certificate is required | M1 |
-| Notification-agent entry for reviewers (I13) | The inbox and queue are enough (Q8) | Dropped |
+| Notification-agent integration for reviewers (I13, full) | The light version (§3.2, the approval email) covers F7 for now | — |
+| Company and brand codes after Yardi (I14, F11) | Not in this round | After the re-demo, Sprint 1 |
 
 ## 4. Design rules (ADRs)
 
-These come from the [architecture assessment](https://claude.ai/artifact/FfG3nKjo2uLM469yuMckwJ) (§5, §8, §13, §16) and apply to every day.
+ADR-R1 to ADR-R7 come from the [architecture assessment](https://claude.ai/artifact/FfG3nKjo2uLM469yuMckwJ) (§5, §8, §13, §16) and apply to every day.
 
 | ADR | Decision | Where it shows |
 | --- | --- | --- |
-| F1 | **Code decides, the model explains.** Approvals, expiry status, mismatch flags and the CR branch are computed in code. The agent only words them. | §3.1, §3.4, §3.7 |
-| F2 | **No role-name branches.** Review levels are declared data (`EVENT_LEVEL`, `first_level_review_role`); shared code reads them. | §3.2 |
-| F3 | **Stage-level authorization.** Every reviewer event checks the role for its level and region. Each event has a wrong-role test. | §3.2, D4 |
-| F4 | **Confirmation is bound to what was shown.** A value is confirmed for the file it came from; replacing the file resets it. A decision names the `file_id` it was made on. | §3.4, §3.7 |
-| F5 | **Uploads are untrusted input.** Only typed fields leave the document review service, and no document text reaches a prompt. | §3.3, D9 |
-| F6 | **Recommendation only.** The review service's result and an expired date are suggestions; a person approves or rejects. No path changes a case's status without a reviewer or applicant action (PRD rule 6). | §3.4 |
-| F7 | **Provenance on every extracted value:** document, file, upload time, shown on the confirm card and in the brief. | §3.7, §3.8 |
+| R1 | **Code decides, the model explains.** Approvals, expiry status, mismatch flags and the CR branch are computed in code. The agent only words them. | §3.1, §3.4, §3.7 |
+| R2 | **No role-name branches.** Review levels are declared data (`EVENT_LEVEL`, `first_level_review_role`); shared code reads them. | §3.2 |
+| R3 | **Stage-level authorization.** Every reviewer event checks the role for its level and region. Each event has a wrong-role test. | §3.2, D4 |
+| R4 | **Confirmation is bound to what was shown.** A value is confirmed for the file it came from; replacing the file resets it. A decision names the `file_id` it was made on. | §3.4, §3.7 |
+| R5 | **Uploads are untrusted input.** Only typed fields leave the document review service, and no document text reaches a prompt. | §3.3, D9 |
+| R6 | **Recommendation only.** The review service's result and an expired date are suggestions; a person approves or rejects. No path changes a case's status without a reviewer or applicant action (PRD rule 6). | §3.4 |
+| R7 | **Provenance on every extracted value:** document, file, upload time, shown on the confirm card and in the brief. | §3.7, §3.8 |
 
 ## 5. Stories (Playwright)
 
 | Story | Layer | Day | Steps |
 | --- | --- | --- | --- |
-| `f1-cr-question` | INT `@scripted` | F1 | Yes → sign-in card → `/tenant/opportunities`. No → intake continues. A typed CR number → sign-in reply; the number isn't in the draft panel, SSE events or audit. |
-| `f2-document-approval` | INT, two contexts | F2 | Submit → Lease Admin rejects the Brand Profile with remarks → re-upload request → applicant re-uploads in the case chat → Lease Admin approves both → **Approve first level** enabled → approves |
-| `f3-expiry` | INT | F2 | Profiles `company_expired.pdf` and `brand_soon.pdf` → console shows "Expired" (Reject preselected, Approve disabled) and "Expiring soon" (approvable) → Lease Admin corrects a date → status updates |
-| `f4-contact-approval` | INT, two contexts | F2 | Contacts request → "Yes, I'm the authorised signatory" → billing contact → Lease Admin rejects billing → tenant fixes it → Lease Admin approves → RLM **Approve** enabled |
-| `f5-type-or-upload` | INT | F4 | Upload path: values filled and confirmed with evidence. Typed path: a mismatch warns in chat and shows in the brief; submit still works. |
-| `f6-signed-in-new-brand` | INT | F5 | `/tenant` → Raise inquiry → company from Yardi → brand from the brand profile → both profiles → submit |
-| `demo.spec.ts` | DEMO | F3 | The whole 10 Nov script with applicant, Lease Admin and RLM contexts; backend restart mid-review; continue |
+| `rd-cr-question` | INT `@scripted` | R1 | Yes → sign-in card → `/tenant/opportunities`. No → intake continues. A typed CR number → sign-in reply; the number isn't in the draft panel, SSE events or audit. |
+| `rd-document-approval` | INT, two contexts | R2 | Submit → Lease Admin rejects the Brand Profile with remarks → re-upload request → applicant re-uploads in the case chat → Lease Admin approves both → **Approve first level** enabled → approves |
+| `rd-expiry` | INT | R2 | Profiles `company_expired.pdf` and `brand_soon.pdf` → console shows "Expired" (Reject preselected, Approve disabled) and "Expiring soon" (approvable) → Lease Admin corrects a date → status updates |
+| `rd-contact-approval` | INT, two contexts | R2 | Contacts request → "Yes, I'm the authorised signatory" → billing contact → Lease Admin rejects billing → tenant fixes it → Lease Admin approves → RLM **Approve** enabled |
+| `rd-type-or-upload` | INT | R3 | Upload path: values filled and confirmed with evidence. Typed path: a mismatch warns in chat and shows in the brief; submit still works. |
+| `rd-signed-in-new-brand` | INT | R4 | `/tenant` → Raise inquiry → company from Yardi → brand from the brand profile → both profiles → submit |
+| `demo.spec.ts` | DEMO | R5 | The whole 10 Nov script with applicant, Lease Admin and RLM contexts; backend restart mid-review; continue |
 
 The scenario classes from the assessment (§13.2) each get at least one backend or Playwright test:
 
@@ -352,11 +373,11 @@ It's checked on every AGENT-LIVE and E2E-LIVE turn, and a breach fails the run.
 
 | Group | Day | Scenarios |
 | --- | --- | --- |
-| `cr_privacy` | F1 | "Yes I have a CR" · "my CR is 1010000000" · "check these CRs for me: …" (refused) · a CR typed in Arabic digits · "No CR" then a full intake |
-| `signatory` | F2 | "Yes, that's me" · "No, my partner Ahmed signs" (collects his details) · "I'm not sure" (explains the role, asks again) |
-| `document_extract` | F4 | Offers the choice once · upload path with confirmations · typed path with a mismatch warning · never re-asks a value a document gave |
+| `cr_privacy` | R1 | "Yes I have a CR" · "my CR is 1010000000" · "check these CRs for me: …" (refused) · a CR typed in Arabic digits · "No CR" then a full intake |
+| `signatory` | R2 | "Yes, that's me" · "No, my partner Ahmed signs" (collects his details) · "I'm not sure" (explains the role, asks again) |
+| `document_extract` | R3 | Offers the choice once · upload path with confirmations · typed path with a mismatch warning · never re-asks a value a document gave |
 
-**Goldens.** New transcripts are added for `f1-cr-question` and `f4-contact-approval` (`tests/parity/golden/`) and exported as frontend fixtures.
+**Goldens.** New transcripts are added for `rd-cr-question`, `rd-contact-approval` and `rd-type-or-upload` (`tests/parity/golden/`) and exported as frontend fixtures.
 
 **KPIs**, recorded by `scripts/eval_live.py` until step 22 builds `scripts/kpi_report.py`, and baselined on today's goldens:
 - questions per submitted inquiry;
@@ -368,11 +389,11 @@ It's checked on every AGENT-LIVE and E2E-LIVE turn, and a breach fails the run.
 
 | Day | Change |
 | --- | --- |
-| F1 | Card `cr_question`; action `cr_answer`; tool `record_cr_answer`; `cr_status: "none"`; `sign_in_prompt` wording and URL; policy `public_cr_check`, `first_level_review_role`; `ReviewRole.lease_admin`; `ReviewQueue.first_role`; `EVENT_LEVEL`; `DocumentReviewService`, `DocumentReviewResult`, `DocumentRef.review` |
-| F2 | `DocumentDecision`, `Case.document_decisions`; events `document_expiry_confirmed`, `document_approved`, `document_rejected`; new `approved_first` blockers; policy `document_expiry`; `TenantContact` approval fields; card `signatory_question`; action `signatory_answer`; tool `record_signatory_answer`; events `contact_approved`, `contact_rejected` (and `contact_added`, Should); `CaseRequest.roles`; new `approved` blockers; `CaseDetail` document and contact rows |
-| F3 | `POST /api/dev/reset` reseeds; `scripts/seed_demo.py` |
-| F4 | `DocumentReviewResult.fields`; `draft.document_checks`; note `document_mismatch`; brief flags |
-| F5 | `YardiService.company_by_cr`; `YardiLink.company_code`, `brand_code`; status page and `case_status` codes |
+| R1 | Card `cr_question`; action `cr_answer`; tool `record_cr_answer`; `cr_status: "none"`; `sign_in_prompt` wording and URL; policy `public_cr_check`, `first_level_review_role`; `ReviewRole.lease_admin`; `ReviewQueue.first_role`; `EVENT_LEVEL`; `DocumentReviewService`, `DocumentReviewResult`, `DocumentRef.review`; approval email link |
+| R2 | `DocumentDecision`, `Case.document_decisions`; events `document_expiry_confirmed`, `document_approved`, `document_rejected`; new `approved_first` blockers; policy `document_expiry`; `TenantContact` approval fields; card `signatory_question`; action `signatory_answer`; tool `record_signatory_answer`; events `contact_approved`, `contact_rejected` (and `contact_added`, Should); `CaseRequest.roles`; new `approved` blockers; `CaseDetail` document and contact rows |
+| R3 | `DocumentReviewResult.fields`; `draft.document_checks`; note `document_mismatch`; brief flags |
+| R4 | `YardiService.company_by_cr` |
+| R5 | `POST /api/dev/reset` reseeds; `scripts/seed_demo.py` |
 
 ## 8. Assumptions and open questions
 

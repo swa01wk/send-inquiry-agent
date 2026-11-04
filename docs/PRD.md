@@ -32,7 +32,7 @@ The client's first priority is conversational friendliness: the agent helps peop
 | --- | --- | --- |
 | Intake, self-service (§7.1.1 a1) | "Do you have a CR?": Yes → sign in, No → chat intake, with no CR number taken or looked up on the public page (v1.1); 12 basic-info fields collected in bundles; derived values confirmed only after being shown; one product line (Store, Media, Specialty) and one mall; international phone numbers; Arabic | `docs/spec.md`; [pre-baseline-fixes](specs/pre-baseline-fixes.md); [L3](specs/l3-reliable-intake.md) |
 | Verification | Email by link (the click verifies), mobile by OTP, resend after a set time; resume from the link on any device | L3 §3.2–3.3 |
-| Documents | Company and Brand Profile required; CR, VAT, National ID, National Address optional, with their numbers. The agent checks presence, type and size; expiry dates and, from Sprint 1, extracted details and mismatch flags come from a separate document review service (mocked) (v1.1) | Pre-baseline F2, F5; [Demo feedback](specs/demo-feedback.md) §3.3, §3.7 |
+| Documents | Company and Brand Profile required; CR, VAT, National ID, National Address optional, with their numbers. The agent checks presence, type and size; expiry dates, extracted details and mismatch flags come from a separate document review service (mocked) (v1.1) | Pre-baseline F2, F5; [Demo feedback](specs/demo-feedback.md) §3.3, §3.7 |
 | Submit and tracking | Review and consent; one reference per inquiry; reference by email and SMS; private tracking page | L3 §3.4; [M0](specs/m0-modular-core.md) §7 |
 | Call-centre and Guest Service intake (§7.1.1 a2, §7.1.2 a2) | Staff raise the inquiry with the agent; the applicant completes it from a link (email verified, review, Proceed, OTP, documents, submit); existing CR → ask to sign in or continue with prefill | [Intake channels](specs/intake-channels.md) §3.1–3.3 |
 | Existing tenants (§7.1.2 a1, §7.1) | Sign in; Leasing Opportunities; company details from Yardi by CR, the new brand typed or from the brand profile, both profiles uploaded (v1.1); property preselected; My inquiries; public-page sign-in path | Intake channels §3.4–3.6; Demo feedback §3.8 |
@@ -88,9 +88,9 @@ The POC is accepted gate by gate. Each gate row names the test that proves it.
 | Gate | Rows | Target |
 | --- | --- | --- |
 | Pre-baseline | P1–P5 | 27 Oct |
-| M0 modular core | G1–G7 | 13 Nov; proposed 19 Nov after the demo feedback days (Part C) |
-| L3 reliable intake (incl. intake channels) | E1–E10 (C1–C4, C6) | 16 Nov; proposed 23 Nov (Part C) |
-| Demo feedback | D1–D15 | D1–D10 by 9 Nov (re-demo 10 Nov); D11–D15 by 12 Nov |
+| M0 modular core | G1–G7 | 13 Nov; proposed 19 Nov after the re-demo days (Part C) |
+| L3 reliable intake (incl. intake channels) | E1–E10 (C1–C4, C6) | 16 Nov; proposed 20 Nov (Part C) |
+| Demo feedback | D1–D15 | Mon 9 Nov (re-demo Tue 10 Nov) |
 | L4 outcome assistance | X1–X9, C5 | 30 Nov; proposed 4 Dec (Part C) |
 | L5 governed proactivity | Y1–Y6 | ~16 Dec |
 
@@ -103,7 +103,7 @@ A conversational demo alone never passes a gate.
 | Phase | Dates | Outcome |
 | --- | --- | --- |
 | 5-day plan | 27 Oct – 2 Nov | Every §7.1 workflow and the core of L3, L4 and L5 demoable end to end (demo depth) |
-| Sprint 1 | 3 – 16 Nov (proposed to 23 Nov) | Demo feedback days F1–F5 and the 10 Nov re-demo; then the M0 and L3 gates: the intake POC at gate quality |
+| Sprint 1 | 3 – 16 Nov (proposed to 20 Nov) | Re-demo days R1–R5 (5–9 Nov, including the weekend) and the 10 Nov re-demo; then the M0 and L3 gates: the intake POC at gate quality |
 | Sprint 2 | 17 – 30 Nov | L4 gate: the review lifecycle at gate quality |
 | Closing | 1 – ~16 Dec | L5 gate; production readiness |
 
@@ -127,4 +127,4 @@ From this version on:
 | --- | --- | --- |
 | 1.0 | 26 Oct 2026 | Locked: PRs #14–#18 (lifecycle specs, testing strategy, delivery plan, §7.1 traceability, intake channels, lifecycle review) |
 | 1.0 (clarification) | 26 Oct 2026 | Delivery order only, no scope change: the core of L3, L4 and L5 is shown in the 5-day plan at demo depth (restart-safe drafts, audit log, typed failures, form mode, evidence, thin proactive layer); Claude also builds the deterministic UI pages. Gates and dates unchanged |
-| 1.1 | 4 Nov 2026 | Client demo feedback (3–4 Nov), [demo feedback spec](specs/demo-feedback.md): no CR lookup on the public page; Lease Admin first-level review; per-document approval with expiry; per-contact approval and the signatory question; document review service (mocked); type-or-upload with profile checks; signed-in new-brand flow with Yardi company details and lead codes. **Cost:** 5 working days (F1–F5) plus the re-demo, taken from Sprint 1. **Absorbed by:** Sprint 1; the M0 and L3 gate dates move (`docs/DELIVERY-PLAN.md` Part C) |
+| 1.1 | 4 Nov 2026 | Client demo feedback (3–4 Nov), [demo feedback spec](specs/demo-feedback.md): no CR lookup on the public page; Lease Admin first-level review; per-document approval with expiry; per-contact approval and the signatory question; document review service (mocked); type-or-upload with profile checks; signed-in new-brand flow with Yardi company details; an "Inquiry for approval" email for the Lease Admin. **Cost:** 5 build days (R1–R5, 5–9 Nov, two of them on the weekend) plus the re-demo, so four Sprint 1 working days. **Absorbed by:** Sprint 1; the M0, L3 and L4 gate dates move (`docs/DELIVERY-PLAN.md` Part C). Lead codes (F11) come after the re-demo |

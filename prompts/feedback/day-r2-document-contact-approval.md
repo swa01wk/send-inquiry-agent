@@ -1,6 +1,6 @@
-# Feedback Day F2 (Fri 6 Nov): document approval with expiry, contact approval, signatory question
+# Re-demo Day R2 (Fri 6 Nov): document approval with expiry, contact approval, signatory question
 
-Read first: @docs/specs/demo-feedback.md (§2 rows D5–D8, §3.4, §3.5, §4, §5, §6) @docs/assumptions.md (Demo feedback assumptions: Document expiry, Document approval, Contact approval) @docs/spec.md @backend/app/agent/case_prompt.md @prompts/feedback/day-f1-cr-question-lease-admin.md
+Read first: @docs/specs/demo-feedback.md (§2 rows D5–D8, §3.4, §3.5, §4, §5, §6) @docs/assumptions.md (Demo feedback assumptions: Document expiry, Document approval, Contact approval) @docs/spec.md @backend/app/agent/case_prompt.md @prompts/feedback/day-r1-cr-question-lease-admin.md
 
 ## Goal
 First-level review becomes an approval process:
@@ -43,7 +43,7 @@ First-level review becomes an approval process:
 **Tests in the backend PR**
 - `tests/lifecycle/test_document_review.py`, `test_document_expiry.py` (simulated clock) and `test_contact_review.py`. They include stale `file_id`, double approval (two tabs), a wrong role and a wrong region.
 - `tests/durability/`: a restart between `document_approved` and its effects.
-- Playwright `f2-document-approval`, `f3-expiry` and the backend half of `f4-contact-approval`.
+- Playwright `rd-document-approval`, `rd-expiry` and the backend half of `rd-contact-approval`.
 
 ## Your track (Cursor): agent and chat
 1. **`SignatoryQuestionCard`**: two buttons sending `signatory_answer`, disabled once answered. Add it to `CardSlot` and `contracts.ts`, with Vitest, an `@fe` scenario and a screenshot.
@@ -58,13 +58,13 @@ First-level review becomes an approval process:
    - A rejected contact: name the role, paraphrase the remarks, and ask only for that contact.
    - A rejected or expired document: name the document and paraphrase the remarks. For an expired one, say a current version is needed. Ask only for those documents, using today's re-upload card.
    - Never say a document or contact is approved without the matching state in `get_case_status`.
-4. **Scripted mode:** scripts for `f4-contact-approval` and the re-upload turns of `f2-document-approval`.
-5. **Goldens:** add `f4-contact-approval`, and export its frontend fixture.
+4. **Scripted mode:** scripts for `rd-contact-approval` and the re-upload turns of `rd-document-approval`.
+5. **Goldens:** add `rd-contact-approval`, and export its frontend fixture.
 6. **Live eval group `signatory`** with the three scenarios in spec §6. Re-run the existing `case` group, which holds the contacts-bundle scenario.
 
 ## Tests
 - Vitest for both cards; `make e2e-fe`.
-- `make e2e-int`: `f2-document-approval`, `f3-expiry` and `f4-contact-approval` pass. T1 and T2 pass with the Lease Admin acting at first level and documents approved before approval.
+- `make e2e-int`: `rd-document-approval`, `rd-expiry` and `rd-contact-approval` pass. T1 and T2 pass with the Lease Admin acting at first level and documents approved before approval.
 - AGENT-LIVE: `signatory` ×3 at 3/3; `case` within tolerance.
 - E2E-LIVE smoke: the case-chat persona.
 
@@ -74,4 +74,4 @@ First-level review becomes an approval process:
 - [ ] Re-upload → the row is back to pending → approve both → **Approve first level** is enabled → approve.
 - [ ] Contacts request: "Are you the authorised signatory?" → Yes → billing contact → the Lease Admin rejects billing → the tenant fixes it → the Lease Admin approves → RLM **Approve** is enabled.
 - [ ] RLM trying a document or contact action gets `not_in_queue` (wrong-role test green).
-- [ ] `docs/STATUS.md` Feedback F2 ✅; `docs/spec.md` updated (spec §7, F2 row); tracker I4, I5, I16, I18 set to Done.
+- [ ] `docs/STATUS.md` Re-demo R2 ✅; `docs/spec.md` updated (spec §7, R2 row); tracker I4, I5, I16, I18 set to Done.

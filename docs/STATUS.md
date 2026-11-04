@@ -12,7 +12,7 @@ The single place to see what's built, what's next and how the agent maps to the 
 
 **Status values:** ✅ Done · 🟡 In progress, or built at demo depth during the breadth days · ⬜ Not started · ⛔ Blocked · ➖ Waived (with reason)
 
-**Last updated:** 4 Nov 2026 · demo feedback planned (PRD v1.1, [spec](specs/demo-feedback.md), days F1–F5 in `prompts/feedback/`, re-demo Tue 10 Nov); earlier: step 12 done (parity suite, live-eval baseline 27/27), 11e out-of-order intake, 5-day close-out (30 Oct)
+**Last updated:** 4 Nov 2026 · demo feedback planned (PRD v1.1, [spec](specs/demo-feedback.md), days R1–R5 in `prompts/feedback/`, re-demo Tue 10 Nov); earlier: step 12 done (parity suite, live-eval baseline 27/27), 11e out-of-order intake, 5-day close-out (30 Oct)
 
 ## 0. Delivery plan
 
@@ -25,13 +25,13 @@ The single place to see what's built, what's next and how the agent maps to the 
 | Day 3 | Thu 29 Oct | Routing, handoff, Arabic, follow-on; L3 core: form mode, evidence — every L3 capability at demo depth | #35 (handoff, Arabic, follow-on, evidence); #37 (form mode, S2/S3/S13); #39 (confirm card already confirmed) | #38 (router, redirect, handoff card, divider, evidence line, prompt) | ✅ | **Merged 28 Oct** (#38, #39 just after midnight). Router, redirect, handoff card, follow-on divider, Arabic guard capture, prompt sync |
 | Day 4 | Fri 30 Oct | Review lifecycle, reviewer console with audit timeline, case assistant — L4 core | #40 (lifecycle backend, review API, case links); #41 (console UI, Yardi relink) | #43 (case agent, case cards, `/inquiry/case`, T2) | ✅ | **Merged 29 Oct** (#42 docs). Case agent, case cards, `/inquiry/case`, T2, case eval scenarios |
 | Day 5 | Mon 2 Nov | Yardi handover, reviewer assistant, intake channels; L5 core: clock, triggers, notification policy, "Needs attention", drafted reminders; demo | #44 (L5 core, `/dev`, reset, `make demo`); #46 (intake channels backend, tenant APIs) | #45 (reviewer assistant, T1, approval wording); #47 (assisted and tenant prompts, cards, reminder drafting, demo script) | ✅ | **Merged 29 Oct.** End-of-day check automated: `make e2e-demo`; runs in CI as `e2e.yml` suite **demo** |
-| Feedback F0 | Wed 4 Nov | Docs: demo feedback spec, PRD v1.1, day prompts, three-lane flow, assumptions | Docs PR | — | 🟡 | [DELIVERY-PLAN](DELIVERY-PLAN.md) Part C |
-| Feedback F1 | Thu 5 Nov | "Do you have a CR?"; Lease Admin first level; document review service (expiry) | | | ⬜ | D1–D4, D9 |
-| Feedback F2 | Fri 6 Nov | Per-document approval with expiry; per-contact approval; signatory question | | | ⬜ | D5–D8 |
-| Feedback F3 | Mon 9 Nov | Re-demo hardening on Postgres; `demo.spec.ts` for 10 Nov | | | ⬜ | D10; **re-demo Tue 10 Nov** |
-| Feedback F4 | Wed 11 Nov | Type or upload; profile checks | | | ⬜ | D11, D12 |
-| Feedback F5 | Thu 12 Nov | Signed-in new brand (Yardi by CR); lead codes | | | ⬜ | D13–D15 |
-| Sprint 1 | 3–16 Nov (proposed to 23 Nov, Part C) | M0 and L3 gates (incl. E10, intake channels); full test harness | #48 (Day 5 leftovers); #49 (11d-a) | #50 (11d-b); #51 (11d-c) | 🟡 | **Started early, 30 Oct.** Steps 11d, 11e, 12 done; step 13 in progress; feedback days F1–F5 run inside this sprint |
+| Re-demo F0 docs | Wed 4 Nov | Docs: demo feedback spec, PRD v1.1, day prompts, three-lane flow, assumptions | #60 | — | 🟡 | [DELIVERY-PLAN](DELIVERY-PLAN.md) Part C |
+| Re-demo R1 | Thu 5 Nov | "Do you have a CR?"; Lease Admin first level and "Inquiry for approval" email; document review service (expiry) | | | ⬜ | D1–D4, D9, D14 |
+| Re-demo R2 | Fri 6 Nov | Per-document approval with expiry; per-contact approval; signatory question | | | ⬜ | D5–D8 |
+| Re-demo R3 | Sat 7 Nov | Type or upload; profile checks | | | ⬜ | D11, D12 |
+| Re-demo R4 | Sun 8 Nov | Signed-in new brand (Yardi by CR) | | | ⬜ | D13 |
+| Re-demo R5 | Mon 9 Nov | Hardening on Postgres; `demo.spec.ts` for 10 Nov; demo script | | | ⬜ | D10, D15; **re-demo Tue 10 Nov** |
+| Sprint 1 | 3–16 Nov (proposed to 20 Nov, Part C) | M0 and L3 gates (incl. E10, intake channels); full test harness | #48 (Day 5 leftovers); #49 (11d-a) | #50 (11d-b); #51 (11d-c) | 🟡 | **Started early, 30 Oct.** Steps 11d, 11e, 12 done; step 13 in progress; re-demo days R1–R5 (5–9 Nov, incl. the weekend) run inside this sprint |
 | Sprint 2 | 17–30 Nov | L4 gate; channels row C5 | | | ⬜ | |
 | Closing | 1 Dec – ~16 Dec | L5 to gate quality (thin L5 runs from Day 5); production readiness | | | ⬜ | |
 
@@ -69,7 +69,7 @@ Day 1–5 end-of-day checks (`prompts/breadth/day*.md`) are covered by those sui
 | --- | --- | --- | --- | --- |
 | Pre-baseline | [pre-baseline-fixes.md](specs/pre-baseline-fixes.md) §2 | P1–P5 | ✅ | P1–P3, P5 in CI (#25, #26). P4: CI green; eval 18/20 (11c), 19/20 and a passing run 2 (#27); `@live` smoke 26/28, then 01 and 05 passing (`docs/eval-notes.md`) |
 | M0 modular core | [m0-modular-core.md](specs/m0-modular-core.md) §2 | G1–G7 | ⬜ | — |
-| Demo feedback | [demo-feedback.md](specs/demo-feedback.md) §2 | D1–D15 (D1–D10 by the 10 Nov re-demo) | ⬜ | — |
+| Demo feedback | [demo-feedback.md](specs/demo-feedback.md) §2 | D1–D15, all by Mon 9 Nov for the 10 Nov re-demo | ⬜ | — |
 | L3 reliable intake | [l3-reliable-intake.md](specs/l3-reliable-intake.md) §2 | E1–E9 | ⬜ | — |
 | Intake channels | [intake-channels.md](specs/intake-channels.md) §2 | C1–C6 (C1–C4, C6 with L3 as E10; C5 with L4) | ⬜ | — |
 | L4 outcome assistance | [l4-outcome-assistance.md](specs/l4-outcome-assistance.md) §2 | X1–X9 | ⬜ | — |

@@ -1,6 +1,6 @@
-# Feedback Day F4 (Wed 11 Nov): type the details, or upload the profiles
+# Re-demo Day R3 (Sat 7 Nov): type the details, or upload the profiles
 
-Read first: @docs/specs/demo-feedback.md (§2 rows D11 and D12, §3.3, §3.7, §4 ADR-F4, F5 and F7, §6) @docs/assumptions.md (Company and brand details, no CR; Document mismatch) @docs/spec.md @backend/app/agent/system_prompt.md
+Read first: @docs/specs/demo-feedback.md (§2 rows D11 and D12, §3.3, §3.7, §4 ADR-R4, R5 and R7, §6) @docs/assumptions.md (Company and brand details, no CR; Document mismatch) @docs/spec.md @backend/app/agent/system_prompt.md
 
 ## Goal
 On the no-CR path, the applicant chooses how to give the company and brand details:
@@ -19,7 +19,7 @@ Any difference warns the applicant and is flagged to the Lease Admin, without bl
   - a field that's empty gets `source: derived`, `confirmed: false` and the evidence `"<Document label>: <file name>, uploaded <time>"`;
   - a field the applicant typed (`source: user`) is compared instead, and never overwritten.
 - **Checks.** `app/domain/document_checks.py` compares values (case, whitespace and punctuation ignored, Arabic normalised, categories through master data). A difference becomes `draft.document_checks[field] = {typed, document_value, doc_type}`.
-- **Re-upload.** Replacing a profile clears the values that came from the old file and sets them back to unconfirmed. They're filled again from the new result (ADR-F4).
+- **Re-upload.** Replacing a profile clears the values that came from the old file and sets them back to unconfirmed. They're filled again from the new result (ADR-R4).
 - **Notes to the agent after an upload:**
   - `[ui_event] document_fields <doc_type> filled=<keys>`;
   - `[ui_event] document_mismatch <field>`.
@@ -44,12 +44,12 @@ Any difference warns the applicant and is flagged to the Lease Admin, without bl
    - accept either: keeping theirs is allowed, and the reviewer sees the flag.
 4. **Confirm card.** `ConfirmFieldsCard` shows the evidence line for document-filled values ("from: Company Profile, company_profile.pdf").
 5. **Documents card.** It shows a small "Details filled from this document" note under each profile that filled something.
-6. **Scripted mode and goldens:** `f5-type-or-upload`, both paths, with its golden and frontend fixture.
+6. **Scripted mode and goldens:** `rd-type-or-upload`, both paths, with its golden and frontend fixture.
 7. **Live eval group `document_extract`** (spec §6). Add a KPI line for `unnecessary_questions` to the eval report.
 
 ## Tests
 - Vitest for the confirm-card evidence and the documents-card note; `make e2e-fe`.
-- `make e2e-int`: `f5-type-or-upload` passes, along with S1, S14 and `f1-cr-question`.
+- `make e2e-int`: `rd-type-or-upload` passes, along with S1, S14 and `rd-cr-question`.
 - AGENT-LIVE: `document_extract` ×3 at 3/3; `intake` within tolerance.
 - E2E-LIVE smoke: the self-service persona with uploads.
 
@@ -57,4 +57,4 @@ Any difference warns the applicant and is flagged to the Lease Admin, without bl
 - [ ] No CR → "I'll upload the profiles" → upload both → confirm card with company name, address, brand and category, each with evidence → confirm → no question for those fields.
 - [ ] No CR → type a company name → upload `company_profile_mismatch.pdf` → one-sentence warning → keep my value → submit works → the Lease Admin's brief shows the flag.
 - [ ] Re-upload a profile after confirming → its values are unconfirmed again, and the review card blocks submit until they're confirmed.
-- [ ] `docs/STATUS.md` Feedback F4 ✅; `docs/spec.md` (spec §7, F4 row); `docs/assumptions.md` rows marked landed; tracker I12, I19 set to Done.
+- [ ] `docs/STATUS.md` Re-demo R3 ✅; `docs/spec.md` (spec §7, R3 row); `docs/assumptions.md` rows marked landed; tracker I12, I19 set to Done.

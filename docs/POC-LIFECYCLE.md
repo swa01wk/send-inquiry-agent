@@ -119,7 +119,7 @@ Inside `draft`, the intake phase (gate → collecting → verifying → document
 
 ### 2.4 Three-lane flow after the 3–4 Nov demo feedback (tenant · agent · human)
 
-Agreed 4 Nov 2026 ([demo feedback spec](specs/demo-feedback.md)), and it replaces the public-page CR lookup in §2.1. The agent lane names which agent or service acts at each step. Every approval sits in the human lane, and the agent lane never approves, rejects or changes a case on its own (ADR-F6). Steps marked **(S1)** arrive in Sprint 1 (days F4–F5); everything else is in the 10 Nov re-demo.
+Agreed 4 Nov 2026 ([demo feedback spec](specs/demo-feedback.md)), and it replaces the public-page CR lookup in §2.1. The agent lane names which agent or service acts at each step. Every approval sits in the human lane, and the agent lane never approves, rejects or changes a case on its own (ADR-R6). All of it is built in days R1–R5 for the 10 Nov re-demo, except the lead codes (marked *later*).
 
 ```mermaid
 flowchart LR
@@ -128,26 +128,26 @@ flowchart LR
     T1(["Opens 'Send us an inquiry'"])
     T2{"Do you have a CR?"}
     T3["Signs in to Tenant Central<br/>→ Leasing Opportunities"]
-    T4["Types details, or uploads<br/>company and brand profiles (S1)"]
+    T4["Types details, or uploads<br/>company and brand profiles"]
     T5["Email link + mobile OTP"]
     T6["Uploads both profiles"]
     T7["Confirms values; review card;<br/>consent; Submit"]
     T8["Re-uploads a rejected document<br/>(case chat)"]
     T9["Signatory? Yes / No;<br/>billing and other contacts"]
     T10["Fixes a rejected contact"]
-    T11(["Tracking page: outcome<br/>and codes (S1)"])
+    T11(["Tracking page: outcome<br/>and codes (later)"])
   end
   subgraph A["Agent and system"]
     direction TB
     A1["Intake agent: asks the CR question;<br/>never takes a CR number"]
-    A2["Intake agent: company from Yardi<br/>by CR (S1); asks for the new brand"]
-    A3["Intake agent: collects what's missing;<br/>offers type or upload (S1)"]
-    A4["Document review service:<br/>expiry dates; fields and checks (S1)"]
-    A5["Code: mismatch flags (S1);<br/>submit once; route to Lease Admin"]
-    A6["Reviewer assistant: brief,<br/>expiry chips, drafted remarks"]
+    A2["Intake agent: company from Yardi<br/>by CR; asks for the new brand"]
+    A3["Intake agent: collects what's missing;<br/>offers type or upload"]
+    A4["Document review service:<br/>expiry dates, fields, checks"]
+    A5["Code: mismatch flags;<br/>submit once; route to Lease Admin"]
+    A6["'Inquiry for approval' email (F7);<br/>reviewer assistant: brief, expiry chips"]
     A7["Case agent: explains rejection<br/>and asks only for that document"]
     A8["Case agent: signatory question;<br/>collects contacts"]
-    A9["Code: Azure AD invitations;<br/>lead to Yardi; codes (S1)"]
+    A9["Code: Azure AD invitations;<br/>lead to Yardi; codes (later)"]
   end
   subgraph H["Human action (Cenomi)"]
     direction TB
