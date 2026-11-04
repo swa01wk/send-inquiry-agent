@@ -29,7 +29,8 @@ class CaseStatus(StrEnum):
     REDIRECTED = "redirected"
 
 
-ReviewRole = Literal["rlm_store", "rplm_media", "rplm_specialty"]
+ReviewRole = Literal["lease_admin", "rlm_store", "rplm_media", "rplm_specialty"]
+ReviewLevel = Literal["first", "final"]
 RequestKind = Literal["reupload", "contacts", "sales_data"]
 ContactRole = Literal[
     "authorized_signatory",
@@ -46,16 +47,42 @@ CONTACT_ROLE_LABELS: dict[str, str] = {
     "company_admin": "Company Admin",
 }
 ROLE_LABELS: dict[str, str] = {
+    "lease_admin": "Lease Admin",
     "rlm_store": "Regional Leasing Manager (Store)",
     "rplm_media": "Regional Property Leasing Manager (Media)",
     "rplm_specialty": "Regional Property Leasing Manager (Specialty)",
 }
 
 
+# Statuses in which the first review level is acting (demo feedback §3.2).
+FIRST_LEVEL_STATES: frozenset[CaseStatus] = frozenset(
+    {CaseStatus.FIRST_REVIEW, CaseStatus.REUPLOAD_REQUESTED}
+)
+
+
+def review_level(status: CaseStatus) -> ReviewLevel:
+    """The review level a case is with: first (and its re-upload loop) or final."""
+    return "first" if status in FIRST_LEVEL_STATES else "final"
+
+
 class ReviewQueue(BaseModel):
     product_line: Literal["store", "media", "specialty"]
     region: str
-    role: ReviewRole
+    role: ReviewRole  # the final reviewer for the product line (policy `review_routing`)
+    # First-level reviewer (demo feedback §3.2, policy `first_level_review_role`). None:
+    # the final reviewer does both levels (cases routed before 5 Nov 2026).
+    first_role: ReviewRole | None = None
+
+    def role_for(self, level: ReviewLevel) -> ReviewRole:
+        """The role that acts at this review level."""
+        if level == "first" and self.first_role is not None:
+            return self.first_role
+        return self.role
+
+    @property
+    def roles(self) -> tuple[ReviewRole, ...]:
+        """Every role that works this queue (both levels)."""
+        return tuple(dict.fromkeys((self.role_for("first"), self.role)))
 
 
 class CaseRequest(BaseModel):

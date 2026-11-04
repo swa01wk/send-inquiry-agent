@@ -19,6 +19,7 @@ from app.agent.confirm_policy import (
     keys_blocked_from_confirmation,
 )
 from app.agent.cr_check import apply_cr_result
+from app.agent.cr_question import apply_cr_answer, cr_question_active
 from app.agent.mall_match import (
     fill_mentioned_malls,
     filter_mall_ids,
@@ -39,10 +40,12 @@ from app.api.cards import (
 )
 from app.api.channel_cards import (
     BASIC_INFO_CARD_ID,
+    CR_QUESTION_CARD_ID,
     EXISTING_CR_CARD_ID,
     SEND_LINK_CARD_ID,
     SIGN_IN_CARD_ID,
     build_basic_info_card,
+    build_cr_question_card,
     build_existing_cr_choice_card,
     build_send_link_card,
     build_sign_in_prompt_card,
@@ -208,6 +211,16 @@ def verify_cr(
     runtime: ToolRuntime,
 ) -> Command[Any]:
     """Validate a CR number and look up whether the company already has an account."""
+    if cr_question_active(assisted=bool(state.get("assisted")), channel=state.get("channel")):
+        # Demo feedback §3.1: the public page never looks a CR up or repeats one.
+        return _tool_result(
+            runtime,
+            draft=state["draft"],
+            content=(
+                "CR lookups are off on this page: nothing was checked or saved. Ask whether "
+                "the company has a CR (the card), never for the number, and don't repeat it."
+            ),
+        )
     validated = validate_cr_number(cr_number)
     if isinstance(validated, v.ValidationError):
         return _tool_result(
@@ -362,6 +375,55 @@ def skip_cr(
         draft=updated,
         content="CR verification skipped.",
         changed_keys=["cr_status"],
+    )
+
+
+@tool
+def record_cr_answer(
+    has_cr: bool,
+    state: Annotated[AgentState, InjectedState],
+    runtime: ToolRuntime,
+) -> Command[Any]:
+    """Record the user's answer to "Do you have a CR?" when they answer in words (the card's
+    buttons do the same). has_cr=true: they have one, so they sign in instead; false: no CR.
+    Never ask for, pass or repeat the CR number."""
+    draft = state["draft"]
+    if not cr_question_active(assisted=bool(state.get("assisted")), channel=state.get("channel")):
+        return _tool_result(runtime, draft=draft, content="Not used in this chat.")
+    answered = apply_cr_answer(draft, has_cr)
+    if answered is None:
+        return _tool_result(runtime, draft=draft, content="The CR question is already answered.")
+    cards_shown = list(state["cards_shown"])
+    _emit_card(build_cr_question_card(answered="yes" if has_cr else "no"), runtime)
+    if CR_QUESTION_CARD_ID not in cards_shown:
+        cards_shown.append(CR_QUESTION_CARD_ID)
+    if has_cr:
+        rt = runtime_from_config(runtime.config)
+        _emit_card(build_sign_in_prompt_card(rt.settings.public_base_url, reason="has_cr"), runtime)
+        if SIGN_IN_CARD_ID not in cards_shown:
+            cards_shown.append(SIGN_IN_CARD_ID)
+        rt.services.audit.record(
+            state["session_id"],
+            "inquiry_redirected",
+            actor="system",
+            payload={"reason": "has_cr", "channel": state.get("channel", "self_service")},
+        )
+        content = (
+            "Recorded: the company has a CR. A Sign in to Tenant Central card is shown. In one "
+            "or two warm sentences, say signing in is quickest (their details are on file) "
+            "and stop collecting."
+        )
+    else:
+        content = (
+            "Recorded: no CR. Carry on: ask for the company name and address together, then "
+            "the brand and space."
+        )
+    return _tool_result(
+        runtime,
+        draft=answered.draft,
+        content=content,
+        changed_keys=answered.changed,
+        cards_shown=cards_shown,
     )
 
 
@@ -1046,6 +1108,7 @@ def show_application_link(
 TOOLS = [
     verify_cr,
     skip_cr,
+    record_cr_answer,
     get_master_data,
     update_draft,
     confirm_fields,
@@ -1063,6 +1126,6 @@ TOOLS = [
 # Assisted mode (intake channels §3.2): no verification, documents or review for the
 # executive; the applicant does those from the application link.
 ASSISTED_EXCLUDED = frozenset(
-    {"send_verification", "request_documents", "show_review", "start_follow_on"}
+    {"send_verification", "request_documents", "show_review", "start_follow_on", "record_cr_answer"}
 )
 ASSISTED_TOOLS = [t for t in TOOLS if t.name not in ASSISTED_EXCLUDED] + [show_application_link]

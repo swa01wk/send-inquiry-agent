@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from enum import StrEnum
 from typing import Any, Literal
 
@@ -100,6 +100,26 @@ class FieldValue(BaseModel):
     evidence: str | None = None
 
 
+class ExtractedValue(BaseModel):
+    """One value the document review service read from a document (demo feedback §3.3)."""
+
+    value: str
+    page: int | None = None
+
+
+class DocumentReview(BaseModel):
+    """What the document review service returned for one upload (demo feedback §3.3).
+
+    Typed fields only: no document text is ever stored here or passed to the model.
+    `pending`: the service didn't answer (timeout or outage); a reviewer can still decide.
+    """
+
+    status: Literal["done", "pending", "failed"]
+    expiry_date: date | None = None
+    fields: dict[str, ExtractedValue] = Field(default_factory=dict)
+    checked_at: datetime
+
+
 class DocumentRef(BaseModel):
     doc_type: DocType
     file_id: str
@@ -110,6 +130,8 @@ class DocumentRef(BaseModel):
     copied_from: str | None = None
     # A document already on the tenant's Tenant Central record (intake channels §3.4).
     on_file: bool = False
+    # The document review service's result for this upload (demo feedback §3.3).
+    review: DocumentReview | None = None
 
 
 class Blocker(BaseModel):

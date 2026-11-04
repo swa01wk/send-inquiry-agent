@@ -24,6 +24,7 @@ from app.workflow.models import (
     CONTACT_ROLE_LABELS,
     Case,
     ContactRole,
+    ReviewLevel,
     TenantContact,
     WorkflowEvent,
 )
@@ -67,18 +68,26 @@ async def _to_applicant(runtime: AgentRuntime, case: Case, template: str, **extr
     await _send(runtime, case, template, str(email), _applicant_context(runtime, case, **extra))
 
 
-async def _to_reviewers(runtime: AgentRuntime, case: Case, template: str) -> None:
+STAGE_FOR_LEVEL: dict[ReviewLevel, str] = {"first": "first review", "final": "final review"}
+
+
+async def _to_reviewers(
+    runtime: AgentRuntime, case: Case, template: str, level: ReviewLevel = "final"
+) -> None:
+    """Email the reviewers who act at `level` in the case's queue (demo feedback §3.2). The
+    link opens the case in the console, signed in as that reviewer in dev builds (F7)."""
     queue = case.review_queue
     if queue is None:
         return
-    for reviewer in runtime.services.reviewers.for_queue(queue.role, queue.region):
+    for reviewer in runtime.services.reviewers.for_queue(queue.role_for(level), queue.region):
         if reviewer.manager:
             continue
         context = _applicant_context(
             runtime,
             case,
             reviewer_name=reviewer.name.split()[0],
-            console_url=console_url(runtime, case),
+            stage=STAGE_FOR_LEVEL[level],
+            console_url=console_url(runtime, case, reviewer.id),
         )
         await _send(runtime, case, template, reviewer.email, context)
 
@@ -88,12 +97,20 @@ def _latest_request(case: Case, kind: str | None = None):  # type: ignore[no-unt
     return requests[-1] if requests else None
 
 
-def _notify_reviewers(template: str) -> Effect:
+def _notify_reviewers(template: str, level: ReviewLevel = "final") -> Effect:
     async def run(runtime: AgentRuntime, case: Case, event: WorkflowEvent) -> Case:
-        await _to_reviewers(runtime, case, template)
+        await _to_reviewers(runtime, case, template, level)
         return case
 
     return run
+
+
+async def _final_review_assigned(runtime: AgentRuntime, case: Case, event: WorkflowEvent) -> Case:
+    """First level approved: the final reviewer gets the case, unless one role does both."""
+    queue = case.review_queue
+    if queue is not None and queue.role_for("first") != queue.role:
+        await _to_reviewers(runtime, case, "review_assigned", "final")
+    return case
 
 
 def _request_email(template: str, kind: str) -> Effect:
@@ -272,15 +289,18 @@ async def _send_lead(runtime: AgentRuntime, case: Case, event: WorkflowEvent) ->
 
 
 EFFECTS: dict[str, list[tuple[str, Effect]]] = {
-    "routed": [("review_assigned", _notify_reviewers("review_assigned"))],
+    "routed": [("review_assigned", _notify_reviewers("review_assigned", "first"))],
     "reupload_requested": [("reupload_request", _request_email("reupload_request", "reupload"))],
-    "documents_resubmitted": [("reupload_received", _notify_reviewers("reupload_received"))],
+    "documents_resubmitted": [
+        ("reupload_received", _notify_reviewers("reupload_received", "first"))
+    ],
     "rejected": [("inquiry_rejected", _rejection_email)],
     "approved_first": [
         ("invite_primary", _invite_primary),
         ("first_level_approved", _first_level_email),
         ("prefill_tenant_contacts", _prefill_tenant_contacts),
         ("auto_contacts_request", _auto_contacts_request),
+        ("review_assigned_final", _final_review_assigned),
     ],
     "contacts_requested": [("contacts_request", _request_email("contacts_request", "contacts"))],
     "contacts_provided": [("contacts_received", _notify_reviewers("contacts_received"))],

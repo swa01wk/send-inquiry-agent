@@ -126,6 +126,23 @@ export async function openReviewerCase(page: Page, reference: string): Promise<v
   await page.getByTestId(`queue-row-${reference}`).getByRole('link', { name: reference }).click()
 }
 
+/**
+ * Open a case signed in as another reviewer (`?as=`, as the "Inquiry for approval" email
+ * does): the final reviewer takes over after the Lease Admin's first-level approval.
+ */
+export async function openCaseAs(
+  page: Page,
+  reviewer: { id: string; name: string },
+  reference: string,
+  query = '',
+): Promise<void> {
+  const extra = query ? `&${query}` : ''
+  await page.goto(
+    `/review/cases/${encodeURIComponent(reference)}?as=${encodeURIComponent(reviewer.id)}${extra}`,
+  )
+  await expect(page.getByTestId('case-stage')).toBeVisible()
+}
+
 /** Existing tenant: sign in, raise on an opportunity, confirm prefilled info, submit. */
 export async function raiseTenantInquiry(
   page: Page,

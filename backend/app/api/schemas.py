@@ -28,6 +28,8 @@ CardType = Literal[
     "send_link",
     "existing_cr_choice",
     "sign_in_prompt",
+    # Demo feedback §3.1
+    "cr_question",
 ]
 
 StepState = Literal["done", "current", "upcoming"]
@@ -118,11 +120,22 @@ class ExistingCrChoicePayload(BaseModel):
 
 
 class SignInPromptPayload(BaseModel):
-    """Public page, existing CR under `existing_tenant_policy: sign_in` (§3.6)."""
+    """Public page, existing CR under `existing_tenant_policy: sign_in` (§3.6), or a Yes to
+    "Do you have a CR?" (demo feedback §3.1)."""
 
     message: str
     sign_in_url: str
     button_label: str
+
+
+class CrQuestionPayload(BaseModel):
+    """Public page, `public_cr_check: ask_then_sign_in` (demo feedback §3.1): the buttons
+    send `cr_answer {has_cr}`. `answered` is set once the applicant picks."""
+
+    prompt: str
+    yes_label: str
+    no_label: str
+    answered: Literal["yes", "no"] | None = None
 
 
 class MallPickerCity(BaseModel):
@@ -260,6 +273,8 @@ class FormModePayload(BaseModel):
     next_step: FormModeStep
     fields: list[FormModeField] = Field(default_factory=list)
     can_skip_cr: bool = False
+    # Demo feedback §3.1: the CR step is the `cr_question` card, not a CR number input.
+    cr_question: bool = False
 
 
 class CaseRequestRow(BaseModel):

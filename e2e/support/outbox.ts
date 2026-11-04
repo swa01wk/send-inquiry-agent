@@ -43,7 +43,7 @@ export function referenceFromReviewAssigned(messages: OutboxRow[]): string {
   const assigned = latestByTemplate(messages, 'review_assigned')
   const consoleLink = assigned?.links.find((l) => l.includes('/review/cases/'))
   if (!consoleLink) throw new Error('review_assigned console link missing')
-  return decodeURIComponent(consoleLink.split('/review/cases/')[1])
+  return decodeURIComponent(consoleLink.split('/review/cases/')[1].split('?')[0])
 }
 
 /** `/inquiry/verify` URL from the newest `complete_application` email. */

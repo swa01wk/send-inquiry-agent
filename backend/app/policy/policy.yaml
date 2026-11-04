@@ -13,6 +13,14 @@ product_lines: [store, media, specialty]
 #   allow_inquiry — the inquiry continues (requirements §7.1).
 existing_tenant_policy: sign_in
 
+# The public page and the CR (demo feedback §3.1, 4 Nov 2026):
+#   lookup           — a CR number typed in the public chat is checked in the registry.
+#   ask_then_sign_in — the agent asks "Do you have a CR?": Yes → sign in, No → carry on in
+#                      chat. The public page never takes or looks up a CR number.
+# Self-service channel only: call-centre staff keep the lookup. Flipped to
+# ask_then_sign_in with the R1 agent prompt.
+public_cr_check: lookup
+
 # A tenant signed in to Tenant Central (Leasing Opportunities) is already verified by Azure
 # AD: the email link and SMS code are skipped (intake channels §3.5, assumption D4).
 signed_in_skips_verification: true
@@ -50,6 +58,12 @@ follow_on_reuse_hours: 24
 # ---- Review lifecycle (L4 §3.2–3.5) ---------------------------------------------------
 # Product line → first- and second-level reviewer role (requirements §7.1.1 b). The queue's
 # region is the mall's region in master data (assumption L4 A5).
+#
+# First-level review in every product line (demo feedback §3.2): the Lease Admin of the
+# mall's region approves the documents and the first level; the role above gives the final
+# approval. Leave empty for one role doing both levels.
+first_level_review_role: lease_admin
+
 review_routing:
   store: rlm_store
   media: rplm_media

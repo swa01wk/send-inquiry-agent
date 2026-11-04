@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import {
   actOnCase,
   downloadDocument,
@@ -71,16 +71,29 @@ function SourceTag({ field }: { field: BriefField }) {
 /** One case: the brief, documents, requests, the audit timeline and the legal actions. */
 export function ReviewCasePage() {
   const { reference = '' } = useParams()
-  const [reviewerId] = useReviewerId()
+  const [reviewerId, setReviewerId] = useReviewerId()
+  const [params, setParams] = useSearchParams()
+  const asReviewer = params.get('as')
   const [detail, setDetail] = useState<CaseDetail | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [actionsPrefill, setActionsPrefill] = useState<ActionsPrefill | undefined>()
 
+  // `?as=<id>`: the "Inquiry for approval" email opens the case signed in as that mock
+  // reviewer (demo feedback F7). The parameter is dropped once used; others are kept.
   useEffect(() => {
-    if (!reviewerId) return
+    if (!asReviewer) return
+    setReviewerId(asReviewer)
+    const next = new URLSearchParams(params)
+    next.delete('as')
+    setParams(next, { replace: true })
+  }, [asReviewer, params, setReviewerId, setParams])
+
+  useEffect(() => {
+    if (!reviewerId || asReviewer) return
     let cancelled = false
+    setLoadError(null)
     getCase(reviewerId, reference)
       .then((data) => {
         if (!cancelled) setDetail(data)
@@ -96,7 +109,7 @@ export function ReviewCasePage() {
     return () => {
       cancelled = true
     }
-  }, [reviewerId, reference])
+  }, [reviewerId, reference, asReviewer])
 
   const onAct = useCallback(
     async (action: ReviewAction, payload: Record<string, unknown>) => {

@@ -14,6 +14,7 @@ from app.api.channel_cards import basic_info_missing
 from app.domain.fields import FIELD_BY_KEY
 from app.domain.models import NEEDS_CONFIRMATION, FieldKey, InquiryDraft, Source
 from app.domain.rules import contact_verified, remaining_steps
+from app.policy.config import get_policy
 
 
 @dataclass(frozen=True)
@@ -112,6 +113,14 @@ def next_bundle_hint(
     if draft.cr_status == "existing" or draft.reference:
         return "Next question: none (no more collection needed)."
     if draft.cr_status == "unknown":
+        if not assisted and get_policy().public_cr_check == "ask_then_sign_in":
+            # Demo feedback §3.1. Self-service and existing-tenant chats reach here with
+            # cr_status unknown only on the public page (tenants start as "tenant").
+            return (
+                "Next question: ask whether the company has a CR, pointing to the card's "
+                "buttons. Never ask for the CR number. If the user volunteers other details, "
+                "save them too."
+            )
         return (
             "Next question: ask for the CR number (or offer to continue without it). "
             "If the user volunteers other details, save them too."

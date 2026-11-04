@@ -14,7 +14,7 @@ from typing import Literal, Protocol
 from app import clock
 from app.services.errors import ReferenceNotFoundError
 from app.services.submit import MockSubmitService
-from app.workflow.models import ROLE_LABELS, Case, CaseStatus
+from app.workflow.models import ROLE_LABELS, Case, CaseStatus, review_level
 from app.workflow.store import CaseStore
 
 StatusValue = Literal["under_review", "approved", "sent_to_yardi", "rejected"]
@@ -93,7 +93,11 @@ def _from_case(case: Case) -> InquiryStatus:
         else:
             status = "approved"  # approved, not yet acknowledged by Yardi
     queue = case.review_queue
-    owner = ROLE_LABELS.get(queue.role, DEFAULT_OWNER_ROLE) if queue else DEFAULT_OWNER_ROLE
+    owner = (
+        ROLE_LABELS.get(queue.role_for(review_level(case.status)), DEFAULT_OWNER_ROLE)
+        if queue
+        else DEFAULT_OWNER_ROLE
+    )
     waiting = [REQUEST_LABELS[r.kind] for r in case.requests if r.status == "open"]
     return InquiryStatus(
         reference=case.reference,

@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { InquiryPage } from '../pages/inquiry'
 import { clearDevOutbox, fetchDevOutbox, latestByTemplate } from '../support/outbox'
+import { openCaseAs } from '../support/stories'
 import { APPLICANT_EMAIL, reviewerFor, submitScriptedInquiry } from '../support/submit'
 
 const OMAR_EMAIL = 'omar@beanstreet.example'
@@ -88,7 +89,9 @@ test.describe('Story T1 @scripted', () => {
         'Thanks, your contacts are with the leasing team.',
       )
 
-      await reviewerPage.reload()
+      // Final review: the RLM takes over from the Lease Admin (demo feedback §3.2).
+      const finalReviewer = await reviewerFor(request, reference, 'final')
+      await openCaseAs(reviewerPage, finalReviewer, reference)
       await expect(reviewerPage.getByTestId('approval-blockers')).toHaveCount(0)
       await expect(reviewerPage.getByTestId('action-approve')).toBeVisible()
       await reviewerPage

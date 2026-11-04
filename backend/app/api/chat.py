@@ -11,7 +11,8 @@ from fastapi import APIRouter, Body, Depends, Request
 from langchain_core.messages import HumanMessage
 from sse_starlette.sse import EventSourceResponse
 
-from app.agent.actions import handle_ui_action
+from app.agent.actions import cr_answer_result, handle_ui_action
+from app.agent.cr_question import CR_TYPED_NOTE, cr_question_active, scrub_cr_numbers
 from app.agent.events import SseEvent, run_turn
 from app.agent.form_mode import form_mode_cards
 from app.agent.redirect import stream_redirect_reply
@@ -97,15 +98,27 @@ async def chat_stream(
     if isinstance(body, ChatRequestMessage):
         user_text = body.text
         turn_user_message = HumanMessage(content=body.text)
+        cr_typed = False
+        if session.mode != "case" and cr_question_active(
+            assisted=session.assisted, channel=session.channel
+        ):
+            # Demo feedback §3.1: a CR number typed in the public chat is removed before it
+            # reaches the transcript, the audit trail or the model, and counts as "Yes".
+            user_text, cr_typed = scrub_cr_numbers(body.text)
+            turn_user_message = HumanMessage(content=user_text)
         audit.record(
             session.id,
             "user_message",
             actor="user",
-            payload={"chars": len(body.text), "message_id": user_message_id},
+            payload={"chars": len(user_text), "message_id": user_message_id},
         )
+        if cr_typed:
+            answered = cr_answer_result(session, runtime, has_cr=True)
+            action_events = answered.events
+            turn_user_message = HumanMessage(content=f"{user_text}\n\n{CR_TYPED_NOTE}")
         # Staff (assisted) and case chats skip the intent router: they're on task.
         if not session.form_mode and session.mode != "case" and not session.assisted:
-            route_decision = await route_message(body.text, session, runtime)
+            route_decision = await route_message(user_text, session, runtime)
             record_routing_audit(
                 runtime,
                 session.id,

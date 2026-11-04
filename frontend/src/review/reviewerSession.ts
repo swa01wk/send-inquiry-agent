@@ -26,6 +26,7 @@ export function useReviewerId(): [string | null, (id: string | null) => void] {
 }
 
 export const ROLE_LABELS: Record<string, string> = {
+  lease_admin: 'Lease Admin',
   rlm_store: 'Regional Leasing Manager (Store)',
   rplm_media: 'Regional Property Leasing Manager (Media)',
   rplm_specialty: 'Regional Property Leasing Manager (Specialty)',

@@ -14,6 +14,7 @@ import {
   OASIS_APPLICANT_EMAIL,
   OASIS_APPLICANT_MOBILE,
   openCallCentreChat,
+  openCaseAs,
   openReviewerCase,
   raiseTenantInquiry,
   resetDemoFromDevPage,
@@ -243,6 +244,9 @@ test.describe('Demo script @demo', () => {
         await expect(reviewerPage.getByTestId('case-stage')).toHaveText('Lead — second review')
         await beat(reviewerPage)
 
+        // Final review: the RLM takes over from the Lease Admin (demo feedback §3.2).
+        const finalReviewer = await reviewerFor(request, reference, 'final')
+        await openCaseAs(reviewerPage, finalReviewer, reference)
         const removeBlock = reviewerPage.getByTestId('action-remove_contact')
         await expect(removeBlock).toBeVisible()
         await removeBlock.getByLabel('Contact').selectOption('billing_contact')

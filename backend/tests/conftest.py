@@ -56,9 +56,17 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
 
 
 @pytest.fixture(autouse=True)
-def _restore_policy():
-    """Each test starts with the active policy and can't leak a swapped one into the next."""
-    with use_policy(get_policy()):
+def _restore_policy(request: pytest.FixtureRequest):
+    """Each test starts with the active policy and can't leak a swapped one into the next.
+
+    Tests written before the Lease Admin level (demo feedback §3.2, day R1) run with one
+    reviewer role doing both levels (`first_level_review_role: null`), as they were
+    written. Tests marked `lease_admin` run with the shipped policy (Lease Admin first).
+    """
+    policy = get_policy()
+    if request.node.get_closest_marker("lease_admin") is None:
+        policy = policy.with_changes(first_level_review_role=None)
+    with use_policy(policy):
         yield
 
 

@@ -102,6 +102,7 @@ class DocumentsPolicy(_Strict):
 
 
 ReviewRoleName = Literal["rlm_store", "rplm_media", "rplm_specialty"]
+FirstLevelRoleName = Literal["lease_admin"]
 ContactRoleName = Literal[
     "authorized_signatory",
     "billing_contact",
@@ -195,6 +196,10 @@ class ProactivePolicy(_Strict):
 class PolicyConfig(_Strict):
     product_lines: list[str] = Field(min_length=1)
     existing_tenant_policy: Literal["sign_in", "allow_inquiry"] = "sign_in"
+    # Public page (demo feedback §3.1): `lookup` checks a typed CR number in the registry
+    # (until 4 Nov 2026); `ask_then_sign_in` asks "Do you have a CR?" and never looks one
+    # up. Applies to the self-service channel only; staff channels keep the lookup.
+    public_cr_check: Literal["lookup", "ask_then_sign_in"] = "lookup"
     # A tenant signed in to Tenant Central is verified by Azure AD: no email link or OTP.
     signed_in_skips_verification: bool = True
     max_malls_per_inquiry: int = Field(default=1, ge=1, le=10)
@@ -207,6 +212,9 @@ class PolicyConfig(_Strict):
     # ---- Review lifecycle (L4) ---------------------------------------------------------
     # Product line → reviewer role; the queue's region is the mall's region.
     review_routing: dict[str, ReviewRoleName] = Field(default_factory=_review_routing)
+    # First-level review (demo feedback §3.2): this role reviews first in every product
+    # line; the `review_routing` role gives the final approval. None: one role does both.
+    first_level_review_role: FirstLevelRoleName | None = None
     second_level_contacts: SecondLevelContacts = SecondLevelContacts()
     rejection_categories: list[str] = Field(
         default_factory=lambda: ["incomplete_documents", "not_a_fit", "no_space", "other"]
