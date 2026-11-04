@@ -224,6 +224,54 @@ About 12 working days, with a thin L5 already running from Day 5.
 | L4 | X1–X9 | Sprint 2, by Mon 30 Nov |
 | L5 | Y1–Y6 | Closing, about Wed 16 Dec |
 
+The M0, L3 and L4 targets above are from 26 Oct. Part C proposes new dates after the demo feedback days.
+
+---
+
+# Part C — demo feedback days (added 4 Nov 2026, PRD v1.1)
+
+The client's 3–4 Nov demo feedback is built in five days that run like Part A. The scope is in [`docs/specs/demo-feedback.md`](specs/demo-feedback.md) (gate rows D1–D15). The day prompts are in [`prompts/feedback/`](../prompts/feedback/README.md), and the feedback, decisions and client questions are tracked in the [implementation tracker](https://claude.ai/artifact/U4cXzYrjUKofTVjWR4oEHx).
+
+## C1. How the work is split
+
+The split is the same as §A1:
+- **Claude** builds the backend and the screens that don't involve the model (reviewer console rows, `/dev`, seed data) as PRs from the project chat, with backend tests and the day's Playwright specs.
+- **Swaroop** owns the agent prompts, tools and guards, the chat cards, the live evals and tuning, in Cursor.
+
+Each day's backend PR merges first, and every PR branches from `main`. Start a day with "Start Day F*n* backend".
+
+## C2. The days
+
+| Day | Date | Claude (backend + deterministic UI) | Swaroop (agent + chat) | End-of-day check |
+| --- | --- | --- | --- | --- |
+| **F0** | Wed 4 Nov | Docs PR: change spec, three-lane flow (`docs/POC-LIFECYCLE.md` §2.4), assumptions, golden rule 5 reworded, PRD v1.1, testing §9, day prompts, STATUS rows | Review and merge | CI green |
+| **F1** | Thu 5 Nov | `cr_question` card builder and `cr_answer` action; CR scrubber; `SELF_SERVICE_TOOLS`; invariant I8; Lease Admin role, `EVENT_LEVEL`, routing, reviewers, console queue, `/dev` persona; `DocumentReviewService` with expiry mock; contract and isolation tests; `f1-cr-question` | `CrQuestionCard`; intake prompt without CR lookup; reply guard; scripts; re-recorded goldens; `cr_privacy` eval group | No CR lookup on the public page; cases in the Lease Admin queue; expiry stored on uploads |
+| **F2** | Fri 6 Nov | Document decisions and expiry status; document and contact events with guards; approval blockers; console document and contact rows; `signatory_question` card builder and action; fixtures; `f2-document-approval`, `f3-expiry` | `SignatoryQuestionCard`; contacts-card chips; case-agent wording for rejected or expired documents and contacts; `signatory` eval group; golden | Every document and contact approved individually; signatory question |
+| **F3** | Mon 9 Nov | `make demo` on Postgres; `seed_demo.py`; reseeding reset; `demo.spec.ts` for 10 Nov with three contexts and a restart | Demo script turn by turn; live tuning; `eval-live` and `e2e-live`; rehearsal; machine check | `make e2e-demo` green twice, including a restart |
+| — | **Tue 10 Nov** | **Re-demo with Muzammil** | | |
+| **F4** | Wed 11 Nov | Mock field extraction; `document_fill` and `document_checks`; re-upload reset; brief flags; `f5-type-or-upload` | Type-or-upload choice; mismatch wording; confirm-card evidence; `document_extract` eval group | Type or upload; mismatches flagged, never blocking |
+| **F5** | Thu 12 Nov | `YardiService.company_by_cr`; signed-in prefill from Yardi; both profiles required; lead codes; `f6-signed-in-new-brand` | Existing-tenant prompt for a new brand; codes on `case_status`; `channels` eval | Signed-in new brand; codes shown |
+
+Parked until the client answers (tracker section 6): request access (M3), CR without a login (M2), and CR certificate extraction (M1).
+
+## C3. Effect on Sprint 1 and the gates (proposed, to agree)
+
+The feedback days take six of Sprint 1's ten working days (F1–F5 and the re-demo). The M0 and L3 gate work in §B1 can't fit in the four days left. The proposal:
+
+| Gate | 26 Oct target | Proposed |
+| --- | --- | --- |
+| Demo feedback D1–D10 | — | Mon 9 Nov (re-demo Tue 10 Nov) |
+| Demo feedback D11–D15 | — | Thu 12 Nov |
+| M0 G1–G7 | Fri 13 Nov | Thu 19 Nov |
+| L3 E1–E10 (and C1–C4, C6) | Mon 16 Nov | Mon 23 Nov |
+| L4 X1–X9 (and C5) | Mon 30 Nov | Fri 4 Dec |
+| L5 Y1–Y6 | about Wed 16 Dec | about Wed 16 Dec, with the §B3 slip order if needed |
+
+Sprint 1 runs to Mon 23 Nov, and Sprint 2 to Fri 4 Dec. Part of the feedback work also counts towards these gates:
+- the document review service behind the gateway and its contract tests count for step 18;
+- the new stories count for the L3 and L4 story sets;
+- the review-level authorization tests count for X2.
+
 ---
 
 ## Inputs to ask Cenomi for

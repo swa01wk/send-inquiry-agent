@@ -4,7 +4,7 @@ These specs take the Send Inquiry agent from the v1 POC (solid L2, partial L3) t
 
 `docs/spec.md` stays the source of truth for the contracts that exist **today**. Each spec here describes a change. When a step lands, fold its contract changes into `docs/spec.md` in the same PR, as `.cursor/rules/project.mdc` requires.
 
-**Scope is locked in [`docs/PRD.md`](../PRD.md) (v1.0, tag `poc-prd-v1.0`).** Changes follow its change-control section.
+**Scope is locked in [`docs/PRD.md`](../PRD.md) (v1.1, 4 Nov 2026; v1.0 tagged `poc-prd-v1.0`).** Changes follow its change-control section.
 
 **The whole lifecycle, with diagrams and its verification against the agent, L1–L5 and these specs, is in [`docs/POC-LIFECYCLE.md`](../POC-LIFECYCLE.md).**
 
@@ -22,6 +22,7 @@ These specs take the Send Inquiry agent from the v1 POC (solid L2, partial L3) t
 | [intake-channels.md](intake-channels.md) | L3 + L4 | Call-centre assisted intake (§7.1.1 a2, §7.1.2 a2) and existing tenants via Leasing Opportunities (§7.1.2 a1); C1–C6 | `prompts/21c` |
 | [l4-outcome-assistance.md](l4-outcome-assistance.md) | L4 | The whole §7.1.1 b–c lifecycle runs end to end; reviewers keep every decision; no re-asking; grounded case briefs | `prompts/23`–`28` |
 | [l5-governed-proactivity.md](l5-governed-proactivity.md) | L5 | Triggers fire on time and once; every message passes the notification policy; no proactive status change; value measured | `prompts/29`–`31` |
+| [demo-feedback.md](demo-feedback.md) | L3 + L4 (change after the 3–4 Nov client demos) | No CR lookup on the public page; Lease Admin first-level review; per-document approval with expiry; per-contact approval; document review service; type or upload; signed-in new brand; D1–D15 | `prompts/feedback/` (days F1–F5) |
 
 Done before M0 (kept for reference): [ui-bugs.md](ui-bugs.md) (demo-run fixes) and [e2e-playwright.md](e2e-playwright.md) (Playwright `@scripted` and `@live` suites, `make e2e` / `make e2e-live`), from `prompts/11b-ui-bugs-and-e2e.md`.
 
@@ -35,9 +36,9 @@ The POC assumptions agreed on 25 Oct 2026 (implemented in PR #1):
 - Email is verified by link and the mobile by OTP.
 - One mall per inquiry.
 - International numbers are accepted, with OTP to mobile only.
-- An existing CR is pointed to Sign In.
+- An existing CR is pointed to Sign In. *Changed 4 Nov 2026:* the public page asks "Do you have a CR?" and never looks one up ([demo-feedback.md](demo-feedback.md) §3.1).
 - Optional space fields and the terms checkbox stay.
-- No document-content checks.
+- No document-content checks. *Changed 4 Nov 2026:* content checks come only from the mocked document review service ([demo-feedback.md](demo-feedback.md) §3.3).
 - External systems sit behind mock adapters until Cenomi provides access.
 
 Each spec ends with the assumptions it adds; `docs/STATUS.md` §5 lists them all.

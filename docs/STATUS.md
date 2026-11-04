@@ -4,7 +4,7 @@ The single place to see what's built, what's next and how the agent maps to the 
 
 **Objective.** Align the Send Inquiry Agent with the inquiry business process in requirements v2.1.7.1 §7.1 — from "Send us an inquiry" to a Yardi-ready lead — and make it genuinely agentic per the Agent Capability Maturity Framework (L3 → L4 → L5). Every external Cenomi system is simulated until Cenomi gives access.
 
-**Scope:** locked in [`docs/PRD.md`](PRD.md) v1.0 (tag `poc-prd-v1.0`); changes follow PRD §11.
+**Scope:** locked in [`docs/PRD.md`](PRD.md) v1.1 (4 Nov 2026, demo feedback; v1.0 tagged `poc-prd-v1.0`); changes follow PRD §11.
 
 **Lifecycle:** the whole process with diagrams, verified against the agent, the framework (L1–L5) and the specs: [`docs/POC-LIFECYCLE.md`](POC-LIFECYCLE.md).
 
@@ -12,7 +12,7 @@ The single place to see what's built, what's next and how the agent maps to the 
 
 **Status values:** ✅ Done · 🟡 In progress, or built at demo depth during the breadth days · ⬜ Not started · ⛔ Blocked · ➖ Waived (with reason)
 
-**Last updated:** 3 Nov 2026 · step 12 done (parity suite, live-eval baseline 27/27); earlier: 11e out-of-order intake, 5-day close-out (30 Oct)
+**Last updated:** 4 Nov 2026 · demo feedback planned (PRD v1.1, [spec](specs/demo-feedback.md), days F1–F5 in `prompts/feedback/`, re-demo Tue 10 Nov); earlier: step 12 done (parity suite, live-eval baseline 27/27), 11e out-of-order intake, 5-day close-out (30 Oct)
 
 ## 0. Delivery plan
 
@@ -25,7 +25,13 @@ The single place to see what's built, what's next and how the agent maps to the 
 | Day 3 | Thu 29 Oct | Routing, handoff, Arabic, follow-on; L3 core: form mode, evidence — every L3 capability at demo depth | #35 (handoff, Arabic, follow-on, evidence); #37 (form mode, S2/S3/S13); #39 (confirm card already confirmed) | #38 (router, redirect, handoff card, divider, evidence line, prompt) | ✅ | **Merged 28 Oct** (#38, #39 just after midnight). Router, redirect, handoff card, follow-on divider, Arabic guard capture, prompt sync |
 | Day 4 | Fri 30 Oct | Review lifecycle, reviewer console with audit timeline, case assistant — L4 core | #40 (lifecycle backend, review API, case links); #41 (console UI, Yardi relink) | #43 (case agent, case cards, `/inquiry/case`, T2) | ✅ | **Merged 29 Oct** (#42 docs). Case agent, case cards, `/inquiry/case`, T2, case eval scenarios |
 | Day 5 | Mon 2 Nov | Yardi handover, reviewer assistant, intake channels; L5 core: clock, triggers, notification policy, "Needs attention", drafted reminders; demo | #44 (L5 core, `/dev`, reset, `make demo`); #46 (intake channels backend, tenant APIs) | #45 (reviewer assistant, T1, approval wording); #47 (assisted and tenant prompts, cards, reminder drafting, demo script) | ✅ | **Merged 29 Oct.** End-of-day check automated: `make e2e-demo`; runs in CI as `e2e.yml` suite **demo** |
-| Sprint 1 | 3–16 Nov | M0 and L3 gates (incl. E10, intake channels); full test harness | #48 (Day 5 leftovers); #49 (11d-a) | #50 (11d-b); #51 (11d-c) | 🟡 | **Started early, 30 Oct.** Step 11d done; next is step 12 |
+| Feedback F0 | Wed 4 Nov | Docs: demo feedback spec, PRD v1.1, day prompts, three-lane flow, assumptions | Docs PR | — | 🟡 | [DELIVERY-PLAN](DELIVERY-PLAN.md) Part C |
+| Feedback F1 | Thu 5 Nov | "Do you have a CR?"; Lease Admin first level; document review service (expiry) | | | ⬜ | D1–D4, D9 |
+| Feedback F2 | Fri 6 Nov | Per-document approval with expiry; per-contact approval; signatory question | | | ⬜ | D5–D8 |
+| Feedback F3 | Mon 9 Nov | Re-demo hardening on Postgres; `demo.spec.ts` for 10 Nov | | | ⬜ | D10; **re-demo Tue 10 Nov** |
+| Feedback F4 | Wed 11 Nov | Type or upload; profile checks | | | ⬜ | D11, D12 |
+| Feedback F5 | Thu 12 Nov | Signed-in new brand (Yardi by CR); lead codes | | | ⬜ | D13–D15 |
+| Sprint 1 | 3–16 Nov (proposed to 23 Nov, Part C) | M0 and L3 gates (incl. E10, intake channels); full test harness | #48 (Day 5 leftovers); #49 (11d-a) | #50 (11d-b); #51 (11d-c) | 🟡 | **Started early, 30 Oct.** Steps 11d, 11e, 12 done; step 13 in progress; feedback days F1–F5 run inside this sprint |
 | Sprint 2 | 17–30 Nov | L4 gate; channels row C5 | | | ⬜ | |
 | Closing | 1 Dec – ~16 Dec | L5 to gate quality (thin L5 runs from Day 5); production readiness | | | ⬜ | |
 
@@ -63,6 +69,7 @@ Day 1–5 end-of-day checks (`prompts/breadth/day*.md`) are covered by those sui
 | --- | --- | --- | --- | --- |
 | Pre-baseline | [pre-baseline-fixes.md](specs/pre-baseline-fixes.md) §2 | P1–P5 | ✅ | P1–P3, P5 in CI (#25, #26). P4: CI green; eval 18/20 (11c), 19/20 and a passing run 2 (#27); `@live` smoke 26/28, then 01 and 05 passing (`docs/eval-notes.md`) |
 | M0 modular core | [m0-modular-core.md](specs/m0-modular-core.md) §2 | G1–G7 | ⬜ | — |
+| Demo feedback | [demo-feedback.md](specs/demo-feedback.md) §2 | D1–D15 (D1–D10 by the 10 Nov re-demo) | ⬜ | — |
 | L3 reliable intake | [l3-reliable-intake.md](specs/l3-reliable-intake.md) §2 | E1–E9 | ⬜ | — |
 | Intake channels | [intake-channels.md](specs/intake-channels.md) §2 | C1–C6 (C1–C4, C6 with L3 as E10; C5 with L4) | ⬜ | — |
 | L4 outcome assistance | [l4-outcome-assistance.md](specs/l4-outcome-assistance.md) §2 | X1–X9 | ⬜ | — |
@@ -122,7 +129,7 @@ Summary by workflow. Line-by-line coverage of every statement in §7.1, §7.1.1 
 | Notifications: information vs action required (§7.15) | 18, 23 | Days 2, 4 | 🟡 (every template has kind `information` or `action_required`; content synthetic until Cenomi sends §7.15) |
 | Audit log of actions by customers and staff (§7.10) | 15, 23 | Days 2, 4 | 🟡 (audit log v0, redacted; case audit timeline with actors on the console. `inquiry_events` table in Sprint 1) |
 | Review SLAs (Phase 2) | Demo thresholds in 29–30 | Day 5, Closing | 🟡 (thin: stalled-review and escalation thresholds on the simulated clock) |
-| **Out of scope:** Super Admin onboarding of existing tenants (§7.1, user management); profile completion after sign-in; General Inquiries (§7.8.1.1, router redirects); Proposal stage (§7.2); document-content checks | — | — | ➖ |
+| **Out of scope:** Super Admin onboarding of existing tenants (§7.1, user management); profile completion after sign-in; General Inquiries (§7.8.1.1, router redirects); Proposal stage (§7.2); document-content checks in the agent (from 4 Nov, content checks come only from the mocked document review service); request access and CR certificate extraction (parked, PRD v1.1) | — | — | ➖ |
 
 ## 4. Agentic capability coverage (framework §5–§7)
 
@@ -175,6 +182,7 @@ Nothing is blocked: each item has a working assumption implemented in a mock or 
 | L4 | A1–A10 (L4 §6) |
 | Intake channels | D1–D8 ([intake-channels.md](specs/intake-channels.md) §6), including the `staff` source and signed-in tenants skipping verification |
 | L5 | B1–B6 (L5 §6). **B6 extends POC assumption 9** (resume link for an abandoned draft sent without approval) |
+| Demo feedback | `docs/assumptions.md` "Demo feedback assumptions" (4 Nov); client questions M1–M12 in the [tracker](https://claude.ai/artifact/U4cXzYrjUKofTVjWR4oEHx) section 6 |
 
 ## 6. Known issues
 

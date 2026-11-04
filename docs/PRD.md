@@ -1,6 +1,6 @@
-# Send Inquiry Agent — POC product requirements (PRD v1.0)
+# Send Inquiry Agent — POC product requirements (PRD v1.1)
 
-**Status: LOCKED** · Version 1.0 · Locked 26 Oct 2026 · Git tag `poc-prd-v1.0` · Owner: Swaroop Shivakumar
+**Status: LOCKED** · Version 1.1 (4 Nov 2026; v1.0 locked 26 Oct 2026, tag `poc-prd-v1.0`) · Owner: Swaroop Shivakumar
 
 This PRD fixes the scope of the Cenomi Send Inquiry Agent POC. The detailed behaviour lives in the specs it points to; together they are the baseline every build step is checked against. Any change after this point follows §11 (change control).
 
@@ -30,15 +30,15 @@ The client's first priority is conversational friendliness: the agent helps peop
 
 | Area | What the POC delivers | Spec |
 | --- | --- | --- |
-| Intake, self-service (§7.1.1 a1) | CR check or skip; 12 basic-info fields collected in bundles; derived values confirmed only after being shown; one product line (Store, Media, Specialty) and one mall; international phone numbers; Arabic | `docs/spec.md`; [pre-baseline-fixes](specs/pre-baseline-fixes.md); [L3](specs/l3-reliable-intake.md) |
+| Intake, self-service (§7.1.1 a1) | "Do you have a CR?": Yes → sign in, No → chat intake, with no CR number taken or looked up on the public page (v1.1); 12 basic-info fields collected in bundles; derived values confirmed only after being shown; one product line (Store, Media, Specialty) and one mall; international phone numbers; Arabic | `docs/spec.md`; [pre-baseline-fixes](specs/pre-baseline-fixes.md); [L3](specs/l3-reliable-intake.md) |
 | Verification | Email by link (the click verifies), mobile by OTP, resend after a set time; resume from the link on any device | L3 §3.2–3.3 |
-| Documents | Company and Brand Profile required; CR, VAT, National ID, National Address optional, with their numbers; presence, type and size only | Pre-baseline F2, F5 |
+| Documents | Company and Brand Profile required; CR, VAT, National ID, National Address optional, with their numbers. The agent checks presence, type and size; expiry dates and, from Sprint 1, extracted details and mismatch flags come from a separate document review service (mocked) (v1.1) | Pre-baseline F2, F5; [Demo feedback](specs/demo-feedback.md) §3.3, §3.7 |
 | Submit and tracking | Review and consent; one reference per inquiry; reference by email and SMS; private tracking page | L3 §3.4; [M0](specs/m0-modular-core.md) §7 |
 | Call-centre and Guest Service intake (§7.1.1 a2, §7.1.2 a2) | Staff raise the inquiry with the agent; the applicant completes it from a link (email verified, review, Proceed, OTP, documents, submit); existing CR → ask to sign in or continue with prefill | [Intake channels](specs/intake-channels.md) §3.1–3.3 |
-| Existing tenants (§7.1.2 a1, §7.1) | Sign in; Leasing Opportunities; prefilled details, documents and property; My inquiries; public-page sign-in path | Intake channels §3.4–3.6 |
+| Existing tenants (§7.1.2 a1, §7.1) | Sign in; Leasing Opportunities; company details from Yardi by CR, the new brand typed or from the brand profile, both profiles uploaded (v1.1); property preselected; My inquiries; public-page sign-in path | Intake channels §3.4–3.6; Demo feedback §3.8 |
 | Routing, handoff, recovery | Intent routing; handoff to the call centre; fault handling; form mode when the model is down | L3 §3.5, §3.6, §3.14 |
-| First-level review (§7.1.1 b) | Routing by product line and region; reviewer console with a grounded case brief; re-upload loop; reject with remarks; approve with Azure AD invitation (only if no account) and an automatic contacts request; "lead" | [L4](specs/l4-outcome-assistance.md) §3.1–3.6 |
-| Second-level review (§7.1.1 c, §7.1.2 c) | Contacts (prefilled for existing tenants; reviewer can remove); estimated sales data; Yardi company and brand re-link; approve (invitations with roles, acceptance email, lead to Yardi) or reject | L4 §3.3–3.7; Intake channels §3.7 |
+| First-level review (§7.1.1 b) | The Lease Admin reviews first and approves or rejects each document, with expiry confirmed (v1.1); routing by product line and region; reviewer console with a grounded case brief; re-upload loop; reject with remarks; approve with Azure AD invitation (only if no account) and an automatic contacts request; "lead" | [L4](specs/l4-outcome-assistance.md) §3.1–3.6 |
+| Second-level review (§7.1.1 c, §7.1.2 c) | Contacts, starting with "Are you the authorised signatory?", each approved or rejected by the Lease Admin (v1.1; prefilled for existing tenants; reviewer can remove); RLM / RPLM make the final decision; estimated sales data; Yardi company and brand re-link; approve (invitations with roles, acceptance email, lead to Yardi) or reject | L4 §3.3–3.7; Intake channels §3.7 |
 | Applicant case assistant and reviewer assistant | Explains status and requests, collects answers, never re-asks; reviewer assistant suggests and drafts but never decides | L4 §3.5–3.6 |
 | Proactivity (L5) | Stalled-review and pending-action triggers on a simulated clock; reminders under a notification policy (tiers, quiet hours, throttles, opt-out); "Needs attention"; insights | [L5](specs/l5-governed-proactivity.md) |
 | Simulated Cenomi | CR registry, email and SMS (dev inbox), Tenant Admin Platform (reviewer and call-centre consoles), Tenant Central sign-in, Azure AD, Yardi, master data with Arabic names; fault injection | L3 §3.1, §3.8; L4 §3.2; Intake channels §3.4 |
@@ -46,7 +46,7 @@ The client's first priority is conversational friendliness: the agent helps peop
 
 ### 3.2 Out of scope
 
-Real Cenomi systems (all simulated until access is granted); Super Admin user management and onboarding of existing tenants by invitation; profile completion after Azure AD sign-in; tenant–staff messaging; General Inquiries (routed away); the Proposal stage (§7.2) onward; reading document contents; a right-to-left Arabic UI (the agent replies in Arabic; see §10).
+Real Cenomi systems (all simulated until access is granted); Super Admin user management and onboarding of existing tenants by invitation; profile completion after Azure AD sign-in; tenant–staff messaging; General Inquiries (routed away); the Proposal stage (§7.2) onward; the agent reading document contents (content checks only through the mocked document review service); request access for a company with a CR but no login; CR certificate extraction (pending Cenomi); a right-to-left Arabic UI (the agent replies in Arabic; see §10).
 
 ## 4. The process
 
@@ -66,7 +66,7 @@ The full lifecycle, with diagrams and stage-by-stage behaviour, is in [`docs/POC
 1. The model acts only through tools; it never writes state. Business rules live in code and the policy file, not the prompt.
 2. Every field records its source (`user`, `derived`, `verified`, `default`, `staff`) and whether it's confirmed. Derived, verified and staff-entered values are confirmed by the applicant before submit.
 3. Consent, OTP codes and link tokens never pass through the model. Submit is a deterministic UI action.
-4. Documents are checked for presence, type and size only.
+4. The agent checks documents for presence, type and size only. Content checks come only from the document review service, which returns typed fields, so no document text reaches the model (v1.1).
 5. External systems sit behind service interfaces with mocks.
 6. Reviewers make every decision. No agent or proactive path changes a case's status.
 7. Contract changes update `docs/spec.md` in the same PR.
@@ -88,9 +88,10 @@ The POC is accepted gate by gate. Each gate row names the test that proves it.
 | Gate | Rows | Target |
 | --- | --- | --- |
 | Pre-baseline | P1–P5 | 27 Oct |
-| M0 modular core | G1–G7 | 13 Nov |
-| L3 reliable intake (incl. intake channels) | E1–E10 (C1–C4, C6) | 16 Nov |
-| L4 outcome assistance | X1–X9, C5 | 30 Nov |
+| M0 modular core | G1–G7 | 13 Nov; proposed 19 Nov after the demo feedback days (Part C) |
+| L3 reliable intake (incl. intake channels) | E1–E10 (C1–C4, C6) | 16 Nov; proposed 23 Nov (Part C) |
+| Demo feedback | D1–D15 | D1–D10 by 9 Nov (re-demo 10 Nov); D11–D15 by 12 Nov |
+| L4 outcome assistance | X1–X9, C5 | 30 Nov; proposed 4 Dec (Part C) |
 | L5 governed proactivity | Y1–Y6 | ~16 Dec |
 
 A conversational demo alone never passes a gate.
@@ -102,7 +103,7 @@ A conversational demo alone never passes a gate.
 | Phase | Dates | Outcome |
 | --- | --- | --- |
 | 5-day plan | 27 Oct – 2 Nov | Every §7.1 workflow and the core of L3, L4 and L5 demoable end to end (demo depth) |
-| Sprint 1 | 3 – 16 Nov | M0 and L3 gates: the intake POC at gate quality |
+| Sprint 1 | 3 – 16 Nov (proposed to 23 Nov) | Demo feedback days F1–F5 and the 10 Nov re-demo; then the M0 and L3 gates: the intake POC at gate quality |
 | Sprint 2 | 17 – 30 Nov | L4 gate: the review lifecycle at gate quality |
 | Closing | 1 – ~16 Dec | L5 gate; production readiness |
 
@@ -126,3 +127,4 @@ From this version on:
 | --- | --- | --- |
 | 1.0 | 26 Oct 2026 | Locked: PRs #14–#18 (lifecycle specs, testing strategy, delivery plan, §7.1 traceability, intake channels, lifecycle review) |
 | 1.0 (clarification) | 26 Oct 2026 | Delivery order only, no scope change: the core of L3, L4 and L5 is shown in the 5-day plan at demo depth (restart-safe drafts, audit log, typed failures, form mode, evidence, thin proactive layer); Claude also builds the deterministic UI pages. Gates and dates unchanged |
+| 1.1 | 4 Nov 2026 | Client demo feedback (3–4 Nov), [demo feedback spec](specs/demo-feedback.md): no CR lookup on the public page; Lease Admin first-level review; per-document approval with expiry; per-contact approval and the signatory question; document review service (mocked); type-or-upload with profile checks; signed-in new-brand flow with Yardi company details and lead codes. **Cost:** 5 working days (F1–F5) plus the re-demo, taken from Sprint 1. **Absorbed by:** Sprint 1; the M0 and L3 gate dates move (`docs/DELIVERY-PLAN.md` Part C) |

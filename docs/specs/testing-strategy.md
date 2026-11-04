@@ -99,6 +99,7 @@ Checked automatically in AGENT-LIVE and E2E-LIVE on every turn, and asserted in 
 | I5 | A reply never contains another applicant's data, and reviewer identities appear only as roles |
 | I6 | No agent decides for a reviewer, and no proactive path changes a case |
 | I7 | A reply never promises approval, availability, prices or timelines |
+| I8 | On the self-service channel, no reply or card contains a CR number, or a company name or address from a CR lookup (added with [demo feedback](demo-feedback.md) §6, day F1) |
 
 ## 4. Which layers a change must run
 
@@ -153,3 +154,13 @@ Step 11d moves today's scenario definitions into the catalogue without changing 
 | REST (dev only) | `GET /api/dev/audit/{inquiry_id}` (from step 18, with the other dev tools) |
 | Config | `EVAL_REPEATS`, `EVAL_TOLERANCE` (eval script only) |
 | Commands | `make check`, `check-be`, `check-fe`, `test-be`, `test-fe`, `e2e-fe`, `e2e-int`, `test-agent`, `eval-live`, `ci`, `gate` |
+
+## 9. Demo feedback days (F1–F5)
+
+The [demo feedback spec](demo-feedback.md) adds the following. Each day prompt's **Tests** section lists them in full.
+- **Invariant I8** in §3, live on every AGENT-LIVE and E2E-LIVE turn from F1.
+- **Stories** `f1-cr-question` to `f6-signed-in-new-brand` (INT, `@scripted`), and a rewritten `demo.spec.ts` with three browser contexts and a restart (DEMO).
+- **Live-eval groups** `cr_privacy` (F1), `signatory` (F2) and `document_extract` (F4), each ×3 against the step 12 baseline.
+- **The six scenario classes** from the architecture assessment (§13.2): failure, concurrency, authorization, interruption, stale context and recovery. Each has at least one backend or Playwright test per feedback day (spec §5).
+- **§4 still decides the live layers.** F1, F2 and F4 change prompts and tools, so they run AGENT-LIVE for the affected groups. F3 runs `e2e-demo` and `e2e-live` before the 10 Nov re-demo.
+
