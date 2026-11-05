@@ -102,6 +102,17 @@ export class FeInquiryPage {
     await this.waitForTurnDone(doneBefore)
   }
 
+  /** "Do you have a CR?" (demo feedback §3.1): Yes is the first button, No the second. */
+  async answerCrQuestion(hasCr: boolean) {
+    const card = this.cards('cr_question')
+    const doneBefore = await readDoneEventCount(this.page)
+    await card
+      .getByRole('button')
+      .nth(hasCr ? 0 : 1)
+      .click()
+    await this.waitForTurnDone(doneBefore)
+  }
+
   async verifyEmail() {
     const card = this.cards('verification')
     const doneBefore = await readDoneEventCount(this.page)

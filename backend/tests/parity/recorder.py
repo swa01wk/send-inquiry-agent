@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -167,7 +168,9 @@ async def record_all(settings: Settings) -> None:
     for scenario in all_scenarios():
         # Demo feedback §3.1: only re-record new CR-question goldens; older scripts keep
         # lookup behaviour via `X-Test-Scenario` and stay on disk until intentionally replaced.
-        if scenario.name != "rd-cr-question" and golden_path(scenario.name).is_file():
+        # GOLDEN_FORCE=1 re-records every golden (an intentional refresh).
+        force = os.environ.get("GOLDEN_FORCE") == "1"
+        if not force and scenario.name != "rd-cr-question" and golden_path(scenario.name).is_file():
             print(f"skip {scenario.name} (existing golden)")
             continue
         events, session_payload = await record_scenario(settings, scenario)

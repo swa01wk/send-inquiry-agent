@@ -27,6 +27,7 @@ const PARITY_SCENARIOS = [
   'two-malls-named',
   'wrong-otp-three-times',
   's14-out-of-order',
+  'rd-cr-question',
 ] as const
 
 function loadScenario(name: string): FeScenarioFile {
@@ -41,6 +42,11 @@ async function replayWhen(inquiry: FeInquiryPage, when: FeWhen, otpCodes: string
   }
   if (when.action === 'confirm_card') {
     await inquiry.confirmCard()
+    return
+  }
+  if (when.action === 'cr_answer') {
+    // The rd-cr-question golden records Yes (backend/tests/parity/scenarios.py).
+    await inquiry.answerCrQuestion(true)
     return
   }
   if (when.action === 'verify_email') {
@@ -99,7 +105,7 @@ test.describe('Parity golden fixtures @fe', () => {
         }
       }
 
-      if (name === 'existing-cr-sign-in') {
+      if (name === 'existing-cr-sign-in' || name === 'rd-cr-question') {
         await expect(inquiry.cards('sign_in_prompt')).toBeVisible()
       } else if (name === 'two-malls-named') {
         const text = (await inquiry.lastBotText()).toLowerCase()
