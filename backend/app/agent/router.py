@@ -13,6 +13,7 @@ from typing import Any, Literal, Protocol
 
 from pydantic import BaseModel, Field
 
+from app.agent.model import build_chat_model
 from app.agent.runtime import AgentRuntime
 from app.domain.models import Phase
 from app.domain.rules import compute_phase
@@ -118,20 +119,25 @@ async def classify_intent(
 ) -> ClassifierResult:
     """Structured-output classifier (`ROUTER_MODEL`), via the gateway as service `llm_router`."""
     from langchain_core.messages import HumanMessage, SystemMessage
-    from langchain_openai import ChatOpenAI
-    from pydantic import SecretStr
 
     settings = runtime.settings
-    model_name = settings.router_model or settings.openai_model
-    api_key = settings.openai_api_key
-    if not api_key or not model_name:
+    try:
+        llm = settings.require_llm()
+    except RuntimeError:
         return ClassifierResult(intent=Intent.INQUIRY_INTAKE, confidence=0.0)
 
-    structured = ChatOpenAI(
+    model_name = settings.router_model or llm.model
+    base = build_chat_model(
+        settings,
         model=model_name,
-        api_key=SecretStr(api_key),
         temperature=0,
-    ).with_structured_output(ClassifierResult)
+        streaming=False,
+    )
+    # Azure 2025-04-01-preview rejects the default json_schema method for some deployments.
+    if settings.llm_provider == "azure":
+        structured = base.with_structured_output(ClassifierResult, method="function_calling")
+    else:
+        structured = base.with_structured_output(ClassifierResult)
 
     system = (
         "Classify the user's message for a mall leasing inquiry chatbot. "

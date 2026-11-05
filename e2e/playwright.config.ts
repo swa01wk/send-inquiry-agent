@@ -47,8 +47,28 @@ export default defineConfig({
         CORS_ORIGINS: 'http://localhost:5173,http://127.0.0.1:5173',
         RATE_LIMIT_IP: '1000/minute',
         RATE_LIMIT_SESSION: '1000/minute',
+        ...(process.env.LLM_PROVIDER ? { LLM_PROVIDER: process.env.LLM_PROVIDER } : {}),
+        ...(process.env.LLM_MODEL ? { LLM_MODEL: process.env.LLM_MODEL } : {}),
+        ...(process.env.LLM_TEMPERATURE !== undefined
+          ? { LLM_TEMPERATURE: process.env.LLM_TEMPERATURE }
+          : {}),
+        ...(process.env.LLM_REASONING_EFFORT
+          ? { LLM_REASONING_EFFORT: process.env.LLM_REASONING_EFFORT }
+          : {}),
         ...(process.env.OPENAI_API_KEY ? { OPENAI_API_KEY: process.env.OPENAI_API_KEY } : {}),
         ...(process.env.OPENAI_MODEL ? { OPENAI_MODEL: process.env.OPENAI_MODEL } : {}),
+        ...(process.env.OPENAI_TEMPERATURE !== undefined
+          ? { OPENAI_TEMPERATURE: process.env.OPENAI_TEMPERATURE }
+          : {}),
+        ...(process.env.AZURE_OPENAI_ENDPOINT
+          ? { AZURE_OPENAI_ENDPOINT: process.env.AZURE_OPENAI_ENDPOINT }
+          : {}),
+        ...(process.env.AZURE_OPENAI_API_KEY
+          ? { AZURE_OPENAI_API_KEY: process.env.AZURE_OPENAI_API_KEY }
+          : {}),
+        ...(process.env.AZURE_OPENAI_API_VERSION
+          ? { AZURE_OPENAI_API_VERSION: process.env.AZURE_OPENAI_API_VERSION }
+          : {}),
       },
     },
     {

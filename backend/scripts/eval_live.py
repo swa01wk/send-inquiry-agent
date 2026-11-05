@@ -4,7 +4,7 @@
 Usage:
     cd backend && uv run python scripts/eval_live.py
 
-Requires OPENAI_API_KEY and OPENAI_MODEL. Drives scripted user turns for intake and case
+Requires an LLM provider: OpenAI or Azure. Drives scripted user turns for intake and case
 scenarios and prints pass/fail checks plus transcripts.
 
 Optional: GROUP=intake|case|channels filters scenarios (see docs/specs/testing-strategy.md).
@@ -883,6 +883,7 @@ class ScenarioAggregate:
 @dataclass
 class EvalRunResult:
     timestamp: str
+    provider: str
     model: str
     group: str | None
     eval_repeats: int
@@ -1638,6 +1639,7 @@ def _format_markdown(result: EvalRunResult, json_path: Path) -> str:
         "# AGENT-LIVE eval summary",
         "",
         f"- **When:** {result.timestamp}",
+        f"- **Provider:** {result.provider}",
         f"- **Model:** {result.model}",
         f"- **Group:** {result.group or 'all'}",
         f"- **Repeats:** {result.eval_repeats}",
@@ -1680,6 +1682,7 @@ def _format_markdown(result: EvalRunResult, json_path: Path) -> str:
 def _eval_run_to_json(result: EvalRunResult) -> dict[str, Any]:
     return {
         "timestamp": result.timestamp,
+        "provider": result.provider,
         "model": result.model,
         "group": result.group,
         "eval_repeats": result.eval_repeats,
@@ -1736,7 +1739,7 @@ async def main() -> int:
                 "tenant_portal": True,
             },
         )
-        settings.require_openai()
+        llm_cfg = settings.require_llm()
     except RuntimeError as exc:
         print(f"Cannot run live eval: {exc}", file=sys.stderr)
         return 1
@@ -1899,7 +1902,8 @@ async def main() -> int:
     timestamp = datetime.now(tz=UTC).strftime("%Y%m%dT%H%M%SZ")
     eval_result = EvalRunResult(
         timestamp=timestamp,
-        model=settings.openai_model or os.environ.get("OPENAI_MODEL", "unknown"),
+        provider=llm_cfg.provider,
+        model=llm_cfg.model,
         group=group_label,
         eval_repeats=eval_repeats,
         eval_tolerance=eval_tolerance,

@@ -361,10 +361,16 @@ process steps · review time · required documents · what a CR number is · wha
 
 | Variable | Default |
 | --- | --- |
-| `OPENAI_API_KEY` | — (required) |
-| `OPENAI_MODEL` | — (required; any OpenAI chat model with tool calling) |
-| `OPENAI_TEMPERATURE` | `0.6` |
-| `ROUTER_MODEL` | — (defaults to `OPENAI_MODEL`; structured-output intent classifier) |
+| `LLM_PROVIDER` | — (`openai` \| `azure`; unset → `azure` if `AZURE_OPENAI_ENDPOINT` is set, else `openai`) |
+| `OPENAI_API_KEY` | — (required when `LLM_PROVIDER=openai`) |
+| `OPENAI_MODEL` | — (OpenAI chat model with tool calling; alias for deployment name when `LLM_MODEL` unset) |
+| `LLM_MODEL` | — (model or Azure deployment name; wins over `OPENAI_MODEL` when both set) |
+| `OPENAI_TEMPERATURE` / `LLM_TEMPERATURE` | `0.6` (`LLM_TEMPERATURE` wins; empty = omit temperature, needed for GPT-5) |
+| `LLM_REASONING_EFFORT` | — (`minimal` \| `low` \| `medium` \| `high`; reasoning models only) |
+| `AZURE_OPENAI_ENDPOINT` | — (required when `LLM_PROVIDER=azure`) |
+| `AZURE_OPENAI_API_KEY` | — (required when `LLM_PROVIDER=azure`) |
+| `AZURE_OPENAI_API_VERSION` | `2025-04-01-preview` |
+| `ROUTER_MODEL` | — (defaults to the LLM model; structured-output intent classifier) |
 | `ROUTER_MIN_CONFIDENCE` | `0.6` (below this, or mid-intake, → `inquiry_intake`) |
 | `OTP_MOCK_CODE` | `1234` |
 | `EMAIL_LINK_DEMO` | `true` (the verification card carries the link token for a demo button) |

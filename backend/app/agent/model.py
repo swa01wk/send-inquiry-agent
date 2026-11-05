@@ -9,10 +9,12 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
 from langchain_core.tools import BaseTool
-from langchain_openai import ChatOpenAI
-from pydantic import Field, PrivateAttr, SecretStr
+from langchain_openai import AzureChatOpenAI, ChatOpenAI
+from pydantic import Field, PrivateAttr
 
-from app.config import get_settings
+from app.config import Settings, get_settings
+
+_MISSING = object()
 
 
 class ModelUnavailable(Exception):
@@ -36,15 +38,58 @@ def model_error_kind(exc: BaseException) -> str | None:
     return "timeout" if "timeout" in name else "unavailable"
 
 
-def get_chat_model() -> ChatOpenAI:
-    settings = get_settings()
-    api_key, model = settings.require_openai()
+def supports_temperature(model: str) -> bool:
+    """GPT-5 and o-series models reject non-default temperature (400 from the API)."""
+    lower = model.lower()
+    return not lower.startswith(("gpt-5", "o1", "o3", "o4"))
+
+
+def is_reasoning_model(model: str) -> bool:
+    lower = model.lower()
+    return lower.startswith(("gpt-5", "o1", "o3", "o4"))
+
+
+def build_chat_model(
+    settings: Settings,
+    *,
+    model: str | None = None,
+    temperature: float | None | object = _MISSING,
+    streaming: bool = True,
+) -> BaseChatModel:
+    """Build ChatOpenAI or AzureChatOpenAI from settings."""
+    cfg = settings.require_llm()
+    deployment = model or cfg.model
+    temp: float | None
+    if temperature is _MISSING:
+        temp = settings.llm_temperature
+    else:
+        temp = temperature  # type: ignore[assignment]
+
+    kwargs: dict[str, Any] = {"streaming": streaming}
+    if temp is not None and supports_temperature(deployment):
+        kwargs["temperature"] = temp
+    if settings.llm_reasoning_effort and is_reasoning_model(deployment):
+        kwargs["reasoning_effort"] = settings.llm_reasoning_effort
+
+    if cfg.provider == "azure":
+        assert cfg.endpoint is not None
+        return AzureChatOpenAI(
+            azure_endpoint=cfg.endpoint,
+            api_key=cfg.api_key,
+            api_version=cfg.api_version or settings.azure_openai_api_version,
+            azure_deployment=deployment,
+            model=deployment,
+            **kwargs,
+        )
     return ChatOpenAI(
-        model=model,
-        api_key=SecretStr(api_key),
-        temperature=settings.openai_temperature,
-        streaming=True,
+        model=deployment,
+        api_key=cfg.api_key,
+        **kwargs,
     )
+
+
+def get_chat_model() -> BaseChatModel:
+    return build_chat_model(get_settings(), streaming=True)
 
 
 class ScriptedChatModel(BaseChatModel):

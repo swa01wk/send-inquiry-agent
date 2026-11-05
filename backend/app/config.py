@@ -1,10 +1,22 @@
 """Application settings loaded from environment variables."""
 
+from dataclasses import dataclass
 from functools import lru_cache
-from typing import Literal
+from typing import Any, Literal, Self
 
-from pydantic import Field
+from pydantic import AliasChoices, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+@dataclass(frozen=True)
+class LlmConfig:
+    """Resolved LLM provider settings (never log `api_key`)."""
+
+    provider: Literal["openai", "azure"]
+    model: str
+    api_key: SecretStr
+    endpoint: str | None
+    api_version: str | None
 
 
 class Settings(BaseSettings):
@@ -14,11 +26,33 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
+        populate_by_name=True,
     )
 
+    llm_provider: Literal["openai", "azure"] | None = Field(
+        default=None, validation_alias="LLM_PROVIDER"
+    )
     openai_api_key: str | None = Field(default=None, validation_alias="OPENAI_API_KEY")
-    openai_model: str | None = Field(default=None, validation_alias="OPENAI_MODEL")
-    openai_temperature: float = Field(default=0.6, validation_alias="OPENAI_TEMPERATURE")
+    llm_model: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("LLM_MODEL", "OPENAI_MODEL"),
+    )
+    llm_temperature: float | None = Field(
+        default=0.6,
+        validation_alias=AliasChoices("LLM_TEMPERATURE", "OPENAI_TEMPERATURE"),
+    )
+    llm_reasoning_effort: Literal["minimal", "low", "medium", "high"] | None = Field(
+        default=None,
+        validation_alias="LLM_REASONING_EFFORT",
+    )
+    azure_openai_endpoint: str | None = Field(
+        default=None, validation_alias="AZURE_OPENAI_ENDPOINT"
+    )
+    azure_openai_api_key: str | None = Field(default=None, validation_alias="AZURE_OPENAI_API_KEY")
+    azure_openai_api_version: str = Field(
+        default="2025-04-01-preview",
+        validation_alias="AZURE_OPENAI_API_VERSION",
+    )
     router_model: str | None = Field(default=None, validation_alias="ROUTER_MODEL")
     router_min_confidence: float = Field(default=0.6, validation_alias="ROUTER_MIN_CONFIDENCE")
 
@@ -115,18 +149,89 @@ class Settings(BaseSettings):
         validation_alias="AGENT_HISTORY_MESSAGES",
     )
 
+    @field_validator("llm_temperature", mode="before")
+    @classmethod
+    def _empty_llm_temperature(cls, value: Any) -> Any:
+        if value == "":
+            return None
+        return value
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coalesce_model_fields(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        merged = dict(data)
+        llm = merged.get("llm_model") or merged.get("LLM_MODEL")
+        openai = merged.get("openai_model") or merged.get("OPENAI_MODEL")
+        if llm:
+            merged["llm_model"] = llm
+        elif openai:
+            merged["llm_model"] = openai
+        merged.pop("openai_model", None)
+        return merged
+
+    @property
+    def openai_model(self) -> str | None:
+        """Alias for ``llm_model`` (backward compatibility)."""
+        return self.llm_model
+
+    @model_validator(mode="after")
+    def _resolve_llm_defaults(self) -> Self:
+        if self.llm_provider is None:
+            provider: Literal["openai", "azure"] = (
+                "azure" if self.azure_openai_endpoint else "openai"
+            )
+            object.__setattr__(self, "llm_provider", provider)
+        return self
+
     @property
     def cors_origin_list(self) -> list[str]:
         if not self.cors_origins.strip():
             return ["http://localhost:5173"]
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
-    def require_openai(self) -> tuple[str, str]:
-        """Return (api_key, model) or raise if agent features need OpenAI but env is missing."""
-        if not self.openai_api_key or not self.openai_model:
-            msg = "OPENAI_API_KEY and OPENAI_MODEL must be set to run the agent"
+    def require_llm(self) -> LlmConfig:
+        """Return resolved LLM config or raise naming missing env vars for the chosen provider."""
+        provider = self.llm_provider or ("azure" if self.azure_openai_endpoint else "openai")
+        model = self.llm_model
+        if not model:
+            msg = "LLM_MODEL or OPENAI_MODEL must be set to run the agent"
             raise RuntimeError(msg)
-        return self.openai_api_key, self.openai_model
+        if provider == "openai":
+            if not self.openai_api_key:
+                msg = "OPENAI_API_KEY must be set to run the agent with LLM_PROVIDER=openai"
+                raise RuntimeError(msg)
+            return LlmConfig(
+                provider="openai",
+                model=model,
+                api_key=SecretStr(self.openai_api_key),
+                endpoint=None,
+                api_version=None,
+            )
+        missing: list[str] = []
+        if not self.azure_openai_endpoint:
+            missing.append("AZURE_OPENAI_ENDPOINT")
+        if not self.azure_openai_api_key:
+            missing.append("AZURE_OPENAI_API_KEY")
+        if missing:
+            msg = f"{', '.join(missing)} must be set to run the agent with LLM_PROVIDER=azure"
+            raise RuntimeError(msg)
+        api_key = self.azure_openai_api_key
+        endpoint = self.azure_openai_endpoint
+        assert api_key is not None and endpoint is not None
+        return LlmConfig(
+            provider="azure",
+            model=model,
+            api_key=SecretStr(api_key),
+            endpoint=endpoint,
+            api_version=self.azure_openai_api_version,
+        )
+
+    def require_openai(self) -> tuple[str, str]:
+        """Return (api_key, model) or raise if agent features need an LLM but env is missing."""
+        cfg = self.require_llm()
+        return cfg.api_key.get_secret_value(), cfg.model
 
 
 @lru_cache
