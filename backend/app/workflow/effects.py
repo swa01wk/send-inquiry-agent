@@ -196,6 +196,7 @@ async def _prefill_tenant_contacts(runtime: AgentRuntime, case: Case, event: Wor
             return FieldValue()
         return FieldValue(value=value, source=Source.VERIFIED, confirmed=False)
 
+    # Already on the tenant's record: approved on entry (demo feedback §3.5).
     case.tenant_contacts = [
         TenantContact(
             role=cast(ContactRole, person.role),
@@ -203,6 +204,10 @@ async def _prefill_tenant_contacts(runtime: AgentRuntime, case: Case, event: Wor
             last_name=field(person.last_name),
             email=field(person.email),
             mobile=field(person.mobile),
+            contact_id=f"ct_{case.id}_{person.role}",
+            approval="approved",
+            approved_by="system:tenant_record",
+            added_by="system",
         )
         for person in tenant.contacts
         if person.role in known
@@ -223,6 +228,31 @@ async def _auto_contacts_request(runtime: AgentRuntime, case: Case, event: Workf
         WorkflowEvent(name="contacts_requested", payload={"remarks": ""}),
         SYSTEM,
     )
+
+
+async def _contact_rejected_email(runtime: AgentRuntime, case: Case, event: WorkflowEvent) -> Case:
+    """A rejected contact opened a contacts request (§3.5): the applicant gets the usual
+    request email. A rejection that only adds a role to the open request sends nothing."""
+    request = _latest_request(case, "contacts")
+    if request is None or request.status != "open" or not case.events:
+        return case
+    if request.requested_at != case.events[-1].at:
+        return case
+    return await _request_email("contacts_request", "contacts")(runtime, case, event)
+
+
+async def _contacts_received(runtime: AgentRuntime, case: Case, event: WorkflowEvent) -> Case:
+    """Contacts sent: the final reviewer is told, and the first-level reviewer too when it
+    approves each contact (§3.5)."""
+    await _to_reviewers(runtime, case, "contacts_received", "final")
+    queue = case.review_queue
+    if (
+        get_policy().contacts.approval_required
+        and queue is not None
+        and queue.role_for("first") != queue.role
+    ):
+        await _to_reviewers(runtime, case, "contacts_received", "first")
+    return case
 
 
 async def _withdrawn_email(runtime: AgentRuntime, case: Case, event: WorkflowEvent) -> Case:
@@ -303,7 +333,8 @@ EFFECTS: dict[str, list[tuple[str, Effect]]] = {
         ("review_assigned_final", _final_review_assigned),
     ],
     "contacts_requested": [("contacts_request", _request_email("contacts_request", "contacts"))],
-    "contacts_provided": [("contacts_received", _notify_reviewers("contacts_received"))],
+    "contacts_provided": [("contacts_received", _contacts_received)],
+    "contact_rejected": [("contacts_request", _contact_rejected_email)],
     "sales_data_requested": [
         ("sales_data_request", _request_email("sales_data_request", "sales_data"))
     ],

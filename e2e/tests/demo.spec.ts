@@ -4,7 +4,13 @@ import { readDoneEventCount } from '../support/events'
 import { draftFields, fieldDisplay } from '../support/draft'
 import { beat, caption, demoTestTimeoutMs } from '../support/demoPace'
 import { fetchDevOutbox, latestByTemplate } from '../support/outbox'
-import { APPLICANT_EMAIL, reviewerFor, submitScriptedInquiry } from '../support/submit'
+import {
+  APPLICANT_EMAIL,
+  approveContactsViaApi,
+  approveDocumentsViaApi,
+  reviewerFor,
+  submitScriptedInquiry,
+} from '../support/submit'
 import {
   A2_CALL_CENTRE_TURNS,
   assertCleanAfterDemoReset,
@@ -236,6 +242,9 @@ test.describe('Demo script @demo', () => {
         const reviewerPage = await reviewerContext.newPage()
         await signInReviewer(reviewerPage, reviewer)
         await openReviewerCase(reviewerPage, reference)
+        // Day R2: the Lease Admin approves each document first (demo feedback §3.4).
+        await approveDocumentsViaApi(request, reference)
+        await reviewerPage.reload()
 
         await reviewerPage
           .getByTestId('action-approve_first')
@@ -305,6 +314,8 @@ test.describe('Demo script @demo', () => {
         await yardi.getByRole('button', { name: 'Link company' }).click()
         await beat(reviewerPage)
 
+        // Day R2: the Lease Admin approves the re-sent billing contact (§3.5).
+        await approveContactsViaApi(request, reference)
         await reviewerPage.reload()
         await reviewerPage
           .getByTestId('action-approve')

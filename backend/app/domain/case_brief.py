@@ -7,7 +7,7 @@ the reviewer assistant (Day 5) answers from it.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
@@ -17,12 +17,16 @@ from app.domain.fields import FIELD_BY_KEY, FieldGroup, document_definitions, do
 from app.domain.master import MasterData
 from app.domain.models import DocType, FieldKey
 from app.domain.rules import contact_verified
-from app.workflow.machine import approval_blockers
+from app.policy.config import get_policy
+from app.workflow.documents import current_decisions
+from app.workflow.expiry import EXPIRY_LABELS, expired_remarks, expiry_status, expiry_tracked
+from app.workflow.machine import approval_blockers, first_approval_blockers
 from app.workflow.models import (
     CONTACT_ROLE_LABELS,
     ROLE_LABELS,
     Case,
     CaseStatus,
+    DocumentDecision,
     review_level,
 )
 
@@ -47,6 +51,21 @@ class BriefDocument(BaseModel):
     size_bytes: int | None = None
     uploaded_at: datetime | None = None
     replaced_versions: int = 0
+    # First-level decision on this upload (demo feedback §3.4). None: no decision applies
+    # (not uploaded, or sales data).
+    approval: Literal["pending", "approved", "rejected"] | None = None
+    approval_remarks: str | None = None
+    decided_by: str | None = None
+    decided_at: datetime | None = None
+    # Expiry, for document types that carry one (policy `document_expiry.doc_types`).
+    expiry_tracked: bool = False
+    expiry: date | None = None  # the date in force
+    expiry_extracted: date | None = None
+    expiry_confirmed: date | None = None
+    expiry_status: Literal["expired", "expiring_soon", "valid", "unknown"] | None = None
+    review_status: str | None = None  # the document review service: done | pending | failed
+    # Expired: the console preselects Reject with this remark; the reviewer still presses.
+    suggested_reject_remarks: str | None = None
 
 
 class BriefRequest(BaseModel):
@@ -76,6 +95,12 @@ class BriefContact(BaseModel):
     email: str | None
     phone: str | None
     same_as_primary: bool
+    # Contact approval (demo feedback §3.5).
+    contact_id: str | None = None
+    approval: Literal["pending", "approved", "rejected"] = "pending"
+    approval_remarks: str | None = None
+    approved_by: str | None = None
+    added_by: str = "tenant"
 
 
 class StageAge(BaseModel):
@@ -136,7 +161,23 @@ def waiting_on(case: Case) -> Literal["reviewer", "applicant", "system", "nobody
     return "nobody"
 
 
-def _checklist(case: Case) -> list[str]:
+def _document_items(case: Case, today: date) -> list[str]:
+    """What's pending on the documents before first-level approval (§3.4)."""
+    items: list[str] = []
+    for blocker in first_approval_blockers(case, today):
+        kind, _, detail = blocker.partition(":")
+        label = document_label(detail)
+        if kind == "document_pending":
+            items.append(f"Approve or reject: {label}.")
+        elif kind == "document_rejected":
+            items.append(f"Rejected: {label}. Request a re-upload.")
+        elif kind == "expiry_unconfirmed":
+            items.append(f"Confirm the expiry date: {label}.")
+    return items
+
+
+def _checklist(case: Case, today: date | None = None) -> list[str]:
+    today = today or clock.now().date()
     items: list[str] = []
     if case.status == CaseStatus.REUPLOAD_REQUESTED:
         request = case.open_request("reupload")
@@ -153,7 +194,14 @@ def _checklist(case: Case) -> list[str]:
             items.append(f"Not confirmed by the applicant: {', '.join(unconfirmed)}.")
         if case.draft.cr_status == "skipped":
             items.append("CR was skipped: check the company details against the documents.")
-        items.append("Check the profile and documents, then approve, reject or request re-upload.")
+        document_items = _document_items(case, today)
+        items.extend(document_items)
+        if not get_policy().document_approval:
+            items.append(
+                "Check the profile and documents, then approve, reject or request re-upload."
+            )
+        elif not document_items:
+            items.append("Every document is approved: approve the first level, or reject.")
     if case.status == CaseStatus.SECOND_REVIEW:
         for blocker in approval_blockers(case):
             kind, _, detail = blocker.partition(":")
@@ -164,6 +212,9 @@ def _checklist(case: Case) -> list[str]:
             elif kind == "missing_contact":
                 label = CONTACT_ROLE_LABELS.get(detail, detail)
                 items.append(f"{label} missing: request contacts before final approval.")
+            elif kind == "contact_not_approved":
+                label = CONTACT_ROLE_LABELS.get(detail, detail)
+                items.append(f"{label} waiting for the Lease Admin's approval.")
         if not approval_blockers(case):
             items.append("Everything needed for final approval is in.")
     if case.status == CaseStatus.APPROVED and case.yardi.needs_operations:
@@ -219,7 +270,14 @@ def format_case_brief_text(brief: CaseBrief) -> str:
         status = doc.file_name if doc.uploaded else "missing"
         replaced = f", {doc.replaced_versions} prior version(s)" if doc.replaced_versions else ""
         req = "required" if doc.required else "optional"
-        lines.append(f"  - {doc.label} ({req}): {status}{replaced}")
+        decision = f", {doc.approval}" if doc.approval else ""
+        if doc.approval_remarks:
+            decision += f" ({doc.approval_remarks})"
+        expiry = ""
+        if doc.expiry_status:
+            when = f" {doc.expiry.isoformat()}" if doc.expiry else ""
+            expiry = f", expiry: {EXPIRY_LABELS[doc.expiry_status].lower()}{when}"
+        lines.append(f"  - {doc.label} ({req}): {status}{replaced}{decision}{expiry}")
     if brief.sales_data:
         sd = brief.sales_data
         lines.append(
@@ -231,9 +289,12 @@ def format_case_brief_text(brief: CaseBrief) -> str:
         lines.extend(["", "Tenant contacts:"])
         for contact in brief.contacts:
             flag = " (same as primary)" if contact.same_as_primary else ""
+            approval = f" [{contact.approval}]"
+            if contact.approval_remarks:
+                approval = f" [{contact.approval}: {contact.approval_remarks}]"
             lines.append(
                 f"  - {contact.label}{flag}: {contact.name or '—'}, "
-                f"{contact.email or '—'}, {contact.phone or '—'}"
+                f"{contact.email or '—'}, {contact.phone or '—'}{approval}"
             )
     if brief.requests:
         lines.extend(["", "Requests:"])
@@ -287,6 +348,8 @@ def build_case_brief(
                 evidence=value.evidence,
             )
         )
+    today = now.date()
+    decisions = current_decisions(case)
     history_counts: dict[DocType, int] = {}
     for old_ref in case.document_history:
         history_counts[old_ref.doc_type] = history_counts.get(old_ref.doc_type, 0) + 1
@@ -304,6 +367,7 @@ def build_case_brief(
                 size_bytes=ref.size_bytes if ref else None,
                 uploaded_at=ref.uploaded_at if ref else None,
                 replaced_versions=history_counts.get(doc_type, 0),
+                **_decision_fields(decisions.get(doc_type), today),
             )
         )
     sales = case.sales_data
@@ -362,6 +426,11 @@ def build_case_brief(
                 email=c.email.value,
                 phone=phone(c),
                 same_as_primary=c.same_as_primary,
+                contact_id=c.contact_id,
+                approval=c.approval,
+                approval_remarks=c.approval_remarks,
+                approved_by=c.approved_by,
+                added_by=c.added_by,
             )
             for c in case.tenant_contacts
         ],
@@ -382,5 +451,31 @@ def build_case_brief(
         follow_on_of=draft.follow_on_of,
         yardi=case.yardi.model_dump(mode="json"),
         stage_ages=_stage_ages(case, now),
-        next_decision_checklist=_checklist(case),
+        next_decision_checklist=_checklist(case, today),
     )
+
+
+def _decision_fields(decision: DocumentDecision | None, today: date) -> dict[str, Any]:
+    """The brief's view of one document decision and its expiry (§3.4)."""
+    if decision is None:
+        return {}
+    tracked = expiry_tracked(decision.doc_type.value)
+    status = expiry_status(decision, today) if tracked else None
+    expiry = decision.expiry
+    return {
+        "approval": decision.status,
+        "approval_remarks": decision.remarks,
+        "decided_by": decision.by,
+        "decided_at": decision.at,
+        "expiry_tracked": tracked,
+        "expiry": expiry,
+        "expiry_extracted": decision.expiry_extracted,
+        "expiry_confirmed": decision.expiry_confirmed,
+        "expiry_status": status,
+        "review_status": decision.review_status,
+        "suggested_reject_remarks": (
+            expired_remarks(expiry)
+            if status == "expired" and expiry is not None and decision.status == "pending"
+            else None
+        ),
+    }

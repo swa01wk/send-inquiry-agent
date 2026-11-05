@@ -56,7 +56,22 @@ export interface BriefDocument {
   size_bytes: number | null
   uploaded_at: string | null
   replaced_versions: number
+  // Demo feedback §3.4: the first-level decision on this upload and its expiry.
+  approval?: ApprovalStatus | null
+  approval_remarks?: string | null
+  decided_by?: string | null
+  decided_at?: string | null
+  expiry_tracked?: boolean
+  expiry?: string | null
+  expiry_extracted?: string | null
+  expiry_confirmed?: string | null
+  expiry_status?: ExpiryStatus | null
+  review_status?: string | null
+  suggested_reject_remarks?: string | null
 }
+
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected'
+export type ExpiryStatus = 'expired' | 'expiring_soon' | 'valid' | 'unknown'
 
 export interface BriefRequest {
   id: string
@@ -85,6 +100,12 @@ export interface BriefContact {
   email: string | null
   phone: string | null
   same_as_primary: boolean
+  // Demo feedback §3.5: the first-level reviewer approves each contact.
+  contact_id?: string | null
+  approval?: ApprovalStatus
+  approval_remarks?: string | null
+  approved_by?: string | null
+  added_by?: string
 }
 
 export interface CaseBrief {
@@ -140,12 +161,19 @@ export type ReviewAction =
   | 'relink_brand'
   | 'remove_contact'
   | 'approve'
+  | 'confirm_document_expiry'
+  | 'approve_document'
+  | 'reject_document'
+  | 'approve_contact'
+  | 'reject_contact'
 
 export interface CaseDetail {
   brief: CaseBrief
   timeline: TimelineEntry[]
   legal_actions: ReviewAction[]
   approval_blockers: string[]
+  /** What stops "Approve first level" (demo feedback §3.4). */
+  first_approval_blockers?: string[]
   rejection_categories: string[]
   reupload_doc_types: { doc_type: string; label: string }[]
 }

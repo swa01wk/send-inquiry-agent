@@ -30,6 +30,8 @@ CardType = Literal[
     "sign_in_prompt",
     # Demo feedback §3.1
     "cr_question",
+    # Demo feedback §3.5
+    "signatory_question",
 ]
 
 StepState = Literal["done", "current", "upcoming"]
@@ -313,6 +315,11 @@ class ContactRow(BaseModel):
     source: str | None = None
     confirmed: bool = False
     same_as_primary: bool = False
+    # Cenomi's decision on this contact as sent (demo feedback §3.5): pending ("Waiting for
+    # Cenomi"), approved, or rejected with the reviewer's remarks. None: not sent yet, or
+    # changed since it was sent.
+    approval: Literal["pending", "approved", "rejected"] | None = None
+    approval_remarks: str | None = None
 
 
 class ContactsPayload(BaseModel):
@@ -323,6 +330,20 @@ class ContactsPayload(BaseModel):
     rows: list[ContactRow]
     can_submit: bool
     blockers: list[str] = Field(default_factory=list)
+    # A request opened by a rejected contact asks only for these roles (§3.5); empty: all.
+    roles: list[str] = Field(default_factory=list)
+    # "Are you the authorised signatory?" (§3.5): yes | no, or None until answered.
+    signatory_answer: Literal["yes", "no"] | None = None
+
+
+class SignatoryQuestionPayload(BaseModel):
+    """Contacts request (demo feedback §3.5): the buttons send `signatory_answer
+    {is_signatory}`. `answered` is set once the applicant picks."""
+
+    prompt: str
+    yes_label: str
+    no_label: str
+    answered: Literal["yes", "no"] | None = None
 
 
 class SalesDataPayload(BaseModel):

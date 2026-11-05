@@ -63,7 +63,8 @@ def _restore_policy(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPa
     reviewer role doing both levels (`first_level_review_role: null`), as they were
     written; tests marked `lease_admin` run with the shipped policy (Lease Admin first).
     Likewise tests written for the CR lookup run with `public_cr_check: lookup` unless
-    marked `cr_question`.
+    marked `cr_question`, and tests written before per-document and per-contact approval
+    (demo feedback §3.4, §3.5, day R2) run without it unless marked `approvals`.
     `create_app` installs the policy file it loads, so the loader it calls is wrapped too.
     """
     overrides: dict[str, object] = {}
@@ -73,6 +74,13 @@ def _restore_policy(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPa
         # Demo feedback §3.1: tests written for the CR lookup keep it after the policy
         # flips to `ask_then_sign_in`; tests marked `cr_question` run with the shipped one.
         overrides["public_cr_check"] = "lookup"
+    if request.node.get_closest_marker("approvals") is None:
+        overrides["document_approval"] = False
+        overrides["contacts"] = {
+            "approval_required": False,
+            "ask_signatory": False,
+            "applicant_signatory_needs_approval": False,
+        }
     policy = get_policy()
     if overrides:
         policy = policy.with_changes(**overrides)

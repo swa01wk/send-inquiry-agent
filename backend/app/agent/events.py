@@ -237,6 +237,7 @@ async def run_turn(
     state["assisted"] = session.assisted
     state["tenant_id"] = session.tenant_id
     state["existing_cr_choice"] = session.existing_cr_choice
+    state["signatory_answer"] = session.signatory_answer
     turn_start_draft = session.draft.model_copy(deep=True)
 
     config = _graph_config(session, runtime, settings=settings)
@@ -341,6 +342,8 @@ async def run_turn(
         session.inquiry_seq = int(final.get("inquiry_seq", session.inquiry_seq))
         if session.mode == "case" and "contacts_draft" in final:
             session.contacts_draft = list(final["contacts_draft"])
+        if session.mode == "case" and final.get("signatory_answer") in ("yes", "no"):
+            session.signatory_answer = final["signatory_answer"]
         if isinstance(bound, ScriptedChatModel):
             session.script_step = bound._step_index
 

@@ -12,6 +12,7 @@ import {
 import {
   APPLICANT_EMAIL,
   APPLICANT_MOBILE,
+  approveDocumentsViaApi,
   completeApplicationLinkFlow,
   reviewerFor,
   submitScriptedInquiry,
@@ -287,6 +288,9 @@ export async function runL5AttentionFlow(
 
   await page.goto(`/review?as=${encodeURIComponent(reviewer.id)}`)
   await page.getByTestId(`queue-row-${reference}`).getByRole('link', { name: reference }).click()
+  // Day R2: the Lease Admin approves each document first (demo feedback §3.4).
+  await approveDocumentsViaApi(request, reference)
+  await page.reload()
   await page.getByRole('button', { name: 'Approve first level' }).click()
   await expect(page.getByTestId('case-stage')).toHaveText('Lead — second review')
   if (beat) await beat(page)

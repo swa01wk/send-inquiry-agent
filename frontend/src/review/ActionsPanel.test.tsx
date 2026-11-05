@@ -55,6 +55,40 @@ describe('ActionsPanel', () => {
     })
   })
 
+  it('keeps first-level approval disabled until the documents are decided', () => {
+    renderPanel(
+      caseDetail({
+        first_approval_blockers: [
+          'document_pending:brand_profile',
+          'expiry_unconfirmed:company_profile',
+        ],
+      }),
+    )
+    const form = within(screen.getByTestId('action-approve_first'))
+    expect(form.getByRole('button', { name: 'Approve first level' })).toBeDisabled()
+    const blockers = within(screen.getByTestId('first-approval-blockers'))
+    expect(blockers.getByText('Brand profile: approve or reject it')).toBeInTheDocument()
+    expect(blockers.getByText('Company profile: confirm the expiry date')).toBeInTheDocument()
+  })
+
+  it('asks for the rejected documents when nothing is ticked', async () => {
+    const user = userEvent.setup()
+    const base = caseDetail()
+    const onAct = renderPanel({
+      ...base,
+      brief: {
+        ...base.brief,
+        documents: [
+          { ...base.brief.documents[0], approval: 'rejected', approval_remarks: 'Unreadable' },
+        ],
+      },
+    })
+    const form = within(screen.getByTestId('action-request_reupload'))
+    expect(form.getByTestId('reupload-rejected-hint')).toHaveTextContent('CR certificate')
+    await user.click(form.getByRole('button', { name: 'Request re-upload' }))
+    expect(onAct).toHaveBeenCalledWith('request_reupload', { doc_types: [], remarks: '' })
+  })
+
   it('needs a reason and remarks before rejecting', async () => {
     const user = userEvent.setup()
     const onAct = renderPanel()

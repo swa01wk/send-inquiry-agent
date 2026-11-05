@@ -6,11 +6,11 @@ UI actions; never by the LLM. A case is keyed by its reference.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from enum import StrEnum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.domain.models import DocType, DocumentRef, FieldValue, InquiryDraft
 
@@ -32,6 +32,8 @@ class CaseStatus(StrEnum):
 ReviewRole = Literal["lease_admin", "rlm_store", "rplm_media", "rplm_specialty"]
 ReviewLevel = Literal["first", "final"]
 RequestKind = Literal["reupload", "contacts", "sales_data"]
+# A reviewer's decision on one document or one contact (demo feedback §3.4, §3.5).
+ApprovalStatus = Literal["pending", "approved", "rejected"]
 ContactRole = Literal[
     "authorized_signatory",
     "billing_contact",
@@ -90,6 +92,8 @@ class CaseRequest(BaseModel):
     kind: RequestKind
     status: Literal["open", "fulfilled", "withdrawn"] = "open"
     doc_types: list[DocType] = Field(default_factory=list)
+    # Contacts requests opened by a rejected contact: only these roles (demo feedback §3.5).
+    roles: list[ContactRole] = Field(default_factory=list)
     remarks: str = ""
     requested_by: str
     requested_at: datetime
@@ -105,6 +109,41 @@ class Decision(BaseModel):
     at: datetime
 
 
+class DocumentDecision(BaseModel):
+    """The first-level reviewer's decision on one upload (demo feedback §3.4, ADR-R4): it
+    names the `file_id` it was made on, and a replaced file starts a new pending decision."""
+
+    doc_type: DocType
+    file_id: str
+    status: ApprovalStatus = "pending"
+    remarks: str | None = None
+    # The document review service's answer for this upload (`pending`: it didn't answer).
+    review_status: Literal["done", "pending", "failed"] | None = None
+    expiry_extracted: date | None = None  # from the document review service
+    expiry_confirmed: date | None = None  # entered or corrected by the reviewer
+    expiry_confirmed_by: str | None = None
+    by: str | None = None
+    at: datetime | None = None
+
+    @property
+    def expiry(self) -> date | None:
+        """The date in force: the reviewer's, else the review service's."""
+        return self.expiry_confirmed or self.expiry_extracted
+
+    @classmethod
+    def for_upload(cls, ref: DocumentRef) -> DocumentDecision:
+        review = ref.review
+        return cls(
+            doc_type=ref.doc_type,
+            file_id=ref.file_id,
+            review_status=review.status if review else None,
+            expiry_extracted=review.expiry_date if review else None,
+        )
+
+
+CONTACT_VALUE_FIELDS = ("first_name", "last_name", "email", "mobile", "landline")
+
+
 class TenantContact(BaseModel):
     role: ContactRole
     first_name: FieldValue = Field(default_factory=FieldValue)
@@ -113,6 +152,28 @@ class TenantContact(BaseModel):
     mobile: FieldValue = Field(default_factory=FieldValue)
     landline: FieldValue = Field(default_factory=FieldValue)
     same_as_primary: bool = False
+    # Contact approval (demo feedback §3.5). Set by the state machine only: whatever the
+    # applicant's payload says here is ignored. A changed contact gets a new id, so an
+    # approval made on the old values can't land on the new ones (ADR-R4).
+    contact_id: str = ""
+    approval: ApprovalStatus = "pending"
+    approval_remarks: str | None = None
+    approved_by: str | None = None  # a reviewer id, or "system:<reason>"
+    added_by: Literal["tenant", "reviewer", "system"] = "tenant"
+
+    @model_validator(mode="after")
+    def _stable_id(self) -> TenantContact:
+        # Contacts saved before 5 Nov 2026 have no id: one per role is stable across loads.
+        if not self.contact_id:
+            self.contact_id = f"ct_{self.role}"
+        return self
+
+    def values(self) -> tuple[Any, ...]:
+        """What the contact says (not where it came from): compared to detect a change."""
+        return (
+            *(getattr(self, name).value for name in CONTACT_VALUE_FIELDS),
+            self.same_as_primary,
+        )
 
 
 class Invitation(BaseModel):
@@ -159,6 +220,8 @@ class Case(BaseModel):
     requests: list[CaseRequest] = Field(default_factory=list)
     decisions: list[Decision] = Field(default_factory=list)
     tenant_contacts: list[TenantContact] = Field(default_factory=list)
+    # One per intake document on the case (demo feedback §3.4); see `workflow.documents`.
+    document_decisions: dict[DocType, DocumentDecision] = Field(default_factory=dict)
     sales_data: DocumentRef | None = None
     document_history: list[DocumentRef] = Field(default_factory=list)
     onboarding: Onboarding = Field(default_factory=Onboarding)
@@ -180,6 +243,9 @@ class Case(BaseModel):
 
     def request_by_id(self, request_id: str) -> CaseRequest | None:
         return next((r for r in self.requests if r.id == request_id), None)
+
+    def contact_by_id(self, contact_id: str) -> TenantContact | None:
+        return next((c for c in self.tenant_contacts if c.contact_id == contact_id), None)
 
     @property
     def last_change(self) -> datetime:

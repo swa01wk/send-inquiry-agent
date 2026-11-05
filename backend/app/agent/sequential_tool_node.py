@@ -28,6 +28,7 @@ def _apply_command(
     confirm_card_turns = dict(state.get("confirm_card_turns", {}))
     inquiry_seq = int(state.get("inquiry_seq", 1))
     contacts_draft = list(state.get("contacts_draft") or [])
+    signatory_answer = state.get("signatory_answer")
     case_id = state.get("case_id")
     new_messages: list[BaseMessage] = []
 
@@ -46,6 +47,8 @@ def _apply_command(
                 inquiry_seq = int(update["inquiry_seq"])
             if "contacts_draft" in update:
                 contacts_draft = list(update["contacts_draft"])
+            if "signatory_answer" in update:
+                signatory_answer = update["signatory_answer"]
             if "case_id" in update:
                 case_id = update["case_id"]
             for message in update.get("messages", []):
@@ -69,6 +72,8 @@ def _apply_command(
     }
     if contacts_draft or "contacts_draft" in state:
         merged["contacts_draft"] = contacts_draft
+    if signatory_answer is not None:
+        merged["signatory_answer"] = signatory_answer
     if case_id is not None:
         merged["case_id"] = case_id
     return merged
@@ -110,6 +115,8 @@ def build_sequential_tool_node(tools: list[Any]) -> Any:
         }
         if "contacts_draft" in working:
             out["contacts_draft"] = working["contacts_draft"]
+        if working.get("signatory_answer") is not None:
+            out["signatory_answer"] = working["signatory_answer"]
         return out
 
     return sequential_tools_node

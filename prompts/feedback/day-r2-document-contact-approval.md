@@ -45,6 +45,14 @@ First-level review becomes an approval process:
 - `tests/durability/`: a restart between `document_approved` and its effects.
 - Playwright `rd-document-approval`, `rd-expiry` and the backend half of `rd-contact-approval`.
 
+**What the backend PR gives your track** (see `docs/spec.md` §13.1)
+- Shared handler: `actions.signatory_answer_result(session, runtime, is_signatory)`, built on `workflow/contacts.apply_signatory_answer(contacts, primary, is_signatory)`. Your `record_signatory_answer` tool calls `apply_signatory_answer` and returns `Command(update={"contacts_draft": …, "signatory_answer": "yes"|"no"})`; `sequential_tool_node` and `events.py` already carry `signatory_answer` back to the session.
+- `signatory_answer` is in the agent state (`state["signatory_answer"]`), and `build_contacts_card(..., case=, signatory_answer=)` fills each row's `approval` / `approval_remarks` and the payload's `roles` and `signatory_answer`. `show_contacts_review` already passes them.
+- Notes the agent sees: `[ui_event] signatory_answer yes|no`, `signatory_answer no_request`, `signatory_answer_invalid`.
+- Frontend types: `ContactRow.approval`, `approval_remarks`; `ContactsPayload.roles`, `signatory_answer`; `SignatoryQuestionPayload` in `contracts.ts`. Add `'signatory_question'` to `CardType` with the card (left out to avoid clashing with your R1 `cr_question` edit).
+- Older tests run without per-item approval unless marked `approvals` (`tests/conftest.py`); scripted Playwright stories approve through `approveDocumentsViaApi` / `approveContactsViaApi` (`e2e/support/submit.ts`).
+- Test files as built: `tests/lifecycle/test_approval_machine.py` (pure), `test_document_approval.py`, `test_document_expiry.py`, `test_contact_approval.py`, `tests/durability/test_decision_restart.py`; Playwright `rd-document-approval.spec.ts`, `rd-expiry.spec.ts`, `rd-contact-approval.spec.ts` (console half; extend it with the signatory card and the tenant's fix).
+
 ## Your track (Cursor): agent and chat
 1. **`SignatoryQuestionCard`**: two buttons sending `signatory_answer`, disabled once answered. Add it to `CardSlot` and `contracts.ts`, with Vitest, an `@fe` scenario and a screenshot.
 2. **`ContactsCard`**:

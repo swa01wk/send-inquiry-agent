@@ -122,3 +122,20 @@ def contacts_blockers(contacts: list[TenantContact]) -> list[str]:
         ):
             blockers.append(f"unconfirmed_contact:{contact.role}")
     return blockers
+
+
+def apply_signatory_answer(
+    current: list[TenantContact], primary: InquiryDraft, is_signatory: bool
+) -> tuple[list[TenantContact], str]:
+    """ "Are you the authorised signatory?" (demo feedback §3.5). Yes: the signatory is the
+    verified primary contact (`same_as_primary`, values `verified`, confirmed when the card
+    is sent; approved on entry by the state machine). No: a same-as-primary signatory from an
+    earlier answer is cleared, so the card asks for the signatory's details. Returns the
+    contacts and the turn note. Shared by the card action and the case agent's tool."""
+    if is_signatory:
+        contacts, _errors = write_contacts(
+            current, [{"role": "authorized_signatory", "same_as_primary": True}], primary
+        )
+        return contacts, "[ui_event] signatory_answer yes"
+    kept = [c for c in current if not (c.role == "authorized_signatory" and c.same_as_primary)]
+    return kept, "[ui_event] signatory_answer no"

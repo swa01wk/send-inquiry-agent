@@ -27,9 +27,12 @@ from app.api.cards import (
     split_card_id,
 )
 from app.api.case_cards import (
+    SignatoryAnswer,
+    as_signatory_answer,
     build_case_status_card,
     build_contacts_card,
     build_reupload_card,
+    build_signatory_question_card,
     replaced_since,
 )
 from app.api.channel_cards import (
@@ -53,7 +56,7 @@ from app.domain.validation import validate_malls
 from app.gateway import GatewayError
 from app.security import tokens
 from app.sessions import Session
-from app.workflow.contacts import confirm_contacts, contacts_blockers
+from app.workflow.contacts import apply_signatory_answer, confirm_contacts, contacts_blockers
 from app.workflow.machine import USER, IllegalTransition
 from app.workflow.models import Case, TenantContact, WorkflowEvent
 from app.workflow.service import apply_event, create_case
@@ -113,6 +116,7 @@ async def handle_ui_action(
         "cr_answer": _cr_answer,
         "resubmit_documents": _resubmit_documents,
         "submit_contacts": _submit_contacts,
+        "signatory_answer": _signatory_answer,
         "submit_sales_data": _submit_sales_data,
         # Intake channels (spec §15)
         "send_application_link": _send_application_link,
@@ -842,7 +846,7 @@ async def _submit_contacts(
     contacts = confirm_contacts([TenantContact.model_validate(c) for c in session.contacts_draft])
     blockers = contacts_blockers(contacts)
     if blockers:
-        card = build_contacts_card(contacts, request)
+        card = build_contacts_card(contacts, request, case=case, signatory_answer=_answer(session))
         return ActionResult(
             note=HumanMessage(content=f"[ui_event] contacts_blocked {' '.join(blockers)}"),
             events=[_card_event(session, card)],
@@ -859,10 +863,58 @@ async def _submit_contacts(
     return ActionResult(
         note=HumanMessage(content="[ui_event] contacts_submitted"),
         events=[
-            _card_event(session, build_contacts_card(contacts, None)),
+            _card_event(
+                session,
+                build_contacts_card(
+                    contacts, None, case=updated, signatory_answer=_answer(session)
+                ),
+            ),
             *_case_events(session, runtime, updated),
         ],
     )
+
+
+def _answer(session: Session) -> SignatoryAnswer | None:
+    return as_signatory_answer(session.signatory_answer)
+
+
+def signatory_answer_result(
+    session: Session, runtime: AgentRuntime, is_signatory: bool
+) -> ActionResult:
+    """ "Are you the authorised signatory?" answered (demo feedback §3.5). Yes: the verified
+    primary contact becomes the signatory; No: the card asks for the signatory's details.
+    Both refresh the contacts card. Shared by the card action and the case agent's tool."""
+    case = _case_for(session, runtime)
+    request = case.open_request("contacts") if case else None
+    if case is None or request is None:
+        return ActionResult(note=HumanMessage(content="[ui_event] signatory_answer no_request"))
+    current = [TenantContact.model_validate(c) for c in session.contacts_draft]
+    contacts, note = apply_signatory_answer(current, session.draft, is_signatory)
+    session.contacts_draft = [c.model_dump(mode="json") for c in contacts]
+    session.signatory_answer = "yes" if is_signatory else "no"
+    answer = _answer(session)
+    _audit(runtime, session, "signatory_answered", answer=session.signatory_answer)
+    return ActionResult(
+        note=HumanMessage(content=note),
+        events=[
+            _card_event(session, build_signatory_question_card(answered=answer)),
+            _card_event(
+                session,
+                build_contacts_card(contacts, request, case=case, signatory_answer=answer),
+            ),
+        ],
+    )
+
+
+async def _signatory_answer(
+    payload: dict[str, Any],
+    session: Session,
+    runtime: AgentRuntime,
+) -> ActionResult:
+    is_signatory = payload.get("is_signatory")
+    if not isinstance(is_signatory, bool):
+        return ActionResult(note=HumanMessage(content="[ui_event] signatory_answer_invalid"))
+    return signatory_answer_result(session, runtime, is_signatory)
 
 
 async def _submit_sales_data(

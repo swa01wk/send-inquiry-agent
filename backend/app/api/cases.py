@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, Request
 
 from app.agent.e2e_scripts import resolve_e2e_scenario
 from app.agent.runtime import AgentRuntime
-from app.api.case_cards import build_case_status_card, request_cards
+from app.api.case_cards import as_signatory_answer, build_case_status_card, request_cards
 from app.api.deps import get_master_data, get_services, get_session_store
 from app.api.deps import get_settings as get_settings_dep
 from app.api.errors import ApiError
@@ -97,7 +97,12 @@ async def open_case(
     cards = [
         build_case_status_card(case, message_id=message_id),
         *request_cards(
-            case, session.draft, runtime.master, max_mb=settings.max_upload_mb, contacts=contacts
+            case,
+            session.draft,
+            runtime.master,
+            max_mb=settings.max_upload_mb,
+            contacts=contacts,
+            signatory_answer=as_signatory_answer(session.signatory_answer),
         ),
     ]
     for card in cards:

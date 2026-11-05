@@ -5,12 +5,15 @@ import {
   downloadDocument,
   getCase,
   ReviewApiError,
+  type BriefDocument,
   type BriefField,
   type CaseDetail,
   type ReviewAction,
 } from '../api/review'
 import { PageShell } from '../components/layout/PageShell'
 import { ActionsPanel, type ActionsPrefill } from './ActionsPanel'
+import { ContactDecisions } from './ContactDecisions'
+import { DocumentDecisions } from './DocumentDecisions'
 import { prefillFromSuggestion } from './prefillFromSuggestion'
 import { ReviewerAssistantPanel } from './ReviewerAssistantPanel'
 import {
@@ -154,6 +157,13 @@ export function ReviewCasePage() {
   }
 
   const brief = detail.brief
+  const openDocument = (doc: BriefDocument) =>
+    void downloadDocument(
+      reviewerId,
+      brief.reference,
+      doc.file_id as string,
+      doc.file_name ?? doc.doc_type,
+    )
   const groups = Object.keys(GROUP_TITLES).filter((g) =>
     brief.fields.some((f) => f.group === g && f.display),
   )
@@ -250,37 +260,13 @@ export function ReviewCasePage() {
               <h2 id="docs-title" className={styles.panelTitle}>
                 Documents
               </h2>
-              <ul className={styles.list}>
-                {[...brief.documents, ...(brief.sales_data ? [brief.sales_data] : [])].map(
-                  (doc) => (
-                    <li key={doc.doc_type}>
-                      {doc.label}
-                      {doc.required ? ' (required)' : ''}:{' '}
-                      {doc.uploaded && doc.file_id ? (
-                        <button
-                          type="button"
-                          className={styles.secondaryBtn}
-                          onClick={() =>
-                            void downloadDocument(
-                              reviewerId,
-                              brief.reference,
-                              doc.file_id as string,
-                              doc.file_name ?? doc.doc_type,
-                            )
-                          }
-                        >
-                          {doc.file_name}
-                        </button>
-                      ) : (
-                        <span className={styles.muted}>not uploaded</span>
-                      )}
-                      {doc.replaced_versions > 0 ? (
-                        <span className={styles.muted}> · replaced {doc.replaced_versions}×</span>
-                      ) : null}
-                    </li>
-                  ),
-                )}
-              </ul>
+              <DocumentDecisions
+                documents={[...brief.documents, ...(brief.sales_data ? [brief.sales_data] : [])]}
+                canDecide={detail.legal_actions.includes('approve_document')}
+                busy={busy}
+                onAct={(action, payload) => void onAct(action, payload)}
+                onOpen={openDocument}
+              />
             </section>
 
             <section className={styles.panel} aria-labelledby="requests-title">
@@ -311,14 +297,12 @@ export function ReviewCasePage() {
               {brief.contacts.length > 0 ? (
                 <>
                   <h3 className={styles.actionTitle}>Tenant contacts</h3>
-                  <ul className={styles.list}>
-                    {brief.contacts.map((c) => (
-                      <li key={c.role}>
-                        {c.label}: {c.name ?? '—'}, {c.email ?? '—'}, {c.phone ?? '—'}
-                        {c.same_as_primary ? ' (primary contact)' : ''}
-                      </li>
-                    ))}
-                  </ul>
+                  <ContactDecisions
+                    contacts={brief.contacts}
+                    canDecide={detail.legal_actions.includes('approve_contact')}
+                    busy={busy}
+                    onAct={(action, payload) => void onAct(action, payload)}
+                  />
                 </>
               ) : null}
               {brief.yardi.lead_ref ? (

@@ -13,6 +13,7 @@ from app.api.schemas import (
     ContactsPayload,
     DocumentUploadPayload,
     SalesDataPayload,
+    SignatoryQuestionPayload,
     UiCard,
 )
 from app.domain.fields import document_label
@@ -28,6 +29,23 @@ CASE_STATUS_CARD_ID = "case_status"
 CONTACTS_CARD_ID = "contacts"
 SALES_DATA_CARD_ID = "sales_data"
 REUPLOAD_CARD_ID = "documents"
+SIGNATORY_QUESTION_CARD_ID = "signatory_question"
+
+SignatoryAnswer = Literal["yes", "no"]
+
+
+def as_signatory_answer(value: object) -> SignatoryAnswer | None:
+    """A stored answer ("yes" | "no"), or None for anything else."""
+    if value == "yes":
+        return "yes"
+    if value == "no":
+        return "no"
+    return None
+
+
+SIGNATORY_PROMPT = "Are you the authorised signatory for your company?"
+SIGNATORY_YES = "Yes, I'm the authorised signatory"
+SIGNATORY_NO = "No, someone else is"
 
 _STAGE_LABELS = {
     "submitted": "Submitted",
@@ -131,7 +149,49 @@ def build_reupload_card(
     )
 
 
-def build_contacts_card(contacts: list[TenantContact], request: CaseRequest | None) -> UiCard:
+def build_signatory_question_card(
+    answered: Literal["yes", "no"] | None = None, *, message_id: str | None = None
+) -> UiCard:
+    """ "Are you the authorised signatory?" when a contacts request opens (demo feedback
+    §3.5). The buttons send `signatory_answer {is_signatory}`."""
+    payload = SignatoryQuestionPayload(
+        prompt=SIGNATORY_PROMPT, yes_label=SIGNATORY_YES, no_label=SIGNATORY_NO, answered=answered
+    )
+    return UiCard(
+        card_id=SIGNATORY_QUESTION_CARD_ID,
+        card_type="signatory_question",
+        message_id=message_id,
+        payload=payload.model_dump(),
+    )
+
+
+def signatory_question_due(request: CaseRequest | None, answer: str | None) -> bool:
+    """Ask once per contacts request that covers every role (not one opened for a
+    rejected contact), until answered (policy `contacts.ask_signatory`)."""
+    return (
+        get_policy().contacts.ask_signatory
+        and request is not None
+        and request.kind == "contacts"
+        and not request.roles
+        and answer is None
+    )
+
+
+def _sent_approval(case: Case | None, contact: TenantContact | None) -> TenantContact | None:
+    """The case's contact for this role if the card still shows what was sent."""
+    if case is None or contact is None:
+        return None
+    sent = next((c for c in case.tenant_contacts if c.role == contact.role), None)
+    return sent if sent is not None and sent.values() == contact.values() else None
+
+
+def build_contacts_card(
+    contacts: list[TenantContact],
+    request: CaseRequest | None,
+    *,
+    case: Case | None = None,
+    signatory_answer: Literal["yes", "no"] | None = None,
+) -> UiCard:
     policy = get_policy().second_level_contacts
     by_role = {c.role: c for c in contacts}
     rows: list[ContactRow] = []
@@ -145,6 +205,7 @@ def build_contacts_card(contacts: list[TenantContact], request: CaseRequest | No
             else []
         )
         filled = [f for f in fields if f.value not in (None, "")]
+        sent = _sent_approval(case, contact)
         rows.append(
             ContactRow(
                 role=role,
@@ -157,6 +218,8 @@ def build_contacts_card(contacts: list[TenantContact], request: CaseRequest | No
                 source=filled[0].source.value if filled and filled[0].source else None,
                 confirmed=bool(filled) and all(f.confirmed for f in filled),
                 same_as_primary=contact.same_as_primary if contact else False,
+                approval=sent.approval if sent else None,
+                approval_remarks=sent.approval_remarks if sent else None,
             )
         )
     blockers = contacts_blockers(contacts)
@@ -166,6 +229,8 @@ def build_contacts_card(contacts: list[TenantContact], request: CaseRequest | No
         rows=rows,
         can_submit=not [b for b in blockers if not b.startswith("unconfirmed_contact")],
         blockers=blockers,
+        roles=list(request.roles) if request else [],
+        signatory_answer=signatory_answer,
     )
     return UiCard(card_id=CONTACTS_CARD_ID, card_type="contacts", payload=payload.model_dump())
 
@@ -196,8 +261,10 @@ def request_cards(
     *,
     max_mb: int,
     contacts: list[TenantContact],
+    signatory_answer: Literal["yes", "no"] | None = None,
 ) -> list[UiCard]:
-    """The card for each open request (shown when the case chat opens)."""
+    """The card for each open request (shown when the case chat opens). A contacts request
+    opens with the signatory question until it's answered (§3.5)."""
     cards: list[UiCard] = []
     for request in case.requests:
         if request.status != "open":
@@ -205,7 +272,11 @@ def request_cards(
         if request.kind == "reupload":
             cards.append(build_reupload_card(draft, request, master, max_mb=max_mb))
         elif request.kind == "contacts":
-            cards.append(build_contacts_card(contacts, request))
+            if signatory_question_due(request, signatory_answer):
+                cards.append(build_signatory_question_card())
+            cards.append(
+                build_contacts_card(contacts, request, case=case, signatory_answer=signatory_answer)
+            )
         elif request.kind == "sales_data":
             cards.append(build_sales_data_card(draft, request, max_mb=max_mb))
     return cards

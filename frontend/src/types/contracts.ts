@@ -200,6 +200,9 @@ export interface ContactRow {
   source: Source | null
   confirmed: boolean
   same_as_primary: boolean
+  /** Demo feedback §3.5: Cenomi's decision on the contact as sent; null = not sent or changed. */
+  approval?: 'pending' | 'approved' | 'rejected' | null
+  approval_remarks?: string | null
 }
 
 export interface ContactsPayload {
@@ -208,6 +211,17 @@ export interface ContactsPayload {
   rows: ContactRow[]
   can_submit: boolean
   blockers: string[]
+  /** A request opened by a rejected contact asks only for these roles; empty = all. */
+  roles?: string[]
+  signatory_answer?: 'yes' | 'no' | null
+}
+
+/** Demo feedback §3.5: "Are you the authorised signatory?"; buttons send `signatory_answer`. */
+export interface SignatoryQuestionPayload {
+  prompt: string
+  yes_label: string
+  no_label: string
+  answered: 'yes' | 'no' | null
 }
 
 export interface SalesDataPayload {

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { clearDevOutbox } from '../support/outbox'
 import { openCaseAs } from '../support/stories'
-import { reviewerFor, submitScriptedInquiry } from '../support/submit'
+import { approveDocumentsViaApi, reviewerFor, submitScriptedInquiry } from '../support/submit'
 
 /** Day 4: the console offers only the actions the state machine allows (L4 §3.3). */
 test.describe('Reviewer console @scripted', () => {
@@ -28,6 +28,15 @@ test.describe('Reviewer console @scripted', () => {
     await expect(page.getByTestId('action-approve')).toHaveCount(0)
     await expect(page.getByTestId('action-yardi')).toHaveCount(0)
     await expect(page.getByTestId('action-requests')).toHaveCount(0)
+
+    // Day R2: approval waits until each document is approved (demo feedback §3.4).
+    await expect(page.getByTestId('first-approval-blockers')).toBeVisible()
+    await expect(
+      page.getByTestId('action-approve_first').getByRole('button', { name: 'Approve first level' }),
+    ).toBeDisabled()
+    await approveDocumentsViaApi(request, reference)
+    await page.reload()
+    await expect(page.getByTestId('first-approval-blockers')).toHaveCount(0)
 
     await page
       .getByTestId('action-approve_first')

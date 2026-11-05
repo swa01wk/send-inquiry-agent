@@ -67,12 +67,17 @@ function categoryLabel(category: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
-/** `missing_contact:billing_contact` → "Billing contact missing" (codes from approval_blockers). */
+/** `missing_contact:billing_contact` → "Billing contact missing" (codes from approval_blockers
+ * and first_approval_blockers). */
 function blockerLabel(code: string): string {
   const [kind, subject = ''] = code.split(':')
   if (kind === 'missing_contact') return `${categoryLabel(subject)} missing`
   if (kind === 'open_request')
     return `${REQUEST_LABELS[subject] ?? categoryLabel(subject)} request still open`
+  if (kind === 'contact_not_approved') return `${categoryLabel(subject)} not approved yet`
+  if (kind === 'document_pending') return `${categoryLabel(subject)}: approve or reject it`
+  if (kind === 'document_rejected') return `${categoryLabel(subject)} rejected: request a re-upload`
+  if (kind === 'expiry_unconfirmed') return `${categoryLabel(subject)}: confirm the expiry date`
   return categoryLabel(code)
 }
 
@@ -267,6 +272,10 @@ export function ActionsPanel({
     )
 
   const awaitingApproval = detail.brief.status === 'second_review' && !legal.includes('approve')
+  const firstBlockers = detail.first_approval_blockers ?? []
+  // Demo feedback §3.4: with nothing ticked, a re-upload asks for the rejected documents.
+  const rejectedDocs = detail.brief.documents.filter((d) => d.approval === 'rejected')
+  const reuploadRejected = reuploadDocs.length === 0 && rejectedDocs.length > 0
 
   return (
     <section className={styles.panel} aria-labelledby="actions-title" data-testid="actions-panel">
@@ -291,10 +300,17 @@ export function ActionsPanel({
             Makes the inquiry a lead: the applicant gets a Tenant Central invitation and a contacts
             request.
           </p>
+          {firstBlockers.length > 0 ? (
+            <ul className={styles.list} data-testid="first-approval-blockers">
+              {firstBlockers.map((b) => (
+                <li key={b}>{blockerLabel(b)}</li>
+              ))}
+            </ul>
+          ) : null}
           <button
             type="button"
             className={styles.primaryBtn}
-            disabled={busy}
+            disabled={busy || firstBlockers.length > 0}
             onClick={() => onAct('approve_first', {})}
           >
             Approve first level
@@ -318,6 +334,12 @@ export function ActionsPanel({
               </label>
             ))}
           </fieldset>
+          {reuploadRejected ? (
+            <p className={styles.muted} data-testid="reupload-rejected-hint">
+              Nothing ticked: asks for the rejected documents (
+              {rejectedDocs.map((d) => d.label).join(', ')}) with their remarks.
+            </p>
+          ) : null}
           <label className={styles.label} htmlFor="reupload-remarks">
             Remarks for the applicant
           </label>
@@ -330,12 +352,16 @@ export function ActionsPanel({
           <button
             type="button"
             className={styles.secondaryBtn}
-            disabled={busy || reuploadDocs.length === 0 || !reuploadRemarks.trim()}
+            disabled={
+              busy || (!reuploadRejected && (reuploadDocs.length === 0 || !reuploadRemarks.trim()))
+            }
             onClick={() =>
-              onAct('request_reupload', {
-                doc_types: reuploadDocs,
-                remarks: reuploadRemarks.trim(),
-              })
+              onAct(
+                'request_reupload',
+                reuploadRejected
+                  ? { doc_types: [], remarks: reuploadRemarks.trim() }
+                  : { doc_types: reuploadDocs, remarks: reuploadRemarks.trim() },
+              )
             }
           >
             Request re-upload

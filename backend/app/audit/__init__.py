@@ -48,13 +48,16 @@ ALLOWED_KEYS: dict[str, frozenset[str]] = {
     "form_mode_left": frozenset(),
     # Review lifecycle (L4)
     "case_created": frozenset({"session"}),
-    "case_transition": frozenset({"event", "from_status", "to_status", "by", "outcome"}),
+    # `subject`: the document type or contact role a per-item decision is about (§3.4, §3.5).
+    "case_transition": frozenset({"event", "from_status", "to_status", "by", "outcome", "subject"}),
     "effect_run": frozenset({"effect", "event", "outcome"}),
     "routing_decision": frozenset({"intent", "via", "confidence"}),
     "assistant_suggestion": frozenset({"kind", "action", "used"}),
     # Intake channels (spec §15)
     "application_link_sent": frozenset({"by", "resend"}),
     "inquiry_redirected": frozenset({"reason", "channel"}),
+    # Demo feedback §3.5: "Are you the authorised signatory?" answered (yes | no).
+    "signatory_answered": frozenset({"answer"}),
     "tenant_prefill": frozenset({"tenant_id", "channel", "keys", "documents"}),
     # Proactive work (L5): what fired, and every decision on it.
     "proactive_raised": frozenset({"item_id", "trigger", "tier", "stage", "hours"}),
