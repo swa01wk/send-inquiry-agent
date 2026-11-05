@@ -122,7 +122,10 @@ async def record_scenario(
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Return normalised JSONL records and the create-session payload."""
     async with parity_client(settings, scenario.model_steps) as (client, app):
-        created = await client.post("/api/sessions")
+        created = await client.post(
+            "/api/sessions",
+            headers={"X-Test-Scenario": scenario.name},
+        )
         created.raise_for_status()
         session_payload = created.json()
         session_id = str(session_payload["session_id"])
@@ -162,6 +165,11 @@ def write_session_snapshot(name: str, session_payload: dict[str, Any]) -> Path:
 
 async def record_all(settings: Settings) -> None:
     for scenario in all_scenarios():
+        # Demo feedback §3.1: only re-record new CR-question goldens; older scripts keep
+        # lookup behaviour via `X-Test-Scenario` and stay on disk until intentionally replaced.
+        if scenario.name != "rd-cr-question" and golden_path(scenario.name).is_file():
+            print(f"skip {scenario.name} (existing golden)")
+            continue
         events, session_payload = await record_scenario(settings, scenario)
         write_golden(scenario.name, events)
         write_session_snapshot(scenario.name, session_payload)
