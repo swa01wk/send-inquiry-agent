@@ -166,7 +166,7 @@ def _document_items(case: Case, today: date) -> list[str]:
     items: list[str] = []
     for blocker in first_approval_blockers(case, today):
         kind, _, detail = blocker.partition(":")
-        label = document_label(detail)
+        label = document_label(DocType(detail))
         if kind == "document_pending":
             items.append(f"Approve or reject: {label}.")
         elif kind == "document_rejected":
@@ -270,14 +270,14 @@ def format_case_brief_text(brief: CaseBrief) -> str:
         status = doc.file_name if doc.uploaded else "missing"
         replaced = f", {doc.replaced_versions} prior version(s)" if doc.replaced_versions else ""
         req = "required" if doc.required else "optional"
-        decision = f", {doc.approval}" if doc.approval else ""
+        decided = f", {doc.approval}" if doc.approval else ""
         if doc.approval_remarks:
-            decision += f" ({doc.approval_remarks})"
+            decided += f" ({doc.approval_remarks})"
         expiry = ""
         if doc.expiry_status:
             when = f" {doc.expiry.isoformat()}" if doc.expiry else ""
             expiry = f", expiry: {EXPIRY_LABELS[doc.expiry_status].lower()}{when}"
-        lines.append(f"  - {doc.label} ({req}): {status}{replaced}{decision}{expiry}")
+        lines.append(f"  - {doc.label} ({req}): {status}{replaced}{decided}{expiry}")
     if brief.sales_data:
         sd = brief.sales_data
         lines.append(

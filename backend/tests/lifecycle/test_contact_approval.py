@@ -113,13 +113,14 @@ async def test_signatory_yes_billing_rejected_fixed_then_approved(life) -> None:
         remarks="Please use the finance team's mailbox",
     )
     assert rejected.status_code == 200, rejected.text
-    requests = outbox(app, APPLICANT, "contacts_request")
+    requests = outbox(app, APPLICANT, "contacts_request")  # newest first
     assert len(requests) == 2
-    assert "finance team's mailbox" in requests[-1]["body"]
+    assert "finance team's mailbox" in requests[0]["body"]
 
-    # The request opened by the rejection asks only for that role; no signatory question.
-    reopened = await _open(client, requests[-1]["links"][0])
-    assert _card(reopened, "signatory_question") == []
+    # The request opened by the rejection asks only for that role: no new signatory question
+    # (the answered one stays in the chat).
+    reopened = await _open(client, requests[0]["links"][0])
+    assert [c["payload"]["answered"] for c in _card(reopened, "signatory_question")] == ["yes"]
     card = _card(reopened, "contacts")[0]["payload"]
     assert card["roles"] == ["billing_contact"]
     row = next(r for r in card["rows"] if r["role"] == "billing_contact")
@@ -178,9 +179,9 @@ async def test_signatory_no_asks_for_the_signatory(life) -> None:
     assert ui_cards(invalid, "signatory_question") == []
     assert (await app.state.session_store.get(session_id)).signatory_answer == "no"
 
-    # Answered: opening the link again doesn't ask again.
+    # Answered: opening the link again shows the answer and doesn't ask again.
     again = await _open(client, outbox(app, APPLICANT, "contacts_request")[0]["links"][0])
-    assert _card(again, "signatory_question") == []
+    assert [c["payload"]["answered"] for c in _card(again, "signatory_question")] == ["no"]
     assert _card(again, "contacts")[0]["payload"]["signatory_answer"] == "no"
 
 
