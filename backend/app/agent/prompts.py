@@ -28,7 +28,7 @@ def clear_prompt_cache() -> None:
     _static_prompt.cache_clear()
 
 
-def rules_in_force(policy: PolicyConfig, master: MasterData) -> str:
+def rules_in_force(policy: PolicyConfig, master: MasterData, *, assisted: bool = False) -> str:
     """The "Rules in force" prompt block, rendered from the policy (L3 §3.7).
 
     The static prompt refers to this block instead of stating these rules, so the
@@ -80,16 +80,24 @@ def rules_in_force(policy: PolicyConfig, master: MasterData) -> str:
         docs_line += f" Optional: {', '.join(optional)}."
     lines.append(docs_line)
 
-    if policy.existing_tenant_policy == "sign_in":
-        lines.append(
-            "- Existing tenants (the CR already has a Tenant Central account): explain kindly "
-            "that they can sign in with that account, point them to Sign In, and stop "
-            "collecting."
-        )
+    if assisted or policy.public_cr_check != "ask_then_sign_in":
+        if policy.existing_tenant_policy == "sign_in":
+            lines.append(
+                "- Existing tenants (the CR already has a Tenant Central account): explain "
+                "kindly that they can sign in with that account, point them to Sign In, and "
+                "stop collecting."
+            )
+        else:
+            lines.append(
+                "- Existing tenants (the CR already has a Tenant Central account): they may "
+                "continue this inquiry here; carry on collecting as usual."
+            )
     else:
         lines.append(
-            "- Existing tenants (the CR already has a Tenant Central account): they may "
-            "continue this inquiry here; carry on collecting as usual."
+            "- CR on the public page: ask whether the company has a CR (the card buttons). "
+            "Never ask for, look up or repeat a CR number. Never say whether a CR, company "
+            "or person is known to Cenomi. If they have a CR, signing in to Tenant Central "
+            "is the path — stop collecting in chat."
         )
     return "\n".join(lines)
 
@@ -102,7 +110,7 @@ def build_system_message(
     assisted: bool = False,
     tenant_brands: list[str] | None = None,
 ) -> SystemMessage:
-    rules = rules_in_force(get_policy(), master)
+    rules = rules_in_force(get_policy(), master, assisted=assisted)
     dynamic = prompt_summary(draft, master)
     hint = next_bundle_hint(
         draft,
@@ -120,6 +128,12 @@ ASSISTED_NOTES = """## Channel: assisted (call centre or Guest Service)
 - You speak to the executive, never to the caller. Refer to the applicant as "the caller".
 - Never address the caller by name or as "you" — the executive reads your reply aloud
   (e.g. "Thanks — I've saved Sara's details.").
+- **Company (assisted):** the CR number. One answer fills CR, company name and address
+  through `verify_cr`. If they don't have it, ask for company name and address together.
+  If the caller says they have their CR but hasn't given it, invite them to read it out.
+- **Tools (assisted):** `verify_cr` whenever you hear a CR number — if the account already
+  exists, follow "Existing tenants" under Rules in force. If they don't have the CR, offer
+  to skip and call `skip_cr` only after they agree.
 - Same bundles as usual, but one short question at a time — they are relaying over the phone.
 - Never ask for email or SMS verification, codes, documents or consent; the caller does those
   from the application link.
