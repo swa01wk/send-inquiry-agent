@@ -177,19 +177,46 @@ jobs:
       (github.event_name == 'schedule' && vars.NIGHTLY_LIVE == 'true')
     runs-on: ubuntu-latest
     env:
+      LLM_PROVIDER: ${{ vars.LLM_PROVIDER }}
+      LLM_MODEL: ${{ vars.LLM_MODEL || secrets.LLM_MODEL }}
+      LLM_TEMPERATURE: ${{ vars.LLM_TEMPERATURE }}
+      LLM_REASONING_EFFORT: ${{ vars.LLM_REASONING_EFFORT }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      # Accept the model as a repository variable (preferred) or a secret.
       OPENAI_MODEL: ${{ vars.OPENAI_MODEL || secrets.OPENAI_MODEL }}
+      AZURE_OPENAI_ENDPOINT: ${{ vars.AZURE_OPENAI_ENDPOINT || secrets.AZURE_OPENAI_ENDPOINT }}
+      AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+      AZURE_OPENAI_API_VERSION: ${{ vars.AZURE_OPENAI_API_VERSION }}
     steps:
-      - name: Check OpenAI settings
+      - name: Check LLM settings
         run: |
           missing=0
-          if [ -z "$OPENAI_API_KEY" ]; then
-            echo "::error::OPENAI_API_KEY is empty. Add it as a repository secret (Settings > Secrets and variables > Actions > Secrets)."
+          model="${LLM_MODEL:-$OPENAI_MODEL}"
+          use_azure=0
+          if [ "$LLM_PROVIDER" = "azure" ]; then use_azure=1; fi
+          if [ -z "$LLM_PROVIDER" ] && [ -n "$AZURE_OPENAI_ENDPOINT" ]; then use_azure=1; fi
+          if [ "$use_azure" = "1" ]; then
+            if [ -z "$AZURE_OPENAI_ENDPOINT" ]; then
+              echo "::error::AZURE_OPENAI_ENDPOINT is empty."
+              missing=1
+            fi
+            if [ -z "$AZURE_OPENAI_API_KEY" ]; then
+              echo "::error::AZURE_OPENAI_API_KEY is empty. Add it as a repository secret."
+              missing=1
+            fi
+          elif [ -n "$OPENAI_API_KEY" ]; then
+            :
+          elif [ -n "$AZURE_OPENAI_API_KEY" ]; then
+            use_azure=1
+            if [ -z "$AZURE_OPENAI_ENDPOINT" ]; then
+              echo "::error::AZURE_OPENAI_ENDPOINT is empty."
+              missing=1
+            fi
+          else
+            echo "::error::Set OPENAI_API_KEY or AZURE_OPENAI_API_KEY (and matching endpoint for Azure)."
             missing=1
           fi
-          if [ -z "$OPENAI_MODEL" ]; then
-            echo "::error::OPENAI_MODEL is empty. Add it as a repository variable (Settings > Secrets and variables > Actions > Variables)."
+          if [ -z "$model" ]; then
+            echo "::error::LLM_MODEL or OPENAI_MODEL is empty. Add LLM_MODEL as a repository variable or secret."
             missing=1
           fi
           exit $missing
@@ -219,21 +246,49 @@ jobs:
       (github.event_name == 'schedule' && vars.NIGHTLY_LIVE == 'true')
     runs-on: ubuntu-latest
     env:
+      LLM_PROVIDER: ${{ vars.LLM_PROVIDER }}
+      LLM_MODEL: ${{ vars.LLM_MODEL || secrets.LLM_MODEL }}
+      LLM_TEMPERATURE: ${{ vars.LLM_TEMPERATURE }}
+      LLM_REASONING_EFFORT: ${{ vars.LLM_REASONING_EFFORT }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       OPENAI_MODEL: ${{ vars.OPENAI_MODEL || secrets.OPENAI_MODEL }}
+      AZURE_OPENAI_ENDPOINT: ${{ vars.AZURE_OPENAI_ENDPOINT || secrets.AZURE_OPENAI_ENDPOINT }}
+      AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+      AZURE_OPENAI_API_VERSION: ${{ vars.AZURE_OPENAI_API_VERSION }}
       EVAL_REPEATS: "3"
       EVAL_TOLERANCE: "5"
       SCENARIO: ${{ inputs.scenario }}
     steps:
-      - name: Check OpenAI settings
+      - name: Check LLM settings
         run: |
           missing=0
-          if [ -z "$OPENAI_API_KEY" ]; then
-            echo "::error::OPENAI_API_KEY is empty. Add it as a repository secret."
+          model="${LLM_MODEL:-$OPENAI_MODEL}"
+          use_azure=0
+          if [ "$LLM_PROVIDER" = "azure" ]; then use_azure=1; fi
+          if [ -z "$LLM_PROVIDER" ] && [ -n "$AZURE_OPENAI_ENDPOINT" ]; then use_azure=1; fi
+          if [ "$use_azure" = "1" ]; then
+            if [ -z "$AZURE_OPENAI_ENDPOINT" ]; then
+              echo "::error::AZURE_OPENAI_ENDPOINT is empty."
+              missing=1
+            fi
+            if [ -z "$AZURE_OPENAI_API_KEY" ]; then
+              echo "::error::AZURE_OPENAI_API_KEY is empty. Add it as a repository secret."
+              missing=1
+            fi
+          elif [ -n "$OPENAI_API_KEY" ]; then
+            :
+          elif [ -n "$AZURE_OPENAI_API_KEY" ]; then
+            use_azure=1
+            if [ -z "$AZURE_OPENAI_ENDPOINT" ]; then
+              echo "::error::AZURE_OPENAI_ENDPOINT is empty."
+              missing=1
+            fi
+          else
+            echo "::error::Set OPENAI_API_KEY or AZURE_OPENAI_API_KEY (and matching endpoint for Azure)."
             missing=1
           fi
-          if [ -z "$OPENAI_MODEL" ]; then
-            echo "::error::OPENAI_MODEL is empty. Add it as a repository variable or secret."
+          if [ -z "$model" ]; then
+            echo "::error::LLM_MODEL or OPENAI_MODEL is empty. Add LLM_MODEL as a repository variable or secret."
             missing=1
           fi
           exit $missing

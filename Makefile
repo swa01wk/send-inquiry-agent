@@ -89,14 +89,14 @@ e2e-demo-step:
 
 e2e: e2e-int
 
-# ---- Live layers (need OPENAI_API_KEY and OPENAI_MODEL) --------------------
+# ---- Live layers (need an LLM provider: OpenAI or Azure) --------------------
 
 # AGENT-LIVE: live evaluation. Groups (GROUP=intake, arabic, …) and repeats arrive in step 11d (B1).
 eval-live:
 	$(LOAD_ENV); cd backend && GROUP=$(GROUP) EVAL_REPEATS=$(EVAL_REPEATS) EVAL_TOLERANCE=$(EVAL_TOLERANCE) uv run python scripts/eval_live.py
 
-# Live targets export backend/.env first, so OPENAI_API_KEY and OPENAI_MODEL reach the
-# Playwright process too (the backend reads .env itself; the tests need the key in the shell).
+# Live targets export backend/.env first, so LLM env vars reach the Playwright process too
+# (the backend reads .env itself; the tests need a key in the shell).
 LOAD_ENV = if [ -f backend/.env ]; then set -a; . ./backend/.env; set +a; fi
 
 # E2E-LIVE: Playwright with the real model (@live suites).

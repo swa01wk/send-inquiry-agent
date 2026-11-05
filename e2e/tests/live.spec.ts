@@ -6,21 +6,25 @@ import { appendLiveResult, type LiveScenarioResult } from '../support/liveResult
 import { countSentences } from '../support/plainLanguage'
 import { afterLiveTurn, doneCount } from '../support/turnChecks'
 
-test.describe('Live OpenAI personas @live', () => {
-  test.skip(!process.env.OPENAI_API_KEY && !process.env.E2E_LIVE, 'OPENAI_API_KEY required')
+const hasLlmCredentials = () =>
+  Boolean(process.env.OPENAI_API_KEY || process.env.AZURE_OPENAI_API_KEY)
+
+test.describe('Live LLM personas @live', () => {
+  test.skip(!hasLlmCredentials() && !process.env.E2E_LIVE, 'LLM API key required')
 
   test.beforeAll(() => {
     // `make e2e-live` sets E2E_LIVE; a missing key there is a setup error, not a skip.
-    if (process.env.E2E_LIVE && !process.env.OPENAI_API_KEY) {
+    if (process.env.E2E_LIVE && !hasLlmCredentials()) {
       throw new Error(
-        'OPENAI_API_KEY is not set in this shell. backend/.env is read only by the backend; ' +
-          'export the key (and OPENAI_MODEL) before running make e2e-live.',
+        'Neither OPENAI_API_KEY nor AZURE_OPENAI_API_KEY is set in this shell. backend/.env is ' +
+          'read only by the backend; export your provider key (and LLM_MODEL or OPENAI_MODEL) ' +
+          'before running make e2e-live.',
       )
     }
   })
 
   test.afterEach(async ({ page }, testInfo) => {
-    if (!process.env.OPENAI_API_KEY) return
+    if (!hasLlmCredentials()) return
     const events = await readCapturedEvents(page)
     if (testInfo.status !== testInfo.expectedStatus) {
       // The raw SSE stream explains live failures (empty replies, retractions, errors).
