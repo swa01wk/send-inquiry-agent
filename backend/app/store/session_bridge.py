@@ -47,6 +47,7 @@ def session_from_parts(
         complete_nonce=handle.complete_nonce,
         closed=handle.closed,
         existing_cr_choice=handle.existing_cr_choice,
+        signatory_answer=handle.signatory_answer,
         _version=inquiry.version,
     )
 
@@ -83,6 +84,7 @@ def handle_from_session(session: Session) -> HandleState:
         complete_nonce=session.complete_nonce,
         closed=session.closed,
         existing_cr_choice=session.existing_cr_choice,
+        signatory_answer=session.signatory_answer,
         test_scenario=session.test_scenario,
         script_step=session.script_step,
     )

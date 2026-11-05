@@ -8,7 +8,7 @@ import {
   raiseTenantInquiry,
   signInReviewer,
 } from '../support/stories'
-import { reviewerFor } from '../support/submit'
+import { approveContactsViaApi, approveDocumentsViaApi, reviewerFor } from '../support/submit'
 
 const LAYLA_EMAIL = 'layla.hassan@oasiscoffee.example'
 const OMAR_EMAIL = 'omar@beanstreet.example'
@@ -38,6 +38,9 @@ test.describe('Story A1 approvals and Yardi @scripted', () => {
       const reviewerPage = await reviewerContext.newPage()
       await signInReviewer(reviewerPage, reviewer)
       await openReviewerCase(reviewerPage, reference)
+      // Day R2: the Lease Admin approves each document first (demo feedback §3.4).
+      await approveDocumentsViaApi(request, reference)
+      await reviewerPage.reload()
 
       await reviewerPage
         .getByTestId('action-approve_first')
@@ -99,6 +102,8 @@ test.describe('Story A1 approvals and Yardi @scripted', () => {
       await yardi.getByRole('button', { name: 'Link company' }).click()
       await expect(yardi.getByTestId('yardi-linked')).toContainText('YC-1001')
 
+      // Day R2: the Lease Admin approves the re-sent billing contact (§3.5).
+      await approveContactsViaApi(request, reference)
       await reviewerPage.reload()
       await expect(reviewerPage.getByTestId('action-approve')).toBeVisible()
       await reviewerPage

@@ -343,6 +343,9 @@ Business rules, validated at start-up into `PolicyConfig` (`app/policy/config.py
 | `existing_tenant_policy` | `sign_in` (`allow_inquiry`: an existing CR continues with `cr_status="new"`) | `verify_cr` |
 | `public_cr_check` | `lookup` until the R1 agent prompt lands, then `ask_then_sign_in` (demo feedback §3.1): the self-service chat asks "Do you have a CR?" and never takes, checks or repeats a CR number (a typed one is replaced with `[CR number removed]` before the transcript, audit and model, and counts as Yes). Staff channels keep the lookup | `cr_question.cr_question_active`, sessions, chat, `verify_cr`, `cr_check`, `record_cr_answer`, form mode, bundle hint |
 | `first_level_review_role` | `lease_admin` (null: the `review_routing` role does both levels) | Routing (`ReviewQueue.first_role`), the state machine's actor check, effects, console, status |
+| `document_approval` | `true`: the first-level reviewer approves or rejects each document; `approved_first` waits for them (demo feedback §3.4) | `workflow/documents.document_blockers`, `legal_events`, brief |
+| `document_expiry` | `{expiring_soon_days: 14, doc_types: [company_profile, brand_profile]}` | `workflow/expiry`, `document_approved`, brief |
+| `contacts` | `{approval_required: true, ask_signatory: true, applicant_signatory_needs_approval: false}` (demo feedback §3.5) | `contacts_provided`, `approval_blockers`, `legal_events`, contacts and signatory cards, `contacts_received` effect |
 | `max_malls_per_inquiry` | `1` | `validate_malls`, `update_draft`, mall auto-fill, `mall_picker.max_select` |
 | `phone.allowed_countries` | `any` (or calling codes, e.g. `["971"]`; +966 always allowed) | Phone normalisers, `classify_contact_number` |
 | `verification` | `{email: link, mobile: otp}` (the only supported values) | Prompt block |
@@ -433,9 +436,9 @@ CI: `.github/workflows/ci.yml` runs `backend` (`check-be`, `test-be`) and `front
 
 Contracts for [L4](specs/l4-outcome-assistance.md) at Day 4 depth. Code: `backend/app/workflow/` (models, machine, service, effects, store, contacts), `app/domain/case_brief.py`, `app/domain/payload.py`, `app/api/review.py`, `app/api/cases.py`, `app/api/case_cards.py`.
 
-**Case** (`workflow/models.py`, one per submitted inquiry, keyed by its reference; JSON snapshots in `<DATA_DIR>/cases/`): `status` (`CaseStatus`: draft, submitting, submitted, first_review, reupload_requested, second_review, approved, sent_to_yardi, rejected, abandoned, redirected), `draft` (the inquiry as submitted; re-uploads replace documents), `review_queue {product_line, region, role, first_role}` (`role`: the final reviewer for the product line; `first_role`: the first-level reviewer, policy `first_level_review_role`, null on cases routed before 5 Nov 2026), `requests [{id, kind: reupload|contacts|sales_data, status: open|fulfilled|withdrawn, doc_types, remarks, requested_by, requested_at, closed_at}]`, `decisions [{level, outcome, remarks, reason_category, by, at}]`, `tenant_contacts [TenantContact]` (`FieldValue` per name, email, mobile, landline; `same_as_primary`), `sales_data`, `document_history`, `onboarding.invitations`, `yardi {company_id, brand_id, lead_ref, sent_at, attempts, needs_operations}`, `events` (applied transitions), `effects_done`, `case_session_id`. Created on submit (audit `case_created`) and routed at once.
+**Case** (`workflow/models.py`, one per submitted inquiry, keyed by its reference; JSON snapshots in `<DATA_DIR>/cases/`): `status` (`CaseStatus`: draft, submitting, submitted, first_review, reupload_requested, second_review, approved, sent_to_yardi, rejected, abandoned, redirected), `draft` (the inquiry as submitted; re-uploads replace documents), `review_queue {product_line, region, role, first_role}` (`role`: the final reviewer for the product line; `first_role`: the first-level reviewer, policy `first_level_review_role`, null on cases routed before 5 Nov 2026), `requests [{id, kind: reupload|contacts|sales_data, status: open|fulfilled|withdrawn, doc_types, roles, remarks, requested_by, requested_at, closed_at}]` (`roles`: a contacts request opened by a rejected contact asks only for these), `decisions [{level, outcome, remarks, reason_category, by, at}]`, `tenant_contacts [TenantContact]` (`FieldValue` per name, email, mobile, landline; `same_as_primary`; `contact_id`, `approval`, `approval_remarks`, `approved_by`, `added_by`, §13.1), `document_decisions {doc_type: DocumentDecision}` (§13.1), `sales_data`, `document_history`, `onboarding.invitations`, `yardi {company_id, brand_id, lead_ref, sent_at, attempts, needs_operations}`, `events` (applied transitions), `effects_done`, `case_session_id`. Created on submit (audit `case_created`) and routed at once.
 
-**State machine** (`workflow/machine.py`): `transition(case, event, actor=, now=)` is pure and implements every row of M0 §6; it raises `IllegalTransition(code)` with `illegal_transition`, `not_allowed`, `not_in_queue` or `invalid_payload`. Reviewer events need a reviewer whose regions include the queue's region and whose role is the queue's role for that event's review level: `REVIEW_LEVEL[(status, event)]` is `first` for rows from `first_review` and `reupload_requested`, otherwise `final` (demo feedback §3.2), and `ReviewQueue.role_for(level)` names the role. Both roles see the case in their queue. `legal_events(case, actor)` lists what an actor can do now (the console's actions). `workflow/service.apply_event` is the only way a case changes: transition, save, audit `case_transition {event, from_status, to_status, by, outcome}` (refusals too), then effects.
+**State machine** (`workflow/machine.py`): `transition(case, event, actor=, now=)` is pure and implements every row of M0 §6; it raises `IllegalTransition(code)` with `illegal_transition`, `not_allowed`, `not_in_queue`, `invalid_payload`, `stale_file` or `stale_contact` (§13.1). Reviewer events need a reviewer whose regions include the queue's region and whose role is the queue's role for that event's review level: `REVIEW_LEVEL[(status, event)]` is `first` for rows from `first_review` and `reupload_requested` and for the events in `FIRST_LEVEL_EVENTS` (`contact_approved`, `contact_rejected`), otherwise `final` (demo feedback §3.2), and `ReviewQueue.role_for(level)` names the role. Both roles see the case in their queue. `legal_events(case, actor)` lists what an actor can do now (the console's actions). `workflow/service.apply_event` is the only way a case changes: transition, save, audit `case_transition {event, from_status, to_status, by, outcome, subject?}` (refusals too; `subject` is the document type or contact role of a per-item decision), then effects.
 
 **Routing:** policy `review_routing` maps the unit type to a role (store → `rlm_store`, media → `rplm_media`, specialty → `rplm_specialty`); the region is the mall's region in master data. Policy `first_level_review_role` (`lease_admin`) reviews first in every product line; the reviewer directory has one Lease Admin per region and a manager (`lease_admin-central`, `-western`, `-eastern`, `-manager`).
 
@@ -449,7 +452,8 @@ Contracts for [L4](specs/l4-outcome-assistance.md) at Day 4 depth. Code: `backen
 | `rejected` | `inquiry_rejected` → applicant (remarks, policy `after_rejection`) |
 | `approved_first` | Azure AD invite of the primary contact (role `primary_contact`) unless `has_account`; `first_level_approved`; a system `contacts_requested` when policy `auto_request_contacts_after_first_approval`; `review_assigned` → the final reviewers when another role does the first level |
 | `contacts_requested` / `sales_data_requested` | `contacts_request` / `sales_data_request` → applicant, with a case link |
-| `contacts_provided` / `sales_data_provided` | `contacts_received` / `sales_data_received` → reviewers |
+| `contacts_provided` / `sales_data_provided` | `contacts_received` (final reviewers, and the first-level reviewers when `contacts.approval_required`) / `sales_data_received` → reviewers |
+| `contact_rejected` | `contacts_request` → applicant when the rejection opened a new contacts request (not when it only added a role to an open one) |
 | `request_withdrawn` | `request_withdrawn` → applicant |
 | `approved` | invite each additional contact without an account (role = contact role); `inquiry_accepted`; `send_lead` to Yardi (`lead:<reference>`), each failure a `yardi_failed` event, up to `YARDI_MAX_ATTEMPTS`, then `needs_operations` |
 
@@ -460,6 +464,7 @@ Contracts for [L4](specs/l4-outcome-assistance.md) at Day 4 depth. Code: `backen
 | `resubmit_documents` | `{}` | Every requested document re-uploaded after the request → `documents_resubmitted` | `documents_resubmitted`, or `resubmit_blocked <doc_types>` (the re-upload card is re-sent) |
 | `submit_contacts` | `{}` | Pressing Send accepts the values on the contacts card (`confirm_contacts`); required roles complete → `contacts_provided` | `contacts_submitted`, or `contacts_blocked <reasons>` |
 | `submit_sales_data` | `{}` | A `sales_data` file uploaded after the request → `sales_data_provided` | `sales_data_submitted`, or `sales_data_blocked missing_file` |
+| `signatory_answer` | `{is_signatory: bool}` | "Are you the authorised signatory?" (§13.1). Yes: `authorized_signatory` = the verified primary contact (`same_as_primary`); No: a same-as-primary signatory is cleared. Stores `Session.signatory_answer`, audits `signatory_answered {answer}`, returns the answered `signatory_question` card and the refreshed contacts card | `signatory_answer yes` / `signatory_answer no`, or `signatory_answer no_request` / `signatory_answer_invalid` |
 
 Contacts being collected live on the case session (`Session.contacts_draft`); `workflow/contacts.write_contacts(current, entries, primary_draft)` is the deterministic writer for the case agent's `update_contacts` tool (entries `{role, first_name?, last_name?, email?, contact_number?, same_as_primary?, source?}`; "that's me" copies the primary contact as `verified`, unconfirmed; Arabic digits normalised). `contacts_blockers` lists `missing_contact:<role>`, `incomplete_contact:<role>`, `unconfirmed_contact:<role>`.
 
@@ -471,7 +476,8 @@ Contacts being collected live on the case session (`Session.contacts_draft`); `w
 | --- | --- |
 | `case_status` | `{reference, status, stage: submitted\|first_review\|second_review\|outcome, stage_label, status_headline?, owner_role, last_change, open_requests:[{id, kind, label, remarks, doc_types, requested_at}], outcome: approved\|rejected\|null, outcome_remarks, next_step}` — `status_headline` is set for `approved` and `sent_to_yardi` (see `FINAL_APPROVAL_LABELS` in `services/status.py`) (card id `case_status`) |
 | `document_upload` | gains `mode: "intake"\|"reupload"`, `requested_doc_types`, `remarks`; in re-upload mode `docs` lists only the requested types and `uploaded` means uploaded after the request; the button is Resubmit (`resubmit_documents`) |
-| `contacts` | `{request_id, remarks, rows:[{role, label, required, first_name, last_name, email, phone, source, confirmed, same_as_primary}], can_submit, blockers}` (card id `contacts`) |
+| `contacts` | `{request_id, remarks, rows:[{role, label, required, first_name, last_name, email, phone, source, confirmed, same_as_primary, approval, approval_remarks}], can_submit, blockers, roles, signatory_answer}` (card id `contacts`). `approval`: Cenomi's decision on the contact as sent (`pending` "Waiting for Cenomi", `approved`, `rejected` with `approval_remarks`), null when not sent or changed since; `roles`: a request opened by a rejection asks only for these; `signatory_answer`: `yes` \| `no` \| null |
+| `signatory_question` | `{prompt, yes_label, no_label, answered: yes\|no\|null}` (card id `signatory_question`): shown before the contacts card when a contacts request covering every role opens, until answered (policy `contacts.ask_signatory`); the buttons send `signatory_answer {is_signatory}` |
 | `sales_data_upload` | `{request_id, remarks, uploaded, file_name, size_bytes, allowed_extensions, max_mb}`; upload with `doc_type=sales_data` (card id `sales_data`) |
 | `reviewer_suggestion` | `{kind, action, payload, text}` — console assistant only; **Use** prefills the matching action form or Yardi re-link pickers (never submits). `kind`: `yardi_company`, `yardi_brand`, `reupload_remarks`, `rejection_remarks`, `contacts_request`, `tenant_reminder`. `action`: `request_reupload`, `reject`, `request_contacts`, `relink_company`, `relink_brand`, or empty for `tenant_reminder`. `payload`: e.g. `{remarks}`, `{company_id}`, `{brand_id}` |
 
@@ -486,11 +492,11 @@ Contacts being collected live on the case session (`Session.contacts_draft`); `w
 | GET | `/api/review/reviewers` | Reviewers for the mock sign-in `[{id, name, role, regions, manager}]` |
 | GET | `/api/review/me` | The signed-in reviewer |
 | GET | `/api/review/cases?waiting_on=` | Queue `[{reference, brand, company, mall, product_line, region, status, stage_label, waiting_on, age_days, last_change, open_requests, possible_duplicate, follow_on_of, needs_operations}]` |
-| GET | `/api/review/cases/{reference}` | `{brief: CaseBrief, timeline:[{at, actor, type, summary}], legal_actions, approval_blockers, rejection_categories, reupload_doc_types}` |
+| GET | `/api/review/cases/{reference}` | `{brief: CaseBrief, timeline:[{at, actor, type, summary}], legal_actions, approval_blockers, first_approval_blockers, rejection_categories, reupload_doc_types}` |
 | GET | `/api/review/cases/{reference}/documents/{file_id}` | The file |
 | GET | `/api/review/yardi/companies?q=` | Active Yardi companies by the first word of the name `[{id, name}]`: the options for `relink_company` |
 | GET | `/api/review/yardi/companies/{company_id}/brands` | `[{id, name, source}]` (`lease` \| `proposal`): the options for `relink_brand`. 404 `company_not_found` |
-| POST | `/api/review/cases/{reference}/actions` | `{action, payload}` → the updated detail. Actions: `request_reupload {doc_types, remarks}`, `reject {remarks, reason_category?}`, `approve_first`, `request_contacts {remarks?}`, `request_sales_data {remarks?}`, `withdraw_request {kind}`, `relink_company {company_id}`, `relink_brand {brand_id}`, `remove_contact {role}`, `approve`. Errors: 400 `unknown_action` / `invalid_payload`, 403 `not_in_queue` / `not_allowed`, 409 `illegal_transition` |
+| POST | `/api/review/cases/{reference}/actions` | `{action, payload}` → the updated detail. Actions: `request_reupload {doc_types, remarks}`, `reject {remarks, reason_category?}`, `approve_first`, `request_contacts {remarks?}`, `request_sales_data {remarks?}`, `withdraw_request {kind}`, `relink_company {company_id}`, `relink_brand {brand_id}`, `remove_contact {role}`, `approve`, and (§13.1) `confirm_document_expiry {doc_type, file_id, expiry_date}`, `approve_document {doc_type, file_id, remarks?}`, `reject_document {doc_type, file_id, remarks}`, `approve_contact {contact_id}`, `reject_contact {contact_id, remarks}`. `request_reupload` with `doc_types: []` asks for the rejected documents. Errors: 400 `unknown_action` / `invalid_payload`, 403 `not_in_queue` / `not_allowed`, 409 `illegal_transition` / `stale_file` / `stale_contact` |
 | POST | `/api/review/cases/{reference}/assistant` | `{text}` → SSE (`token`, `ui_card`, `done`, same as applicant chat). Honors `X-Test-Scenario` in scripted mode (one script step sequence per request, `step_index=0`; reviewer tools only). 401 `unknown_reviewer`; 404 `case_not_found` when the case is not in the reviewer's queue |
 
 **Case brief** (`domain/case_brief.py`, deterministic): applicant, company, brand, product line, mall, region, CR status, every field with source, confirmation and evidence, verification, documents with replaced versions, sales data, contacts, requests, decisions, follow-on, Yardi link, stage ages, and a next-decision checklist from the policy.
@@ -499,7 +505,49 @@ Contacts being collected live on the case session (`Session.contacts_draft`); `w
 
 **Status page:** `GET /api/inquiries/{reference}?t=` follows the case: `status` is `under_review`, `approved`, `sent_to_yardi` or `rejected`; `summary` is applicant-facing copy (including `FINAL_APPROVAL_LABELS` when approved or sent to Yardi); stages Submitted → First review → Lead — second review → Outcome; `owner_role` from the queue; `waiting_on_you` lists open requests ("Re-upload documents", "Add company contacts", "Upload estimated sales data").
 
-**Policy:** `review_routing`, `second_level_contacts {required, optional}`, `rejection_categories`, `after_rejection`, `require_contacts_before_approval`, `auto_request_contacts_after_first_approval`.
+**Policy:** `review_routing`, `second_level_contacts {required, optional}`, `rejection_categories`, `after_rejection`, `require_contacts_before_approval`, `auto_request_contacts_after_first_approval`, `document_approval`, `document_expiry`, `contacts`.
+
+### 13.1 Per-document and per-contact approval (demo feedback §3.4, §3.5; day R2)
+
+**Document decisions** (`workflow/models.DocumentDecision`, `workflow/documents.py`): `Case.document_decisions[doc_type] = {doc_type, file_id, status: pending|approved|rejected, remarks, review_status, expiry_extracted, expiry_confirmed, expiry_confirmed_by, by, at}`, one per intake document, created at submit from the upload's `DocumentRef.review`. A decision names the upload it was made on: when the case's document is replaced (`documents_resubmitted`), the decision for that type starts again as pending with the new file and review result. `current_decisions(case)` fills in any that are missing (cases saved before 5 Nov 2026).
+
+**Expiry** (`workflow/expiry.expiry_status(decision, today)`, pure): the date in force is `expiry_confirmed`, else `expiry_extracted`. `expired` before today; `expiring_soon` less than `document_expiry.expiring_soon_days` away; otherwise `valid`, or `unknown` with no date. Today comes from the app clock. Only the types in `document_expiry.doc_types` carry an expiry.
+
+**First-level events** (state `first_review`, also `reupload_requested`; the first-level reviewer). Each names the `file_id`: one that isn't the current upload is refused with `stale_file` (409); a document whose re-upload is awaited, or that's already decided, with `invalid_payload`.
+
+| Event | Payload | Guard |
+| --- | --- | --- |
+| `document_expiry_confirmed` | `doc_type, file_id, expiry_date` (ISO date) | A past date on an approved document sends it back to pending |
+| `document_approved` | `doc_type, file_id, remarks?` | Pending; not `expired`; an `unknown` expiry is confirmed first |
+| `document_rejected` | `doc_type, file_id, remarks` (required) | Pending |
+
+`reupload_requested` with no `doc_types` asks for the rejected documents, with `"<label>: <remarks>"` lines as the request's remarks unless others are given. `approved_first` is refused while `first_approval_blockers(case)` isn't empty: `document_pending:<type>` (a required document not approved), `document_rejected:<type>`, `expiry_unconfirmed:<type>`. Nothing changes a decision on its own (ADR-R6): an expired document stays pending until the reviewer rejects it.
+
+**Contact decisions.** `TenantContact` gains `contact_id`, `approval` (pending | approved | rejected), `approval_remarks`, `approved_by` (a reviewer id or `system:<reason>`) and `added_by` (tenant | reviewer | system). The state machine sets them and ignores what a payload says.
+- `contacts_provided`: an unchanged contact that was approved or pending keeps its id and state; a new, changed or previously rejected one is pending under a new id. The applicant as signatory (`authorized_signatory` with `same_as_primary`) is approved on entry (`system:verified_primary`) unless `contacts.applicant_signatory_needs_approval`.
+- Contacts prefilled from the tenant record are approved on entry (`system:tenant_record`, `added_by: system`).
+
+First-level events at `second_review`:
+
+| Event | Payload | Does |
+| --- | --- | --- |
+| `contact_approved` | `contact_id` | Pending → approved. A changed contact's old id → `stale_contact` (409) |
+| `contact_rejected` | `contact_id, remarks` (required) | Pending → rejected; opens a contacts request with `roles: [role]` and remarks `"<label>: <remarks>"`, or adds the role to an open one |
+
+With `contacts.approval_required`, the `approved` blockers gain `contact_not_approved:<role>` for each required role that isn't approved.
+
+**Signatory question.** `Session.signatory_answer` (`yes` | `no` | null) is persisted with the session and passed to the agent state as `signatory_answer`. `workflow/contacts.apply_signatory_answer(contacts, primary, is_signatory)` is shared by the `signatory_answer` action and the case agent's tool; `actions.signatory_answer_result(session, runtime, is_signatory)` returns the cards.
+
+**Brief.**
+- `BriefDocument` gains `approval, approval_remarks, decided_by, decided_at, expiry_tracked, expiry, expiry_extracted, expiry_confirmed, expiry_status, review_status, suggested_reject_remarks`. The last is set for an expired pending document: "This document expired on {date}. Please upload a current one."
+- `BriefContact` gains `contact_id, approval, approval_remarks, approved_by, added_by`.
+- The checklist lists "Approve or reject: …", "Rejected: … Request a re-upload.", "Confirm the expiry date: …" and "… waiting for the Lease Admin's approval."
+
+**Console.**
+- Document rows (`doc-row-<type>`): viewer link, expiry chip (`doc-expiry-status-<type>`), date input (`doc-expiry-<type>`, **Save date**), approval chip (`doc-approval-<type>`), **Approve** (`doc-approve-<type>`, disabled when expired or unknown) and **Reject** (`doc-reject-<type>`, remarks required, prefilled for an expired document).
+- Contact rows (`contact-row-<role>`): approval chip (`contact-approval-<role>`), **Approve** (`contact-approve-<role>`) and **Reject** (`contact-reject-<role>`, remarks required).
+- The buttons show only for the role whose actions they are; the final reviewer sees the chips.
+- **Approve first level** is disabled, with the `first-approval-blockers` list, until the documents are decided. **Request re-upload** with nothing ticked asks for the rejected documents.
 
 ## 14. Proactive work and demo operability (L5 core, Day 5)
 

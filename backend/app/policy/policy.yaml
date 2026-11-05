@@ -89,6 +89,28 @@ require_contacts_before_approval: true
 # "on contact creation"; L4 A10).
 auto_request_contacts_after_first_approval: true
 
+# Per-document approval (demo feedback §3.4, day R2): the first-level reviewer approves or
+# rejects each document; first-level approval waits until every required one is approved.
+# A re-uploaded document needs approval again.
+document_approval: true
+
+# Document expiry (demo feedback §3.4, M9). The date comes from the document review service
+# or the Lease Admin. An expired document can't be approved; one of these types with no
+# known date needs its date confirmed first. Less than `expiring_soon_days` away: "Expiring
+# soon", still approvable.
+document_expiry:
+  expiring_soon_days: 14
+  doc_types: [company_profile, brand_profile]
+
+# Tenant contacts at second review (demo feedback §3.5, day R2).
+contacts:
+  # The Lease Admin approves each contact; final approval waits for the required ones.
+  approval_required: true
+  # The contacts request opens with "Are you the authorised signatory?".
+  ask_signatory: true
+  # "Yes, I'm the signatory" copies the verified primary contact, approved on entry (M8).
+  applicant_signatory_needs_approval: false
+
 # ---- Proactive work (L5 §3.1–3.3) -----------------------------------------------------
 # Demo values. A trigger fires once per case per period: a stay in one review stage, or
 # one open request. Every decision is in the audit log.

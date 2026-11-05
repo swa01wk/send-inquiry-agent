@@ -20,12 +20,15 @@ export const APPLICANT_MOBILE = '+966501234567'
 export type ContactOutbox = { email: string; mobile: string }
 
 /** The S1 scripted path (`scenario` must be a script in `backend/tests/e2e_scripts/`, e.g.
- * `s1-happy-path`) to a submitted inquiry, without per-turn checks. Returns the reference. */
+ * `s1-happy-path`) to a submitted inquiry, without per-turn checks. Returns the reference.
+ * `files` picks the profile fixtures: the mock document review reads the expiry from the
+ * file name (`company_expired.pdf`, `brand_soon.pdf`; demo feedback §3.3). */
 export async function submitScriptedInquiry(
   page: Page,
   request: APIRequestContext,
   scenario: string,
   beat?: (page: Page) => Promise<void>,
+  files: { company?: string; brand?: string } = {},
 ): Promise<string> {
   const inquiry = new InquiryPage(page)
   await inquiry.open(scenario)
@@ -48,8 +51,8 @@ export async function submitScriptedInquiry(
     timeout: 90_000,
   })
   if (beat) await beat(page)
-  await inquiry.upload('Company Profile', 'company_profile.pdf')
-  await inquiry.upload('Brand Profile', 'brand_profile.pdf')
+  await inquiry.upload('Company Profile', files.company ?? 'company_profile.pdf')
+  await inquiry.upload('Brand Profile', files.brand ?? 'brand_profile.pdf')
   await expect(inquiry.cards('review')).toBeVisible({ timeout: 60_000 })
   if (beat) await beat(page)
   await inquiry.acceptAndSubmit()
@@ -127,4 +130,95 @@ export async function reviewerFor(
   const reviewer = wanted ?? holders[0]
   if (!reviewer) throw new Error(`No reviewer has ${reference} in their queue`)
   return reviewer
+}
+
+type DecisionDetail = {
+  brief: {
+    documents: {
+      doc_type: string
+      uploaded: boolean
+      file_id: string | null
+      approval?: string | null
+      expiry_tracked?: boolean
+      expiry_status?: string | null
+    }[]
+    contacts: { role: string; contact_id?: string | null; approval?: string }[]
+  }
+}
+
+async function caseDetailAs(
+  request: APIRequestContext,
+  reviewerId: string,
+  reference: string,
+): Promise<DecisionDetail> {
+  const res = await request.get(`${API}/api/review/cases/${encodeURIComponent(reference)}`, {
+    headers: { 'X-Reviewer-Id': reviewerId },
+  })
+  expect(res.ok(), await res.text()).toBeTruthy()
+  return (await res.json()) as DecisionDetail
+}
+
+async function actAs(
+  request: APIRequestContext,
+  reviewerId: string,
+  reference: string,
+  action: string,
+  payload: Record<string, unknown>,
+): Promise<void> {
+  const res = await request.post(
+    `${API}/api/review/cases/${encodeURIComponent(reference)}/actions`,
+    { headers: { 'X-Reviewer-Id': reviewerId }, data: { action, payload } },
+  )
+  expect(res.ok(), await res.text()).toBeTruthy()
+}
+
+/** A date a year from today, `YYYY-MM-DD`. */
+function aYearAhead(): string {
+  const date = new Date()
+  date.setFullYear(date.getFullYear() + 1)
+  return date.toISOString().slice(0, 10)
+}
+
+/**
+ * Day R2 (demo feedback §3.4): the Lease Admin approves every pending document through the
+ * console API, confirming an expiry date first where none is known (documents on file, or
+ * the review service didn't answer). Stories that aren't about document approval call this
+ * before **Approve first level**, then reload the console.
+ */
+export async function approveDocumentsViaApi(
+  request: APIRequestContext,
+  reference: string,
+): Promise<void> {
+  const leaseAdmin = await reviewerFor(request, reference, 'first')
+  const detail = await caseDetailAs(request, leaseAdmin.id, reference)
+  for (const doc of detail.brief.documents) {
+    if (!doc.uploaded || !doc.file_id || doc.approval !== 'pending') continue
+    const ids = { doc_type: doc.doc_type, file_id: doc.file_id }
+    if (doc.expiry_tracked && doc.expiry_status === 'unknown') {
+      await actAs(request, leaseAdmin.id, reference, 'confirm_document_expiry', {
+        ...ids,
+        expiry_date: aYearAhead(),
+      })
+    }
+    await actAs(request, leaseAdmin.id, reference, 'approve_document', ids)
+  }
+}
+
+/**
+ * Day R2 (demo feedback §3.5): the Lease Admin approves every pending tenant contact through
+ * the console API. Stories that aren't about contact approval call this before the final
+ * **Approve**, then reload the console.
+ */
+export async function approveContactsViaApi(
+  request: APIRequestContext,
+  reference: string,
+): Promise<void> {
+  const leaseAdmin = await reviewerFor(request, reference, 'first')
+  const detail = await caseDetailAs(request, leaseAdmin.id, reference)
+  for (const contact of detail.brief.contacts) {
+    if (contact.approval !== 'pending' || !contact.contact_id) continue
+    await actAs(request, leaseAdmin.id, reference, 'approve_contact', {
+      contact_id: contact.contact_id,
+    })
+  }
 }

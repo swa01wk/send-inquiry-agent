@@ -137,6 +137,44 @@ class SecondLevelContacts(_Strict):
         return self
 
 
+def _expiry_doc_types() -> list[str]:
+    return ["company_profile", "brand_profile"]
+
+
+class DocumentExpiryPolicy(_Strict):
+    """Document expiry at first review (demo feedback §3.4, M9)."""
+
+    # Less than this many days to the expiry date: "Expiring soon" (still approvable).
+    expiring_soon_days: int = Field(default=14, ge=0, le=365)
+    # Document types that carry an expiry date: the Lease Admin can't approve one of these
+    # until its expiry is known, and never while it has expired.
+    doc_types: list[str] = Field(default_factory=_expiry_doc_types)
+
+    @field_validator("doc_types")
+    @classmethod
+    def _known_types(cls, value: list[str]) -> list[str]:
+        from app.domain.models import NON_INTAKE_DOC_TYPES, DocType
+
+        known = {d.value for d in DocType if d not in NON_INTAKE_DOC_TYPES}
+        unknown = sorted(set(value) - known)
+        if unknown:
+            msg = f"document_expiry.doc_types: unknown document types: {', '.join(unknown)}"
+            raise ValueError(msg)
+        return value
+
+
+class ContactsPolicy(_Strict):
+    """Tenant contacts at second review (demo feedback §3.5)."""
+
+    # The first-level reviewer (Lease Admin) approves each contact before final approval.
+    approval_required: bool = True
+    # The contacts request opens with "Are you the authorised signatory?".
+    ask_signatory: bool = True
+    # false: "Yes, I'm the signatory" copies the verified primary contact, approved on entry
+    # (M8). true: it waits for the Lease Admin like any other contact.
+    applicant_signatory_needs_approval: bool = False
+
+
 class QuietHours(_Strict):
     start: str = "22:00"
     end: str = "08:00"
@@ -225,6 +263,11 @@ class PolicyConfig(_Strict):
     )
     require_contacts_before_approval: bool = True
     auto_request_contacts_after_first_approval: bool = True
+    # Demo feedback §3.4: the first-level reviewer approves or rejects each document, and
+    # first-level approval waits until every required one is approved.
+    document_approval: bool = True
+    document_expiry: DocumentExpiryPolicy = DocumentExpiryPolicy()
+    contacts: ContactsPolicy = ContactsPolicy()
     # ---- Proactive work (L5) -----------------------------------------------------------
     proactive: ProactivePolicy = ProactivePolicy()
 

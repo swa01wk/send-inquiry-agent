@@ -16,6 +16,7 @@ from app.agent.state import AgentState
 from app.agent.tools import search_faq, suggest_replies
 from app.api.case_cards import (
     _STAGE_LABELS,
+    as_signatory_answer,
     build_case_status_card,
     build_contacts_card,
     build_reupload_card,
@@ -177,7 +178,12 @@ def show_contacts_review(
         return _tool_message(runtime, "No case linked to this session.")
     request = case.open_request("contacts")
     contacts = [TenantContact.model_validate(c) for c in state.get("contacts_draft") or []]
-    card = build_contacts_card(contacts, request)
+    card = build_contacts_card(
+        contacts,
+        request,
+        case=case,
+        signatory_answer=as_signatory_answer(state.get("signatory_answer")),
+    )
     _emit_card(card, runtime)
     if request is None:
         return _tool_message(runtime, "Contacts card shown (no open contacts request).")

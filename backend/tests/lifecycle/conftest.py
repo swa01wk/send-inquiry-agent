@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
@@ -15,7 +15,7 @@ from app.agent.reviewer_graph import build_reviewer_graph
 from app.config import Settings
 from app.domain.draft_ops import write_fields
 from app.domain.master import load_master_data
-from app.domain.models import FieldKey, Source
+from app.domain.models import FieldKey, InquiryDraft, Source
 from app.main import create_app
 from app.services.container import build_services
 from app.sessions import SessionStore
@@ -62,9 +62,15 @@ async def life(tmp_path: Path) -> AsyncIterator[tuple[AsyncClient, Any]]:
 
 
 async def submit_case(
-    client: AsyncClient, app: Any, *, unit_type: str = "store", mall: str = "riyadh-mall-a"
+    client: AsyncClient,
+    app: Any,
+    *,
+    unit_type: str = "store",
+    mall: str = "riyadh-mall-a",
+    prepare: Callable[[InquiryDraft], None] | None = None,
 ) -> str:
-    """A submitted inquiry (through the real submit action); returns its reference."""
+    """A submitted inquiry (through the real submit action); returns its reference.
+    `prepare` changes the draft just before submit (e.g. the documents' review results)."""
     created = await client.post("/api/sessions")
     session_id = created.json()["session_id"]
     session = await app.state.session_store.get(session_id)
@@ -78,6 +84,8 @@ async def submit_case(
         master=load_master_data(),
     )
     assert not errors
+    if prepare is not None:
+        prepare(draft)
     session.draft = draft
     events = await chat_action(client, session_id, "accept_and_submit", {"terms_accepted": True})
     success = [d for n, d in events if n == "ui_card" and d["card_type"] == "success"]

@@ -15,20 +15,26 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Callable
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Literal, cast
 
 from pydantic import BaseModel, Field
 
-from app.domain.models import DocType, DocumentRef
+from app import clock
+from app.domain.fields import document_label
+from app.domain.models import NON_INTAKE_DOC_TYPES, DocType, DocumentRef
 from app.policy.config import get_policy
+from app.workflow.documents import current_decisions, document_blockers
+from app.workflow.expiry import expiry_status, expiry_tracked
 from app.workflow.models import (
+    CONTACT_ROLE_LABELS,
     FIRST_LEVEL_STATES,
     Case,
     CaseEvent,
     CaseRequest,
     CaseStatus,
     Decision,
+    DocumentDecision,
     RequestKind,
     ReviewLevel,
     ReviewQueue,
@@ -55,7 +61,9 @@ SYSTEM = Actor(kind="system")
 
 
 class IllegalTransition(Exception):
-    """`code`: illegal_transition | not_in_queue | not_allowed | invalid_payload."""
+    """`code`: illegal_transition | not_in_queue | not_allowed | invalid_payload |
+    stale_file | stale_contact (the decision was made on a file or contact that has since
+    been replaced: reload the case)."""
 
     def __init__(self, code: str, message: str) -> None:
         super().__init__(message)
@@ -78,9 +86,23 @@ TABLE: dict[tuple[CaseStatus, str], tuple[CaseStatus, frozenset[ActorKind]]] = {
     (S.REUPLOAD_REQUESTED, "documents_resubmitted"): (S.FIRST_REVIEW, frozenset({"user"})),
     (S.FIRST_REVIEW, "rejected"): (S.REJECTED, frozenset({"reviewer"})),
     (S.FIRST_REVIEW, "approved_first"): (S.SECOND_REVIEW, frozenset({"reviewer"})),
+    # Per-document decisions (demo feedback §3.4): first level, also while a re-upload of
+    # another document is awaited.
+    (S.FIRST_REVIEW, "document_expiry_confirmed"): (S.FIRST_REVIEW, frozenset({"reviewer"})),
+    (S.FIRST_REVIEW, "document_approved"): (S.FIRST_REVIEW, frozenset({"reviewer"})),
+    (S.FIRST_REVIEW, "document_rejected"): (S.FIRST_REVIEW, frozenset({"reviewer"})),
+    (S.REUPLOAD_REQUESTED, "document_expiry_confirmed"): (
+        S.REUPLOAD_REQUESTED,
+        frozenset({"reviewer"}),
+    ),
+    (S.REUPLOAD_REQUESTED, "document_approved"): (S.REUPLOAD_REQUESTED, frozenset({"reviewer"})),
+    (S.REUPLOAD_REQUESTED, "document_rejected"): (S.REUPLOAD_REQUESTED, frozenset({"reviewer"})),
     (S.SECOND_REVIEW, "contacts_requested"): (S.SECOND_REVIEW, frozenset({"reviewer", "system"})),
     (S.SECOND_REVIEW, "sales_data_requested"): (S.SECOND_REVIEW, frozenset({"reviewer"})),
     (S.SECOND_REVIEW, "contact_removed"): (S.SECOND_REVIEW, frozenset({"reviewer"})),
+    # Per-contact decisions (demo feedback §3.5): the first-level reviewer, at second review.
+    (S.SECOND_REVIEW, "contact_approved"): (S.SECOND_REVIEW, frozenset({"reviewer"})),
+    (S.SECOND_REVIEW, "contact_rejected"): (S.SECOND_REVIEW, frozenset({"reviewer"})),
     (S.SECOND_REVIEW, "contacts_provided"): (S.SECOND_REVIEW, frozenset({"user"})),
     (S.SECOND_REVIEW, "sales_data_provided"): (S.SECOND_REVIEW, frozenset({"user"})),
     (S.SECOND_REVIEW, "request_withdrawn"): (S.SECOND_REVIEW, frozenset({"reviewer"})),
@@ -99,9 +121,11 @@ REVIEWER_EVENTS = frozenset(
 
 # Which review level acts on each reviewer row (demo feedback §3.2, ADR-R2): declared data,
 # read by `_check_actor`; no role names in the rules. Rows from the first-review states are
-# first level; the rest are final unless listed in FIRST_LEVEL_EVENTS (R2 adds the contact
-# approvals there).
-FIRST_LEVEL_EVENTS: frozenset[str] = frozenset()
+# first level; the rest are final unless listed in FIRST_LEVEL_EVENTS: the contact
+# approvals at second review (demo feedback §3.5).
+FIRST_LEVEL_EVENTS: frozenset[str] = frozenset({"contact_approved", "contact_rejected"})
+DOCUMENT_EVENTS = frozenset({"document_expiry_confirmed", "document_approved", "document_rejected"})
+CONTACT_DECISION_EVENTS = frozenset({"contact_approved", "contact_rejected"})
 REVIEW_LEVEL: dict[tuple[CaseStatus, str], ReviewLevel] = {
     (from_status, event): (
         "first" if from_status in FIRST_LEVEL_STATES or event in FIRST_LEVEL_EVENTS else "final"
@@ -155,6 +179,15 @@ def legal_events(case: Case, actor: Actor) -> list[str]:
             continue
         if event == "contact_removed" and not case.tenant_contacts:
             continue
+        if event in DOCUMENT_EVENTS and (
+            not get_policy().document_approval or not current_decisions(case)
+        ):
+            continue
+        if event in CONTACT_DECISION_EVENTS and (
+            not get_policy().contacts.approval_required
+            or not any(c.approval == "pending" for c in case.tenant_contacts)
+        ):
+            continue
         events.append(event)
     return events
 
@@ -163,15 +196,25 @@ def _approval_blockers(case: Case) -> list[str]:
     blockers = [f"open_request:{r.kind}" for r in case.requests if r.status == "open"]
     policy = get_policy()
     if policy.require_contacts_before_approval:
-        present = {c.role for c in case.tenant_contacts}
+        by_role = {c.role: c for c in case.tenant_contacts}
         for role in policy.second_level_contacts.required:
-            if role not in present:
+            contact = by_role.get(role)
+            if contact is None:
                 blockers.append(f"missing_contact:{role}")
+            elif policy.contacts.approval_required and contact.approval != "approved":
+                blockers.append(f"contact_not_approved:{role}")
     return blockers
 
 
 def approval_blockers(case: Case) -> list[str]:
+    """What stops final approval (`approved`)."""
     return _approval_blockers(case)
+
+
+def first_approval_blockers(case: Case, today: date | None = None) -> list[str]:
+    """What stops first-level approval (`approved_first`): the document decisions
+    (demo feedback §3.4). Empty with `document_approval: false`."""
+    return document_blockers(case, today or clock.now().date())
 
 
 def _new_request(
@@ -203,7 +246,17 @@ def _routed(case: Case, event: WorkflowEvent, actor: Actor, now: datetime) -> No
 
 
 def _reupload_requested(case: Case, event: WorkflowEvent, actor: Actor, now: datetime) -> None:
+    """Documents to re-upload, with remarks. No `doc_types`: the rejected documents, with
+    their rejection remarks as the request's remarks unless others are given (§3.4)."""
     raw = event.payload.get("doc_types")
+    rejected = [d for d in current_decisions(case).values() if d.status == "rejected"]
+    if (raw is None or raw == []) and rejected:
+        raw = [d.doc_type.value for d in rejected]
+        remarks = _remarks(event.payload, required=False) or "\n".join(
+            f"{document_label(d.doc_type)}: {d.remarks}" for d in rejected if d.remarks
+        )
+    else:
+        remarks = ""
     if not isinstance(raw, list) or not raw:
         raise _invalid("Pick at least one document to re-upload.")
     try:
@@ -212,7 +265,7 @@ def _reupload_requested(case: Case, event: WorkflowEvent, actor: Actor, now: dat
         raise _invalid("Unknown document type.") from exc
     if DocType.SALES_DATA in doc_types:
         raise _invalid("Sales data is requested on its own, not as a re-upload.")
-    remarks = _remarks(event.payload, required=True)
+    remarks = remarks or _remarks(event.payload, required=True)
     case.requests.append(
         CaseRequest(
             id=f"req_{uuid.uuid4().hex[:10]}",
@@ -248,6 +301,8 @@ def _documents_resubmitted(case: Case, event: WorkflowEvent, actor: Actor, now: 
         if previous is not None:
             case.document_history.append(previous)
         case.draft.documents[doc_type] = ref
+        # A new upload is decided again (§3.4, ADR-R4).
+        case.document_decisions[doc_type] = DocumentDecision.for_upload(ref)
     _close(request, "fulfilled", now)
 
 
@@ -274,6 +329,9 @@ def _rejected(case: Case, event: WorkflowEvent, actor: Actor, now: datetime) -> 
 
 
 def _approved_first(case: Case, event: WorkflowEvent, actor: Actor, now: datetime) -> None:
+    blockers = first_approval_blockers(case, now.date())
+    if blockers:
+        raise _invalid(f"Can't approve the first level yet: {', '.join(blockers)}.")
     case.decisions.append(
         Decision(
             level="first",
@@ -283,6 +341,170 @@ def _approved_first(case: Case, event: WorkflowEvent, actor: Actor, now: datetim
             at=now,
         )
     )
+
+
+# ---- per-document decisions (demo feedback §3.4) ----------------------------------------
+
+
+def _document_decision(case: Case, event: WorkflowEvent) -> DocumentDecision:
+    """The decision this event is about, checked against the current upload."""
+    try:
+        doc_type = DocType(str(event.payload.get("doc_type") or ""))
+    except ValueError as exc:
+        raise _invalid("Unknown document type.") from exc
+    if doc_type in NON_INTAKE_DOC_TYPES:
+        raise _invalid("That document isn't decided at first review.")
+    decisions = current_decisions(case)
+    decision = decisions.get(doc_type)
+    if decision is None:
+        raise _invalid("That document isn't on this case.")
+    file_id = str(event.payload.get("file_id") or "")
+    if not file_id:
+        raise _invalid("The document's file id is required.")
+    if file_id != decision.file_id:
+        raise IllegalTransition(
+            "stale_file", "This document has been replaced since you opened it. Reload the case."
+        )
+    request = case.open_request("reupload")
+    if request is not None and doc_type in request.doc_types:
+        raise _invalid("A re-upload of this document has been requested: wait for the new file.")
+    case.document_decisions = decisions
+    return decision
+
+
+def _not_decided(decision: DocumentDecision) -> None:
+    if decision.status != "pending":
+        raise _invalid(f"This document is already {decision.status}.")
+
+
+def _document_expiry_confirmed(
+    case: Case, event: WorkflowEvent, actor: Actor, now: datetime
+) -> None:
+    decision = _document_decision(case, event)
+    try:
+        expiry = date.fromisoformat(str(event.payload.get("expiry_date") or ""))
+    except ValueError as exc:
+        raise _invalid("The expiry date must be a date like 2027-03-31.") from exc
+    decision.expiry_confirmed = expiry
+    decision.expiry_confirmed_by = actor.id or actor.kind
+    # An approval can't outlive its expiry: an approved document whose corrected date has
+    # passed is decided again.
+    if decision.status == "approved" and expiry_status(decision, now.date()) == "expired":
+        decision.status = "pending"
+        decision.by = None
+        decision.at = None
+
+
+def _document_approved(case: Case, event: WorkflowEvent, actor: Actor, now: datetime) -> None:
+    decision = _document_decision(case, event)
+    _not_decided(decision)
+    if expiry_tracked(decision.doc_type.value):
+        status = expiry_status(decision, now.date())
+        if status == "expired":
+            raise _invalid("This document has expired: reject it and ask for a current one.")
+        if status == "unknown":
+            raise _invalid("Confirm the document's expiry date before approving it.")
+    decision.status = "approved"
+    decision.remarks = _remarks(event.payload, required=False) or None
+    decision.by = actor.id or actor.kind
+    decision.at = now
+
+
+def _document_rejected(case: Case, event: WorkflowEvent, actor: Actor, now: datetime) -> None:
+    decision = _document_decision(case, event)
+    _not_decided(decision)
+    decision.status = "rejected"
+    decision.remarks = _remarks(event.payload, required=True)
+    decision.by = actor.id or actor.kind
+    decision.at = now
+
+
+# ---- per-contact decisions (demo feedback §3.5) -----------------------------------------
+
+
+def _new_contact_id() -> str:
+    return f"ct_{uuid.uuid4().hex[:10]}"
+
+
+def _pending_contact(case: Case, event: WorkflowEvent) -> TenantContact:
+    contact_id = str(event.payload.get("contact_id") or "")
+    if not contact_id:
+        raise _invalid("The contact id is required.")
+    contact = case.contact_by_id(contact_id)
+    if contact is None:
+        raise IllegalTransition(
+            "stale_contact", "This contact has changed since you opened it. Reload the case."
+        )
+    if contact.approval != "pending":
+        raise _invalid(f"This contact is already {contact.approval}.")
+    return contact
+
+
+def _contact_approved(case: Case, event: WorkflowEvent, actor: Actor, now: datetime) -> None:
+    contact = _pending_contact(case, event)
+    contact.approval = "approved"
+    contact.approval_remarks = None
+    contact.approved_by = actor.id or actor.kind
+
+
+def _contact_rejected(case: Case, event: WorkflowEvent, actor: Actor, now: datetime) -> None:
+    """Rejected: a contacts request for that role opens (or the open one gains the role)."""
+    contact = _pending_contact(case, event)
+    remarks = _remarks(event.payload, required=True)
+    contact.approval = "rejected"
+    contact.approval_remarks = remarks
+    contact.approved_by = actor.id or actor.kind
+    line = f"{CONTACT_ROLE_LABELS[contact.role]}: {remarks}"
+    request = case.open_request("contacts")
+    if request is None:
+        case.requests.append(
+            CaseRequest(
+                id=f"req_{uuid.uuid4().hex[:10]}",
+                kind="contacts",
+                roles=[contact.role],
+                remarks=line,
+                requested_by=actor.id or actor.kind,
+                requested_at=now,
+            )
+        )
+    elif request.roles and contact.role not in request.roles:
+        request.roles.append(contact.role)
+        request.remarks = f"{request.remarks}\n{line}" if request.remarks else line
+
+
+def _with_approval(case: Case, contact: TenantContact) -> TenantContact:
+    """The approval a submitted contact carries (§3.5). Whatever the payload said about
+    approval is replaced: an unchanged approved or pending contact keeps its id and state;
+    a new, changed or previously rejected one is pending under a new id, except the
+    applicant as signatory (the verified primary contact), approved on entry."""
+    policy = get_policy()
+    previous = next((c for c in case.tenant_contacts if c.role == contact.role), None)
+    if (
+        previous is not None
+        and previous.values() == contact.values()
+        and previous.approval != "rejected"
+    ):
+        contact.contact_id = previous.contact_id
+        contact.approval = previous.approval
+        contact.approval_remarks = previous.approval_remarks
+        contact.approved_by = previous.approved_by
+        contact.added_by = previous.added_by
+        return contact
+    contact.contact_id = _new_contact_id()
+    contact.approval_remarks = None
+    contact.added_by = "tenant"
+    signatory_is_applicant = (
+        contact.role == "authorized_signatory"
+        and contact.same_as_primary
+        and not policy.contacts.applicant_signatory_needs_approval
+    )
+    if signatory_is_applicant:
+        contact.approval = "approved"
+        contact.approved_by = "system:verified_primary"
+    else:
+        contact.approval = "pending"
+        contact.approved_by = None
+    return contact
 
 
 def _request(kind: str) -> Callable[[Case, WorkflowEvent, Actor, datetime], None]:
@@ -314,7 +536,7 @@ def _contacts_provided(case: Case, event: WorkflowEvent, actor: Actor, now: date
     missing = [r for r in get_policy().second_level_contacts.required if r not in present]
     if missing:
         raise _invalid(f"Missing required contacts: {', '.join(missing)}.")
-    case.tenant_contacts = contacts
+    case.tenant_contacts = [_with_approval(case, c) for c in contacts]
     _close(request, "fulfilled", now)
 
 
@@ -397,6 +619,11 @@ APPLY: dict[str, Callable[[Case, WorkflowEvent, Actor, datetime], None]] = {
     "documents_resubmitted": _documents_resubmitted,
     "rejected": _rejected,
     "approved_first": _approved_first,
+    "document_expiry_confirmed": _document_expiry_confirmed,
+    "document_approved": _document_approved,
+    "document_rejected": _document_rejected,
+    "contact_approved": _contact_approved,
+    "contact_rejected": _contact_rejected,
     "contacts_requested": _request("contacts"),
     "sales_data_requested": _request("sales_data"),
     "contact_removed": _contact_removed,

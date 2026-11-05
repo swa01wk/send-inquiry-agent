@@ -84,6 +84,9 @@ class Session:
     closed: str | None = None
     # Assisted mode, existing CR: which option the executive chose on the card (§3.2).
     existing_cr_choice: str | None = None
+    # Case mode, contacts request (demo feedback §3.5): "yes" | "no" to "Are you the
+    # authorised signatory?", or None until answered.
+    signatory_answer: str | None = None
 
     @property
     def assisted(self) -> bool:
@@ -132,6 +135,7 @@ class Session:
             "complete_nonce": self.complete_nonce,
             "closed": self.closed,
             "existing_cr_choice": self.existing_cr_choice,
+            "signatory_answer": self.signatory_answer,
         }
 
     @classmethod
@@ -166,6 +170,7 @@ class Session:
             complete_nonce=raw.get("complete_nonce"),
             closed=raw.get("closed"),
             existing_cr_choice=raw.get("existing_cr_choice"),
+            signatory_answer=raw.get("signatory_answer"),
         )
 
 

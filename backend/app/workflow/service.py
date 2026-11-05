@@ -15,6 +15,7 @@ from app.domain.master import MasterData
 from app.domain.models import FieldKey, InquiryDraft
 from app.policy.config import get_policy
 from app.security import tokens
+from app.workflow.documents import current_decisions
 from app.workflow.machine import SYSTEM, Actor, IllegalTransition, transition
 from app.workflow.models import Case, CaseStatus, ReviewQueue, WorkflowEvent
 
@@ -77,18 +78,34 @@ def _audit_transition(
     outcome: str,
     to_status: str | None,
 ) -> None:
+    payload: dict[str, object] = {
+        "event": event.name,
+        "from_status": case.status.value,
+        "to_status": to_status,
+        "by": actor.id or actor.kind,
+        "outcome": outcome,
+    }
+    subject = _subject(case, event)
+    if subject:
+        payload["subject"] = subject
     runtime.services.audit.record(
         case.id,
         "case_transition",
         actor="reviewer" if actor.kind == "reviewer" else actor.kind,
-        payload={
-            "event": event.name,
-            "from_status": case.status.value,
-            "to_status": to_status,
-            "by": actor.id or actor.kind,
-            "outcome": outcome,
-        },
+        payload=payload,
     )
+
+
+def _subject(case: Case, event: WorkflowEvent) -> str | None:
+    """The document type or contact role a per-item decision is about (never a value)."""
+    doc_type = event.payload.get("doc_type")
+    if isinstance(doc_type, str) and doc_type:
+        return doc_type
+    contact_id = event.payload.get("contact_id")
+    if isinstance(contact_id, str) and contact_id:
+        contact = case.contact_by_id(contact_id)
+        return contact.role if contact else None
+    return None
 
 
 async def apply_event(
@@ -144,6 +161,8 @@ async def create_case(
         created_by=created_by,
         tenant_id=tenant_id,
     )
+    # One pending decision per intake document, with the review service's expiry (§3.4).
+    case.document_decisions = current_decisions(case)
     store.save(case)
     runtime.services.audit.record(
         case.id, "case_created", actor="system", payload={"session": session_id}

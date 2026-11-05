@@ -41,7 +41,12 @@ from app.proactive.models import RECOMMENDED, TRIGGER_LABELS, AttentionItem
 from app.services.container import ServiceContainer
 from app.services.reviewers import Reviewer
 from app.services.status import REQUEST_LABELS
-from app.workflow.machine import IllegalTransition, approval_blockers, legal_events
+from app.workflow.machine import (
+    IllegalTransition,
+    approval_blockers,
+    first_approval_blockers,
+    legal_events,
+)
 from app.workflow.models import Case, WorkflowEvent
 from app.workflow.service import apply_event
 
@@ -59,8 +64,16 @@ ACTIONS: dict[str, str] = {
     "relink_brand": "brand_relinked",
     "remove_contact": "contact_removed",
     "approve": "approved",
+    # Per-document and per-contact decisions (demo feedback §3.4, §3.5): first level.
+    "confirm_document_expiry": "document_expiry_confirmed",
+    "approve_document": "document_approved",
+    "reject_document": "document_rejected",
+    "approve_contact": "contact_approved",
+    "reject_contact": "contact_rejected",
 }
 EVENT_TO_ACTION = {event: action for action, event in ACTIONS.items()}
+# stale_file / stale_contact (the decision names a replaced upload or a changed contact) and
+# illegal_transition fall through to 409.
 _STATUS_FOR_ERROR = {"not_in_queue": 403, "not_allowed": 403, "invalid_payload": 400}
 
 
@@ -131,6 +144,8 @@ class CaseDetail(BaseModel):
     timeline: list[TimelineEntry]
     legal_actions: list[str]
     approval_blockers: list[str]
+    # What stops "Approve first level" (demo feedback §3.4): document decisions and expiry.
+    first_approval_blockers: list[str] = Field(default_factory=list)
     rejection_categories: list[str]
     reupload_doc_types: list[dict[str, str]]
 
@@ -216,6 +231,9 @@ def _summary(event: dict[str, Any]) -> str:
     if kind == "case_transition":
         outcome = payload.get("outcome")
         name = str(payload.get("event", "")).replace("_", " ")
+        subject = payload.get("subject")
+        if subject:
+            name = f"{name}: {str(subject).replace('_', ' ')}"
         if outcome == "applied":
             return f"{name.capitalize()} → {payload.get('to_status')}"
         return f"{name.capitalize()} refused ({outcome})"
@@ -268,6 +286,7 @@ def _detail(
             EVENT_TO_ACTION[e] for e in legal_events(case, reviewer.actor()) if e in EVENT_TO_ACTION
         ],
         approval_blockers=approval_blockers(case),
+        first_approval_blockers=first_approval_blockers(case),
         rejection_categories=list(get_policy().rejection_categories),
         reupload_doc_types=[{"doc_type": d.value, "label": label} for d, label in DOCUMENT_LABELS],
     )

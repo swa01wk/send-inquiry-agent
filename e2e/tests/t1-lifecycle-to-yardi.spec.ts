@@ -2,7 +2,13 @@ import { expect, test } from '@playwright/test'
 import { InquiryPage } from '../pages/inquiry'
 import { clearDevOutbox, fetchDevOutbox, latestByTemplate } from '../support/outbox'
 import { openCaseAs } from '../support/stories'
-import { APPLICANT_EMAIL, reviewerFor, submitScriptedInquiry } from '../support/submit'
+import {
+  APPLICANT_EMAIL,
+  approveContactsViaApi,
+  approveDocumentsViaApi,
+  reviewerFor,
+  submitScriptedInquiry,
+} from '../support/submit'
 
 const OMAR_EMAIL = 'omar@beanstreet.example'
 
@@ -40,6 +46,9 @@ test.describe('Story T1 @scripted', () => {
         .click()
 
       await expect(reviewerPage.getByTestId('case-stage')).toHaveText('First review')
+      // Day R2: the Lease Admin approves each document before the first level (§3.4).
+      await approveDocumentsViaApi(request, reference)
+      await reviewerPage.reload()
       await reviewerPage
         .getByTestId('action-approve_first')
         .getByRole('button', { name: 'Approve first level' })
@@ -89,6 +98,9 @@ test.describe('Story T1 @scripted', () => {
         'Thanks, your contacts are with the leasing team.',
       )
 
+      // Day R2: the Lease Admin approves the billing contact (§3.5); the applicant as
+      // signatory was approved on entry.
+      await approveContactsViaApi(request, reference)
       // Final review: the RLM takes over from the Lease Admin (demo feedback §3.2).
       const finalReviewer = await reviewerFor(request, reference, 'final')
       await openCaseAs(reviewerPage, finalReviewer, reference)
