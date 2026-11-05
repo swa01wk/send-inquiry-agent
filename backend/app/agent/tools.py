@@ -211,7 +211,11 @@ def verify_cr(
     runtime: ToolRuntime,
 ) -> Command[Any]:
     """Validate a CR number and look up whether the company already has an account."""
-    if cr_question_active(assisted=bool(state.get("assisted")), channel=state.get("channel")):
+    if cr_question_active(
+        assisted=bool(state.get("assisted")),
+        channel=state.get("channel"),
+        test_scenario=state.get("test_scenario"),
+    ):
         # Demo feedback §3.1: the public page never looks a CR up or repeats one.
         return _tool_result(
             runtime,
@@ -388,7 +392,11 @@ def record_cr_answer(
     buttons do the same). has_cr=true: they have one, so they sign in instead; false: no CR.
     Never ask for, pass or repeat the CR number."""
     draft = state["draft"]
-    if not cr_question_active(assisted=bool(state.get("assisted")), channel=state.get("channel")):
+    if not cr_question_active(
+        assisted=bool(state.get("assisted")),
+        channel=state.get("channel"),
+        test_scenario=state.get("test_scenario"),
+    ):
         return _tool_result(runtime, draft=draft, content="Not used in this chat.")
     answered = apply_cr_answer(draft, has_cr)
     if answered is None:

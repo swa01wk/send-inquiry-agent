@@ -61,20 +61,29 @@ def _restore_policy(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPa
 
     Tests written before the Lease Admin level (demo feedback §3.2, day R1) run with one
     reviewer role doing both levels (`first_level_review_role: null`), as they were
-    written. Tests marked `lease_admin` run with the shipped policy (Lease Admin first).
+    written; tests marked `lease_admin` run with the shipped policy (Lease Admin first).
+    Likewise tests written for the CR lookup run with `public_cr_check: lookup` unless
+    marked `cr_question`.
     `create_app` installs the policy file it loads, so the loader it calls is wrapped too.
     """
-    policy = get_policy()
+    overrides: dict[str, object] = {}
     if request.node.get_closest_marker("lease_admin") is None:
-        policy = policy.with_changes(first_level_review_role=None)
+        overrides["first_level_review_role"] = None
+    if request.node.get_closest_marker("cr_question") is None:
+        # Demo feedback §3.1: tests written for the CR lookup keep it after the policy
+        # flips to `ask_then_sign_in`; tests marked `cr_question` run with the shipped one.
+        overrides["public_cr_check"] = "lookup"
+    policy = get_policy()
+    if overrides:
+        policy = policy.with_changes(**overrides)
         import app.main as main_module
 
         real_load = main_module.load_policy
 
-        def _one_reviewer_role(path: str | Path | None = None) -> PolicyConfig:
-            return real_load(path).with_changes(first_level_review_role=None)
+        def _written_for(path: str | Path | None = None) -> PolicyConfig:
+            return real_load(path).with_changes(**overrides)
 
-        monkeypatch.setattr(main_module, "load_policy", _one_reviewer_role)
+        monkeypatch.setattr(main_module, "load_policy", _written_for)
     with use_policy(policy):
         yield
 

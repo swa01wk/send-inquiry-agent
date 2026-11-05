@@ -52,7 +52,9 @@ async def create_session(
             services.gateway.set_session_faults(session.id, request.headers.get("X-Mock-Faults"))
         except FaultSpecError as exc:
             raise ApiError(400, "bad_mock_faults", str(exc)) from exc
-    if cr_question_active(assisted=False, channel=session.channel):
+    if cr_question_active(
+        assisted=False, channel=session.channel, test_scenario=session.test_scenario
+    ):
         # Demo feedback §3.1: ask whether they have a CR, never for the number.
         messages = [
             AssistantMessage(id=WELCOME_MSG_ID_1, text=WELCOME_MESSAGE_1),

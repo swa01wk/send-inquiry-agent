@@ -34,10 +34,21 @@ CR_TYPED_NOTE = (
 _CR_RE = re.compile(r"(?<![\d+])[1-9]\d{9}(?!\d)")
 
 
-def cr_question_active(*, assisted: bool, channel: str | None) -> bool:
+# Scripted e2e scenarios (AGENT_MODE=scripted, `X-Test-Scenario`) that run the CR question.
+# Every other scripted scenario keeps the CR lookup it was written for, whatever the policy
+# says, so flipping `public_cr_check` doesn't rewrite the older Playwright scripts and
+# goldens. Add a script's name here when it moves to the question.
+CR_QUESTION_SCRIPTS: frozenset[str] = frozenset({"rd-cr-question"})
+
+
+def cr_question_active(
+    *, assisted: bool, channel: str | None, test_scenario: str | None = None
+) -> bool:
     """The public page asks the CR question instead of looking a CR up."""
     if assisted or (channel or SELF_SERVICE) != SELF_SERVICE:
         return False
+    if test_scenario:
+        return test_scenario in CR_QUESTION_SCRIPTS
     return get_policy().public_cr_check == "ask_then_sign_in"
 
 
