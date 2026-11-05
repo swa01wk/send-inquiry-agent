@@ -53,6 +53,8 @@ DEFAULT_TIMEOUTS_S: dict[str, float] = {
     "llm_router": 60.0,
     "identity": 5.0,
     "yardi": 10.0,
+    # Demo feedback §3.3: the document review agent (mocked until Cenomi gives access).
+    "document_review": 15.0,
 }
 
 T = TypeVar("T")

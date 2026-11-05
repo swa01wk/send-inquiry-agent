@@ -36,6 +36,8 @@ ALLOWED_KEYS: dict[str, frozenset[str]] = {
     "verification_result": frozenset({"channel", "result"}),
     "document_added": frozenset({"doc_type", "ext", "size_bytes"}),
     "document_removed": frozenset({"doc_type"}),
+    # Demo feedback §3.3: the document review service answered (or didn't). No content.
+    "document_reviewed": frozenset({"doc_type", "status", "has_expiry"}),
     "submit_attempt": frozenset({"submit_key", "outcome"}),
     "submit_result": frozenset({"submit_key", "outcome", "reference", "repeat"}),
     "notification_sent": frozenset({"template", "channel", "outcome", "message_id"}),

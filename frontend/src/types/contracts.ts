@@ -424,6 +424,8 @@ export interface FormModePayload {
   next_step: FormModeStep
   fields: FormModeField[]
   can_skip_cr: boolean
+  /** Demo feedback §3.1: the CR step is the `cr_question` card, not a number input. */
+  cr_question?: boolean
 }
 
 export interface DraftFieldRow {

@@ -1,10 +1,10 @@
-kind: information
+kind: action_required
 channel: email
-subject: New inquiry $reference in your queue
+subject: Inquiry for approval: $brand at $mall ($reference)
 ---
 Hello $reviewer_name,
 
-A new leasing inquiry is waiting for first review in your queue.
+A leasing inquiry is waiting for your $stage.
 
 Reference: $reference
 Brand: $brand

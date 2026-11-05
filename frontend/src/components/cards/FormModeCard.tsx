@@ -125,7 +125,7 @@ export function FormModeCard({
       <h2 className={styles.title}>Finish your inquiry here</h2>
       <p className={styles.message}>{payload.message}</p>
 
-      {payload.next_step === 'cr' ? (
+      {payload.next_step === 'cr' && !payload.cr_question ? (
         <div className={styles.fieldRow}>
           <label className={styles.fieldLabel} htmlFor="form-mode-cr">
             CR number

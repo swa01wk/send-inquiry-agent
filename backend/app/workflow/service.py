@@ -37,7 +37,12 @@ def route_queue(draft: InquiryDraft, master: MasterData) -> ReviewQueue | None:
     if region is None:
         return None
     queue: ReviewQueue = ReviewQueue.model_validate(
-        {"product_line": str(unit_type), "region": region, "role": role}
+        {
+            "product_line": str(unit_type),
+            "region": region,
+            "role": role,
+            "first_role": get_policy().first_level_review_role,
+        }
     )
     return queue
 
@@ -55,8 +60,13 @@ def case_url(runtime: AgentRuntime, case: Case, request_id: str | None = None) -
     return f"{settings.public_base_url.rstrip('/')}/inquiry/case?t={token}"
 
 
-def console_url(runtime: AgentRuntime, case: Case) -> str:
-    return f"{runtime.settings.public_base_url.rstrip('/')}/review/cases/{case.id}"
+def console_url(runtime: AgentRuntime, case: Case, reviewer_id: str | None = None) -> str:
+    """The case in the reviewer console. With dev tools on, `?as=<reviewer id>` signs that
+    mock reviewer in, so the email link opens the case directly (demo feedback F7)."""
+    url = f"{runtime.settings.public_base_url.rstrip('/')}/review/cases/{case.id}"
+    if reviewer_id and runtime.settings.dev_tools:
+        url += f"?as={reviewer_id}"
+    return url
 
 
 def _audit_transition(

@@ -5,8 +5,10 @@
 persisted (`app/workflow/effects.py`). Callers audit every call, legal or not
 (`app/workflow/service.py`).
 
-Reviewer events also check the actor: a reviewer whose role and regions match the case's
-review queue. The machine enforces this, not the console.
+Reviewer events also check the actor: a reviewer whose regions include the queue's region
+and whose role is the queue's role for that event's review level (`REVIEW_LEVEL`): the
+first level (the Lease Admin, demo feedback §3.2) or the final level (RLM / RPLM). The
+machine enforces this, not the console.
 """
 
 from __future__ import annotations
@@ -21,12 +23,14 @@ from pydantic import BaseModel, Field
 from app.domain.models import DocType, DocumentRef
 from app.policy.config import get_policy
 from app.workflow.models import (
+    FIRST_LEVEL_STATES,
     Case,
     CaseEvent,
     CaseRequest,
     CaseStatus,
     Decision,
     RequestKind,
+    ReviewLevel,
     ReviewQueue,
     TenantContact,
     WorkflowEvent,
@@ -38,7 +42,7 @@ ActorKind = Literal["user", "system", "reviewer", "staff"]
 class Actor(BaseModel):
     kind: ActorKind
     id: str | None = None
-    role: str | None = None  # reviewers: rlm_store | rplm_media | rplm_specialty
+    role: str | None = None  # reviewers: lease_admin | rlm_store | rplm_media | rplm_specialty
     regions: list[str] = Field(default_factory=list)
 
     @property
@@ -93,6 +97,19 @@ REVIEWER_EVENTS = frozenset(
     event for (_from, event), (_to, who) in TABLE.items() if "reviewer" in who
 )
 
+# Which review level acts on each reviewer row (demo feedback §3.2, ADR-R2): declared data,
+# read by `_check_actor`; no role names in the rules. Rows from the first-review states are
+# first level; the rest are final unless listed in FIRST_LEVEL_EVENTS (R2 adds the contact
+# approvals there).
+FIRST_LEVEL_EVENTS: frozenset[str] = frozenset()
+REVIEW_LEVEL: dict[tuple[CaseStatus, str], ReviewLevel] = {
+    (from_status, event): (
+        "first" if from_status in FIRST_LEVEL_STATES or event in FIRST_LEVEL_EVENTS else "final"
+    )
+    for (from_status, event), (_to, who) in TABLE.items()
+    if "reviewer" in who
+}
+
 
 def _invalid(message: str) -> IllegalTransition:
     return IllegalTransition("invalid_payload", message)
@@ -113,7 +130,8 @@ def _check_actor(case: Case, event: str, who: frozenset[ActorKind], actor: Actor
     if actor.kind != "reviewer":
         return
     queue = case.review_queue
-    if queue is None or actor.role != queue.role or queue.region not in actor.regions:
+    level = REVIEW_LEVEL.get((case.status, event), "final")
+    if queue is None or actor.role != queue.role_for(level) or queue.region not in actor.regions:
         raise IllegalTransition("not_in_queue", "This case isn't in your review queue.")
 
 

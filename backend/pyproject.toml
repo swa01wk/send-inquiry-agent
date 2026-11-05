@@ -56,6 +56,7 @@ markers = [
     "postgres: requires TEST_DATABASE_URL (step 13)",
     "sandbox: real external sandbox (excluded from default runs)",
     "live: real model in pytest (excluded from default runs)",
+    "lease_admin: runs with the shipped first-level reviewer (demo feedback §3.2)",
 ]
 
 [tool.coverage.run]

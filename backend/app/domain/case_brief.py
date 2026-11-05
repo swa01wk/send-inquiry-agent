@@ -18,7 +18,13 @@ from app.domain.master import MasterData
 from app.domain.models import DocType, FieldKey
 from app.domain.rules import contact_verified
 from app.workflow.machine import approval_blockers
-from app.workflow.models import CONTACT_ROLE_LABELS, ROLE_LABELS, Case, CaseStatus
+from app.workflow.models import (
+    CONTACT_ROLE_LABELS,
+    ROLE_LABELS,
+    Case,
+    CaseStatus,
+    review_level,
+)
 
 
 class BriefField(BaseModel):
@@ -329,7 +335,7 @@ def build_case_brief(
         status=case.status.value,
         stage_label=STAGE_LABELS.get(case.status.value, case.status.value),
         waiting_on=waiting_on(case),
-        queue_role=ROLE_LABELS.get(queue.role) if queue else None,
+        queue_role=ROLE_LABELS.get(queue.role_for(review_level(case.status))) if queue else None,
         queue_region=queue.region if queue else None,
         channel=case.channel,
         staff_role=staff_role,

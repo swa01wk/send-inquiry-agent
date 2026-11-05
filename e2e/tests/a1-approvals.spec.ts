@@ -3,6 +3,7 @@ import { InquiryPage } from '../pages/inquiry'
 import { fetchDevOutbox, latestByTemplate } from '../support/outbox'
 import {
   OASIS_APPLICANT_EMAIL,
+  openCaseAs,
   openReviewerCase,
   raiseTenantInquiry,
   signInReviewer,
@@ -44,6 +45,9 @@ test.describe('Story A1 approvals and Yardi @scripted', () => {
         .click()
       await expect(reviewerPage.getByTestId('case-stage')).toHaveText('Lead — second review')
 
+      // Final review: the RLM takes over from the Lease Admin (demo feedback §3.2).
+      const finalReviewer = await reviewerFor(request, reference, 'final')
+      await openCaseAs(reviewerPage, finalReviewer, reference)
       await expect(reviewerPage.getByTestId('action-remove_contact')).toBeVisible()
       const removeBlock = reviewerPage.getByTestId('action-remove_contact')
       await removeBlock.getByLabel('Contact').selectOption('billing_contact')

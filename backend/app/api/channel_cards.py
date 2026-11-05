@@ -3,10 +3,13 @@ the existing-CR choice and the sign-in prompt."""
 
 from __future__ import annotations
 
+from typing import Literal
+
 from app.api.cards import _mask_email
 from app.api.schemas import (
     BasicInfoReviewPayload,
     BasicInfoRow,
+    CrQuestionPayload,
     ExistingCrChoiceOption,
     ExistingCrChoicePayload,
     SendLinkPayload,
@@ -23,6 +26,12 @@ BASIC_INFO_CARD_ID = "basic_info_review"
 SEND_LINK_CARD_ID = "send_link"
 EXISTING_CR_CARD_ID = "existing_cr_choice"
 SIGN_IN_CARD_ID = "sign_in_prompt"
+CR_QUESTION_CARD_ID = "cr_question"
+
+CR_QUESTION_PROMPT = "Does your company have a CR (commercial registration)?"
+# The tenant portal's sign-in; once signed in it opens Leasing Opportunities, where the
+# inquiry is raised (demo feedback I3).
+SIGN_IN_PATH = "/tenant"
 
 # Basic info: every field outside the document numbers (intake channels §3.3).
 BASIC_GROUPS = (FieldGroup.COMPANY, FieldGroup.BRAND, FieldGroup.SPACE, FieldGroup.CONTACT)
@@ -133,13 +142,43 @@ def build_existing_cr_choice_card(
     )
 
 
-def build_sign_in_prompt_card(public_base_url: str) -> UiCard:
-    payload = SignInPromptPayload(
-        message=(
+def build_sign_in_prompt_card(public_base_url: str, *, reason: str = "existing_cr") -> UiCard:
+    """Sign in to Tenant Central, landing on Leasing Opportunities to raise the inquiry
+    there (demo feedback §3.1, F2). `reason`: `existing_cr` (a CR lookup found an
+    account) or `has_cr` (the applicant answered Yes to "Do you have a CR?")."""
+    if reason == "has_cr":
+        message = (
+            "If your company already has a Tenant Central account, the quickest way is to "
+            "sign in and raise your inquiry from Leasing Opportunities. Your company "
+            "details are already on file there."
+        )
+    else:
+        message = (
             "This CR already has a Tenant Central account. Sign in to raise an inquiry from "
             "Leasing Opportunities, with your details already filled in."
-        ),
-        sign_in_url=f"{public_base_url.rstrip('/')}/tenant",
+        )
+    payload = SignInPromptPayload(
+        message=message,
+        sign_in_url=f"{public_base_url.rstrip('/')}{SIGN_IN_PATH}",
         button_label="Sign in to Tenant Central",
     )
     return UiCard(card_id=SIGN_IN_CARD_ID, card_type="sign_in_prompt", payload=payload.model_dump())
+
+
+def build_cr_question_card(
+    *, answered: Literal["yes", "no"] | None = None, message_id: str | None = None
+) -> UiCard:
+    """ "Do you have a CR?" with two buttons (demo feedback §3.1). The public page never
+    asks for the number itself."""
+    payload = CrQuestionPayload(
+        prompt=CR_QUESTION_PROMPT,
+        yes_label="Yes, we have a CR",
+        no_label="No, we don't",
+        answered=answered,
+    )
+    return UiCard(
+        card_id=CR_QUESTION_CARD_ID,
+        card_type="cr_question",
+        message_id=message_id,
+        payload=payload.model_dump(),
+    )

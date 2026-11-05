@@ -29,6 +29,7 @@ CONTEXT = {
     "hours": 49,
     "threshold_hours": 48,
     "stage_label": "First review",
+    "stage": "first review",
     "queue_label": "Regional Leasing Manager (Store), Central",
     "message": "We're still waiting for your company contacts.",
     "started_by": "The Cenomi call centre",

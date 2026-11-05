@@ -6,6 +6,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, Request, UploadFile
 
+from app import clock
 from app.api.cards import build_document_upload_card, parse_doc_type, scope_card_data
 from app.api.case_cards import build_reupload_card, build_sales_data_card
 from app.api.deps import get_master_data, get_services, get_session_store, get_settings
@@ -20,11 +21,18 @@ from app.api.schemas import (
 from app.config import Settings
 from app.domain import draft_ops
 from app.domain.master import MasterData
-from app.domain.models import NON_INTAKE_DOC_TYPES, DocType
+from app.domain.models import (
+    NON_INTAKE_DOC_TYPES,
+    DocType,
+    DocumentRef,
+    DocumentReview,
+    InquiryDraft,
+)
 from app.domain.summary import build_draft_summary
 from app.domain.validation import validate_document_extension, validate_document_size
 from app.gateway import GatewayError
 from app.services.container import ServiceContainer
+from app.services.document_review import REVIEWED_DOC_TYPES
 from app.services.errors import UploadTooLargeError, UploadValidationError
 from app.sessions import Session, SessionStore
 
@@ -125,6 +133,8 @@ async def _upload_document(
         services.storage.delete(session_id, parsed, ref.file_id)
         raise ApiError(400, val_err.code, val_err.message)
 
+    if parsed in REVIEWED_DOC_TYPES:
+        updated = _with_review(updated, parsed, content, services, session_id)
     session.draft = updated
     card = _scoped(_card_for(session, services, master, settings, parsed), session)
     _remember(session, card)
@@ -145,6 +155,44 @@ async def _upload_document(
         uploaded_at=ref.uploaded_at,
     )
     return UploadDocumentResponse(document=document, card=card, draft=draft)
+
+
+def _with_review(
+    draft: InquiryDraft,
+    doc_type: DocType,
+    content: bytes,
+    services: ServiceContainer,
+    session_id: str,
+) -> InquiryDraft:
+    """Ask the document review service about a company or brand profile (demo feedback §3.3)
+    and keep its typed result on the document. A timeout or outage stores `pending`, so the
+    upload still succeeds and a reviewer can decide without it. No content is kept or sent
+    to the model: only the typed result."""
+    ref: DocumentRef = draft.documents[doc_type]
+    try:
+        review = services.gateway.call_sync(
+            "document_review",
+            "review",
+            services.document_review.review,
+            ref,
+            content,
+            inquiry_id=session_id,
+        )
+    except GatewayError:
+        review = DocumentReview(status="pending", checked_at=clock.now())
+    reviewed = draft.model_copy(deep=True)
+    reviewed.documents[doc_type] = ref.model_copy(update={"review": review})
+    services.audit.record(
+        session_id,
+        "document_reviewed",
+        actor="system",
+        payload={
+            "doc_type": doc_type.value,
+            "status": review.status,
+            "has_expiry": review.expiry_date is not None,
+        },
+    )
+    return reviewed
 
 
 @router.delete("/{session_id}/documents/{doc_type}", response_model=DeleteDocumentResponse)

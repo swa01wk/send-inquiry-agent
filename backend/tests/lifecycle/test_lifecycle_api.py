@@ -62,6 +62,7 @@ async def test_submit_routes_to_the_queue_and_notifies_its_reviewers(life) -> No
         "product_line": "store",
         "region": "central",
         "role": "rlm_store",
+        "first_role": None,
     }
     assigned = outbox(app, CENTRAL_REVIEWER_EMAIL, "review_assigned")
     assert len(assigned) == 1 and f"/review/cases/{reference}" in assigned[0]["body"]

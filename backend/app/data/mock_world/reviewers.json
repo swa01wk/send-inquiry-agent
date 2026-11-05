@@ -1,6 +1,52 @@
 {
   "reviewers": [
     {
+      "id": "lease_admin-central",
+      "kind": "reviewer",
+      "name": "Reem Al Mutairi",
+      "email": "reem.almutairi@cenomi.example",
+      "role": "lease_admin",
+      "regions": [
+        "central"
+      ],
+      "manager": false
+    },
+    {
+      "id": "lease_admin-western",
+      "kind": "reviewer",
+      "name": "Lama Al Zahrani",
+      "email": "lama.alzahrani@cenomi.example",
+      "role": "lease_admin",
+      "regions": [
+        "western"
+      ],
+      "manager": false
+    },
+    {
+      "id": "lease_admin-eastern",
+      "kind": "reviewer",
+      "name": "Sultan Al Shehri",
+      "email": "sultan.alshehri@cenomi.example",
+      "role": "lease_admin",
+      "regions": [
+        "eastern"
+      ],
+      "manager": false
+    },
+    {
+      "id": "lease_admin-manager",
+      "kind": "reviewer",
+      "name": "Hessa Al Otaibi",
+      "email": "hessa.alotaibi@cenomi.example",
+      "role": "lease_admin",
+      "regions": [
+        "central",
+        "western",
+        "eastern"
+      ],
+      "manager": true
+    },
+    {
       "id": "rlm_store-central",
       "kind": "reviewer",
       "name": "Faisal Al Qahtani",

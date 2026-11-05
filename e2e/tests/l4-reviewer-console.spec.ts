@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { clearDevOutbox } from '../support/outbox'
+import { openCaseAs } from '../support/stories'
 import { reviewerFor, submitScriptedInquiry } from '../support/submit'
 
 /** Day 4: the console offers only the actions the state machine allows (L4 §3.3). */
@@ -19,7 +20,7 @@ test.describe('Reviewer console @scripted', () => {
     await expect(page.getByTestId('signed-in-reviewer')).toContainText(reviewer.name)
     await page.getByTestId(`queue-row-${reference}`).getByRole('link', { name: reference }).click()
 
-    // First review: decide the first level, ask for a re-upload or reject.
+    // First review, Lease Admin: decide the first level, ask for a re-upload or reject.
     await expect(page.getByTestId('case-stage')).toHaveText('First review')
     await expect(page.getByTestId('action-approve_first')).toBeVisible()
     await expect(page.getByTestId('action-request_reupload')).toBeVisible()
@@ -33,7 +34,15 @@ test.describe('Reviewer console @scripted', () => {
       .getByRole('button', { name: 'Approve first level' })
       .click()
 
-    // Second review: the contacts request opened automatically, so final approval is blocked.
+    // Second review is the final level: the Lease Admin has no actions there.
+    await expect(page.getByTestId('case-stage')).toHaveText('Lead — second review')
+    await expect(page.getByTestId('action-approve_first')).toHaveCount(0)
+    await expect(page.getByTestId('action-yardi')).toHaveCount(0)
+
+    // The RLM takes over (demo feedback §3.2). The contacts request opened automatically,
+    // so final approval is blocked.
+    const finalReviewer = await reviewerFor(request, reference, 'final')
+    await openCaseAs(page, finalReviewer, reference)
     await expect(page.getByTestId('case-stage')).toHaveText('Lead — second review')
     await expect(page.getByTestId('action-approve_first')).toHaveCount(0)
     await expect(page.getByTestId('action-approve')).toHaveCount(0)

@@ -4,12 +4,15 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request
 
+from app.agent.cr_question import cr_question_active
 from app.agent.e2e_scripts import resolve_e2e_scenario
 from app.api.cards import (
     WELCOME_MESSAGE_1,
     WELCOME_MESSAGE_2,
+    WELCOME_MESSAGE_2_CR_QUESTION,
     build_welcome_quick_replies_card,
 )
+from app.api.channel_cards import CR_QUESTION_CARD_ID, build_cr_question_card
 from app.api.deps import get_master_data, get_services, get_session_store
 from app.api.deps import get_settings as get_settings_dep
 from app.api.errors import ApiError
@@ -49,11 +52,20 @@ async def create_session(
             services.gateway.set_session_faults(session.id, request.headers.get("X-Mock-Faults"))
         except FaultSpecError as exc:
             raise ApiError(400, "bad_mock_faults", str(exc)) from exc
-    messages = [
-        AssistantMessage(id=WELCOME_MSG_ID_1, text=WELCOME_MESSAGE_1),
-        AssistantMessage(id=WELCOME_MSG_ID_2, text=WELCOME_MESSAGE_2),
-    ]
-    cards = [build_welcome_quick_replies_card(message_id=WELCOME_MSG_ID_2)]
+    if cr_question_active(assisted=False, channel=session.channel):
+        # Demo feedback §3.1: ask whether they have a CR, never for the number.
+        messages = [
+            AssistantMessage(id=WELCOME_MSG_ID_1, text=WELCOME_MESSAGE_1),
+            AssistantMessage(id=WELCOME_MSG_ID_2, text=WELCOME_MESSAGE_2_CR_QUESTION),
+        ]
+        cards = [build_cr_question_card(message_id=WELCOME_MSG_ID_2)]
+        session.cards_shown.add(CR_QUESTION_CARD_ID)
+    else:
+        messages = [
+            AssistantMessage(id=WELCOME_MSG_ID_1, text=WELCOME_MESSAGE_1),
+            AssistantMessage(id=WELCOME_MSG_ID_2, text=WELCOME_MESSAGE_2),
+        ]
+        cards = [build_welcome_quick_replies_card(message_id=WELCOME_MSG_ID_2)]
     for message in messages:
         session.add_message(message.id, "assistant", message.text)
     for card in cards:

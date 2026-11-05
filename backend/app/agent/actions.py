@@ -12,6 +12,7 @@ from langchain_core.messages import HumanMessage
 from app.agent.channels import attach_documents_on_file, started_by_label
 from app.agent.context import message_context
 from app.agent.cr_check import apply_cr_result
+from app.agent.cr_question import apply_cr_answer, cr_question_active
 from app.agent.events import SseEvent
 from app.agent.handoff import start_handoff
 from app.agent.runtime import AgentRuntime
@@ -34,8 +35,10 @@ from app.api.case_cards import (
 from app.api.channel_cards import (
     BASIC_INFO_CARD_ID,
     build_basic_info_card,
+    build_cr_question_card,
     build_existing_cr_choice_card,
     build_send_link_card,
+    build_sign_in_prompt_card,
     confirm_basic_info,
 )
 from app.api.schemas import UiCard
@@ -107,6 +110,7 @@ async def handle_ui_action(
         "request_handoff": _request_handoff,
         "cr_check": _cr_check,
         "cr_skip": _cr_skip,
+        "cr_answer": _cr_answer,
         "resubmit_documents": _resubmit_documents,
         "submit_contacts": _submit_contacts,
         "submit_sales_data": _submit_sales_data,
@@ -661,6 +665,9 @@ async def _cr_check(
     runtime: AgentRuntime,
 ) -> ActionResult:
     """The CR check from a card (form mode, L3 §3.14): same rules as the `verify_cr` tool."""
+    if cr_question_active(assisted=session.assisted, channel=session.channel):
+        # Demo feedback §3.1: the public page never looks a CR up.
+        return ActionResult(note=HumanMessage(content="[ui_event] cr_lookup_off"))
     validated = v.validate_cr_number(str(payload.get("cr_number", "")))
     if isinstance(validated, v.ValidationError):
         return ActionResult(note=HumanMessage(content=f"[ui_event] cr_invalid {validated.code}"))
@@ -711,6 +718,46 @@ async def _cr_skip(
         events=[_draft_event(draft, runtime, ["cr_status"])],
         changed_keys=["cr_status"],
     )
+
+
+def cr_answer_result(session: Session, runtime: AgentRuntime, has_cr: bool) -> ActionResult:
+    """ "Do you have a CR?" answered (demo feedback §3.1). Yes: the sign-in card and no more
+    collection; No: carry on in chat. Shared by the `cr_answer` card action and a CR number
+    typed in the public chat (it's never saved or checked)."""
+    if not cr_question_active(assisted=session.assisted, channel=session.channel):
+        return ActionResult(note=HumanMessage(content="[ui_event] cr_answer_off"))
+    answered = apply_cr_answer(session.draft, has_cr)
+    if answered is None:
+        return ActionResult(note=HumanMessage(content="[ui_event] cr_already_done"))
+    session.draft = answered.draft
+    card = build_cr_question_card(answered="yes" if has_cr else "no")
+    events: list[SseEvent] = [_card_event(session, card)]
+    if has_cr:
+        session.closed = "redirected_to_sign_in"
+        _audit(runtime, session, "inquiry_redirected", reason="has_cr", channel=session.channel)
+        events.append(
+            _card_event(
+                session,
+                build_sign_in_prompt_card(runtime.settings.public_base_url, reason="has_cr"),
+            )
+        )
+    events.append(_draft_event(answered.draft, runtime, answered.changed))
+    return ActionResult(
+        note=HumanMessage(content=answered.note),
+        events=events,
+        changed_keys=answered.changed,
+    )
+
+
+async def _cr_answer(
+    payload: dict[str, Any],
+    session: Session,
+    runtime: AgentRuntime,
+) -> ActionResult:
+    has_cr = payload.get("has_cr")
+    if not isinstance(has_cr, bool):
+        return ActionResult(note=HumanMessage(content="[ui_event] cr_answer_invalid"))
+    return cr_answer_result(session, runtime, has_cr)
 
 
 # ---- Case actions (after submission, L4 §3.5): the applicant answers a request -------

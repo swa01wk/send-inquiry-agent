@@ -29,15 +29,17 @@ from app.policy.config import get_policy
 from app.proactive.models import AttentionItem, Trigger
 from app.proactive.notification_policy import NotificationPolicy, PolicyVerdict
 from app.workflow.effects import applicant_context, send_message, send_to_applicant
-from app.workflow.models import CONTACT_ROLE_LABELS, Case, CaseRequest, CaseStatus
+from app.workflow.models import (
+    CONTACT_ROLE_LABELS,
+    ROLE_LABELS,
+    Case,
+    CaseRequest,
+    CaseStatus,
+    review_level,
+)
 from app.workflow.service import case_url, console_url
 
 REVIEW_STAGES = (CaseStatus.FIRST_REVIEW, CaseStatus.SECOND_REVIEW)
-ROLE_LABELS = {
-    "rlm_store": "Regional Leasing Manager (Store)",
-    "rplm_media": "Regional Property Leasing Manager (Media)",
-    "rplm_specialty": "Regional Property Leasing Manager (Specialty)",
-}
 
 
 class ProactiveError(Exception):
@@ -129,7 +131,7 @@ def _new_item(
         key=key,
         trigger=trigger,
         case_id=case.id,
-        queue_role=queue.role,
+        queue_role=queue.role_for(review_level(case.status)),
         queue_region=queue.region,
         audience="manager" if trigger == "escalation" else "queue",
         stage=case.status.value,
@@ -153,7 +155,7 @@ def _staff_context(
         threshold_hours=item.threshold_hours,
         stage_label=STAGE_LABELS.get(item.stage, item.stage),
         queue_label=(
-            f"{ROLE_LABELS.get(queue.role, queue.role)}, {queue.region.capitalize()}"
+            f"{ROLE_LABELS.get(item.queue_role, item.queue_role)}, {queue.region.capitalize()}"
             if queue
             else ""
         ),

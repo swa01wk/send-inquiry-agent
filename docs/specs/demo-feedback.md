@@ -56,7 +56,7 @@ All rows are due by Mon 9 Nov, for the 10 Nov re-demo. Each is checked on the da
 | # | Criterion | Proved by | Day |
 | --- | --- | --- | --- |
 | D1 | The public chat never asks for, accepts, looks up or repeats a CR number. A typed CR number gets the sign-in reply and is never stored. | INV8 on every live turn; `tests/agent/test_cr_question.py`; Playwright `rd-cr-question`; live eval `cr_privacy` 3/3 | R1 |
-| D2 | "Yes, I have a CR" shows the sign-in card, which lands on Leasing Opportunities. "No" continues the inquiry in chat. | `rd-cr-question`; `tests/api/test_cr_question.py` | R1 |
+| D2 | "Yes, I have a CR" shows the sign-in card, which lands on Leasing Opportunities. "No" continues the inquiry in chat. | `rd-cr-question`; `tests/api/test_cr_question_api.py` | R1 |
 | D3 | The call-centre path is unchanged: staff still enter and check CRs (§7.1.1 a2, §7.1.2 a2). | `a2-call-centre`, `a2-existing-cr`, `a2-guest-service` still pass | R1 |
 | D4 | First-level events can be fired only by the Lease Admin of the case's region. Final-level events can be fired only by the RLM or RPLM of the product line. Any other role is refused. | `tests/lifecycle/test_review_levels.py` (a wrong-role case for every reviewer event) | R1 |
 | D5 | The Lease Admin approves or rejects each document, with remarks. First-level approval is refused until every required document is approved. | `tests/lifecycle/test_document_review.py`; Playwright `rd-document-approval` | R2 |
@@ -79,25 +79,25 @@ All rows are due by Mon 9 Nov, for the 10 Nov re-demo. Each is checked on the da
 - A self-service session opens with the welcome message and a `cr_question` card: **Yes, I have a CR** and **No, I don't**.
 - The buttons send the UI action `cr_answer {has_cr: bool}`. The agent can record the same answer from text with the tool `record_cr_answer(has_cr)`, which calls the same handler.
 - **Yes:**
-  - the handler shows today's `sign_in_prompt` card with new wording, a landing URL of `<PUBLIC_BASE_URL>/tenant/opportunities`, and audit `inquiry_redirected {reason: "has_cr"}`;
+  - the handler shows today's `sign_in_prompt` card with new wording, a landing URL of `<PUBLIC_BASE_URL>/tenant`, which opens Leasing Opportunities after sign-in, and audit `inquiry_redirected {reason: "has_cr"}`;
   - the session moves to `redirected`, as the sign-in path does today, and nothing more is collected.
 - **No:**
-  - `draft.cr_status = "none"`, and company name and address join the basic-info bundle (as on today's skip path);
+  - `draft.cr_status = "skipped"`, so company name and address join the basic-info bundle, as on today's skip path. Yes uses `cr_status = "existing"` with no CR number stored. Reusing these two statuses keeps `compute_phase`, `can_submit` and form mode unchanged (decided on R1);
   - the CR number is not a field on this path.
 - **A typed CR number.** A ten-digit number that matches the CR format, in a self-service message, is caught by a deterministic pre-model check (`app/agent/cr_question.py`):
   - it's never written to the draft, the audit payload or the history sent to the model, where it's replaced with `[CR number removed]`;
   - the turn gets the note `[guard] cr_number_typed`: reply with the sign-in prompt, and don't repeat the number.
 - **Tools.**
-  - Self-service intake loses `verify_cr` and `skip_cr` (new list `SELF_SERVICE_TOOLS`) and gains `record_cr_answer`.
+  - Self-service intake gains `record_cr_answer`. Under `ask_then_sign_in`, `verify_cr` and the form-mode `cr_check` on the public page check nothing and say lookups are off. The tool list stays the same in every policy, so the graph and prompt snapshots don't depend on it (decided on R1).
   - Assisted mode keeps `verify_cr` (staff are signed in).
   - Existing-tenant mode is unchanged.
-- **Policy:** `public_cr_check: ask_then_sign_in | lookup`, default `ask_then_sign_in`. `lookup` keeps today's behaviour so older goldens and tests can still run it. `existing_tenant_policy` now applies to the assisted channel only.
+- **Policy:** `public_cr_check: ask_then_sign_in | lookup`. The R1 backend PR ships it as `lookup`, so `main` keeps working with today's prompt and goldens. Swaroop's R1 PR flips it to `ask_then_sign_in` together with the new prompt, the card and the re-recorded goldens. `lookup` stays available for older goldens and tests. `existing_tenant_policy` now applies to the assisted channel only.
 
 **Contracts** (add to `docs/spec.md`):
 - the `cr_question` card;
 - the `cr_answer` action;
 - the `record_cr_answer` tool;
-- `cr_status: "none"`;
+- `cr_status` values `existing` (Yes) and `skipped` (No), reused;
 - the new `sign_in_prompt` wording;
 - `public_cr_check`.
 
@@ -111,10 +111,10 @@ All rows are due by Mon 9 Nov, for the 10 Nov re-demo. Each is checked on the da
 - `reviewers.json` gains one Lease Admin per region and one Lease Admin manager.
 
 **Who acts.**
-- `machine.py` gains a declared table, `EVENT_LEVEL: dict[str, Literal["first", "final"]]`:
-  - first: every event from `first_review` and `reupload_requested`, plus the document and contact events in §3.4 and §3.5;
+- `machine.py` gains a declared table, `REVIEW_LEVEL: dict[(status, event), Literal["first", "final"]]`, built from the transition table:
+  - first: every row from `first_review` and `reupload_requested`, plus the events listed in `FIRST_LEVEL_EVENTS` (R2 adds the document and contact events of §3.4 and §3.5);
   - final: the rest.
-- `_check_actor` reads the role for the event's level from the queue. There are no role-name conditionals in shared code; a startup test fails if a reviewer event has no level.
+- `_check_actor` reads the role for the event's level from the queue (`ReviewQueue.role_for(level)`). There are no role-name conditionals in shared code, and `test_every_reviewer_event_has_a_level` fails if a reviewer row has no level.
 
 **Routing and notifications.**
 - `routed` notifies the Lease Admin queue (`review_assigned`). For F7 the email reads "Inquiry for approval: {brand}, {mall}" and links to `<PUBLIC_BASE_URL>/review/cases/{reference}`. Opening it signs in the mock reviewer named in the link (dev tools only) and opens the case. There's no notification-agent integration (D14).
@@ -331,7 +331,7 @@ ADR-R1 to ADR-R7 come from the [architecture assessment](https://claude.ai/artif
 | ADR | Decision | Where it shows |
 | --- | --- | --- |
 | R1 | **Code decides, the model explains.** Approvals, expiry status, mismatch flags and the CR branch are computed in code. The agent only words them. | §3.1, §3.4, §3.7 |
-| R2 | **No role-name branches.** Review levels are declared data (`EVENT_LEVEL`, `first_level_review_role`); shared code reads them. | §3.2 |
+| R2 | **No role-name branches.** Review levels are declared data (`REVIEW_LEVEL`, `first_level_review_role`); shared code reads them. | §3.2 |
 | R3 | **Stage-level authorization.** Every reviewer event checks the role for its level and region. Each event has a wrong-role test. | §3.2, D4 |
 | R4 | **Confirmation is bound to what was shown.** A value is confirmed for the file it came from; replacing the file resets it. A decision names the `file_id` it was made on. | §3.4, §3.7 |
 | R5 | **Uploads are untrusted input.** Only typed fields leave the document review service, and no document text reaches a prompt. | §3.3, D9 |
@@ -342,7 +342,7 @@ ADR-R1 to ADR-R7 come from the [architecture assessment](https://claude.ai/artif
 
 | Story | Layer | Day | Steps |
 | --- | --- | --- | --- |
-| `rd-cr-question` | INT `@scripted` | R1 | Yes → sign-in card → `/tenant/opportunities`. No → intake continues. A typed CR number → sign-in reply; the number isn't in the draft panel, SSE events or audit. |
+| `rd-cr-question` | INT `@scripted` | R1 (with the card) | Yes → sign-in card → `/tenant` → Leasing Opportunities. No → intake continues. A typed CR number → sign-in reply; the number isn't in the draft panel, SSE events or audit. |
 | `rd-document-approval` | INT, two contexts | R2 | Submit → Lease Admin rejects the Brand Profile with remarks → re-upload request → applicant re-uploads in the case chat → Lease Admin approves both → **Approve first level** enabled → approves |
 | `rd-expiry` | INT | R2 | Profiles `company_expired.pdf` and `brand_soon.pdf` → console shows "Expired" (Reject preselected, Approve disabled) and "Expiring soon" (approvable) → Lease Admin corrects a date → status updates |
 | `rd-contact-approval` | INT, two contexts | R2 | Contacts request → "Yes, I'm the authorised signatory" → billing contact → Lease Admin rejects billing → tenant fixes it → Lease Admin approves → RLM **Approve** enabled |
@@ -389,7 +389,7 @@ It's checked on every AGENT-LIVE and E2E-LIVE turn, and a breach fails the run.
 
 | Day | Change |
 | --- | --- |
-| R1 | Card `cr_question`; action `cr_answer`; tool `record_cr_answer`; `cr_status: "none"`; `sign_in_prompt` wording and URL; policy `public_cr_check`, `first_level_review_role`; `ReviewRole.lease_admin`; `ReviewQueue.first_role`; `EVENT_LEVEL`; `DocumentReviewService`, `DocumentReviewResult`, `DocumentRef.review`; approval email link |
+| R1 | Card `cr_question`; action `cr_answer`; tool `record_cr_answer`; `cr_status` `existing` / `skipped` reused; `sign_in_prompt` wording and URL; policy `public_cr_check`, `first_level_review_role`; `ReviewRole.lease_admin`; `ReviewQueue.first_role`; `REVIEW_LEVEL`; `DocumentReviewService`, `DocumentReviewResult`, `DocumentRef.review`; approval email link |
 | R2 | `DocumentDecision`, `Case.document_decisions`; events `document_expiry_confirmed`, `document_approved`, `document_rejected`; new `approved_first` blockers; policy `document_expiry`; `TenantContact` approval fields; card `signatory_question`; action `signatory_answer`; tool `record_signatory_answer`; events `contact_approved`, `contact_rejected` (and `contact_added`, Should); `CaseRequest.roles`; new `approved` blockers; `CaseDetail` document and contact rows |
 | R3 | `DocumentReviewResult.fields`; `draft.document_checks`; note `document_mismatch`; brief flags |
 | R4 | `YardiService.company_by_cr` |

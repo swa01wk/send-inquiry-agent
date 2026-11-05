@@ -97,22 +97,34 @@ export async function completeApplicationLinkFlow(
   return inquiry.successReference()
 }
 
-/** The (non-manager) reviewer whose queue holds the case, from the review API. */
+/**
+ * The reviewer who acts on `reference` at `level` (demo feedback §3.2): the Lease Admin of
+ * the mall's region for the first level, the RLM / RPLM of the product line for the final
+ * level. Both see the case in their queue.
+ */
 export async function reviewerFor(
   request: APIRequestContext,
   reference: string,
-): Promise<{ id: string; name: string }> {
+  level: 'first' | 'final' = 'first',
+): Promise<{ id: string; name: string; role: string }> {
   const reviewers = (await (await request.get(`${API}/api/review/reviewers`)).json()) as {
     id: string
     name: string
+    role: string
     manager: boolean
   }[]
+  const holders: { id: string; name: string; role: string }[] = []
   for (const reviewer of reviewers.filter((r) => !r.manager)) {
     const res = await request.get(`${API}/api/review/cases`, {
       headers: { 'X-Reviewer-Id': reviewer.id },
     })
     const cases = (await res.json()) as { reference: string }[]
-    if (cases.some((c) => c.reference === reference)) return reviewer
+    if (cases.some((c) => c.reference === reference)) holders.push(reviewer)
   }
-  throw new Error(`No reviewer has ${reference} in their queue`)
+  const wanted = holders.find((r) =>
+    level === 'first' ? r.role === 'lease_admin' : r.role !== 'lease_admin',
+  )
+  const reviewer = wanted ?? holders[0]
+  if (!reviewer) throw new Error(`No reviewer has ${reference} in their queue`)
+  return reviewer
 }

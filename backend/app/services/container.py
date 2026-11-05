@@ -13,6 +13,7 @@ from app.notifications import MockNotificationService
 from app.proactive.store import AttentionStore
 from app.services.call_centre import CallCentreService, MockCallCentreService
 from app.services.cr import CrService, MockCrService
+from app.services.document_review import DocumentReviewService, MockDocumentReviewService
 from app.services.email_verification import (
     EmailVerificationService,
     MockEmailVerificationService,
@@ -50,6 +51,7 @@ class ServiceContainer:
     clock: Clock
     tenants: TenantDirectory
     opportunities: OpportunityCatalogue
+    document_review: DocumentReviewService
 
 
 def build_services(settings: Settings) -> ServiceContainer:
@@ -104,4 +106,5 @@ def build_services(settings: Settings) -> ServiceContainer:
         clock=clock,
         tenants=TenantDirectory(),
         opportunities=OpportunityCatalogue(),
+        document_review=MockDocumentReviewService(),
     )

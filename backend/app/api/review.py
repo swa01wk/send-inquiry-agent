@@ -79,7 +79,7 @@ def _in_queue(case: Case, reviewer: Reviewer) -> bool:
     return (
         queue is not None
         and reviewer.kind == "reviewer"
-        and reviewer.role == queue.role
+        and reviewer.role in queue.roles
         and queue.region in reviewer.regions
     )
 

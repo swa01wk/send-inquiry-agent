@@ -17,6 +17,7 @@ form mode:
 
 from __future__ import annotations
 
+from app.agent.cr_question import cr_question_active
 from app.agent.runtime import AgentRuntime
 from app.agent.verification import send_contact_verification
 from app.api.cards import (
@@ -25,6 +26,7 @@ from app.api.cards import (
     build_document_upload_card,
     build_review_card,
 )
+from app.api.channel_cards import build_cr_question_card
 from app.api.schemas import (
     FormModeField,
     FormModePayload,
@@ -61,6 +63,14 @@ _STEP_MESSAGES: dict[FormModeStep, str] = {
     "documents": "Upload the Company Profile and the Brand Profile.",
     "review": "Check the review card, accept the terms and submit.",
     "submitted": "Your inquiry has been sent. You'll find the reference above.",
+}
+# Demo feedback §3.1 (`public_cr_check: ask_then_sign_in`): the CR step is a yes/no.
+_CR_QUESTION_MESSAGES: dict[FormModeStep, str] = {
+    "existing_account": (
+        "Your company has a CR, so please sign in to Tenant Central and raise your inquiry "
+        "from Leasing Opportunities."
+    ),
+    "cr": "Does your company have a CR? Choose an answer below.",
 }
 BACK_MESSAGE = "Our assistant is back. Carry on in the chat, or keep using the cards."
 
@@ -121,14 +131,18 @@ def unconfirmed_keys(draft: InquiryDraft) -> list[str]:
     ]
 
 
-def build_form_mode_card(draft: InquiryDraft, *, active: bool = True) -> UiCard:
+def build_form_mode_card(
+    draft: InquiryDraft, *, active: bool = True, cr_question: bool = False
+) -> UiCard:
     step = form_step(draft)
+    messages = {**_STEP_MESSAGES, **_CR_QUESTION_MESSAGES} if cr_question else _STEP_MESSAGES
     payload = FormModePayload(
         active=active,
-        message=_STEP_MESSAGES[step] if active else BACK_MESSAGE,
+        message=messages[step] if active else BACK_MESSAGE,
         next_step=step,
         fields=missing_fields(draft) if active and step == "details" else [],
-        can_skip_cr=step == "cr",
+        can_skip_cr=step == "cr" and not cr_question,
+        cr_question=cr_question and step == "cr",
     )
     return UiCard(card_id=FORM_MODE_CARD_ID, card_type="form_mode", payload=payload.model_dump())
 
@@ -159,8 +173,11 @@ async def form_mode_cards(session: Session, runtime: AgentRuntime) -> list[UiCar
     draft = session.draft
     step = form_step(draft)
     cards: list[UiCard] = []
+    cr_question = cr_question_active(assisted=session.assisted, channel=session.channel)
 
-    if step == "details":
+    if step == "cr" and cr_question:
+        cards.append(build_cr_question_card())
+    elif step == "details":
         keys = unconfirmed_keys(draft)
         if keys:
             cards.append(
@@ -191,4 +208,4 @@ async def form_mode_cards(session: Session, runtime: AgentRuntime) -> list[UiCar
         cards.append(build_review_card(draft, runtime.master))
         session.cards_shown.add("review")
 
-    return [build_form_mode_card(draft), *cards]
+    return [build_form_mode_card(draft, cr_question=cr_question), *cards]
