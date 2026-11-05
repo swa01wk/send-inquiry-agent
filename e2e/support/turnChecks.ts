@@ -30,6 +30,7 @@ export async function afterTurnChecks(inquiry: InquiryPage, options: AfterTurnOp
       turnEvents,
       options.draftBefore,
       draftAfter,
+      { publicCrQuestion: true },
     )
   }
 }
