@@ -26,6 +26,7 @@ from app.agent.contact_infer import (
     message_has_contact_line,
     parse_contact_from_message,
 )
+from app.agent.cr_question import CR_NUMBER_IN_REPLY, contains_cr_number, cr_question_active
 from app.agent.mall_match import fill_mentioned_malls, unknown_mall_phrases
 from app.agent.runtime import AgentRuntime
 from app.agent.state import AgentState
@@ -282,12 +283,35 @@ def _brand_reask_note(state: AgentState, ai_text: str) -> str | None:
     )
 
 
+def _cr_number_in_reply_note(state: AgentState, ai_text: str) -> str | None:
+    if state.get("assisted") or not ai_text:
+        return None
+    if not cr_question_active(
+        assisted=False,
+        channel=state.get("channel"),
+        test_scenario=state.get("test_scenario"),
+    ):
+        return None
+    if contains_cr_number(ai_text):
+        return CR_NUMBER_IN_REPLY
+    return None
+
+
 def _missed_capture_note(state: AgentState, phase: str) -> str | None:
     user_text, turn_messages = _current_turn(state)
     if not user_text or user_text.startswith("[ui_event]"):
         return None
     called = _tools_called(turn_messages)
-    if phase == "gate" and _CR_NUMBER_RE.search(user_text) and "verify_cr" not in called:
+    if (
+        phase == "gate"
+        and _CR_NUMBER_RE.search(user_text)
+        and "verify_cr" not in called
+        and not cr_question_active(
+            assisted=bool(state.get("assisted")),
+            channel=state.get("channel"),
+            test_scenario=state.get("test_scenario"),
+        )
+    ):
         return (
             f"{GUARD_PREFIX} The user's last message contains a CR number. "
             "Call verify_cr with it before replying."
@@ -515,7 +539,8 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
             )
         else:
             note = (
-                _assisted_application_link_note(state, draft, turn_messages, cards_shown)
+                _cr_number_in_reply_note(state, ai_text)
+                or _assisted_application_link_note(state, draft, turn_messages, cards_shown)
                 or _premature_submit_note(state, draft, ai_text)
                 or _assisted_verification_claim_note(state, ai_text)
                 or _assisted_addresses_caller_note(state, draft, ai_text)
