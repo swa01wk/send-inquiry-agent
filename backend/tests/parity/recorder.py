@@ -159,7 +159,15 @@ def write_session_snapshot(name: str, session_payload: dict[str, Any]) -> Path:
     from tests.parity.normalize import _walk
 
     path = session_sidecar_path(name)
-    normalised = _walk(session_payload, {})
+    # A card on the welcome message keeps that message's id: the normaliser renames card
+    # message ids (m1, m2…) but not message ids, and a card whose message_id matches no
+    # message isn't rendered (the rd-cr-question welcome card).
+    message_ids = {
+        str(m["id"]): str(m["id"])
+        for m in session_payload.get("messages", [])
+        if isinstance(m, dict) and m.get("id")
+    }
+    normalised = _walk(session_payload, message_ids)
     path.write_text(json.dumps(normalised, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return path
 

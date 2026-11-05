@@ -18,7 +18,7 @@
       {
         "card_id": "cr_question",
         "card_type": "cr_question",
-        "message_id": "m1",
+        "message_id": "welcome-2",
         "payload": {
           "prompt": "Does your company have a CR (commercial registration)?",
           "yes_label": "Yes, we have a CR",
