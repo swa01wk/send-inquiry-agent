@@ -173,7 +173,9 @@ async def form_mode_cards(session: Session, runtime: AgentRuntime) -> list[UiCar
     draft = session.draft
     step = form_step(draft)
     cards: list[UiCard] = []
-    cr_question = cr_question_active(assisted=session.assisted, channel=session.channel)
+    cr_question = cr_question_active(
+        assisted=session.assisted, channel=session.channel, test_scenario=session.test_scenario
+    )
 
     if step == "cr" and cr_question:
         cards.append(build_cr_question_card())

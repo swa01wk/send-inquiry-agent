@@ -100,7 +100,9 @@ async def chat_stream(
         turn_user_message = HumanMessage(content=body.text)
         cr_typed = False
         if session.mode != "case" and cr_question_active(
-            assisted=session.assisted, channel=session.channel
+            assisted=session.assisted,
+            channel=session.channel,
+            test_scenario=session.test_scenario,
         ):
             # Demo feedback §3.1: a CR number typed in the public chat is removed before it
             # reaches the transcript, the audit trail or the model, and counts as "Yes".

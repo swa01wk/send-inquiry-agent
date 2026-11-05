@@ -665,7 +665,9 @@ async def _cr_check(
     runtime: AgentRuntime,
 ) -> ActionResult:
     """The CR check from a card (form mode, L3 §3.14): same rules as the `verify_cr` tool."""
-    if cr_question_active(assisted=session.assisted, channel=session.channel):
+    if cr_question_active(
+        assisted=session.assisted, channel=session.channel, test_scenario=session.test_scenario
+    ):
         # Demo feedback §3.1: the public page never looks a CR up.
         return ActionResult(note=HumanMessage(content="[ui_event] cr_lookup_off"))
     validated = v.validate_cr_number(str(payload.get("cr_number", "")))
@@ -724,7 +726,9 @@ def cr_answer_result(session: Session, runtime: AgentRuntime, has_cr: bool) -> A
     """ "Do you have a CR?" answered (demo feedback §3.1). Yes: the sign-in card and no more
     collection; No: carry on in chat. Shared by the `cr_answer` card action and a CR number
     typed in the public chat (it's never saved or checked)."""
-    if not cr_question_active(assisted=session.assisted, channel=session.channel):
+    if not cr_question_active(
+        assisted=session.assisted, channel=session.channel, test_scenario=session.test_scenario
+    ):
         return ActionResult(note=HumanMessage(content="[ui_event] cr_answer_off"))
     answered = apply_cr_answer(session.draft, has_cr)
     if answered is None:

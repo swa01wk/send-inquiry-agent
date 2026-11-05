@@ -836,7 +836,11 @@ async def _invariants_after_stream(
         public_cr_question=bool(
             session
             and session.mode != "case"
-            and cr_question_active(assisted=session.assisted, channel=session.channel)
+            and cr_question_active(
+                assisted=session.assisted,
+                channel=session.channel,
+                test_scenario=session.test_scenario,
+            )
         ),
         card_text=json.dumps([data.get("payload", {}) for data in ui_cards], ensure_ascii=False),
     )

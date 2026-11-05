@@ -31,6 +31,8 @@ class AgentState(TypedDict):
     assisted: NotRequired[bool]
     tenant_id: NotRequired[str | None]
     existing_cr_choice: NotRequired[str | None]
+    # Scripted e2e scenario name (AGENT_MODE=scripted); decides the CR question in tests.
+    test_scenario: NotRequired[str | None]
 
 
 def initial_agent_state(

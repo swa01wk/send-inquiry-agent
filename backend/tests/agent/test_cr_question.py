@@ -76,6 +76,17 @@ def test_question_only_on_the_public_channel(ask_first) -> None:
     assert not cr_question_active(assisted=False, channel="existing_tenant")
 
 
+def test_scripted_scenarios_keep_the_lookup_unless_listed(ask_first) -> None:
+    """Older Playwright scripts type CR numbers: they keep the lookup after the flip."""
+    assert not cr_question_active(assisted=False, channel=None, test_scenario="s1-happy-path")
+    assert cr_question_active(assisted=False, channel=None, test_scenario="rd-cr-question")
+
+
+def test_listed_scenarios_ask_even_under_lookup() -> None:
+    assert cr_question_active(assisted=False, channel=None, test_scenario="rd-cr-question")
+    assert not cr_question_active(assisted=True, channel="assisted", test_scenario="rd-cr-question")
+
+
 def test_tool_lists() -> None:
     assert "record_cr_answer" in {t.name for t in TOOLS}
     assisted = {t.name for t in ASSISTED_TOOLS}

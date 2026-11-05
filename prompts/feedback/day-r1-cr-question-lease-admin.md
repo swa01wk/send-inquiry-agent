@@ -56,6 +56,11 @@ Every new case lands in the Lease Admin's queue for first-level review, with an 
 - `tests/lifecycle/test_review_levels.py` (`lease_admin`): every reviewer row has a level, routing, the approval email and its link, first level for the Lease Admin only, final level for the RLM only, and the brief role.
 - `tests/services/test_document_review.py` (`contract`) and `tests/security/test_document_text_isolation.py`.
 
+**Scripted tests keep the lookup (follow-up PR, before the flip).**
+- `cr_question_active(..., test_scenario=)`: a scripted e2e scenario (`X-Test-Scenario`) runs the CR question only if it's listed in `CR_QUESTION_SCRIPTS` in `app/agent/cr_question.py` (today: `rd-cr-question`).
+- Every older script, golden and Playwright suite keeps the lookup it was written for, whatever the policy says.
+- Backend pytest: tests not marked `cr_question` run with `public_cr_check: lookup`, the same pattern as `lease_admin`. Mark new tests `@pytest.mark.cr_question` to run them with the shipped policy.
+
 ## Your track (Cursor): agent and chat
 0. **Flip the policy:** `public_cr_check: ask_then_sign_in` in `backend/app/policy/policy.yaml`, in the same PR as items 1–7 (the prompt, card and goldens have to change together).
 1. **`CrQuestionCard`** (`frontend/src/components/cards/`):

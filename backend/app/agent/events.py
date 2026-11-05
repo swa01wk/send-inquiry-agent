@@ -233,6 +233,7 @@ async def run_turn(
         state["case_id"] = session.case_id
         state["contacts_draft"] = list(session.contacts_draft)
     state["channel"] = session.channel
+    state["test_scenario"] = session.test_scenario
     state["assisted"] = session.assisted
     state["tenant_id"] = session.tenant_id
     state["existing_cr_choice"] = session.existing_cr_choice
