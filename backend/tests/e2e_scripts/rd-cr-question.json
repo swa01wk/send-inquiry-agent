@@ -1,0 +1,35 @@
+[
+  {
+    "content": "Signing in to Tenant Central is the quickest way — your company details are already on file there. Use the Sign in button below."
+  },
+  {
+    "content": "What is your registered company name and address?"
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "company_name",
+              "value": "Acme Trading LLC",
+              "source": "user"
+            },
+            {
+              "key": "company_address",
+              "value": "King Abdullah Road, Riyadh",
+              "source": "user"
+            }
+          ]
+        },
+        "id": "rd1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Tell me about your brand and the space you're looking for."
+  }
+]
