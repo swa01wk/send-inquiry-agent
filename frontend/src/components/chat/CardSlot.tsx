@@ -7,6 +7,7 @@ import { DocumentChecklistCard } from '../cards/DocumentChecklistCard'
 import { SalesDataUploadCard } from '../cards/SalesDataUploadCard'
 import { FormModeCard } from '../cards/FormModeCard'
 import { BasicInfoReviewCard } from '../cards/BasicInfoReviewCard'
+import { CrQuestionCard } from '../cards/CrQuestionCard'
 import { ExistingCrChoiceCard } from '../cards/ExistingCrChoiceCard'
 import { HandoffCard } from '../cards/HandoffCard'
 import { SendLinkCard } from '../cards/SendLinkCard'
@@ -134,6 +135,12 @@ export function CardSlot({
         <ExistingCrChoiceCard
           payload={card.payload}
           onChoose={(choice) => actions.sendAction('existing_cr_choice', { choice })}
+        />
+      ) : null}
+      {card.card_type === 'cr_question' ? (
+        <CrQuestionCard
+          payload={card.payload}
+          onAnswer={(hasCr) => actions.sendAction('cr_answer', { has_cr: hasCr })}
         />
       ) : null}
       {card.card_type === 'sign_in_prompt' ? <SignInPromptCard payload={card.payload} /> : null}

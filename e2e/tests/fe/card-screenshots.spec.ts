@@ -12,6 +12,7 @@ const cardScenarios: Array<{ scenario: string; card: string }> = [
   { scenario: 'send-link', card: 'send_link' },
   { scenario: 'existing-cr-choice', card: 'existing_cr_choice' },
   { scenario: 'sign-in-prompt', card: 'sign_in_prompt' },
+  { scenario: 'cr-question', card: 'cr_question' },
 ]
 
 // The chat panel has a fixed height with overflow hidden, so a tall card (review) is clipped

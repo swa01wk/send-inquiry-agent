@@ -21,6 +21,7 @@ export type CardType =
   | 'send_link'
   | 'existing_cr_choice'
   | 'sign_in_prompt'
+  | 'cr_question'
 
 export type StepState = 'done' | 'current' | 'upcoming'
 
@@ -89,6 +90,13 @@ export interface SignInPromptPayload {
   message: string
   sign_in_url: string
   button_label: string
+}
+
+export interface CrQuestionPayload {
+  prompt: string
+  yes_label: string
+  no_label: string
+  answered: 'yes' | 'no' | null
 }
 
 export interface MallPickerCity {
@@ -415,6 +423,12 @@ export type UiCard =
       card_type: 'sign_in_prompt'
       message_id: string | null
       payload: SignInPromptPayload
+    }
+  | {
+      card_id: string
+      card_type: 'cr_question'
+      message_id: string | null
+      payload: CrQuestionPayload
     }
 
 export type FormModeStep =
