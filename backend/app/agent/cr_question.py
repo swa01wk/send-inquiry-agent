@@ -26,6 +26,11 @@ CR_TYPED_NOTE = (
     "quickest way when the company already has a CR (its details are on file there), and "
     "point to the Sign in button. Don't ask for any other details."
 )
+CR_NUMBER_IN_REPLY = (
+    "[guard] cr_number_in_reply: your reply contained a CR number. Remove it and reply again "
+    "without any CR number — point to Sign in if they have a CR, and never repeat or look up "
+    "a number."
+)
 
 # A CR number: ten digits on their own, not starting with 0 (Saudi local phone numbers do),
 # and not part of a longer number (an international phone number, an IBAN). Arabic-Indic

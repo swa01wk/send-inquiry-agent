@@ -70,7 +70,9 @@ def test_sign_in_policy_stops_an_existing_cr(agent_runtime, base_state, stream_e
 def test_allow_inquiry_lets_an_existing_cr_continue(
     agent_runtime, base_state, stream_events
 ) -> None:
-    with use_policy(_policy(existing_tenant_policy="allow_inquiry")):
+    with use_policy(
+        _policy(existing_tenant_policy="allow_inquiry", public_cr_check="lookup"),
+    ):
         result = _verify_existing_cr(agent_runtime, base_state, stream_events)
     draft = result.update["draft"]
     # The CR has a Tenant Central record (intake channels §3.6): prefilled, not blocked.
@@ -171,13 +173,14 @@ def test_rules_in_force_follow_the_policy() -> None:
     default = rules_in_force(load_policy(), master)
     assert "one mall per inquiry" in default
     assert "Documents required to submit: Company Profile, Brand Profile." in default
-    assert "point them to Sign In" in default
+    assert "CR on the public page" in default or "point them to Sign In" in default
     assert "any other country" in default
 
     flipped = rules_in_force(
         _policy(
             max_malls_per_inquiry=2,
             existing_tenant_policy="allow_inquiry",
+            public_cr_check="lookup",
             phone={"allowed_countries": ["971", "973"]},
         ),
         master,

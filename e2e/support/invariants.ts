@@ -7,6 +7,70 @@ import type { CapturedSseEvent } from './events'
 import { fetchDevOutbox } from './outbox'
 
 const repoRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '../..')
+
+const CR_NUMBER_RE = /(?<![\d+])[1-9]\d{9}(?!\d)/
+
+function normaliseDigits(text: string): string {
+  const arabicIndic = '٠١٢٣٤٥٦٧٨٩'
+  const easternArabic = '۰۱۲۳۴۵۶۷۸۹'
+  return text.replace(/[٠-٩۰-۹]/g, (ch) => {
+    const i = arabicIndic.indexOf(ch)
+    if (i >= 0) return String(i)
+    return String(easternArabic.indexOf(ch))
+  })
+}
+
+function containsCrNumber(text: string): boolean {
+  return CR_NUMBER_RE.test(normaliseDigits(text))
+}
+
+function registryDetails(): string[] {
+  const data = JSON.parse(
+    readFileSync(path.join(repoRoot, 'backend/app/data/mock_world/cr.json'), 'utf8'),
+  ) as { records: { company_name?: string; company_address?: string }[] }
+  const out: string[] = []
+  for (const record of data.records ?? []) {
+    for (const key of ['company_name', 'company_address'] as const) {
+      const value = record[key]
+      if (value) out.push(String(value).trim().toLowerCase())
+    }
+  }
+  return out
+}
+
+function applicantGaveCompany(draft: DraftSummary, detail: string): boolean {
+  for (const f of draft.fields ?? []) {
+    if (
+      (f.key === 'company_name' || f.key === 'company_address') &&
+      f.display &&
+      f.source !== 'verified' &&
+      String(f.display).trim().toLowerCase() === detail
+    ) {
+      return true
+    }
+  }
+  return false
+}
+
+function checkI8(
+  reply: string,
+  cardText: string,
+  draftAfter: DraftSummary,
+): string | null {
+  for (const [label, text] of [
+    ['reply', reply],
+    ['card', cardText],
+  ] as const) {
+    if (containsCrNumber(text)) return `I8: CR number in ${label}`
+    const lowered = text.toLowerCase()
+    for (const detail of registryDetails()) {
+      if (detail && lowered.includes(detail) && !applicantGaveCompany(draftAfter, detail)) {
+        return `I8: CR lookup detail in ${label}`
+      }
+    }
+  }
+  return null
+}
 const reviewers = (
   JSON.parse(
     readFileSync(path.join(repoRoot, 'backend/app/data/mock_world/reviewers.json'), 'utf8'),
@@ -193,6 +257,8 @@ export type InvariantCheckInput = {
   auditNew: { type?: string; payload?: Record<string, unknown> }[]
   outboxMessages: { template?: string; body?: string; links?: string[] }[]
   sessionId: string
+  /** Demo feedback §6: self-service under `public_cr_check: ask_then_sign_in`. */
+  publicCrQuestion?: boolean
 }
 
 export function collectInvariantViolations(input: InvariantCheckInput): string[] {
@@ -276,6 +342,12 @@ export function collectInvariantViolations(input: InvariantCheckInput): string[]
     }
   }
 
+  if (input.publicCrQuestion) {
+    const cardText = uiCards.map((c) => JSON.stringify(c.payload ?? {})).join('\n')
+    const i8 = checkI8(reply, cardText, input.draftAfter)
+    if (i8) violations.push(i8)
+  }
+
   return violations
 }
 
@@ -285,6 +357,7 @@ export async function assertSafetyInvariants(
   turnEvents: CapturedSseEvent[],
   draftBefore: DraftSummary,
   draftAfter: DraftSummary,
+  options: { publicCrQuestion?: boolean } = { publicCrQuestion: true },
 ): Promise<void> {
   const auditRes = await request.get(`http://127.0.0.1:8000/api/dev/audit/${sessionId}`)
   const auditAll = auditRes.ok()
@@ -303,6 +376,7 @@ export async function assertSafetyInvariants(
     auditNew,
     outboxMessages,
     sessionId,
+    publicCrQuestion: options.publicCrQuestion,
   })
-  expect(violations, 'safety invariants I1–I7').toEqual([])
+  expect(violations, 'safety invariants I1–I8').toEqual([])
 }
