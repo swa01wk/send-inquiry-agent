@@ -17,17 +17,8 @@ model_steps:
   - name: update_draft
     args:
       fields:
-      - key: brand_name_en
-        value: Bean Street
-        source: user
-      - key: brand_name_ar
-        value: بين ستريت
-        source: derived
       - key: unit_type
         value: specialty
-        source: derived
-      - key: sales_category
-        value: fnb_cafe
         source: derived
       - key: malls
         value:

@@ -20,7 +20,7 @@ async function answerCrNo(inquiry: InquiryPage) {
 const APPLICANT_EMAIL = 'sara@beanstreet.example'
 const APPLICANT_MOBILE = '+966501234567'
 const BRAND_BUNDLE =
-  'Bean Street specialty coffee kiosk at Riyadh Mall A. Sara Ali, sara@beanstreet.example, 0501234567'
+  'Specialty coffee kiosk at Riyadh Mall A. Sara Ali, sara@beanstreet.example, 0501234567'
 
 test.describe('Story rd-type-or-upload @scripted', () => {
   test('upload path fills profiles, shows evidence, and does not re-ask', async ({ page, request }) => {
@@ -131,9 +131,7 @@ test.describe('Story rd-type-or-upload @scripted', () => {
     const row = inquiry.cards('document_upload').getByTestId('doc-row-company_profile')
     await row.getByRole('button', { name: 'Remove' }).click()
     await inquiry.upload('Company Profile', 'company_profile_match.pdf')
-    await expect(inquiry.page.getByRole('button', { name: 'Looks right' }).last()).toBeVisible({
-      timeout: 60_000,
-    })
+    await inquiry.confirmCard()
     const review = inquiry.cards('review')
     await expect(review.getByRole('button', { name: 'Submit inquiry' })).toBeDisabled()
   })
