@@ -15,8 +15,22 @@ function contactDisplay(row: ContactRow): string {
   return parts.length > 0 ? parts.join(' · ') : 'Not added yet'
 }
 
+function approvalLabel(approval: NonNullable<ContactRow['approval']>): string {
+  if (approval === 'pending') return 'Waiting for Cenomi'
+  if (approval === 'approved') return 'Approved'
+  return 'Needs a change'
+}
+
+function visibleRows(payload: ContactsPayload): ContactRow[] {
+  const roles = payload.roles ?? []
+  if (roles.length === 0) return payload.rows
+  const allowed = new Set(roles)
+  return payload.rows.filter((row) => allowed.has(row.role))
+}
+
 export function ContactsCard({ payload, onSubmit }: ContactsCardProps) {
   const labelByRole = Object.fromEntries(payload.rows.map((r) => [r.role, r.label]))
+  const rows = visibleRows(payload)
 
   return (
     <div className={`${shared.shell} ${styles.shell}`} data-testid="contacts-card">
@@ -24,12 +38,23 @@ export function ContactsCard({ payload, onSubmit }: ContactsCardProps) {
         <span className={styles.title}>Company contacts</span>
         {payload.remarks ? <p className={styles.remarks}>{payload.remarks}</p> : null}
       </div>
-      {payload.rows.map((row) => (
-        <div key={row.role} className={styles.row}>
+      {rows.map((row) => (
+        <div key={row.role} className={styles.row} data-testid={`contact-row-${row.role}`}>
           <div className={styles.labelRow}>
             <span className={styles.roleLabel}>{row.label}</span>
             {row.required ? <span className={styles.tagRequired}>Required</span> : null}
             <SourceBadge source={row.source} confirmed={row.confirmed} />
+            {row.approval ? (
+              <span
+                className={`${styles.approvalChip} ${styles[`approval_${row.approval}`]}`}
+                data-testid={`contact-approval-${row.role}`}
+              >
+                {approvalLabel(row.approval)}
+                {row.approval === 'rejected' && row.approval_remarks
+                  ? `: ${row.approval_remarks}`
+                  : null}
+              </span>
+            ) : null}
           </div>
           <span className={styles.detail}>{contactDisplay(row)}</span>
           {row.same_as_primary ? (

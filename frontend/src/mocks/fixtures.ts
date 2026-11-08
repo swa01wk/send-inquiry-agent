@@ -619,6 +619,36 @@ export const signatoryQuestionCardExample: UiCard = {
   },
 }
 
+export const contactsApprovalCardExample: UiCard = {
+  card_id: 'contacts',
+  card_type: 'contacts',
+  message_id: 'm-case-contacts',
+  payload: {
+    request_id: 'req-contacts',
+    remarks: 'Billing contact: Use the finance mailbox',
+    roles: ['billing_contact'],
+    signatory_answer: 'yes',
+    rows: [
+      {
+        role: 'billing_contact',
+        label: 'Billing contact',
+        required: true,
+        first_name: 'Omar',
+        last_name: 'Saleh',
+        email: 'omar@beanstreet.example',
+        phone: '+966551234567',
+        source: 'user',
+        confirmed: true,
+        same_as_primary: false,
+        approval: 'rejected',
+        approval_remarks: 'Use the finance mailbox',
+      },
+    ],
+    can_submit: false,
+    blockers: [],
+  },
+}
+
 export const signInPromptCardExample: UiCard = {
   card_id: 'sign-in-prompt',
   card_type: 'sign_in_prompt',

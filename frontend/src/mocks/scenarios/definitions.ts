@@ -14,6 +14,7 @@ import {
   sendLinkCardExample,
   crQuestionCardExample,
   signatoryQuestionCardExample,
+  contactsApprovalCardExample,
   signInPromptCardExample,
   successCardExample,
   verificationCardExample,
@@ -293,6 +294,10 @@ export const feScenarioDefinitions: FeScenario[] = [
         ],
       },
     ],
+  },
+  {
+    name: 'contacts-approval',
+    session: cardSession(contactsApprovalCardExample, draftEmpty),
   },
   {
     name: 'sign-in-prompt',
