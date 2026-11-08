@@ -1172,6 +1172,14 @@ def _no_cr_digits_in_replies(turns: list[TurnResult]) -> bool:
     return not contains_cr_number(_reply_text(turns))
 
 
+# The agent answers in the user's language: "تسجيل الدخول" / "سجّل الدخول" is "sign in".
+_SIGN_IN_WORDS = ("sign", "تسجيل الدخول", "سجل الدخول", "سجّل الدخول")
+
+
+def _mentions_sign_in(text: str) -> bool:
+    return any(word in text for word in _SIGN_IN_WORDS)
+
+
 def _check_cr_privacy_yes(
     session: Session, turns: list[TurnResult], _app: AppState | None = None
 ) -> list[tuple[str, bool]]:
@@ -1179,7 +1187,7 @@ def _check_cr_privacy_yes(
     sign_in_card = any(_cards(t.events, "sign_in_prompt") for t in turns)
     return [
         ("sign_in card shown", sign_in_card),
-        ("sign in mentioned", "sign" in text),
+        ("sign in mentioned", _mentions_sign_in(text)),
         ("no cr digits in reply", _no_cr_digits_in_replies(turns)),
         (
             "redirected or existing cr_status",
@@ -1196,7 +1204,7 @@ def _check_cr_privacy_typed(
     cr_field = session.draft.fields[FieldKey.CR_NUMBER].value
     return [
         ("sign_in card shown", sign_in_card),
-        ("sign in mentioned", "sign" in text),
+        ("sign in mentioned", _mentions_sign_in(text)),
         ("no cr digits in reply", _no_cr_digits_in_replies(turns)),
         ("cr number not stored", cr_field is None),
     ]
@@ -1236,28 +1244,30 @@ SCENARIOS: list[LiveScenario] = [
         "C condensation with brief, natural answers",
         [
             "Hi, I'd like to lease a space in one of your malls.",
-            "Sure, it's 1010123456",
+            "No CR yet. Company is Bean Street Trading Co., Olaya Street, Riyadh.",
             "We're Bean Street, specialty coffee. Looking for a small kiosk at Riyadh Mall A.",
             "Sara Ali, sara@beanstreet.example, 0501234567",
         ],
         _check_condensed,
     ),
     LiveScenario(
-        "1 happy path CR 1010123456",
+        "1 happy path CR 1010123456 (call centre)",
         [
-            "Hi! My CR number is 1010123456.",
+            "The caller's CR number is 1010123456.",
             "Yes, that's correct.",
             "Bean Street specialty coffee kiosk at Riyadh Mall A. Sara Ali, "
             "sara@beanstreet.example, +966501234567.",
             "Yes, all correct.",
         ],
         _check_cr_happy,
+        auto_otp=False,
+        setup=_setup_callcentre_inquiry,
     ),
     LiveScenario(
         "O out of order: space values, late correction, what's next",
         [
-            "My CR number is 1010123456",
-            "Yes, that's correct",
+            "Hi, we don't have a CR yet.",
+            "Company is Bean Street Trading Co., Olaya Street, Riyadh.",
             "Bean Street specialty coffee kiosk at Riyadh Mall A — about 30 sqm, budget up to "
             "250,000 SAR per year, 3-year lease. Sara Ali, sara@beanstreet.example, "
             "+966501234567",
@@ -1356,14 +1366,16 @@ SCENARIOS: list[LiveScenario] = [
         _check_country_mention,
     ),
     LiveScenario(
-        "CR company differs from brand (Zara Home)",
+        "CR company differs from brand (Zara Home) (call centre)",
         [
-            "My CR number is 1010222222.",
+            "The caller's CR number is 1010222222.",
             "Yes, company details are correct.",
-            "We're opening a Zara Home store at Mall of Arabia.",
+            "They're opening a Zara Home store at Mall of Arabia.",
             "Sara Ali, sara@zarahome.example, 0501234567",
         ],
         _check_cr_brand_differs_from_company,
+        auto_otp=False,
+        setup=_setup_callcentre_inquiry,
     ),
     LiveScenario(
         "Chat during OTP",
