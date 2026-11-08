@@ -48,4 +48,32 @@ describe('ConfirmFieldsCard', () => {
     )
     expect(screen.getByText("from: 'specialty coffee kiosk'")).toBeInTheDocument()
   })
+
+  it('renders document evidence without quotes', () => {
+    if (confirmFieldsCardExample.card_type !== 'confirm_fields') throw new Error('bad fixture')
+    render(
+      <ConfirmFieldsCard
+        cardId="confirm-doc-evidence"
+        payload={{
+          ...confirmFieldsCardExample.payload,
+          fields: [
+            {
+              key: 'company_name',
+              label: 'Company name',
+              display: 'Bean Street Trading Co.',
+              source: 'derived',
+              confirmed: false,
+              evidence: 'Company Profile: company_profile_match.pdf, uploaded 09 Nov 2026 12:00',
+            },
+          ],
+          all_confirmed: false,
+        }}
+        onConfirm={() => {}}
+      />,
+    )
+    expect(
+      screen.getByText(/from: Company Profile, company_profile_match\.pdf/i),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/'Company Profile/)).not.toBeInTheDocument()
+  })
 })
