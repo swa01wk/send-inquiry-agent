@@ -85,16 +85,16 @@ test.describe('Story rd-contact-approval @scripted', () => {
         'Rejected: Use the finance mailbox',
       )
 
-      const outboxAfterReject = await expect
+      await expect
         .poll(async () =>
           (await fetchDevOutbox(request, APPLICANT_EMAIL)).filter(
             (m) => m.template === 'contacts_request',
           ),
         )
         .toHaveLength(2)
-        .then(async () => (await fetchDevOutbox(request, APPLICANT_EMAIL)).filter(
-          (m) => m.template === 'contacts_request',
-        ))
+      const outboxAfterReject = (await fetchDevOutbox(request, APPLICANT_EMAIL)).filter(
+        (m) => m.template === 'contacts_request',
+      )
 
       const fixUrl = new URL(outboxAfterReject[0].links.find((l) => l.includes('/inquiry/case'))!)
       fixUrl.searchParams.set('e2eCaseScenario', 'rd-contact-approval')
