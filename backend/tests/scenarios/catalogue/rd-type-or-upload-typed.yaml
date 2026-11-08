@@ -61,6 +61,7 @@ model_steps:
         source: user
     id: r3t-3
     type: tool_call
+- content: Check the confirm card if anything looks off.
 - content: ''
   tool_calls:
   - name: send_verification
@@ -78,6 +79,8 @@ model_steps:
 - content: Upload the Company Profile and Brand Profile when you're ready.
 - content: Your Company Profile shows a different company name than you typed — I can update it to match the profile or keep yours for the reviewer to see.
 - content: We'll keep your company name as you entered it — the reviewer will see the flag. Upload the Brand Profile when you're ready.
+- content: I'll keep your company name. Upload the Brand Profile when you're ready.
+- content: I've filled brand details from your Brand Profile — check the confirm card.
 - content: ''
   tool_calls:
   - name: show_review

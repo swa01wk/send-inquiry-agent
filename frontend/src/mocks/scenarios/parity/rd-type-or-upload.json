@@ -809,17 +809,17 @@
                 "key": "brand_name_en",
                 "label": "Brand name (EN)",
                 "group": "brand",
-                "display": "Bean Street",
-                "source": "user",
-                "confirmed": true,
+                "display": null,
+                "source": null,
+                "confirmed": false,
                 "required": true
               },
               {
                 "key": "brand_name_ar",
                 "label": "Brand name (AR)",
                 "group": "brand",
-                "display": "بين ستريت",
-                "source": "derived",
+                "display": null,
+                "source": null,
                 "confirmed": false,
                 "required": true
               },
@@ -836,8 +836,8 @@
                 "key": "sales_category",
                 "label": "Sales category",
                 "group": "brand",
-                "display": "Food & Beverage · Café",
-                "source": "derived",
+                "display": null,
+                "source": null,
                 "confirmed": false,
                 "required": true
               },
@@ -989,9 +989,9 @@
               }
             ],
             "checks": {
-              "required_filled": 8,
+              "required_filled": 5,
               "required_total": 11,
-              "unconfirmed": 3,
+              "unconfirmed": 1,
               "email_verified": false,
               "mobile_verified": false,
               "contact_verified": false,
@@ -1002,16 +1002,7 @@
               "next_step": "fields"
             },
             "can_submit": false,
-            "changed_keys": [
-              "brand_name_en",
-              "brand_name_ar",
-              "unit_type",
-              "sales_category",
-              "first_name",
-              "last_name",
-              "email",
-              "mobile"
-            ],
+            "changed_keys": ["unit_type", "first_name", "last_name", "email", "mobile"],
             "follow_on_of": null
           }
         },
@@ -1058,17 +1049,17 @@
                 "key": "brand_name_en",
                 "label": "Brand name (EN)",
                 "group": "brand",
-                "display": "Bean Street",
-                "source": "user",
-                "confirmed": true,
+                "display": null,
+                "source": null,
+                "confirmed": false,
                 "required": true
               },
               {
                 "key": "brand_name_ar",
                 "label": "Brand name (AR)",
                 "group": "brand",
-                "display": "بين ستريت",
-                "source": "derived",
+                "display": null,
+                "source": null,
                 "confirmed": false,
                 "required": true
               },
@@ -1085,8 +1076,8 @@
                 "key": "sales_category",
                 "label": "Sales category",
                 "group": "brand",
-                "display": "Food & Beverage · Café",
-                "source": "derived",
+                "display": null,
+                "source": null,
                 "confirmed": false,
                 "required": true
               },
@@ -1238,9 +1229,9 @@
               }
             ],
             "checks": {
-              "required_filled": 8,
+              "required_filled": 5,
               "required_total": 11,
-              "unconfirmed": 3,
+              "unconfirmed": 1,
               "email_verified": false,
               "mobile_verified": false,
               "contact_verified": false,
@@ -1265,25 +1256,9 @@
               "title": "Please confirm these details",
               "fields": [
                 {
-                  "key": "brand_name_ar",
-                  "label": "Brand name (AR)",
-                  "display": "بين ستريت",
-                  "source": "derived",
-                  "confirmed": false,
-                  "evidence": null
-                },
-                {
                   "key": "unit_type",
                   "label": "Unit type",
                   "display": "Specialty",
-                  "source": "derived",
-                  "confirmed": false,
-                  "evidence": null
-                },
-                {
-                  "key": "sales_category",
-                  "label": "Sales category",
-                  "display": "Food & Beverage · Café",
                   "source": "derived",
                   "confirmed": false,
                   "evidence": null
@@ -1304,7 +1279,7 @@
     {
       "when": {
         "type": "message",
-        "textEquals": "Bean Street specialty coffee kiosk at Riyadh Mall A. Sara Ali, sara@beanstreet.example, 0501234567"
+        "textEquals": "Specialty coffee kiosk at Riyadh Mall A. Sara Ali, sara@beanstreet.example, 0501234567"
       },
       "events": [
         {
@@ -1343,17 +1318,17 @@
                 "key": "brand_name_en",
                 "label": "Brand name (EN)",
                 "group": "brand",
-                "display": "Bean Street",
-                "source": "user",
-                "confirmed": true,
+                "display": null,
+                "source": null,
+                "confirmed": false,
                 "required": true
               },
               {
                 "key": "brand_name_ar",
                 "label": "Brand name (AR)",
                 "group": "brand",
-                "display": "بين ستريت",
-                "source": "derived",
+                "display": null,
+                "source": null,
                 "confirmed": false,
                 "required": true
               },
@@ -1370,8 +1345,8 @@
                 "key": "sales_category",
                 "label": "Sales category",
                 "group": "brand",
-                "display": "Food & Beverage · Café",
-                "source": "derived",
+                "display": null,
+                "source": null,
                 "confirmed": false,
                 "required": true
               },
@@ -1523,9 +1498,9 @@
               }
             ],
             "checks": {
-              "required_filled": 8,
+              "required_filled": 5,
               "required_total": 11,
-              "unconfirmed": 3,
+              "unconfirmed": 1,
               "email_verified": false,
               "mobile_verified": false,
               "contact_verified": false,
@@ -1596,17 +1571,17 @@
                 "key": "brand_name_en",
                 "label": "Brand name (EN)",
                 "group": "brand",
-                "display": "Bean Street",
-                "source": "user",
-                "confirmed": true,
+                "display": null,
+                "source": null,
+                "confirmed": false,
                 "required": true
               },
               {
                 "key": "brand_name_ar",
                 "label": "Brand name (AR)",
                 "group": "brand",
-                "display": "بين ستريت",
-                "source": "derived",
+                "display": null,
+                "source": null,
                 "confirmed": false,
                 "required": true
               },
@@ -1623,8 +1598,8 @@
                 "key": "sales_category",
                 "label": "Sales category",
                 "group": "brand",
-                "display": "Food & Beverage · Café",
-                "source": "derived",
+                "display": null,
+                "source": null,
                 "confirmed": false,
                 "required": true
               },
@@ -1776,9 +1751,9 @@
               }
             ],
             "checks": {
-              "required_filled": 9,
+              "required_filled": 6,
               "required_total": 11,
-              "unconfirmed": 3,
+              "unconfirmed": 1,
               "email_verified": false,
               "mobile_verified": false,
               "contact_verified": false,
@@ -1990,18 +1965,18 @@
                 "key": "brand_name_en",
                 "label": "Brand name (EN)",
                 "group": "brand",
-                "display": "Bean Street",
-                "source": "user",
-                "confirmed": true,
+                "display": null,
+                "source": null,
+                "confirmed": false,
                 "required": true
               },
               {
                 "key": "brand_name_ar",
                 "label": "Brand name (AR)",
                 "group": "brand",
-                "display": "بين ستريت",
-                "source": "derived",
-                "confirmed": true,
+                "display": null,
+                "source": null,
+                "confirmed": false,
                 "required": true
               },
               {
@@ -2017,9 +1992,9 @@
                 "key": "sales_category",
                 "label": "Sales category",
                 "group": "brand",
-                "display": "Food & Beverage · Café",
-                "source": "derived",
-                "confirmed": true,
+                "display": null,
+                "source": null,
+                "confirmed": false,
                 "required": true
               },
               {
@@ -2170,7 +2145,7 @@
               }
             ],
             "checks": {
-              "required_filled": 9,
+              "required_filled": 6,
               "required_total": 11,
               "unconfirmed": 0,
               "email_verified": false,
@@ -2183,7 +2158,7 @@
               "next_step": "fields"
             },
             "can_submit": false,
-            "changed_keys": ["brand_name_ar", "unit_type", "sales_category"],
+            "changed_keys": ["unit_type"],
             "follow_on_of": null
           }
         },
@@ -2197,25 +2172,9 @@
               "title": "Please confirm these details",
               "fields": [
                 {
-                  "key": "brand_name_ar",
-                  "label": "Brand name (AR)",
-                  "display": "بين ستريت",
-                  "source": "derived",
-                  "confirmed": true,
-                  "evidence": null
-                },
-                {
                   "key": "unit_type",
                   "label": "Unit type",
                   "display": "Specialty",
-                  "source": "derived",
-                  "confirmed": true,
-                  "evidence": null
-                },
-                {
-                  "key": "sales_category",
-                  "label": "Sales category",
-                  "display": "Food & Beverage · Café",
                   "source": "derived",
                   "confirmed": true,
                   "evidence": null
@@ -2268,18 +2227,18 @@
                 "key": "brand_name_en",
                 "label": "Brand name (EN)",
                 "group": "brand",
-                "display": "Bean Street",
-                "source": "user",
-                "confirmed": true,
+                "display": null,
+                "source": null,
+                "confirmed": false,
                 "required": true
               },
               {
                 "key": "brand_name_ar",
                 "label": "Brand name (AR)",
                 "group": "brand",
-                "display": "بين ستريت",
-                "source": "derived",
-                "confirmed": true,
+                "display": null,
+                "source": null,
+                "confirmed": false,
                 "required": true
               },
               {
@@ -2295,9 +2254,9 @@
                 "key": "sales_category",
                 "label": "Sales category",
                 "group": "brand",
-                "display": "Food & Beverage · Café",
-                "source": "derived",
-                "confirmed": true,
+                "display": null,
+                "source": null,
+                "confirmed": false,
                 "required": true
               },
               {
@@ -2448,7 +2407,7 @@
               }
             ],
             "checks": {
-              "required_filled": 9,
+              "required_filled": 6,
               "required_total": 11,
               "unconfirmed": 0,
               "email_verified": false,
@@ -2541,18 +2500,18 @@
                 "key": "brand_name_en",
                 "label": "Brand name (EN)",
                 "group": "brand",
-                "display": "Bean Street",
-                "source": "user",
-                "confirmed": true,
+                "display": null,
+                "source": null,
+                "confirmed": false,
                 "required": true
               },
               {
                 "key": "brand_name_ar",
                 "label": "Brand name (AR)",
                 "group": "brand",
-                "display": "بين ستريت",
-                "source": "derived",
-                "confirmed": true,
+                "display": null,
+                "source": null,
+                "confirmed": false,
                 "required": true
               },
               {
@@ -2568,9 +2527,9 @@
                 "key": "sales_category",
                 "label": "Sales category",
                 "group": "brand",
-                "display": "Food & Beverage · Café",
-                "source": "derived",
-                "confirmed": true,
+                "display": null,
+                "source": null,
+                "confirmed": false,
                 "required": true
               },
               {
@@ -2721,7 +2680,7 @@
               }
             ],
             "checks": {
-              "required_filled": 9,
+              "required_filled": 6,
               "required_total": 11,
               "unconfirmed": 0,
               "email_verified": true,
@@ -2814,18 +2773,18 @@
                 "key": "brand_name_en",
                 "label": "Brand name (EN)",
                 "group": "brand",
-                "display": "Bean Street",
-                "source": "user",
-                "confirmed": true,
+                "display": null,
+                "source": null,
+                "confirmed": false,
                 "required": true
               },
               {
                 "key": "brand_name_ar",
                 "label": "Brand name (AR)",
                 "group": "brand",
-                "display": "بين ستريت",
-                "source": "derived",
-                "confirmed": true,
+                "display": null,
+                "source": null,
+                "confirmed": false,
                 "required": true
               },
               {
@@ -2841,9 +2800,9 @@
                 "key": "sales_category",
                 "label": "Sales category",
                 "group": "brand",
-                "display": "Food & Beverage · Café",
-                "source": "derived",
-                "confirmed": true,
+                "display": null,
+                "source": null,
+                "confirmed": false,
                 "required": true
               },
               {
@@ -2994,7 +2953,7 @@
               }
             ],
             "checks": {
-              "required_filled": 9,
+              "required_filled": 6,
               "required_total": 11,
               "unconfirmed": 0,
               "email_verified": true,
@@ -3054,18 +3013,18 @@
                 "key": "brand_name_en",
                 "label": "Brand name (EN)",
                 "group": "brand",
-                "display": "Bean Street",
-                "source": "user",
-                "confirmed": true,
+                "display": null,
+                "source": null,
+                "confirmed": false,
                 "required": true
               },
               {
                 "key": "brand_name_ar",
                 "label": "Brand name (AR)",
                 "group": "brand",
-                "display": "بين ستريت",
-                "source": "derived",
-                "confirmed": true,
+                "display": null,
+                "source": null,
+                "confirmed": false,
                 "required": true
               },
               {
@@ -3081,9 +3040,9 @@
                 "key": "sales_category",
                 "label": "Sales category",
                 "group": "brand",
-                "display": "Food & Beverage · Café",
-                "source": "derived",
-                "confirmed": true,
+                "display": null,
+                "source": null,
+                "confirmed": false,
                 "required": true
               },
               {
@@ -3234,7 +3193,7 @@
               }
             ],
             "checks": {
-              "required_filled": 9,
+              "required_filled": 6,
               "required_total": 11,
               "unconfirmed": 0,
               "email_verified": true,
@@ -3422,18 +3381,18 @@
                 "key": "brand_name_en",
                 "label": "Brand name (EN)",
                 "group": "brand",
-                "display": "Bean Street",
-                "source": "user",
-                "confirmed": true,
+                "display": null,
+                "source": null,
+                "confirmed": false,
                 "required": true
               },
               {
                 "key": "brand_name_ar",
                 "label": "Brand name (AR)",
                 "group": "brand",
-                "display": "بين ستريت",
-                "source": "derived",
-                "confirmed": true,
+                "display": null,
+                "source": null,
+                "confirmed": false,
                 "required": true
               },
               {
@@ -3449,9 +3408,9 @@
                 "key": "sales_category",
                 "label": "Sales category",
                 "group": "brand",
-                "display": "Food & Beverage · Café",
-                "source": "derived",
-                "confirmed": true,
+                "display": null,
+                "source": null,
+                "confirmed": false,
                 "required": true
               },
               {
@@ -3602,7 +3561,7 @@
               }
             ],
             "checks": {
-              "required_filled": 11,
+              "required_filled": 8,
               "required_total": 11,
               "unconfirmed": 2,
               "email_verified": true,
@@ -3629,25 +3588,9 @@
               "title": "Please confirm these details",
               "fields": [
                 {
-                  "key": "brand_name_ar",
-                  "label": "Brand name (AR)",
-                  "display": "بين ستريت",
-                  "source": "derived",
-                  "confirmed": true,
-                  "evidence": null
-                },
-                {
                   "key": "unit_type",
                   "label": "Unit type",
                   "display": "Specialty",
-                  "source": "derived",
-                  "confirmed": true,
-                  "evidence": null
-                },
-                {
-                  "key": "sales_category",
-                  "label": "Sales category",
-                  "display": "Food & Beverage · Café",
                   "source": "derived",
                   "confirmed": true,
                   "evidence": null
@@ -3700,18 +3643,18 @@
                 "key": "brand_name_en",
                 "label": "Brand name (EN)",
                 "group": "brand",
-                "display": "Bean Street",
-                "source": "user",
-                "confirmed": true,
+                "display": null,
+                "source": null,
+                "confirmed": false,
                 "required": true
               },
               {
                 "key": "brand_name_ar",
                 "label": "Brand name (AR)",
                 "group": "brand",
-                "display": "بين ستريت",
-                "source": "derived",
-                "confirmed": true,
+                "display": null,
+                "source": null,
+                "confirmed": false,
                 "required": true
               },
               {
@@ -3727,9 +3670,9 @@
                 "key": "sales_category",
                 "label": "Sales category",
                 "group": "brand",
-                "display": "Food & Beverage · Café",
-                "source": "derived",
-                "confirmed": true,
+                "display": null,
+                "source": null,
+                "confirmed": false,
                 "required": true
               },
               {
@@ -3880,7 +3823,7 @@
               }
             ],
             "checks": {
-              "required_filled": 11,
+              "required_filled": 8,
               "required_total": 11,
               "unconfirmed": 2,
               "email_verified": true,
@@ -4069,17 +4012,17 @@
                 "label": "Brand name (EN)",
                 "group": "brand",
                 "display": "Bean Street",
-                "source": "user",
-                "confirmed": true,
+                "source": "derived",
+                "confirmed": false,
                 "required": true
               },
               {
                 "key": "brand_name_ar",
                 "label": "Brand name (AR)",
                 "group": "brand",
-                "display": "بين ستريت",
-                "source": "derived",
-                "confirmed": true,
+                "display": null,
+                "source": null,
+                "confirmed": false,
                 "required": true
               },
               {
@@ -4097,7 +4040,7 @@
                 "group": "brand",
                 "display": "Food & Beverage · Café",
                 "source": "derived",
-                "confirmed": true,
+                "confirmed": false,
                 "required": true
               },
               {
@@ -4248,9 +4191,271 @@
               }
             ],
             "checks": {
-              "required_filled": 11,
+              "required_filled": 10,
               "required_total": 11,
-              "unconfirmed": 2,
+              "unconfirmed": 4,
+              "email_verified": true,
+              "mobile_verified": true,
+              "contact_verified": true,
+              "required_docs_uploaded": 2,
+              "required_docs_total": 2,
+              "terms_accepted": false,
+              "remaining": ["fields", "terms"],
+              "next_step": "fields"
+            },
+            "can_submit": false,
+            "changed_keys": ["brand_name_en", "sales_category"],
+            "follow_on_of": null
+          }
+        },
+        {
+          "event": "ui_card",
+          "data": {
+            "card_id": "confirm-1",
+            "card_type": "confirm_fields",
+            "message_id": null,
+            "payload": {
+              "title": "Please confirm these details",
+              "fields": [
+                {
+                  "key": "unit_type",
+                  "label": "Unit type",
+                  "display": "Specialty",
+                  "source": "derived",
+                  "confirmed": true,
+                  "evidence": null
+                }
+              ],
+              "all_confirmed": true
+            }
+          }
+        },
+        {
+          "event": "token",
+          "data": {
+            "message_id": "m9",
+            "text": "All set for review on the card when you're ready."
+          }
+        },
+        {
+          "event": "draft",
+          "data": {
+            "phase": "collecting",
+            "fields": [
+              {
+                "key": "cr_number",
+                "label": "CR number",
+                "group": "company",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": false
+              },
+              {
+                "key": "company_name",
+                "label": "Company name",
+                "group": "company",
+                "display": "Bean Street Trading Co.",
+                "source": "derived",
+                "confirmed": false,
+                "required": true
+              },
+              {
+                "key": "company_address",
+                "label": "Company address",
+                "group": "company",
+                "display": "King Fahd Road, Al Olaya, Riyadh",
+                "source": "derived",
+                "confirmed": false,
+                "required": true
+              },
+              {
+                "key": "brand_name_en",
+                "label": "Brand name (EN)",
+                "group": "brand",
+                "display": "Bean Street",
+                "source": "derived",
+                "confirmed": false,
+                "required": true
+              },
+              {
+                "key": "brand_name_ar",
+                "label": "Brand name (AR)",
+                "group": "brand",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": true
+              },
+              {
+                "key": "unit_type",
+                "label": "Unit type",
+                "group": "brand",
+                "display": "Specialty",
+                "source": "derived",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "sales_category",
+                "label": "Sales category",
+                "group": "brand",
+                "display": "Food & Beverage · Café",
+                "source": "derived",
+                "confirmed": false,
+                "required": true
+              },
+              {
+                "key": "malls",
+                "label": "Mall",
+                "group": "space",
+                "display": "Riyadh Mall A",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "area",
+                "label": "Area",
+                "group": "space",
+                "display": "10 – 25000 sqm",
+                "source": "default",
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "rent",
+                "label": "Rent",
+                "group": "space",
+                "display": null,
+                "source": null,
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "lease",
+                "label": "Lease period",
+                "group": "space",
+                "display": null,
+                "source": null,
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "first_name",
+                "label": "First name",
+                "group": "contact",
+                "display": "Sara",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "last_name",
+                "label": "Last name",
+                "group": "contact",
+                "display": "Ali",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "email",
+                "label": "Email",
+                "group": "contact",
+                "display": "sara@beanstreet.example",
+                "source": "user",
+                "confirmed": true,
+                "required": true
+              },
+              {
+                "key": "mobile",
+                "label": "Mobile",
+                "group": "contact",
+                "display": "+966501234567",
+                "source": "user",
+                "confirmed": true,
+                "required": false
+              },
+              {
+                "key": "landline",
+                "label": "Office landline",
+                "group": "contact",
+                "display": null,
+                "source": null,
+                "confirmed": false,
+                "required": false
+              }
+            ],
+            "documents": [
+              {
+                "doc_type": "company_profile",
+                "label": "Company Profile",
+                "required": true,
+                "uploaded": true,
+                "file_name": "company_profile_match.pdf",
+                "size_bytes": 16,
+                "on_file": false
+              },
+              {
+                "doc_type": "brand_profile",
+                "label": "Brand Profile",
+                "required": true,
+                "uploaded": true,
+                "file_name": "brand_profile_match.pdf",
+                "size_bytes": 16,
+                "on_file": false
+              },
+              {
+                "doc_type": "cr_certificate",
+                "label": "CR certificate",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "vat_certificate",
+                "label": "VAT certificate",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "national_id",
+                "label": "National ID / Iqama",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "national_address",
+                "label": "National Address",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              },
+              {
+                "doc_type": "articles_of_association",
+                "label": "Article of Association",
+                "required": false,
+                "uploaded": false,
+                "file_name": null,
+                "size_bytes": null,
+                "on_file": false
+              }
+            ],
+            "checks": {
+              "required_filled": 10,
+              "required_total": 11,
+              "unconfirmed": 4,
               "email_verified": true,
               "mobile_verified": true,
               "contact_verified": true,
@@ -4266,47 +4471,23 @@
           }
         },
         {
-          "event": "ui_card",
+          "event": "done",
           "data": {
-            "card_id": "confirm-1",
-            "card_type": "confirm_fields",
-            "message_id": null,
-            "payload": {
-              "title": "Please confirm these details",
-              "fields": [
-                {
-                  "key": "brand_name_ar",
-                  "label": "Brand name (AR)",
-                  "display": "بين ستريت",
-                  "source": "derived",
-                  "confirmed": true,
-                  "evidence": null
-                },
-                {
-                  "key": "unit_type",
-                  "label": "Unit type",
-                  "display": "Specialty",
-                  "source": "derived",
-                  "confirmed": true,
-                  "evidence": null
-                },
-                {
-                  "key": "sales_category",
-                  "label": "Sales category",
-                  "display": "Food & Beverage · Café",
-                  "source": "derived",
-                  "confirmed": true,
-                  "evidence": null
-                }
-              ],
-              "all_confirmed": true
-            }
+            "phase": "collecting"
           }
-        },
+        }
+      ]
+    },
+    {
+      "when": {
+        "type": "action",
+        "action": "documents_updated"
+      },
+      "events": [
         {
           "event": "token",
           "data": {
-            "message_id": "m9",
+            "message_id": "m10",
             "text": "Review everything on the card, accept the terms and press Submit when you're ready."
           }
         },
@@ -4347,17 +4528,17 @@
                 "label": "Brand name (EN)",
                 "group": "brand",
                 "display": "Bean Street",
-                "source": "user",
-                "confirmed": true,
+                "source": "derived",
+                "confirmed": false,
                 "required": true
               },
               {
                 "key": "brand_name_ar",
                 "label": "Brand name (AR)",
                 "group": "brand",
-                "display": "بين ستريت",
-                "source": "derived",
-                "confirmed": true,
+                "display": null,
+                "source": null,
+                "confirmed": false,
                 "required": true
               },
               {
@@ -4375,7 +4556,7 @@
                 "group": "brand",
                 "display": "Food & Beverage · Café",
                 "source": "derived",
-                "confirmed": true,
+                "confirmed": false,
                 "required": true
               },
               {
@@ -4526,263 +4707,9 @@
               }
             ],
             "checks": {
-              "required_filled": 11,
+              "required_filled": 10,
               "required_total": 11,
-              "unconfirmed": 2,
-              "email_verified": true,
-              "mobile_verified": true,
-              "contact_verified": true,
-              "required_docs_uploaded": 2,
-              "required_docs_total": 2,
-              "terms_accepted": false,
-              "remaining": ["fields", "terms"],
-              "next_step": "fields"
-            },
-            "can_submit": false,
-            "changed_keys": [],
-            "follow_on_of": null
-          }
-        },
-        {
-          "event": "done",
-          "data": {
-            "phase": "collecting"
-          }
-        }
-      ]
-    },
-    {
-      "when": {
-        "type": "action",
-        "action": "documents_updated"
-      },
-      "events": [
-        {
-          "event": "token",
-          "data": {
-            "message_id": "m10",
-            "text": "I've refreshed those values from the new file — please confirm them on the card before you submit."
-          }
-        },
-        {
-          "event": "draft",
-          "data": {
-            "phase": "collecting",
-            "fields": [
-              {
-                "key": "cr_number",
-                "label": "CR number",
-                "group": "company",
-                "display": null,
-                "source": null,
-                "confirmed": false,
-                "required": false
-              },
-              {
-                "key": "company_name",
-                "label": "Company name",
-                "group": "company",
-                "display": "Bean Street Trading Co.",
-                "source": "derived",
-                "confirmed": false,
-                "required": true
-              },
-              {
-                "key": "company_address",
-                "label": "Company address",
-                "group": "company",
-                "display": "King Fahd Road, Al Olaya, Riyadh",
-                "source": "derived",
-                "confirmed": false,
-                "required": true
-              },
-              {
-                "key": "brand_name_en",
-                "label": "Brand name (EN)",
-                "group": "brand",
-                "display": "Bean Street",
-                "source": "user",
-                "confirmed": true,
-                "required": true
-              },
-              {
-                "key": "brand_name_ar",
-                "label": "Brand name (AR)",
-                "group": "brand",
-                "display": "بين ستريت",
-                "source": "derived",
-                "confirmed": true,
-                "required": true
-              },
-              {
-                "key": "unit_type",
-                "label": "Unit type",
-                "group": "brand",
-                "display": "Specialty",
-                "source": "derived",
-                "confirmed": true,
-                "required": true
-              },
-              {
-                "key": "sales_category",
-                "label": "Sales category",
-                "group": "brand",
-                "display": "Food & Beverage · Café",
-                "source": "derived",
-                "confirmed": true,
-                "required": true
-              },
-              {
-                "key": "malls",
-                "label": "Mall",
-                "group": "space",
-                "display": "Riyadh Mall A",
-                "source": "user",
-                "confirmed": true,
-                "required": true
-              },
-              {
-                "key": "area",
-                "label": "Area",
-                "group": "space",
-                "display": "10 – 25000 sqm",
-                "source": "default",
-                "confirmed": true,
-                "required": false
-              },
-              {
-                "key": "rent",
-                "label": "Rent",
-                "group": "space",
-                "display": null,
-                "source": null,
-                "confirmed": true,
-                "required": false
-              },
-              {
-                "key": "lease",
-                "label": "Lease period",
-                "group": "space",
-                "display": null,
-                "source": null,
-                "confirmed": true,
-                "required": false
-              },
-              {
-                "key": "first_name",
-                "label": "First name",
-                "group": "contact",
-                "display": "Sara",
-                "source": "user",
-                "confirmed": true,
-                "required": true
-              },
-              {
-                "key": "last_name",
-                "label": "Last name",
-                "group": "contact",
-                "display": "Ali",
-                "source": "user",
-                "confirmed": true,
-                "required": true
-              },
-              {
-                "key": "email",
-                "label": "Email",
-                "group": "contact",
-                "display": "sara@beanstreet.example",
-                "source": "user",
-                "confirmed": true,
-                "required": true
-              },
-              {
-                "key": "mobile",
-                "label": "Mobile",
-                "group": "contact",
-                "display": "+966501234567",
-                "source": "user",
-                "confirmed": true,
-                "required": false
-              },
-              {
-                "key": "landline",
-                "label": "Office landline",
-                "group": "contact",
-                "display": null,
-                "source": null,
-                "confirmed": false,
-                "required": false
-              }
-            ],
-            "documents": [
-              {
-                "doc_type": "company_profile",
-                "label": "Company Profile",
-                "required": true,
-                "uploaded": true,
-                "file_name": "company_profile_match.pdf",
-                "size_bytes": 16,
-                "on_file": false
-              },
-              {
-                "doc_type": "brand_profile",
-                "label": "Brand Profile",
-                "required": true,
-                "uploaded": true,
-                "file_name": "brand_profile_match.pdf",
-                "size_bytes": 16,
-                "on_file": false
-              },
-              {
-                "doc_type": "cr_certificate",
-                "label": "CR certificate",
-                "required": false,
-                "uploaded": false,
-                "file_name": null,
-                "size_bytes": null,
-                "on_file": false
-              },
-              {
-                "doc_type": "vat_certificate",
-                "label": "VAT certificate",
-                "required": false,
-                "uploaded": false,
-                "file_name": null,
-                "size_bytes": null,
-                "on_file": false
-              },
-              {
-                "doc_type": "national_id",
-                "label": "National ID / Iqama",
-                "required": false,
-                "uploaded": false,
-                "file_name": null,
-                "size_bytes": null,
-                "on_file": false
-              },
-              {
-                "doc_type": "national_address",
-                "label": "National Address",
-                "required": false,
-                "uploaded": false,
-                "file_name": null,
-                "size_bytes": null,
-                "on_file": false
-              },
-              {
-                "doc_type": "articles_of_association",
-                "label": "Article of Association",
-                "required": false,
-                "uploaded": false,
-                "file_name": null,
-                "size_bytes": null,
-                "on_file": false
-              }
-            ],
-            "checks": {
-              "required_filled": 11,
-              "required_total": 11,
-              "unconfirmed": 2,
+              "unconfirmed": 4,
               "email_verified": true,
               "mobile_verified": true,
               "contact_verified": true,

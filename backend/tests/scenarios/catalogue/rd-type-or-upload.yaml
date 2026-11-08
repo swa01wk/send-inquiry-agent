@@ -63,6 +63,7 @@ model_steps:
     args: {}
     id: r3-5
     type: tool_call
+- content: All set for review on the card when you're ready.
 - content: Review everything on the card, accept the terms and press Submit when you're ready.
 - content: I've refreshed those values from the new file — please confirm them on the card before you submit.
 - content: Check the confirm card when the updated profile is in.

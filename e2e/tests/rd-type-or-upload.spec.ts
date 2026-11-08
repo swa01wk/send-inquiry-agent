@@ -44,7 +44,7 @@ test.describe('Story rd-type-or-upload @scripted', () => {
     await expect(inquiry.page.getByTestId('doc-filled-company_profile')).toContainText(
       'Company name',
     )
-    const confirmCo = inquiry.page.getByTestId(/confirm-fields-/)
+    const confirmCo = inquiry.page.getByTestId(/confirm-fields-/).last()
     await expect(confirmCo).toContainText('Bean Street Trading Co.')
     await expect(confirmCo).toContainText(/from: Company Profile, company_profile_match\.pdf/i)
     await inquiry.confirmCard()

@@ -230,7 +230,7 @@ def all_scenarios() -> list[ParityScenario]:
                 ScriptStep(
                     kind="message",
                     text=(
-                        "Bean Street specialty coffee kiosk at Riyadh Mall A. Sara Ali, "
+                        "Specialty coffee kiosk at Riyadh Mall A. Sara Ali, "
                         "sara@beanstreet.example, 0501234567"
                     ),
                 ),

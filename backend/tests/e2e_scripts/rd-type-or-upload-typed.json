@@ -107,6 +107,9 @@
     ]
   },
   {
+    "content": "Check the confirm card if anything looks off."
+  },
+  {
     "content": "",
     "tool_calls": [
       {
@@ -141,6 +144,12 @@
   },
   {
     "content": "We'll keep your company name as you entered it — the reviewer will see the flag. Upload the Brand Profile when you're ready."
+  },
+  {
+    "content": "I'll keep your company name. Upload the Brand Profile when you're ready."
+  },
+  {
+    "content": "I've filled brand details from your Brand Profile — check the confirm card."
   },
   {
     "content": "",
