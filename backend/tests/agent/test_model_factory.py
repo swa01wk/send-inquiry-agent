@@ -33,6 +33,9 @@ _LLM_ENV_KEYS = (
 def isolated_llm_env(monkeypatch: pytest.MonkeyPatch) -> None:
     for key in _LLM_ENV_KEYS:
         monkeypatch.delenv(key, raising=False)
+    # Settings also reads backend/.env; a developer's Azure endpoint there would make
+    # provider auto-detection pick Azure. Tests see only what they pass in.
+    monkeypatch.setitem(Settings.model_config, "env_file", None)
 
 
 def test_supports_temperature_gpt5_family() -> None:
