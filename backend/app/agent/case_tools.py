@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Annotated, Any, Literal
 
 from langchain_core.messages import HumanMessage, ToolMessage
@@ -10,6 +11,7 @@ from langgraph.prebuilt.tool_node import InjectedState, ToolRuntime
 from langgraph.types import Command
 from pydantic import BaseModel
 
+from app.agent.actions import signatory_answer_result
 from app.agent.handoff import start_handoff
 from app.agent.runtime import runtime_from_config
 from app.agent.state import AgentState
@@ -26,6 +28,7 @@ from app.api.schemas import UiCard
 from app.domain.fields import document_label
 from app.policy.config import get_policy
 from app.services.status import REQUEST_LABELS, _from_case, final_approval_label
+from app.sessions import Session
 from app.workflow.contacts import write_contacts
 from app.workflow.models import Case, TenantContact
 
@@ -36,6 +39,7 @@ __all__ = [
     "request_reupload_documents",
     "update_contacts",
     "show_contacts_review",
+    "record_signatory_answer",
     "request_sales_data_upload",
     "search_faq",
     "suggest_replies",
@@ -52,6 +56,21 @@ def _case(state: AgentState, runtime: ToolRuntime) -> Case | None:
 
 def _emit_card(card: UiCard, runtime: ToolRuntime) -> None:
     runtime.stream_writer({"type": "ui_card", "data": card.model_dump()})
+
+
+def _session_from_state(state: AgentState) -> Session:
+    """Minimal session view for handlers shared with UI actions."""
+    now = datetime.now(UTC)
+    return Session(
+        id=state["session_id"],
+        draft=state["draft"],
+        created_at=now,
+        last_seen=now,
+        mode="case",
+        case_id=state.get("case_id"),
+        contacts_draft=list(state.get("contacts_draft") or []),
+        signatory_answer=state.get("signatory_answer"),
+    )
 
 
 def _tool_message(runtime: ToolRuntime, content: str, **update: Any) -> Command[Any]:
@@ -168,6 +187,37 @@ def update_contacts(
 
 
 @tool
+def record_signatory_answer(
+    is_signatory: bool,
+    state: Annotated[AgentState, InjectedState],
+    runtime: ToolRuntime,
+) -> Command[Any]:
+    """Record the answer to "Are you the authorised signatory?" (same as the card buttons)."""
+    rt = runtime_from_config(runtime.config)
+    session = _session_from_state(state)
+    result = signatory_answer_result(session, rt, is_signatory)
+    for event in result.events:
+        if event["event"] == "ui_card":
+            _emit_card(UiCard.model_validate(event["data"]), runtime)
+    answer = "yes" if is_signatory else "no"
+    note = str(result.note.content)
+    if note.startswith("[ui_event]"):
+        note = note.removeprefix("[ui_event]").strip()
+    content = (
+        f"Recorded signatory answer: {answer}. {note}"
+        if answer in ("yes", "no")
+        else note or "Signatory question could not be recorded."
+    )
+    update: dict[str, Any] = {
+        "messages": [ToolMessage(content=content, tool_call_id=runtime.tool_call_id or "")],
+    }
+    if session.signatory_answer in ("yes", "no"):
+        update["signatory_answer"] = session.signatory_answer
+        update["contacts_draft"] = list(session.contacts_draft)
+    return Command(update=update)
+
+
+@tool
 def show_contacts_review(
     state: Annotated[AgentState, InjectedState],
     runtime: ToolRuntime,
@@ -244,6 +294,7 @@ CASE_TOOLS = [
     get_case_status,
     request_reupload_documents,
     update_contacts,
+    record_signatory_answer,
     show_contacts_review,
     request_sales_data_upload,
     search_faq,
