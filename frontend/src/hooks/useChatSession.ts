@@ -111,9 +111,11 @@ export function useChatSession() {
     }
   }, [runStream, state.sessionId, state.status, syncQueuedUi])
 
+  // Also on queue changes: an action queued while idle (documents_updated after an upload)
+  // goes out straight away instead of waiting for the next turn.
   useEffect(() => {
     flushActionQueue()
-  }, [flushActionQueue, state.status])
+  }, [flushActionQueue, queuedActions, state.status])
 
   useEffect(() => {
     if (state.status !== 'error') return
@@ -258,13 +260,16 @@ export function useChatSession() {
     [dispatch, state.sessionId, state.status],
   )
 
+  // documents_updated goes through the action queue: an upload can finish while the agent is
+  // still replying (the documents card arrives mid-turn), and runStream drops a call made
+  // while streaming.
   const maybeNotifyDocumentsComplete = useCallback(
     (beforeUploaded: number, beforeTotal: number, afterUploaded: number, afterTotal: number) => {
       if (beforeUploaded < beforeTotal && afterUploaded >= afterTotal) {
-        void runStream({ type: 'action', action: 'documents_updated', payload: {} })
+        enqueueAction('documents_updated', {})
       }
     },
-    [runStream],
+    [enqueueAction],
   )
 
   const uploadDocumentForType = useCallback(
@@ -278,11 +283,8 @@ export function useChatSession() {
       // A profile that filled fields or disagrees with one gets an agent turn of its own
       // (demo feedback §3.7), even when other documents are still missing.
       if ((result.fields_filled?.length ?? 0) > 0 || (result.mismatches?.length ?? 0) > 0) {
-        void runStream({
-          type: 'action',
-          action: 'documents_updated',
-          payload: { doc_type: docType },
-        })
+        // The note's status line covers "all documents in" too, so no second call.
+        enqueueAction('documents_updated', { doc_type: docType })
         return
       }
       maybeNotifyDocumentsComplete(
@@ -292,7 +294,7 @@ export function useChatSession() {
         result.draft.checks.required_docs_total,
       )
     },
-    [dispatch, maybeNotifyDocumentsComplete, runStream, state.draft?.checks, state.sessionId],
+    [dispatch, enqueueAction, maybeNotifyDocumentsComplete, state.draft?.checks, state.sessionId],
   )
 
   const removeDocumentForType = useCallback(

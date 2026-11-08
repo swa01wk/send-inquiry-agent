@@ -160,4 +160,59 @@ describe('useChatSession documents_updated', () => {
       expect.any(AbortSignal),
     )
   })
+
+  it('waits for the reply in progress, then sends documents_updated', async () => {
+    // The documents card arrives mid-turn; an upload can finish before the turn does.
+    let finishReply: () => void = () => undefined
+    vi.mocked(stream.streamChat).mockImplementationOnce(
+      (_sessionId, _body, onEvent) =>
+        new Promise((resolve) => {
+          finishReply = () => {
+            onEvent({ event: 'done', data: { phase: 'documents' } })
+            resolve('ok')
+          }
+        }),
+    )
+    const { result } = renderHook(() => useChatSession(), { wrapper })
+    await act(async () => {
+      await Promise.resolve()
+    })
+    if (!docCard) throw new Error('fixture')
+
+    act(() => {
+      result.current.sendMessage('No CR yet')
+    })
+    expect(result.current.status).toBe('streaming')
+
+    vi.spyOn(client, 'uploadDocument').mockResolvedValue({
+      document: {
+        doc_type: 'company_profile',
+        file_name: 'company_profile_match.pdf',
+        size_bytes: 10,
+      },
+      card: docCard,
+      draft: baseDraft(),
+      fields_filled: ['company_name'],
+      mismatches: [],
+    })
+    await act(async () => {
+      await result.current.uploadDocument(
+        'company_profile',
+        new File(['x'], 'company_profile_match.pdf'),
+      )
+    })
+    expect(stream.streamChat).toHaveBeenCalledTimes(1) // not dropped, not sent mid-turn
+
+    await act(async () => {
+      finishReply()
+      await Promise.resolve()
+    })
+    expect(stream.streamChat).toHaveBeenCalledTimes(2)
+    expect(stream.streamChat).toHaveBeenLastCalledWith(
+      'sess-1',
+      { type: 'action', action: 'documents_updated', payload: { doc_type: 'company_profile' } },
+      expect.any(Function),
+      expect.any(AbortSignal),
+    )
+  })
 })
