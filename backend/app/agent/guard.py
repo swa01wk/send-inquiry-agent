@@ -426,7 +426,9 @@ def _unconfirm_doubted_fields(state: AgentState) -> tuple[Any, list[str]]:
 
 
 _ASSISTED_AGENT_SENDS_VERIFICATION = re.compile(
-    r"\b(?:I(?:'m|\s+am)\s+sending|I(?:'ve|\s+have)\s+sent|sending you)\b"
+    # Straight or curly apostrophe; an adverb may sit before the verb ("I’ve also sent").
+    r"\b(?:I(?:['\u2019]m|\s+am)\s+(?:(?:also|now|just)\s+)?sending"
+    r"|I(?:['\u2019]ve|\s+have)\s+(?:(?:also|now|just|already)\s+)?sent|sending you)\b"
     r"[^.!?\n]{0,120}?"
     r"\b(?:verification link|sms code|one-time code|link to verify)\b",
     re.IGNORECASE,
@@ -492,6 +494,23 @@ def _assisted_addresses_caller_note(state: AgentState, draft: Any, ai_text: str)
     )
 
 
+def _assisted_reply_note(state: AgentState, draft: Any, ai_text: str) -> str | None:
+    """Both assisted wording rules in one note: the guard retries once, so a reply that
+    thanks the caller by name and claims a verification send must fix both at once."""
+    notes = [
+        note
+        for note in (
+            _assisted_verification_claim_note(state, ai_text),
+            _assisted_addresses_caller_note(state, draft, ai_text),
+        )
+        if note
+    ]
+    if not notes:
+        return None
+    rest = [note.removeprefix(GUARD_PREFIX).strip() for note in notes[1:]]
+    return " ".join([notes[0], *rest])
+
+
 def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
     draft, doubt_unconfirmed = _unconfirm_doubted_fields(state)
     user_text, turn_messages = _current_turn({**state, "draft": draft})
@@ -542,8 +561,7 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
                 _cr_number_in_reply_note(state, ai_text)
                 or _assisted_application_link_note(state, draft, turn_messages, cards_shown)
                 or _premature_submit_note(state, draft, ai_text)
-                or _assisted_verification_claim_note(state, ai_text)
-                or _assisted_addresses_caller_note(state, draft, ai_text)
+                or _assisted_reply_note(state, draft, ai_text)
                 or _brand_reask_note({**state, "draft": draft}, ai_text)
                 or _incomplete_bulk_capture_note({**state, "draft": draft}, phase)
                 or _incomplete_contact_capture_note(
