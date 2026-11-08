@@ -33,6 +33,9 @@ export function useChatSession() {
   const queuedKeysRef = useRef<Set<string>>(new Set())
   const [queuedActions, setQueuedActions] = useState<Set<string>>(() => new Set())
   const [actionTypingDelay, setActionTypingDelay] = useState(false)
+  const [documentFilledFields, setDocumentFilledFields] = useState<Record<string, string[]>>(
+    () => ({}),
+  )
 
   const syncQueuedUi = useCallback(() => {
     setQueuedActions(new Set(queuedKeysRef.current))
@@ -280,6 +283,9 @@ export function useChatSession() {
       const result = await uploadDocument(state.sessionId, docType, file)
       dispatch({ type: 'sse', event: { event: 'ui_card', data: result.card } })
       dispatch({ type: 'sse', event: { event: 'draft', data: result.draft } })
+      if (result.fields_filled?.length) {
+        setDocumentFilledFields((prev) => ({ ...prev, [docType]: result.fields_filled! }))
+      }
       // A profile that filled fields or disagrees with one gets an agent turn of its own
       // (demo feedback §3.7), even when other documents are still missing.
       if ((result.fields_filled?.length ?? 0) > 0 || (result.mismatches?.length ?? 0) > 0) {
@@ -305,6 +311,12 @@ export function useChatSession() {
       const result = await removeDocument(state.sessionId, docType)
       dispatch({ type: 'sse', event: { event: 'ui_card', data: result.card } })
       dispatch({ type: 'sse', event: { event: 'draft', data: result.draft } })
+      setDocumentFilledFields((prev) => {
+        if (!(docType in prev)) return prev
+        const next = { ...prev }
+        delete next[docType]
+        return next
+      })
       maybeNotifyDocumentsComplete(
         beforeUploaded,
         beforeTotal,
@@ -334,6 +346,7 @@ export function useChatSession() {
     syncQueuedUi()
     if (MOCK_MODE) resetMockSessionState()
     dispatch({ type: 'reset' })
+    setDocumentFilledFields({})
     try {
       const session = await createSession()
       dispatch({
@@ -362,6 +375,7 @@ export function useChatSession() {
     editReviewField,
     uploadDocument: uploadDocumentForType,
     removeDocument: removeDocumentForType,
+    documentFilledFields,
     setDocumentNumber,
     retry,
     restart,
