@@ -1261,6 +1261,7 @@ SCENARIOS: list[LiveScenario] = [
         ],
         _check_cr_happy,
         auto_otp=False,
+        group="channels",
         setup=_setup_callcentre_inquiry,
     ),
     LiveScenario(
@@ -1375,6 +1376,7 @@ SCENARIOS: list[LiveScenario] = [
         ],
         _check_cr_brand_differs_from_company,
         auto_otp=False,
+        group="channels",
         setup=_setup_callcentre_inquiry,
     ),
     LiveScenario(
