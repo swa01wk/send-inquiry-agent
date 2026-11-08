@@ -447,6 +447,92 @@ def _check_case_where_is_it(
     ]
 
 
+def _signatory_card_answered(turns: list[TurnResult], answer: str) -> bool:
+    for turn in turns:
+        for card in _cards(turn.events, "signatory_question"):
+            if card.get("payload", {}).get("answered") == answer:
+                return True
+    return False
+
+
+def _mentioned_signatory_role(turns: list[TurnResult]) -> bool:
+    text = _reply_text(turns).lower()
+    return any(
+        chunk in text
+        for chunk in (
+            "signatory",
+            "sign the lease",
+            "authorised signatory",
+            "authorized signatory",
+            "who can sign",
+            "person who can sign",
+        )
+    )
+
+
+def _check_signatory_yes(
+    session: Session, turns: list[TurnResult], _app: AppState | None = None
+) -> list[tuple[str, bool]]:
+    draft = session.contacts_draft
+    signatory = _contact_entry(draft, "authorized_signatory")
+    text = _reply_text(turns).lower()
+    billing_hint = any(w in text for w in ("billing", "invoice", "finance", "optional"))
+    return [
+        ("session signatory_answer yes", session.signatory_answer == "yes"),
+        (
+            "authorized_signatory same_as_primary",
+            signatory is not None and signatory.get("same_as_primary") is True,
+        ),
+        ("signatory card answered yes", _signatory_card_answered(turns, "yes")),
+        ("mentions billing or optional roles (wording)", billing_hint),
+        *_check_case_tone(turns),
+    ]
+
+
+def _check_signatory_no_ahmed(
+    session: Session, turns: list[TurnResult], _app: AppState | None = None
+) -> list[tuple[str, bool]]:
+    signatory = _contact_entry(session.contacts_draft, "authorized_signatory")
+    first = _field_value(signatory, "first_name")
+    text = _reply_text(turns).lower()
+    asked_billing = "billing" in text
+    return [
+        ("session signatory_answer no", session.signatory_answer == "no"),
+        (
+            "authorized_signatory Ahmed",
+            first is not None and "ahmed" in str(first).lower(),
+        ),
+        (
+            "signatory email present",
+            _field_value(signatory, "email") is not None,
+        ),
+        (
+            "signatory phone present",
+            (_field_value(signatory, "mobile") or _field_value(signatory, "contact_number"))
+            is not None,
+        ),
+        ("asks or mentions billing (wording)", asked_billing or len(turns) >= 2),
+        *_check_case_tone(turns),
+    ]
+
+
+def _check_signatory_unsure(
+    session: Session, turns: list[TurnResult], _app: AppState | None = None
+) -> list[tuple[str, bool]]:
+    text = _reply_text(turns).lower()
+    billing_collected = _contact_entry(session.contacts_draft, "billing_contact") is not None
+    return [
+        ("explains signatory role (wording)", _mentioned_signatory_role(turns)),
+        (
+            "signatory still unanswered",
+            session.signatory_answer is None or _mentioned_signatory_role(turns),
+        ),
+        ("no billing collected yet", not billing_collected),
+        ("asks again or points to card", "?" in text or "card" in text or "button" in text),
+        *_check_case_tone(turns),
+    ]
+
+
 def _check_case_contacts_bundle(
     session: Session, turns: list[TurnResult], app: AppState
 ) -> list[tuple[str, bool]]:
@@ -471,6 +557,10 @@ def _check_case_contacts_bundle(
     )
     billing_phone = _field_value(billing, "mobile") or _field_value(billing, "contact_number")
     return [
+        (
+            "signatory_answer recorded",
+            session.signatory_answer == "yes",
+        ),
         (
             "authorized_signatory same_as_primary",
             signatory is not None and signatory.get("same_as_primary") is True,
@@ -1458,11 +1548,38 @@ SCENARIOS: list[LiveScenario] = [
     LiveScenario(
         "Case: contacts bundle",
         [
-            "I'm the authorized signatory. Billing is Omar Saleh, "
-            "omar@beanstreet.example, +966551234567.",
+            "Yes, that's me.",
+            "Billing is Omar Saleh, omar@beanstreet.example, +966551234567.",
         ],
         _check_case_contacts_bundle,
         group="case",
+        setup=_case_setup([{"action": "approve_first"}]),
+    ),
+    LiveScenario(
+        "signatory: yes that's me",
+        ["Yes, that's me"],
+        _check_signatory_yes,
+        auto_otp=False,
+        group="signatory",
+        setup=_case_setup([{"action": "approve_first"}]),
+    ),
+    LiveScenario(
+        "signatory: partner Ahmed signs",
+        [
+            "No, my partner Ahmed signs",
+            "Ahmed Al-Rashid, ahmed@beanstreet.example, +966551234567",
+        ],
+        _check_signatory_no_ahmed,
+        auto_otp=False,
+        group="signatory",
+        setup=_case_setup([{"action": "approve_first"}]),
+    ),
+    LiveScenario(
+        "signatory: not sure",
+        ["I'm not sure"],
+        _check_signatory_unsure,
+        auto_otp=False,
+        group="signatory",
         setup=_case_setup([{"action": "approve_first"}]),
     ),
     LiveScenario(
