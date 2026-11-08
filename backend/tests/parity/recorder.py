@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -122,7 +123,10 @@ async def record_scenario(
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Return normalised JSONL records and the create-session payload."""
     async with parity_client(settings, scenario.model_steps) as (client, app):
-        created = await client.post("/api/sessions")
+        created = await client.post(
+            "/api/sessions",
+            headers={"X-Test-Scenario": scenario.name},
+        )
         created.raise_for_status()
         session_payload = created.json()
         session_id = str(session_payload["session_id"])
@@ -155,13 +159,28 @@ def write_session_snapshot(name: str, session_payload: dict[str, Any]) -> Path:
     from tests.parity.normalize import _walk
 
     path = session_sidecar_path(name)
-    normalised = _walk(session_payload, {})
+    # A card on the welcome message keeps that message's id: the normaliser renames card
+    # message ids (m1, m2…) but not message ids, and a card whose message_id matches no
+    # message isn't rendered (the rd-cr-question welcome card).
+    message_ids = {
+        str(m["id"]): str(m["id"])
+        for m in session_payload.get("messages", [])
+        if isinstance(m, dict) and m.get("id")
+    }
+    normalised = _walk(session_payload, message_ids)
     path.write_text(json.dumps(normalised, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return path
 
 
 async def record_all(settings: Settings) -> None:
     for scenario in all_scenarios():
+        # Demo feedback §3.1: only re-record new CR-question goldens; older scripts keep
+        # lookup behaviour via `X-Test-Scenario` and stay on disk until intentionally replaced.
+        # GOLDEN_FORCE=1 re-records every golden (an intentional refresh).
+        force = os.environ.get("GOLDEN_FORCE") == "1"
+        if not force and scenario.name != "rd-cr-question" and golden_path(scenario.name).is_file():
+            print(f"skip {scenario.name} (existing golden)")
+            continue
         events, session_payload = await record_scenario(settings, scenario)
         write_golden(scenario.name, events)
         write_session_snapshot(scenario.name, session_payload)

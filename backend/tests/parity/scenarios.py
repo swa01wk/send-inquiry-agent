@@ -210,6 +210,17 @@ def all_scenarios() -> list[ParityScenario]:
             model_steps=_load_e2e_steps("s14-out-of-order"),
             script=_S14_USER,
         ),
+        ParityScenario(
+            name="rd-cr-question",
+            model_steps=_load_e2e_steps("rd-cr-question"),
+            script=[
+                ScriptStep(
+                    kind="action",
+                    action="cr_answer",
+                    payload={"has_cr": True},
+                ),
+            ],
+        ),
     ]
 
 

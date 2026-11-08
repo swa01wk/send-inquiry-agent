@@ -365,6 +365,7 @@ export class InquiryPage {
     if (type === 'send_link') return this.page.getByTestId('send-link-card')
     if (type === 'existing_cr_choice') return this.page.getByTestId('existing-cr-choice-card')
     if (type === 'sign_in_prompt') return this.page.getByTestId('sign-in-prompt-card')
+    if (type === 'cr_question') return this.page.getByTestId('cr-question-card')
     return this.page.locator(`[data-card-type="${type}"]`)
   }
 

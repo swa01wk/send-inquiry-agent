@@ -17,9 +17,8 @@ existing_tenant_policy: sign_in
 #   lookup           — a CR number typed in the public chat is checked in the registry.
 #   ask_then_sign_in — the agent asks "Do you have a CR?": Yes → sign in, No → carry on in
 #                      chat. The public page never takes or looks up a CR number.
-# Self-service channel only: call-centre staff keep the lookup. Flipped to
-# ask_then_sign_in with the R1 agent prompt.
-public_cr_check: lookup
+# Self-service channel only: call-centre staff keep the lookup (D3).
+public_cr_check: ask_then_sign_in
 
 # A tenant signed in to Tenant Central (Leasing Opportunities) is already verified by Azure
 # AD: the email link and SMS code are skipped (intake channels §3.5, assumption D4).

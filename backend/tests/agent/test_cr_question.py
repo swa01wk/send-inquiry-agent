@@ -196,3 +196,15 @@ def test_i8_allows_what_the_applicant_typed() -> None:
 def test_i8_off_outside_the_public_page() -> None:
     ctx = TurnContext(assistant_text="CR 1010123456 checked.", public_cr_question=False)
     assert all(v.invariant != "I8" for v in check_turn(ctx))
+
+
+@pytest.mark.cr_question
+def test_guard_note_when_reply_contains_a_cr_number(ask_first) -> None:
+    from app.agent.guard import _cr_number_in_reply_note
+    from app.agent.state import initial_agent_state
+
+    state = initial_agent_state(session_id="g-cr", draft=new_inquiry_draft(), phase="gate")
+    state["channel"] = "self_service"
+    note = _cr_number_in_reply_note(state, "Thanks — I found CR 1010123456 on file.")
+    assert note is not None
+    assert "cr_number_in_reply" in note

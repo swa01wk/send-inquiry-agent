@@ -26,6 +26,7 @@ from app.agent.contact_infer import (
     message_has_contact_line,
     parse_contact_from_message,
 )
+from app.agent.cr_question import CR_NUMBER_IN_REPLY, contains_cr_number, cr_question_active
 from app.agent.mall_match import fill_mentioned_malls, unknown_mall_phrases
 from app.agent.runtime import AgentRuntime
 from app.agent.state import AgentState
@@ -282,12 +283,35 @@ def _brand_reask_note(state: AgentState, ai_text: str) -> str | None:
     )
 
 
+def _cr_number_in_reply_note(state: AgentState, ai_text: str) -> str | None:
+    if state.get("assisted") or not ai_text:
+        return None
+    if not cr_question_active(
+        assisted=False,
+        channel=state.get("channel"),
+        test_scenario=state.get("test_scenario"),
+    ):
+        return None
+    if contains_cr_number(ai_text):
+        return CR_NUMBER_IN_REPLY
+    return None
+
+
 def _missed_capture_note(state: AgentState, phase: str) -> str | None:
     user_text, turn_messages = _current_turn(state)
     if not user_text or user_text.startswith("[ui_event]"):
         return None
     called = _tools_called(turn_messages)
-    if phase == "gate" and _CR_NUMBER_RE.search(user_text) and "verify_cr" not in called:
+    if (
+        phase == "gate"
+        and _CR_NUMBER_RE.search(user_text)
+        and "verify_cr" not in called
+        and not cr_question_active(
+            assisted=bool(state.get("assisted")),
+            channel=state.get("channel"),
+            test_scenario=state.get("test_scenario"),
+        )
+    ):
         return (
             f"{GUARD_PREFIX} The user's last message contains a CR number. "
             "Call verify_cr with it before replying."
@@ -402,7 +426,9 @@ def _unconfirm_doubted_fields(state: AgentState) -> tuple[Any, list[str]]:
 
 
 _ASSISTED_AGENT_SENDS_VERIFICATION = re.compile(
-    r"\b(?:I(?:'m|\s+am)\s+sending|I(?:'ve|\s+have)\s+sent|sending you)\b"
+    # Straight or curly apostrophe; an adverb may sit before the verb ("I’ve also sent").
+    r"\b(?:I(?:['\u2019]m|\s+am)\s+(?:(?:also|now|just)\s+)?sending"
+    r"|I(?:['\u2019]ve|\s+have)\s+(?:(?:also|now|just|already)\s+)?sent|sending you)\b"
     r"[^.!?\n]{0,120}?"
     r"\b(?:verification link|sms code|one-time code|link to verify)\b",
     re.IGNORECASE,
@@ -468,6 +494,23 @@ def _assisted_addresses_caller_note(state: AgentState, draft: Any, ai_text: str)
     )
 
 
+def _assisted_reply_note(state: AgentState, draft: Any, ai_text: str) -> str | None:
+    """Both assisted wording rules in one note: the guard retries once, so a reply that
+    thanks the caller by name and claims a verification send must fix both at once."""
+    notes = [
+        note
+        for note in (
+            _assisted_verification_claim_note(state, ai_text),
+            _assisted_addresses_caller_note(state, draft, ai_text),
+        )
+        if note
+    ]
+    if not notes:
+        return None
+    rest = [note.removeprefix(GUARD_PREFIX).strip() for note in notes[1:]]
+    return " ".join([notes[0], *rest])
+
+
 def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
     draft, doubt_unconfirmed = _unconfirm_doubted_fields(state)
     user_text, turn_messages = _current_turn({**state, "draft": draft})
@@ -515,10 +558,10 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
             )
         else:
             note = (
-                _assisted_application_link_note(state, draft, turn_messages, cards_shown)
+                _cr_number_in_reply_note(state, ai_text)
+                or _assisted_application_link_note(state, draft, turn_messages, cards_shown)
                 or _premature_submit_note(state, draft, ai_text)
-                or _assisted_verification_claim_note(state, ai_text)
-                or _assisted_addresses_caller_note(state, draft, ai_text)
+                or _assisted_reply_note(state, draft, ai_text)
                 or _brand_reask_note({**state, "draft": draft}, ai_text)
                 or _incomplete_bulk_capture_note({**state, "draft": draft}, phase)
                 or _incomplete_contact_capture_note(

@@ -160,3 +160,33 @@ def test_assisted_guard_allows_possessive_name(agent_runtime: AgentRuntime) -> N
     result = _assisted_contact_state("Thanks — I've saved Sara's details.", agent_runtime)
     note = result["messages"][0].content if result.get("messages") else ""
     assert "Don't greet or thank the caller by name" not in str(note)
+
+
+def test_assisted_guard_catches_curly_apostrophe_and_also_sent(
+    agent_runtime: AgentRuntime,
+) -> None:
+    # Live eval, 9 Nov 2026 (Azure gpt-5.4-mini): this wording slipped past the guard.
+    result = _assisted_contact_state(
+        "Thanks — I’ve saved the details. I’ve also sent the verification link by email.",
+        agent_runtime,
+    )
+    assert result.get("retry_agent") is True
+    note = result["messages"][0].content
+    assert isinstance(note, str)
+    assert "don't send or promise a verification link or code" in note
+
+
+def test_assisted_guard_one_note_for_name_and_verification_claim(
+    agent_runtime: AgentRuntime,
+) -> None:
+    # The guard retries once, so both wording problems go into the same note.
+    result = _assisted_contact_state(
+        "Thanks, Sara — I’ve also sent the verification link by email and the SMS code.",
+        agent_runtime,
+    )
+    assert result.get("retry_agent") is True
+    note = result["messages"][0].content
+    assert isinstance(note, str)
+    assert note.count(GUARD_PREFIX) == 1
+    assert "don't send or promise a verification link or code" in note
+    assert "Don't greet or thank the caller by name" in note

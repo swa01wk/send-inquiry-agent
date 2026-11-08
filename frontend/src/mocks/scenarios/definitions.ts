@@ -12,6 +12,7 @@ import {
   quickRepliesCardExample,
   reviewCardExample,
   sendLinkCardExample,
+  crQuestionCardExample,
   signInPromptCardExample,
   successCardExample,
   verificationCardExample,
@@ -268,6 +269,10 @@ export const feScenarioDefinitions: FeScenario[] = [
         ],
       },
     ],
+  },
+  {
+    name: 'cr-question',
+    session: cardSession(crQuestionCardExample, draftEmpty),
   },
   {
     name: 'sign-in-prompt',
