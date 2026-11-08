@@ -201,19 +201,19 @@ def record_signatory_answer(
         if event["event"] == "ui_card":
             _emit_card(UiCard.model_validate(event["data"]), runtime)
     answer = "yes" if is_signatory else "no"
-    note = str(result.note.content)
-    if note.startswith("[ui_event]"):
-        note = note.removeprefix("[ui_event]").strip()
+    note = str(result.note.content).removeprefix("[ui_event]").strip()
+    recorded = note == f"signatory_answer {answer}"
     content = (
-        f"Recorded signatory answer: {answer}. {note}"
-        if answer in ("yes", "no")
-        else note or "Signatory question could not be recorded."
+        f"Recorded signatory answer: {answer}."
+        if recorded
+        # e.g. no open contacts request: nothing was saved, so don't claim it was.
+        else f"Signatory answer not recorded ({note})."
     )
     update: dict[str, Any] = {
         "messages": [ToolMessage(content=content, tool_call_id=runtime.tool_call_id or "")],
     }
-    if session.signatory_answer in ("yes", "no"):
-        update["signatory_answer"] = session.signatory_answer
+    if recorded:
+        update["signatory_answer"] = answer
         update["contacts_draft"] = list(session.contacts_draft)
     return Command(update=update)
 

@@ -544,7 +544,7 @@ def _check_signatory_no_ahmed(
             (_field_value(signatory, "mobile") or _field_value(signatory, "contact_number"))
             is not None,
         ),
-        ("asks or mentions billing (wording)", asked_billing or len(turns) >= 2),
+        ("asks for or mentions billing (wording)", asked_billing),
         *_check_case_tone(turns),
     ]
 
@@ -556,10 +556,7 @@ def _check_signatory_unsure(
     billing_collected = _contact_entry(session.contacts_draft, "billing_contact") is not None
     return [
         ("explains signatory role (wording)", _mentioned_signatory_role(turns)),
-        (
-            "signatory still unanswered",
-            session.signatory_answer is None or _mentioned_signatory_role(turns),
-        ),
+        ("signatory still unanswered", session.signatory_answer is None),
         ("no billing collected yet", not billing_collected),
         ("asks again or points to card", "?" in text or "card" in text or "button" in text),
         *_check_case_tone(turns),
@@ -1581,8 +1578,8 @@ SCENARIOS: list[LiveScenario] = [
     LiveScenario(
         "Case: contacts bundle",
         [
-            "Yes, that's me.",
-            "Billing is Omar Saleh, omar@beanstreet.example, +966551234567.",
+            "I'm the authorized signatory. Billing is Omar Saleh, "
+            "omar@beanstreet.example, +966551234567.",
         ],
         _check_case_contacts_bundle,
         group="case",
@@ -1999,11 +1996,12 @@ async def main() -> int:
                     for v, turn_no in violations:
                         print(f"  [INVARIANT {v.invariant} turn {turn_no}] {v.detail}")
                 if not run_passed and result.session_id:
-                    graph = (
-                        application.state.assisted_graph
-                        if scenario.group == "channels"
-                        else application.state.graph
-                    )
+                    if scenario.group == "channels":
+                        graph = application.state.assisted_graph
+                    elif scenario.group in ("case", "signatory"):
+                        graph = application.state.case_graph
+                    else:
+                        graph = application.state.graph
                     try:
                         await _print_failed_run_trace(graph, result.session_id)
                     except Exception as exc:  # noqa: BLE001 — diagnostics only
