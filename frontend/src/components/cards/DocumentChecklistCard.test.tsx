@@ -155,7 +155,7 @@ describe('DocumentChecklistCard', () => {
 
   it('shows a filled-fields note when the upload response filled keys', () => {
     if (documentUploadCardExample.card_type !== 'document_upload') throw new Error('bad fixture')
-  render(
+    render(
       <DocumentChecklistCard
         payload={{
           ...documentUploadCardExample.payload,

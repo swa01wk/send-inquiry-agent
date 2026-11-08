@@ -28,6 +28,7 @@ const PARITY_SCENARIOS = [
   'wrong-otp-three-times',
   's14-out-of-order',
   'rd-cr-question',
+  'rd-type-or-upload',
 ] as const
 
 function loadScenario(name: string): FeScenarioFile {
@@ -35,7 +36,12 @@ function loadScenario(name: string): FeScenarioFile {
   return JSON.parse(raw) as FeScenarioFile
 }
 
-async function replayWhen(inquiry: FeInquiryPage, when: FeWhen, otpCodes: string[]) {
+async function replayWhen(
+  inquiry: FeInquiryPage,
+  when: FeWhen,
+  otpCodes: string[],
+  scenarioName: string,
+) {
   if (when.type === 'message') {
     await inquiry.say(when.textEquals ?? '')
     return
@@ -45,8 +51,7 @@ async function replayWhen(inquiry: FeInquiryPage, when: FeWhen, otpCodes: string
     return
   }
   if (when.action === 'cr_answer') {
-    // The rd-cr-question golden records Yes (backend/tests/parity/scenarios.py).
-    await inquiry.answerCrQuestion(true)
+    await inquiry.answerCrQuestion(scenarioName === 'rd-cr-question')
     return
   }
   if (when.action === 'verify_email') {
@@ -86,13 +91,17 @@ test.describe('Parity golden fixtures @fe', () => {
       }
 
       for (const turn of scenario.turns ?? []) {
-        await replayWhen(inquiry, turn.when, otpCodes)
+        await replayWhen(inquiry, turn.when, otpCodes, name)
         if (turn.when.type === 'action' && turn.when.action === 'submit_otp') {
           if (name === 's14-out-of-order') {
             await uploadRequiredDocs()
           } else if (name === 'wrong-otp-three-times' && otpCodes.length === 0) {
             await uploadRequiredDocs()
-          } else if (name !== 'wrong-otp-three-times' && name !== 's14-out-of-order') {
+          } else if (
+            name !== 'wrong-otp-three-times' &&
+            name !== 's14-out-of-order' &&
+            name !== 'rd-type-or-upload'
+          ) {
             await uploadRequiredDocs()
           }
         }

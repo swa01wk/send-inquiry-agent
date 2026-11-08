@@ -46,6 +46,7 @@ from app.agent.invariants import (
 )
 from app.agent.model import get_chat_model
 from app.config import get_settings
+from app.domain.document_checks import document_mismatches
 from app.domain.draft_ops import add_document, new_inquiry_draft, write_fields
 from app.domain.master import load_master_data
 from app.domain.models import DocType, FieldKey, InquiryDraft, Source
@@ -111,6 +112,7 @@ class ScenarioResult:
 AppState = Any
 CheckFn = Callable[[Session, list[TurnResult], AppState], list[tuple[str, bool]]]
 SetupFn = Callable[[AsyncClient, str, AppState], Awaitable[str | None]]
+AfterTurnsFn = Callable[[AsyncClient, str, AppState], Awaitable[list[TurnResult]]]
 
 
 async def _chat(
@@ -205,6 +207,7 @@ class LiveScenario:
     auto_otp: bool = True
     group: str = "intake"
     setup: SetupFn | None = None
+    after_turns: AfterTurnsFn | None = None
 
 
 def _reviewer_names() -> list[str]:
@@ -1017,6 +1020,7 @@ class EvalRunResult:
     scenarios_passed: int
     scenarios_total: int
     retractions: int
+    unnecessary_questions: int = 0
 
 
 def _check_arabic_user(
@@ -1359,6 +1363,176 @@ def _check_cr_privacy_no_intake(
     ]
 
 
+_FIXTURES_DIR = _BACKEND_ROOT.parent / "e2e" / "fixtures" / "files"
+_PDF_PLACEHOLDER = b"%PDF-1.4\n"
+
+_FIELD_ASK_PATTERNS: list[tuple[re.Pattern[str], FieldKey]] = [
+    (re.compile(r"company name", re.I), FieldKey.COMPANY_NAME),
+    (re.compile(r"company address|registered address", re.I), FieldKey.COMPANY_ADDRESS),
+    (re.compile(r"brand name", re.I), FieldKey.BRAND_NAME_EN),
+    (re.compile(r"sales category", re.I), FieldKey.SALES_CATEGORY),
+]
+
+
+def _fixture_bytes(name: str) -> bytes:
+    path = _FIXTURES_DIR / name
+    if path.is_file():
+        return path.read_bytes()
+    return _PDF_PLACEHOLDER
+
+
+async def _upload_profile(
+    client: AsyncClient,
+    session_id: str,
+    doc_type: str,
+    file_name: str,
+) -> dict[str, Any]:
+    response = await client.post(
+        f"/api/sessions/{session_id}/documents",
+        data={"doc_type": doc_type},
+        files={"file": (file_name, _fixture_bytes(file_name), "application/pdf")},
+    )
+    response.raise_for_status()
+    body: dict[str, Any] = response.json()
+    return body
+
+
+async def _turn_after_upload(
+    client: AsyncClient,
+    session_id: str,
+    doc_type: str,
+    file_name: str,
+    *,
+    auto_otp: bool = True,
+) -> TurnResult:
+    body = await _upload_profile(client, session_id, doc_type, file_name)
+    if body.get("fields_filled") or body.get("mismatches"):
+        events = await _action(client, session_id, "documents_updated", {"doc_type": doc_type})
+    else:
+        events = await _action(client, session_id, "documents_updated", {})
+    stream_batches: list[list[tuple[str, dict[str, Any]]]] = [events]
+    stream_batches.extend(
+        await _auto_card_streams(
+            client,
+            session_id,
+            events,
+            user_text="",
+            submit_otp=auto_otp,
+        ),
+    )
+    combined: list[tuple[str, dict[str, Any]]] = []
+    assistant_parts: list[str] = []
+    for batch in stream_batches:
+        assistant_parts.append(_tokens(batch))
+        combined.extend(batch)
+    return TurnResult(
+        user=f"[upload {doc_type}]",
+        assistant="".join(assistant_parts),
+        events=combined,
+    )
+
+
+async def _after_profile_uploads(
+    client: AsyncClient,
+    session_id: str,
+    _app: AppState,
+) -> list[TurnResult]:
+    return [
+        await _turn_after_upload(
+            client, session_id, "company_profile", "company_profile_match.pdf"
+        ),
+        await _turn_after_upload(client, session_id, "brand_profile", "brand_profile_match.pdf"),
+    ]
+
+
+async def _after_mismatch_upload(
+    client: AsyncClient,
+    session_id: str,
+    _app: AppState,
+) -> list[TurnResult]:
+    return [
+        await _turn_after_upload(
+            client, session_id, "company_profile", "company_profile_mismatch.pdf"
+        ),
+        await _turn_after_upload(client, session_id, "brand_profile", "brand_profile_match.pdf"),
+    ]
+
+
+def _type_or_upload_offered(turns: list[TurnResult]) -> int:
+    count = 0
+    for turn in turns:
+        lower = turn.assistant.lower()
+        if ("upload" in lower and "profile" in lower) or (
+            "type" in lower and "company" in lower and "brand" in lower
+        ):
+            count += 1
+    return count
+
+
+def _reply_asks_for_filled_field(text: str, draft: InquiryDraft) -> bool:
+    for pattern, key in _FIELD_ASK_PATTERNS:
+        if not pattern.search(text):
+            continue
+        value = draft.fields[key].value
+        if value not in (None, "", []):
+            return True
+    return False
+
+
+def count_unnecessary_questions(session: Session, turns: list[TurnResult]) -> int:
+    draft = session.draft
+    total = 0
+    for turn in turns:
+        if turn.assistant.strip() and _reply_asks_for_filled_field(turn.assistant, draft):
+            total += 1
+    return total
+
+
+def _check_document_extract_offer(
+    session: Session, turns: list[TurnResult], _app: AppState | None = None
+) -> list[tuple[str, bool]]:
+    text = _reply_text(turns).lower()
+    return [
+        ("cr skipped", session.draft.cr_status == "skipped"),
+        ("type-or-upload offered once", _type_or_upload_offered(turns) == 1),
+        ("mentions upload or type", "upload" in text or "type" in text),
+        ("no cr digits in replies", _no_cr_digits_in_replies(turns)),
+    ]
+
+
+def _check_document_extract_upload(
+    session: Session, turns: list[TurnResult], _app: AppState | None = None
+) -> list[tuple[str, bool]]:
+    draft = session.draft
+    replies = _reply_text(turns).lower()
+    return [
+        ("company from profile", draft.fields[FieldKey.COMPANY_NAME].source == Source.DERIVED),
+        ("company confirmed", draft.fields[FieldKey.COMPANY_NAME].confirmed),
+        ("brand from profile", draft.fields[FieldKey.BRAND_NAME_EN].source == Source.DERIVED),
+        ("brand confirmed", draft.fields[FieldKey.BRAND_NAME_EN].confirmed),
+        ("confirm card shown", any(_cards(t.events, "confirm_fields") for t in turns)),
+        ("no ask for company after fill", "what is your company name" not in replies),
+    ]
+
+
+def _check_document_extract_mismatch(
+    session: Session, turns: list[TurnResult], _app: AppState | None = None
+) -> list[tuple[str, bool]]:
+    draft = session.draft
+    replies = _reply_text(turns).lower()
+    mismatches = document_mismatches(draft, load_master_data())
+    company_mismatch = any(m.field == FieldKey.COMPANY_NAME.value for m in mismatches)
+    return [
+        ("company stayed user-sourced", draft.fields[FieldKey.COMPANY_NAME].source == Source.USER),
+        ("mismatch recorded", company_mismatch),
+        ("warned in chat", "different" in replies or "company name" in replies),
+        (
+            "submit not blocked in wording",
+            "block" not in replies and "cannot submit" not in replies,
+        ),
+    ]
+
+
 SCENARIOS: list[LiveScenario] = [
     LiveScenario(
         "C condensation with brief, natural answers",
@@ -1689,6 +1863,44 @@ SCENARIOS: list[LiveScenario] = [
         auto_otp=False,
         group="cr_privacy",
     ),
+    LiveScenario(
+        "document_extract: type-or-upload offered once",
+        ["No, we don't have a CR"],
+        _check_document_extract_offer,
+        auto_otp=False,
+        group="document_extract",
+    ),
+    LiveScenario(
+        "document_extract: upload path with confirmations",
+        [
+            "No, we don't have a CR",
+            "I'll upload the profiles",
+            (
+                "Bean Street specialty coffee kiosk at Riyadh Mall A. Sara Ali, "
+                "sara@beanstreet.example, 0501234567"
+            ),
+            "Yes, looks right",
+        ],
+        _check_document_extract_upload,
+        group="document_extract",
+        after_turns=_after_profile_uploads,
+    ),
+    LiveScenario(
+        "document_extract: typed company with mismatch warning",
+        [
+            "No, we don't have a CR",
+            "I'll type them",
+            "My Coffee Shop LLC, Olaya Street, Riyadh",
+            (
+                "Bean Street specialty coffee kiosk at Riyadh Mall A. Sara Ali, "
+                "sara@beanstreet.example, 0501234567"
+            ),
+            "Keep my company name",
+        ],
+        _check_document_extract_mismatch,
+        group="document_extract",
+        after_turns=_after_mismatch_upload,
+    ),
 ]
 
 
@@ -1760,6 +1972,10 @@ async def run_scenario(
             ),
         )
 
+    if scenario.after_turns is not None:
+        extra = await scenario.after_turns(client, session_id, app)
+        turns.extend(extra)
+
     session = await app.state.session_store.get(session_id)
     checks = scenario.evaluate(session, turns, app)
     return (
@@ -1817,6 +2033,7 @@ def _format_markdown(result: EvalRunResult, json_path: Path) -> str:
     lines.append(f"- **Baseline check:** {result.baseline_check}")
     lines.append(f"- **Overall:** {'PASS' if result.passed else 'FAIL'}")
     lines.append(f"- **Retractions:** {result.retractions}")
+    lines.append(f"- **unnecessary_questions (KPI):** {result.unnecessary_questions}")
     lines.append(f"- **JSON:** `{json_path.name}`")
     lines.append("")
     if result.invariant_failures:
@@ -1886,6 +2103,7 @@ def _eval_run_to_json(result: EvalRunResult) -> dict[str, Any]:
             "scenarios_passed": result.scenarios_passed,
             "scenarios_total": result.scenarios_total,
             "retractions": result.retractions,
+            "unnecessary_questions": result.unnecessary_questions,
         },
     }
 
@@ -1951,6 +2169,7 @@ async def main() -> int:
     scenario_aggregates: list[ScenarioAggregate] = []
     invariant_failures: list[dict[str, Any]] = []
     retractions = 0
+    unnecessary_questions = 0
 
     async with AsyncClient(transport=transport, base_url="http://test", timeout=120.0) as client:
         outbox_messages = await _fetch_outbox_messages(client)
@@ -2007,6 +2226,12 @@ async def main() -> int:
                     except Exception as exc:  # noqa: BLE001 — diagnostics only
                         print(f"    (no trace: {exc})")
                 retractions += _retraction_count(result.turns)
+                post_session = await application.state.session_store.get(result.session_id)
+                if post_session is not None:
+                    unnecessary_questions += count_unnecessary_questions(
+                        post_session,
+                        result.turns,
+                    )
                 runs.append(
                     RunAttempt(
                         run=run_index,
@@ -2078,6 +2303,7 @@ async def main() -> int:
         scenarios_passed=scenarios_passed,
         scenarios_total=scenarios_total,
         retractions=retractions,
+        unnecessary_questions=unnecessary_questions,
     )
 
     results_dir = _BACKEND_ROOT / "eval-results"
