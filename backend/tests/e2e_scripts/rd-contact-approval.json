@@ -1,0 +1,78 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_contacts",
+        "args": {
+          "entries": [
+            {
+              "role": "billing_contact",
+              "first_name": "Omar",
+              "last_name": "Saleh",
+              "email": "omar@beanstreet.example",
+              "contact_number": "+966551234567"
+            }
+          ]
+        },
+        "id": "rdca1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "show_contacts_review",
+        "args": {},
+        "id": "rdca2",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "I've put Omar Saleh down as your billing contact — press Send contacts when you're ready."
+  },
+  {
+    "content": "Thanks, your contacts are with the leasing team."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_contacts",
+        "args": {
+          "entries": [
+            {
+              "role": "billing_contact",
+              "first_name": "Omar",
+              "last_name": "Saleh",
+              "email": "finance@beanstreet.example",
+              "contact_number": "+966551234567"
+            }
+          ]
+        },
+        "id": "rdca3",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "show_contacts_review",
+        "args": {},
+        "id": "rdca4",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "I've updated the billing contact to finance@beanstreet.example — press Send contacts when ready."
+  },
+  {
+    "content": "Thanks, your updated billing contact is with the leasing team."
+  }
+]

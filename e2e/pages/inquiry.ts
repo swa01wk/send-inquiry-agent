@@ -239,6 +239,16 @@ export class InquiryPage {
     await this.waitForTurnDone(doneBefore)
   }
 
+  async answerSignatoryQuestion(isSignatory: boolean) {
+    const card = this.cards('signatory_question')
+    const label = isSignatory
+      ? /yes, i'm the authorised signatory/i
+      : /no, someone else is/i
+    const doneBefore = await readDoneEventCount(this.page)
+    await card.getByRole('button', { name: label }).click()
+    await this.waitForTurnDone(doneBefore)
+  }
+
   async expectUploadError(docLabel: string, message: string) {
     const row = await this.docRow(docLabel)
     await expect(row.getByText(message)).toBeVisible()
