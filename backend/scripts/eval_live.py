@@ -351,6 +351,37 @@ async def _reviewer_for_reference(client: AsyncClient, reference: str) -> str:
     raise RuntimeError(f"no reviewer queue holds {reference}")
 
 
+async def _approve_intake_documents(client: AsyncClient, reference: str) -> None:
+    """Day R2: first-level approval requires every document approved (demo feedback §3.4)."""
+    reviewer_id = await _reviewer_for_reference(client, reference)
+    detail_resp = await client.get(
+        f"/api/review/cases/{reference}",
+        headers={"X-Reviewer-Id": reviewer_id},
+    )
+    detail_resp.raise_for_status()
+    detail = detail_resp.json()
+    for doc in detail["brief"]["documents"]:
+        if not doc.get("uploaded") or not doc.get("file_id") or doc.get("approval") != "pending":
+            continue
+        ids = {"doc_type": doc["doc_type"], "file_id": doc["file_id"]}
+        if doc.get("expiry_tracked") and doc.get("expiry_status") == "unknown":
+            confirm = await client.post(
+                f"/api/review/cases/{reference}/actions",
+                json={
+                    "action": "confirm_document_expiry",
+                    "payload": {**ids, "expiry_date": "2027-12-31"},
+                },
+                headers={"X-Reviewer-Id": reviewer_id},
+            )
+            confirm.raise_for_status()
+        approved = await client.post(
+            f"/api/review/cases/{reference}/actions",
+            json={"action": "approve_document", "payload": ids},
+            headers={"X-Reviewer-Id": reviewer_id},
+        )
+        approved.raise_for_status()
+
+
 async def _open_case(
     client: AsyncClient,
     app: AppState,
@@ -359,6 +390,8 @@ async def _open_case(
 ) -> str:
     app.state.services.notifications.clear()
     reference = await _submit_inquiry(client, app)
+    if any(step.get("action") == "approve_first" for step in then):
+        await _approve_intake_documents(client, reference)
     reviewer_id = await _reviewer_for_reference(client, reference)
     for step in then:
         action = step["action"]
@@ -1567,7 +1600,7 @@ SCENARIOS: list[LiveScenario] = [
         "signatory: partner Ahmed signs",
         [
             "No, my partner Ahmed signs",
-            "Ahmed Al-Rashid, ahmed@beanstreet.example, +966551234567",
+            "Ahmed Saleh, ahmed@beanstreet.example, +966551234567",
         ],
         _check_signatory_no_ahmed,
         auto_otp=False,
