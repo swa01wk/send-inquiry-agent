@@ -24,9 +24,13 @@ function containsCrNumber(text: string): boolean {
   return CR_NUMBER_RE.test(normaliseDigits(text))
 }
 
+// Same file as app/agent/invariants.py::_registry_details (the mock CR registry).
+let registryDetailsCache: string[] | null = null
+
 function registryDetails(): string[] {
+  if (registryDetailsCache) return registryDetailsCache
   const data = JSON.parse(
-    readFileSync(path.join(repoRoot, 'backend/app/data/mock_world/cr.json'), 'utf8'),
+    readFileSync(path.join(repoRoot, 'backend/app/data/mock_world/cr_registry.json'), 'utf8'),
   ) as { records: { company_name?: string; company_address?: string }[] }
   const out: string[] = []
   for (const record of data.records ?? []) {
@@ -35,6 +39,7 @@ function registryDetails(): string[] {
       if (value) out.push(String(value).trim().toLowerCase())
     }
   }
+  registryDetailsCache = out
   return out
 }
 
