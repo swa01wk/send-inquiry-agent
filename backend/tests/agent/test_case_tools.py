@@ -8,6 +8,7 @@ from typing import Any
 import pytest
 from app.agent.case_tools import (
     get_case_status,
+    record_signatory_answer,
     request_reupload_documents,
     request_sales_data_upload,
     show_contacts_review,
@@ -220,6 +221,55 @@ def _second_review_case(agent_runtime: AgentRuntime) -> Case:
         now=T0 + timedelta(minutes=1),
     )
     return case
+
+
+def test_record_signatory_answer_emits_cards(agent_runtime, stream_events) -> None:
+    case = _second_review_case(agent_runtime)
+    case = transition(
+        case,
+        WorkflowEvent(
+            name="contacts_requested",
+            payload={"remarks": "Need signatory and billing."},
+        ),
+        actor=REVIEWER,
+        now=T0 + timedelta(minutes=2),
+    )
+    agent_runtime.services.cases.save(case)
+    state = _case_state(agent_runtime, case)
+    before = _snapshot(case)
+    events, writer = stream_events
+    runtime = make_tool_runtime(state=state, agent_runtime=agent_runtime, writer=writer)
+    result = record_signatory_answer.invoke(
+        {"is_signatory": True, "state": state, "runtime": runtime}
+    )
+    assert "signatory_question" in _card_types(events)
+    assert "contacts" in _card_types(events)
+    assert result.update["signatory_answer"] == "yes"
+    signatory = next(
+        c for c in result.update["contacts_draft"] if c["role"] == "authorized_signatory"
+    )
+    assert signatory["same_as_primary"] is True
+    after = agent_runtime.services.cases.get(case.id)
+    assert after is not None
+    assert _snapshot(after) == before
+
+
+def test_record_signatory_answer_without_contacts_request_records_nothing(
+    agent_runtime, stream_events
+) -> None:
+    # First review: no contacts request is open, so the handler saves nothing and the
+    # tool must not tell the model it did.
+    case = _case_in_store(agent_runtime, with_reupload=False)
+    state = _case_state(agent_runtime, case)
+    _events, writer = stream_events
+    runtime = make_tool_runtime(state=state, agent_runtime=agent_runtime, writer=writer)
+    result = record_signatory_answer.invoke(
+        {"is_signatory": True, "state": state, "runtime": runtime}
+    )
+    assert "signatory_answer" not in result.update
+    assert "contacts_draft" not in result.update
+    message = result.update["messages"][0].content
+    assert "not recorded" in message and "no_request" in message
 
 
 def test_show_contacts_review_emits_card(agent_runtime, stream_events):

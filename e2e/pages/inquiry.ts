@@ -239,6 +239,16 @@ export class InquiryPage {
     await this.waitForTurnDone(doneBefore)
   }
 
+  async answerSignatoryQuestion(isSignatory: boolean) {
+    const card = this.cards('signatory_question')
+    const label = isSignatory
+      ? /yes, i'm the authorised signatory/i
+      : /no, someone else is/i
+    const doneBefore = await readDoneEventCount(this.page)
+    await card.getByRole('button', { name: label }).click()
+    await this.waitForTurnDone(doneBefore)
+  }
+
   async expectUploadError(docLabel: string, message: string) {
     const row = await this.docRow(docLabel)
     await expect(row.getByText(message)).toBeVisible()
@@ -366,6 +376,7 @@ export class InquiryPage {
     if (type === 'existing_cr_choice') return this.page.getByTestId('existing-cr-choice-card')
     if (type === 'sign_in_prompt') return this.page.getByTestId('sign-in-prompt-card')
     if (type === 'cr_question') return this.page.getByTestId('cr-question-card')
+    if (type === 'signatory_question') return this.page.getByTestId('signatory-question-card')
     return this.page.locator(`[data-card-type="${type}"]`)
   }
 

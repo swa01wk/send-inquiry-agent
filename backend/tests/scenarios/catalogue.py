@@ -28,6 +28,7 @@ HAND_WRITTEN_E2E_SCRIPTS = frozenset(
         "s3-submit-timeout",
         "t1-contacts",
         "t2-reupload",
+        "rd-contact-approval",
     }
 )
 

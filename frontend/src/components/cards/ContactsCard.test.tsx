@@ -77,4 +77,53 @@ describe('ContactsCard', () => {
     await user.click(screen.getByRole('button', { name: /send contacts/i }))
     expect(onSubmit).toHaveBeenCalled()
   })
+
+  it('shows approval chips on each row', () => {
+    render(
+      <ContactsCard
+        payload={{
+          ...sample,
+          rows: sample.rows.map((r) =>
+            r.role === 'authorized_signatory'
+              ? { ...r, approval: 'approved' as const }
+              : { ...r, approval: 'pending' as const },
+          ),
+        }}
+        onSubmit={() => undefined}
+      />,
+    )
+    expect(screen.getByTestId('contact-approval-authorized_signatory')).toHaveTextContent(
+      'Approved',
+    )
+    expect(screen.getByTestId('contact-approval-billing_contact')).toHaveTextContent(
+      'Waiting for Cenomi',
+    )
+  })
+
+  it('filters to requested roles and shows rejection remarks', () => {
+    render(
+      <ContactsCard
+        payload={{
+          ...sample,
+          roles: ['billing_contact'],
+          remarks: 'Billing contact: Use the finance mailbox',
+          rows: sample.rows.map((r) =>
+            r.role === 'billing_contact'
+              ? {
+                  ...r,
+                  approval: 'rejected' as const,
+                  approval_remarks: 'Use the finance mailbox',
+                }
+              : r,
+          ),
+        }}
+        onSubmit={() => undefined}
+      />,
+    )
+    expect(screen.queryByTestId('contact-row-authorized_signatory')).not.toBeInTheDocument()
+    expect(screen.getByTestId('contact-approval-billing_contact')).toHaveTextContent(
+      'Needs a change: Use the finance mailbox',
+    )
+    expect(screen.getByText('Billing contact: Use the finance mailbox')).toBeInTheDocument()
+  })
 })

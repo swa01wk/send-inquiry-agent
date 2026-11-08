@@ -351,6 +351,37 @@ async def _reviewer_for_reference(client: AsyncClient, reference: str) -> str:
     raise RuntimeError(f"no reviewer queue holds {reference}")
 
 
+async def _approve_intake_documents(client: AsyncClient, reference: str) -> None:
+    """Day R2: first-level approval requires every document approved (demo feedback §3.4)."""
+    reviewer_id = await _reviewer_for_reference(client, reference)
+    detail_resp = await client.get(
+        f"/api/review/cases/{reference}",
+        headers={"X-Reviewer-Id": reviewer_id},
+    )
+    detail_resp.raise_for_status()
+    detail = detail_resp.json()
+    for doc in detail["brief"]["documents"]:
+        if not doc.get("uploaded") or not doc.get("file_id") or doc.get("approval") != "pending":
+            continue
+        ids = {"doc_type": doc["doc_type"], "file_id": doc["file_id"]}
+        if doc.get("expiry_tracked") and doc.get("expiry_status") == "unknown":
+            confirm = await client.post(
+                f"/api/review/cases/{reference}/actions",
+                json={
+                    "action": "confirm_document_expiry",
+                    "payload": {**ids, "expiry_date": "2027-12-31"},
+                },
+                headers={"X-Reviewer-Id": reviewer_id},
+            )
+            confirm.raise_for_status()
+        approved = await client.post(
+            f"/api/review/cases/{reference}/actions",
+            json={"action": "approve_document", "payload": ids},
+            headers={"X-Reviewer-Id": reviewer_id},
+        )
+        approved.raise_for_status()
+
+
 async def _open_case(
     client: AsyncClient,
     app: AppState,
@@ -359,6 +390,8 @@ async def _open_case(
 ) -> str:
     app.state.services.notifications.clear()
     reference = await _submit_inquiry(client, app)
+    if any(step.get("action") == "approve_first" for step in then):
+        await _approve_intake_documents(client, reference)
     reviewer_id = await _reviewer_for_reference(client, reference)
     for step in then:
         action = step["action"]
@@ -447,6 +480,89 @@ def _check_case_where_is_it(
     ]
 
 
+def _signatory_card_answered(turns: list[TurnResult], answer: str) -> bool:
+    for turn in turns:
+        for card in _cards(turn.events, "signatory_question"):
+            if card.get("payload", {}).get("answered") == answer:
+                return True
+    return False
+
+
+def _mentioned_signatory_role(turns: list[TurnResult]) -> bool:
+    text = _reply_text(turns).lower()
+    return any(
+        chunk in text
+        for chunk in (
+            "signatory",
+            "sign the lease",
+            "authorised signatory",
+            "authorized signatory",
+            "who can sign",
+            "person who can sign",
+        )
+    )
+
+
+def _check_signatory_yes(
+    session: Session, turns: list[TurnResult], _app: AppState | None = None
+) -> list[tuple[str, bool]]:
+    draft = session.contacts_draft
+    signatory = _contact_entry(draft, "authorized_signatory")
+    text = _reply_text(turns).lower()
+    billing_hint = any(w in text for w in ("billing", "invoice", "finance", "optional"))
+    return [
+        ("session signatory_answer yes", session.signatory_answer == "yes"),
+        (
+            "authorized_signatory same_as_primary",
+            signatory is not None and signatory.get("same_as_primary") is True,
+        ),
+        ("signatory card answered yes", _signatory_card_answered(turns, "yes")),
+        ("mentions billing or optional roles (wording)", billing_hint),
+        *_check_case_tone(turns),
+    ]
+
+
+def _check_signatory_no_ahmed(
+    session: Session, turns: list[TurnResult], _app: AppState | None = None
+) -> list[tuple[str, bool]]:
+    signatory = _contact_entry(session.contacts_draft, "authorized_signatory")
+    first = _field_value(signatory, "first_name")
+    text = _reply_text(turns).lower()
+    asked_billing = "billing" in text
+    return [
+        ("session signatory_answer no", session.signatory_answer == "no"),
+        (
+            "authorized_signatory Ahmed",
+            first is not None and "ahmed" in str(first).lower(),
+        ),
+        (
+            "signatory email present",
+            _field_value(signatory, "email") is not None,
+        ),
+        (
+            "signatory phone present",
+            (_field_value(signatory, "mobile") or _field_value(signatory, "contact_number"))
+            is not None,
+        ),
+        ("asks for or mentions billing (wording)", asked_billing),
+        *_check_case_tone(turns),
+    ]
+
+
+def _check_signatory_unsure(
+    session: Session, turns: list[TurnResult], _app: AppState | None = None
+) -> list[tuple[str, bool]]:
+    text = _reply_text(turns).lower()
+    billing_collected = _contact_entry(session.contacts_draft, "billing_contact") is not None
+    return [
+        ("explains signatory role (wording)", _mentioned_signatory_role(turns)),
+        ("signatory still unanswered", session.signatory_answer is None),
+        ("no billing collected yet", not billing_collected),
+        ("asks again or points to card", "?" in text or "card" in text or "button" in text),
+        *_check_case_tone(turns),
+    ]
+
+
 def _check_case_contacts_bundle(
     session: Session, turns: list[TurnResult], app: AppState
 ) -> list[tuple[str, bool]]:
@@ -471,6 +587,10 @@ def _check_case_contacts_bundle(
     )
     billing_phone = _field_value(billing, "mobile") or _field_value(billing, "contact_number")
     return [
+        (
+            "signatory_answer recorded",
+            session.signatory_answer == "yes",
+        ),
         (
             "authorized_signatory same_as_primary",
             signatory is not None and signatory.get("same_as_primary") is True,
@@ -1466,6 +1586,33 @@ SCENARIOS: list[LiveScenario] = [
         setup=_case_setup([{"action": "approve_first"}]),
     ),
     LiveScenario(
+        "signatory: yes that's me",
+        ["Yes, that's me"],
+        _check_signatory_yes,
+        auto_otp=False,
+        group="signatory",
+        setup=_case_setup([{"action": "approve_first"}]),
+    ),
+    LiveScenario(
+        "signatory: partner Ahmed signs",
+        [
+            "No, my partner Ahmed signs",
+            "Ahmed Saleh, ahmed@beanstreet.example, +966551234567",
+        ],
+        _check_signatory_no_ahmed,
+        auto_otp=False,
+        group="signatory",
+        setup=_case_setup([{"action": "approve_first"}]),
+    ),
+    LiveScenario(
+        "signatory: not sure",
+        ["I'm not sure"],
+        _check_signatory_unsure,
+        auto_otp=False,
+        group="signatory",
+        setup=_case_setup([{"action": "approve_first"}]),
+    ),
+    LiveScenario(
         "Case: rejection explained",
         ["Why was it rejected?"],
         _check_case_rejection,
@@ -1849,11 +1996,12 @@ async def main() -> int:
                     for v, turn_no in violations:
                         print(f"  [INVARIANT {v.invariant} turn {turn_no}] {v.detail}")
                 if not run_passed and result.session_id:
-                    graph = (
-                        application.state.assisted_graph
-                        if scenario.group == "channels"
-                        else application.state.graph
-                    )
+                    if scenario.group == "channels":
+                        graph = application.state.assisted_graph
+                    elif scenario.group in ("case", "signatory"):
+                        graph = application.state.case_graph
+                    else:
+                        graph = application.state.graph
                     try:
                         await _print_failed_run_trace(graph, result.session_id)
                     except Exception as exc:  # noqa: BLE001 — diagnostics only

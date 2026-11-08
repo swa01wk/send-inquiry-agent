@@ -49,6 +49,28 @@
   color: var(--color-accent-text);
 }
 
+.approvalChip {
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.approval_pending {
+  background: var(--color-pending-bg);
+  color: var(--color-pending-fg);
+}
+
+.approval_approved {
+  background: var(--color-success-bg);
+  color: var(--color-success-fg);
+}
+
+.approval_rejected {
+  background: var(--color-accent-tint);
+  color: var(--color-accent-text);
+}
+
 .detail {
   font-size: 13px;
   color: var(--color-text-secondary);

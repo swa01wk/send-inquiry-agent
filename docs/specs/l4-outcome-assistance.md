@@ -175,7 +175,7 @@ Both open `/inquiry/case?t=…`, which resumes a session in case mode (L3 §3.2 
 - **Rejection.** Explains the remarks in plain words and what the applicant may do next (from `policy.after_rejection`, for example raising a new inquiry). Never reopens the case or argues the decision.
 - **Approval.** First level: explains the Azure AD invitation and that more contacts or sales data may be requested. Final: explains that the details go to the leasing team's system for a proposal.
 
-**Tools (allowlist):** `get_case_status`, `request_reupload_documents`, `update_contacts`, `confirm_fields`, `show_contacts_review`, `request_sales_data_upload`, `search_faq`, `suggest_replies`, `start_follow_on` (L3 §3.11), `request_handoff`.
+**Tools (allowlist):** `get_case_status`, `request_reupload_documents`, `update_contacts`, `record_signatory_answer`, `confirm_fields`, `show_contacts_review`, `request_sales_data_upload`, `search_faq`, `suggest_replies`, `start_follow_on` (L3 §3.11), `request_handoff`.
 
 **Rules in code:**
 - No tool changes the case status; only the three UI actions above (applicant) and console actions (reviewer) do.

@@ -22,6 +22,7 @@ export type CardType =
   | 'existing_cr_choice'
   | 'sign_in_prompt'
   | 'cr_question'
+  | 'signatory_question'
 
 export type StepState = 'done' | 'current' | 'upcoming'
 
@@ -429,6 +430,12 @@ export type UiCard =
       card_type: 'cr_question'
       message_id: string | null
       payload: CrQuestionPayload
+    }
+  | {
+      card_id: string
+      card_type: 'signatory_question'
+      message_id: string | null
+      payload: SignatoryQuestionPayload
     }
 
 export type FormModeStep =
