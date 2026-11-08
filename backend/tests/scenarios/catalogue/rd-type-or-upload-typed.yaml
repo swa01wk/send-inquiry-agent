@@ -1,0 +1,88 @@
+id: rd-type-or-upload-typed
+layers:
+- e2e_script
+model_steps:
+- content: You can type your company and brand details, or upload the Company Profile and Brand Profile and I'll fill them in for you to check.
+  tool_calls:
+  - name: suggest_replies
+    args:
+      suggestions:
+      - I'll type them
+      - I'll upload the profiles
+    id: r3t-1
+    type: tool_call
+- content: What is your registered company name and address?
+- content: ''
+  tool_calls:
+  - name: update_draft
+    args:
+      fields:
+      - key: company_name
+        value: My Coffee Shop LLC
+        source: user
+      - key: company_address
+        value: Olaya Street, Riyadh
+        source: user
+    id: r3t-2
+    type: tool_call
+- content: Tell me about your brand and the space you're looking for, and who we should contact.
+- content: ''
+  tool_calls:
+  - name: update_draft
+    args:
+      fields:
+      - key: brand_name_en
+        value: Bean Street
+        source: user
+      - key: brand_name_ar
+        value: بين ستريت
+        source: derived
+      - key: unit_type
+        value: specialty
+        source: derived
+      - key: sales_category
+        value: fnb_cafe
+        source: derived
+      - key: malls
+        value:
+        - riyadh-mall-a
+        source: user
+      - key: first_name
+        value: Sara
+        source: user
+      - key: last_name
+        value: Ali
+        source: user
+      - key: email
+        value: sara@beanstreet.example
+        source: user
+      - key: contact_number
+        value: '0501234567'
+        source: user
+    id: r3t-3
+    type: tool_call
+- content: ''
+  tool_calls:
+  - name: send_verification
+    args:
+      resend: false
+    id: r3t-4
+    type: tool_call
+- content: Click the email link and enter the SMS code in the box.
+- content: ''
+  tool_calls:
+  - name: request_documents
+    args: {}
+    id: r3t-5
+    type: tool_call
+- content: Upload the Company Profile and Brand Profile when you're ready.
+- content: Your Company Profile shows a different company name than you typed — I can update it to match the profile or keep yours for the reviewer to see.
+- content: We'll keep your company name as you entered it — the reviewer will see the flag. Upload the Brand Profile when you're ready.
+- content: ''
+  tool_calls:
+  - name: show_review
+    args: {}
+    id: r3t-6
+    type: tool_call
+- content: Review on the card and submit when you're ready.
+title: Re-demo type or upload — typed company with mismatch

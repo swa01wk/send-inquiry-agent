@@ -1,0 +1,150 @@
+[
+  {
+    "content": "You can type your company and brand details, or upload the Company Profile and Brand Profile and I'll fill them in for you to check.",
+    "tool_calls": [
+      {
+        "name": "suggest_replies",
+        "args": {
+          "suggestions": [
+            "I'll type them",
+            "I'll upload the profiles"
+          ]
+        },
+        "id": "r3-1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "When you reach the documents card, upload both profiles and I'll fill the details on the confirm card. Tell me about your brand, which mall and who we should contact."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "brand_name_en",
+              "value": "Bean Street",
+              "source": "user"
+            },
+            {
+              "key": "brand_name_ar",
+              "value": "بين ستريت",
+              "source": "derived"
+            },
+            {
+              "key": "unit_type",
+              "value": "specialty",
+              "source": "derived"
+            },
+            {
+              "key": "sales_category",
+              "value": "fnb_cafe",
+              "source": "derived"
+            },
+            {
+              "key": "malls",
+              "value": [
+                "riyadh-mall-a"
+              ],
+              "source": "user"
+            },
+            {
+              "key": "first_name",
+              "value": "Sara",
+              "source": "user"
+            },
+            {
+              "key": "last_name",
+              "value": "Ali",
+              "source": "user"
+            },
+            {
+              "key": "email",
+              "value": "sara@beanstreet.example",
+              "source": "user"
+            },
+            {
+              "key": "contact_number",
+              "value": "0501234567",
+              "source": "user"
+            }
+          ]
+        },
+        "id": "r3-2",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Check the values on the confirm card if anything looks off."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "send_verification",
+        "args": {
+          "resend": false
+        },
+        "id": "r3-3",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Click the email link and enter the SMS code in the box on the card."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "request_documents",
+        "args": {},
+        "id": "r3-4",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Upload the Company Profile and Brand Profile on the documents card below."
+  },
+  {
+    "content": "I've filled company name and address from your Company Profile — please check them on the confirm card."
+  },
+  {
+    "content": "I've filled brand name and category from your Brand Profile — check the confirm card."
+  },
+  {
+    "content": "Thanks — upload the other required profile when you're ready."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "show_review",
+        "args": {},
+        "id": "r3-5",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Review everything on the card, accept the terms and press Submit when you're ready."
+  },
+  {
+    "content": "I've refreshed those values from the new file — please confirm them on the card before you submit."
+  },
+  {
+    "content": "Check the confirm card when the updated profile is in."
+  },
+  {
+    "content": "Sure — take your time on the confirm card."
+  },
+  {
+    "content": "Understood."
+  }
+]
