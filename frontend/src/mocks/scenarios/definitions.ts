@@ -13,6 +13,7 @@ import {
   reviewCardExample,
   sendLinkCardExample,
   crQuestionCardExample,
+  signatoryQuestionCardExample,
   signInPromptCardExample,
   successCardExample,
   verificationCardExample,
@@ -273,6 +274,25 @@ export const feScenarioDefinitions: FeScenario[] = [
   {
     name: 'cr-question',
     session: cardSession(crQuestionCardExample, draftEmpty),
+  },
+  {
+    name: 'signatory-question',
+    session: cardSession(signatoryQuestionCardExample, draftEmpty),
+    turns: [
+      {
+        when: { type: 'action', action: 'signatory_answer' },
+        events: [
+          {
+            event: 'ui_card',
+            data: {
+              ...signatoryQuestionCardExample,
+              payload: { ...signatoryQuestionCardExample.payload, answered: 'yes' },
+            } as UiCard,
+          },
+          { event: 'done', data: { phase: 'submitted' } },
+        ],
+      },
+    ],
   },
   {
     name: 'sign-in-prompt',

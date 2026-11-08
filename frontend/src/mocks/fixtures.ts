@@ -607,6 +607,18 @@ export const crQuestionCardExample: UiCard = {
   },
 }
 
+export const signatoryQuestionCardExample: UiCard = {
+  card_id: 'signatory_question',
+  card_type: 'signatory_question',
+  message_id: 'm-case-signatory',
+  payload: {
+    prompt: 'Are you the authorised signatory for your company?',
+    yes_label: "Yes, I'm the authorised signatory",
+    no_label: 'No, someone else is',
+    answered: null,
+  },
+}
+
 export const signInPromptCardExample: UiCard = {
   card_id: 'sign-in-prompt',
   card_type: 'sign_in_prompt',

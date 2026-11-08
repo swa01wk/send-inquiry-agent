@@ -8,6 +8,7 @@ import { SalesDataUploadCard } from '../cards/SalesDataUploadCard'
 import { FormModeCard } from '../cards/FormModeCard'
 import { BasicInfoReviewCard } from '../cards/BasicInfoReviewCard'
 import { CrQuestionCard } from '../cards/CrQuestionCard'
+import { SignatoryQuestionCard } from '../cards/SignatoryQuestionCard'
 import { ExistingCrChoiceCard } from '../cards/ExistingCrChoiceCard'
 import { HandoffCard } from '../cards/HandoffCard'
 import { SendLinkCard } from '../cards/SendLinkCard'
@@ -141,6 +142,14 @@ export function CardSlot({
         <CrQuestionCard
           payload={card.payload}
           onAnswer={(hasCr) => actions.sendAction('cr_answer', { has_cr: hasCr })}
+        />
+      ) : null}
+      {card.card_type === 'signatory_question' ? (
+        <SignatoryQuestionCard
+          payload={card.payload}
+          onAnswer={(isSignatory) =>
+            actions.sendAction('signatory_answer', { is_signatory: isSignatory })
+          }
         />
       ) : null}
       {card.card_type === 'sign_in_prompt' ? <SignInPromptCard payload={card.payload} /> : null}
