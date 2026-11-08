@@ -1,9 +1,21 @@
 import { expect, test } from '@playwright/test'
 import { InquiryPage } from '../pages/inquiry'
+import { readDoneEventCount } from '../support/events'
 import { afterTurnChecks } from '../support/turnChecks'
 import { fieldDisplay, fieldSource } from '../support/draft'
 import { fetchDevOutbox, smsOtpCode } from '../support/outbox'
-import { openCaseAs, reviewerFor } from '../support/stories'
+import { openCaseAs } from '../support/stories'
+import { reviewerFor } from '../support/submit'
+
+async function answerCrNo(inquiry: InquiryPage) {
+  const doneBefore = await readDoneEventCount(inquiry.page)
+  await inquiry
+    .cards('cr_question')
+    .getByRole('button', { name: /no, we don't/i })
+    .click()
+  await inquiry.waitForTurnDone(doneBefore)
+  await afterTurnChecks(inquiry)
+}
 
 const APPLICANT_EMAIL = 'sara@beanstreet.example'
 const APPLICANT_MOBILE = '+966501234567'
@@ -16,12 +28,8 @@ test.describe('Story rd-type-or-upload @scripted', () => {
     const inquiry = new InquiryPage(page)
     await inquiry.open('rd-type-or-upload')
     await expect(inquiry.cards('cr_question')).toBeVisible({ timeout: 60_000 })
-    await inquiry
-      .cards('cr_question')
-      .getByRole('button', { name: /no, we don't/i })
-      .click()
-    await afterTurnChecks(inquiry)
-    await inquiry.tapChip("I'll upload the profiles")
+    await answerCrNo(inquiry)
+    await inquiry.say("I'll upload the profiles")
     await afterTurnChecks(inquiry)
     await inquiry.say(BRAND_BUNDLE)
     await afterTurnChecks(inquiry)
@@ -66,12 +74,8 @@ test.describe('Story rd-type-or-upload @scripted', () => {
     const inquiry = new InquiryPage(page)
     await inquiry.open('rd-type-or-upload-typed')
     await expect(inquiry.cards('cr_question')).toBeVisible({ timeout: 60_000 })
-    await inquiry
-      .cards('cr_question')
-      .getByRole('button', { name: /no, we don't/i })
-      .click()
-    await afterTurnChecks(inquiry)
-    await inquiry.tapChip("I'll type them")
+    await answerCrNo(inquiry)
+    await inquiry.say("I'll type them")
     await inquiry.say('My Coffee Shop LLC, Olaya Street, Riyadh')
     await afterTurnChecks(inquiry)
     await inquiry.say(BRAND_BUNDLE)
@@ -110,11 +114,8 @@ test.describe('Story rd-type-or-upload @scripted', () => {
     test.setTimeout(360_000)
     const inquiry = new InquiryPage(page)
     await inquiry.open('rd-type-or-upload')
-    await inquiry
-      .cards('cr_question')
-      .getByRole('button', { name: /no, we don't/i })
-      .click()
-    await inquiry.tapChip("I'll upload the profiles")
+    await answerCrNo(inquiry)
+    await inquiry.say("I'll upload the profiles")
     await inquiry.say(BRAND_BUNDLE)
     await inquiry.confirmCard()
     await expect(inquiry.cards('verification')).toBeVisible({ timeout: 60_000 })
