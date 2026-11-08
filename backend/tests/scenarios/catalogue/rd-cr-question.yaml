@@ -4,6 +4,15 @@ layers:
 - agent_det
 model_steps:
 - content: Signing in to Tenant Central is the quickest way — your company details are already on file there. Use the Sign in button below.
+- content: You can type your company and brand details here, or upload your Company Profile and Brand Profile and I'll fill them in for you to check on the card.
+  tool_calls:
+  - name: suggest_replies
+    args:
+      suggestions:
+      - I'll type them
+      - I'll upload the profiles
+    id: rd1a
+    type: tool_call
 - content: What is your registered company name and address?
 - content: ''
   tool_calls:

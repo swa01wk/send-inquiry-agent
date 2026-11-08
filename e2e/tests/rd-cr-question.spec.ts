@@ -42,7 +42,7 @@ test.describe('Re-demo CR question @scripted', () => {
     await inquiry.waitForTurnDone(doneBefore)
     await afterTurnChecks(inquiry)
     const reply = await inquiry.lastReply()
-    expect(reply.toLowerCase()).toMatch(/company|address/)
+    expect(reply.toLowerCase()).toMatch(/type|upload|profile/)
     await inquiry.say('Acme Trading LLC, King Abdullah Road, Riyadh')
     await afterTurnChecks(inquiry)
     const draft = await inquiry.draft()
