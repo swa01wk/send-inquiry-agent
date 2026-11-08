@@ -526,7 +526,30 @@ async def _documents_updated(
         status = f"[ui_event] documents_complete{tail}"
     else:
         status = f"[ui_event] documents_pending {' '.join(pending)}"
-    return ActionResult(note=HumanMessage(content="\n".join([*review_notes, status])))
+    events: list[SseEvent] = []
+    # Values a profile filled are confirmed on a card like any derived value (golden rule
+    # 2); the upload itself (REST) shows no card, so it's shown here, as for a CR prefill.
+    ref = draft.documents.get(uploaded) if uploaded is not None else None
+    to_confirm = [
+        key
+        for key in (ref.filled_fields if ref else [])
+        if not draft.fields[FieldKey(key)].confirmed
+    ]
+    if to_confirm:
+        card_id = allocate_confirm_card_id(sorted(session.cards_shown))
+        session.cards_shown.add(card_id)
+        card = build_confirm_fields_card(
+            draft,
+            runtime.master,
+            to_confirm,
+            card_id=card_id,
+            title="From your profile — please confirm",
+        )
+        events.append(_card_event(session, card))
+    return ActionResult(
+        note=HumanMessage(content="\n".join([*review_notes, status])),
+        events=events,
+    )
 
 
 async def _set_document_number(

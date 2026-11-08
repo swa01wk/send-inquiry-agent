@@ -142,6 +142,12 @@ async def test_documents_updated_tells_the_agent_field_names_only(docs_client) -
     assert "Bean Street Holding Company" not in note
     assert "King Fahd" not in note
 
+    # The filled value is shown for confirmation (the upload itself showed no card).
+    [card] = [e["data"] for e in result.events if e["event"] == "ui_card"]
+    assert card["card_type"] == "confirm_fields"
+    assert [row["key"] for row in card["payload"]["fields"]] == ["company_address"]
+    assert card["card_id"] in session.confirm_card_keys
+
     # Without a doc type (all documents in, the older call): only the status line.
     plain = await handle_ui_action("documents_updated", {}, session, _runtime(app))
     assert str(plain.note.content) == "[ui_event] documents_pending brand_profile"
