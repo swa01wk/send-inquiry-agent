@@ -1473,20 +1473,24 @@ async def _after_mismatch_upload(
 
 
 def _type_or_upload_offered(turns: list[TurnResult]) -> int:
+    """How many times the type-or-upload choice was offered: quick-reply cards with both a
+    "type" and an "upload" option. Replies alone don't count, since later turns rightly
+    mention uploading the profiles."""
     count = 0
     for turn in turns:
-        lower = turn.assistant.lower()
-        if ("upload" in lower and "profile" in lower) or (
-            "type" in lower and ("company" in lower or "details" in lower)
-        ):
-            count += 1
         for evt, data in turn.events:
             if evt != "ui_card" or data.get("card_type") != "quick_replies":
                 continue
-            suggestions = [
-                str(s).lower() for s in (data.get("payload") or {}).get("suggestions") or []
+            options = (data.get("payload") or {}).get("options") or []
+            labels = [
+                str(opt.get("label") or opt.get("text") or "").lower()
+                if isinstance(opt, dict)
+                else str(opt).lower()
+                for opt in options
             ]
-            if any("upload" in s for s in suggestions) and any("type" in s for s in suggestions):
+            if any("upload" in label for label in labels) and any(
+                "type" in label for label in labels
+            ):
                 count += 1
     return count
 

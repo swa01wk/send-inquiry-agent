@@ -786,11 +786,6 @@ def cr_answer_result(session: Session, runtime: AgentRuntime, has_cr: bool) -> A
     if answered is None:
         return ActionResult(note=HumanMessage(content="[ui_event] cr_already_done"))
     session.draft = answered.draft
-    if (
-        session.test_scenario == "rd-cr-question"
-        and runtime.settings.agent_mode == "scripted"
-    ):
-        session.script_step = 0 if has_cr else 1
     card = build_cr_question_card(answered="yes" if has_cr else "no")
     events: list[SseEvent] = [_card_event(session, card)]
     if has_cr:

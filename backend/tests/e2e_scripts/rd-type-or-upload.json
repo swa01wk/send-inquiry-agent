@@ -1,22 +1,25 @@
 [
   {
-    "content": "You can type your company and brand details, or upload the Company Profile and Brand Profile and I'll fill them in for you to check.",
+    "content": "",
     "tool_calls": [
       {
         "name": "suggest_replies",
         "args": {
-          "suggestions": [
+          "options": [
             "I'll type them",
             "I'll upload the profiles"
           ]
         },
-        "id": "r3-1",
+        "id": "r3u1",
         "type": "tool_call"
       }
     ]
   },
   {
-    "content": "When you reach the documents card, upload both profiles and I'll fill the details on the confirm card. Tell me about your brand, which mall and who we should contact."
+    "content": "You can type your company and brand details, or upload your Company Profile and Brand Profile and I'll fill them in for you to check."
+  },
+  {
+    "content": "Great — you'll upload them on the documents card in a moment. Meanwhile, tell me about the space you'd like, and who our leasing team should contact."
   },
   {
     "content": "",
@@ -25,6 +28,11 @@
         "name": "update_draft",
         "args": {
           "fields": [
+            {
+              "key": "brand_name_ar",
+              "value": "بين ستريت",
+              "source": "user"
+            },
             {
               "key": "unit_type",
               "value": "specialty",
@@ -59,13 +67,10 @@
             }
           ]
         },
-        "id": "r3-2",
+        "id": "r3u2",
         "type": "tool_call"
       }
     ]
-  },
-  {
-    "content": "Check the values on the confirm card if anything looks off."
   },
   {
     "content": "",
@@ -75,13 +80,16 @@
         "args": {
           "resend": false
         },
-        "id": "r3-3",
+        "id": "r3u3",
         "type": "tool_call"
       }
     ]
   },
   {
-    "content": "Click the email link and enter the SMS code in the box on the card."
+    "content": "Please check the unit type on the card. I've sent a verification link to your email and a code by SMS."
+  },
+  {
+    "content": "Thanks. Click the link in your email and enter the SMS code on the card."
   },
   {
     "content": "",
@@ -89,50 +97,27 @@
       {
         "name": "request_documents",
         "args": {},
-        "id": "r3-4",
+        "id": "r3u4",
         "type": "tool_call"
       }
     ]
   },
   {
-    "content": "Upload the Company Profile and Brand Profile on the documents card below."
+    "content": "Upload your Company Profile and Brand Profile on the documents card and I'll fill in the details for you."
   },
   {
-    "content": "I've filled company name and address from your Company Profile — please check them on the confirm card."
+    "content": "I've filled your company name and address from the Company Profile — please check them on the card."
   },
   {
-    "content": "I've filled brand name and category from your Brand Profile — check the confirm card."
+    "content": "Thanks. Now the Brand Profile, please."
   },
   {
-    "content": "Thanks — upload the other required profile when you're ready."
+    "content": "I've filled your brand name and category from the Brand Profile — please check them on the card."
   },
   {
-    "content": "",
-    "tool_calls": [
-      {
-        "name": "show_review",
-        "args": {},
-        "id": "r3-5",
-        "type": "tool_call"
-      }
-    ]
+    "content": "Everything is in. Have a look on the review card and accept the terms when you're ready."
   },
   {
-    "content": "All set for review on the card when you're ready."
-  },
-  {
-    "content": "Review everything on the card, accept the terms and press Submit when you're ready."
-  },
-  {
-    "content": "I've refreshed those values from the new file — please confirm them on the card before you submit."
-  },
-  {
-    "content": "Check the confirm card when the updated profile is in."
-  },
-  {
-    "content": "Sure — take your time on the confirm card."
-  },
-  {
-    "content": "Understood."
+    "content": "Thank you — your inquiry is with our leasing team. Your reference is on the card."
   }
 ]

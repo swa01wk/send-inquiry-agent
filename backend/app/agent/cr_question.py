@@ -44,7 +44,13 @@ _CR_RE = re.compile(r"(?<![\d+])[1-9]\d{9}(?!\d)")
 # says, so flipping `public_cr_check` doesn't rewrite the older Playwright scripts and
 # goldens. Add a script's name here when it moves to the question.
 CR_QUESTION_SCRIPTS: frozenset[str] = frozenset(
-    {"rd-cr-question", "rd-type-or-upload", "rd-type-or-upload-typed"}
+    {
+        "rd-cr-question",
+        "rd-cr-question-no",
+        "rd-type-or-upload",
+        "rd-type-or-upload-typed",
+        "rd-type-or-upload-reupload",
+    }
 )
 
 

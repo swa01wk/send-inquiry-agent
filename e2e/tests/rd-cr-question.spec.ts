@@ -32,7 +32,7 @@ test.describe('Re-demo CR question @scripted', () => {
 
   test('No → company intake questions', async ({ page }) => {
     const inquiry = new InquiryPage(page)
-    await inquiry.open('rd-cr-question')
+    await inquiry.open('rd-cr-question-no')
     await expect(inquiry.cards('cr_question')).toBeVisible()
     const doneBefore = await readDoneEventCount(page)
     await inquiry
