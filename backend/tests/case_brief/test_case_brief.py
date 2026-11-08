@@ -99,3 +99,42 @@ def test_stage_ages() -> None:
     brief = build_case_brief(_case(), load_master_data(), now=T0 + timedelta(days=3))
     assert brief.stage_ages[0].stage == "submitted"
     assert brief.stage_ages[0].days == 3.0
+
+
+def test_a_profile_that_disagrees_is_flagged_for_the_lease_admin() -> None:
+    # Demo feedback §3.7, D12: shown, never a blocker.
+    from app.domain.case_brief import format_case_brief_text
+    from app.domain.models import DocumentReview, ExtractedValue
+
+    case = _case()
+    case.draft.documents[DocType.COMPANY_PROFILE] = DocumentRef(
+        doc_type=DocType.COMPANY_PROFILE,
+        file_id="c1",
+        file_name="company_profile_mismatch.pdf",
+        size_bytes=9,
+        uploaded_at=T0,
+        review=DocumentReview(
+            status="done",
+            fields={"company_name": ExtractedValue(value="Bean Street Holding Company")},
+            checked_at=T0,
+        ),
+    )
+    brief = build_case_brief(case, load_master_data(), now=T0)
+    [check] = brief.document_checks
+    assert (check.field, check.typed, check.document_value) == (
+        "company_name",
+        "Bean Street Trading Co.",
+        "Bean Street Holding Company",
+    )
+    assert any(
+        "The profiles differ from what was typed: Company name" in item
+        for item in (brief.next_decision_checklist)
+    )
+    text = format_case_brief_text(brief)
+    assert "Profile checks:" in text
+    assert "Company name: typed 'Bean Street Trading Co.', Company Profile says" in text
+
+
+def test_no_profile_checks_without_extracted_fields() -> None:
+    brief = build_case_brief(_case(), load_master_data(), now=T0)
+    assert brief.document_checks == []

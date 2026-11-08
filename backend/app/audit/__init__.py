@@ -38,6 +38,9 @@ ALLOWED_KEYS: dict[str, frozenset[str]] = {
     "document_removed": frozenset({"doc_type"}),
     # Demo feedback §3.3: the document review service answered (or didn't). No content.
     "document_reviewed": frozenset({"doc_type", "status", "has_expiry"}),
+    # Demo feedback §3.7: field names only, never a value from the document.
+    "document_fields_filled": frozenset({"doc_type", "fields"}),
+    "document_mismatch": frozenset({"doc_type", "fields"}),
     "submit_attempt": frozenset({"submit_key", "outcome"}),
     "submit_result": frozenset({"submit_key", "outcome", "reference", "repeat"}),
     "notification_sent": frozenset({"template", "channel", "outcome", "message_id"}),

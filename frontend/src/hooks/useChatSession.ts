@@ -275,6 +275,16 @@ export function useChatSession() {
       const result = await uploadDocument(state.sessionId, docType, file)
       dispatch({ type: 'sse', event: { event: 'ui_card', data: result.card } })
       dispatch({ type: 'sse', event: { event: 'draft', data: result.draft } })
+      // A profile that filled fields or disagrees with one gets an agent turn of its own
+      // (demo feedback §3.7), even when other documents are still missing.
+      if ((result.fields_filled?.length ?? 0) > 0 || (result.mismatches?.length ?? 0) > 0) {
+        void runStream({
+          type: 'action',
+          action: 'documents_updated',
+          payload: { doc_type: docType },
+        })
+        return
+      }
       maybeNotifyDocumentsComplete(
         beforeUploaded,
         beforeTotal,
@@ -282,7 +292,7 @@ export function useChatSession() {
         result.draft.checks.required_docs_total,
       )
     },
-    [dispatch, maybeNotifyDocumentsComplete, state.draft?.checks, state.sessionId],
+    [dispatch, maybeNotifyDocumentsComplete, runStream, state.draft?.checks, state.sessionId],
   )
 
   const removeDocumentForType = useCallback(

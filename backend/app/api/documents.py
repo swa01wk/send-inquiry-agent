@@ -20,6 +20,8 @@ from app.api.schemas import (
 )
 from app.config import Settings
 from app.domain import draft_ops
+from app.domain.document_checks import document_mismatches
+from app.domain.document_fill import clear_from_document, fill_from_review
 from app.domain.master import MasterData
 from app.domain.models import (
     NON_INTAKE_DOC_TYPES,
@@ -120,8 +122,13 @@ async def _upload_document(
     except UploadValidationError as exc:
         raise ApiError(400, "invalid_extension", str(exc)) from exc
 
+    # Intake only: a profile fills empty fields, and a replaced profile first takes back
+    # what it filled (demo feedback §3.7, ADR-R4). A submitted case's draft isn't rewritten.
+    intake = session.mode != "case"
+    fills = intake and parsed in REVIEWED_DOC_TYPES
+    base = clear_from_document(session.draft, parsed) if fills else session.draft
     updated, val_err = draft_ops.add_document(
-        session.draft,
+        base,
         parsed,
         file_id=ref.file_id,
         file_name=ref.file_name,
@@ -133,8 +140,12 @@ async def _upload_document(
         services.storage.delete(session_id, parsed, ref.file_id)
         raise ApiError(400, val_err.code, val_err.message)
 
+    filled: list[str] = []
     if parsed in REVIEWED_DOC_TYPES:
         updated = _with_review(updated, parsed, content, services, session_id)
+        if fills:
+            updated, filled = fill_from_review(updated, parsed, master)
+    mismatches = [m.field for m in document_mismatches(updated, master, doc_type=parsed)]
     session.draft = updated
     card = _scoped(_card_for(session, services, master, settings, parsed), session)
     _remember(session, card)
@@ -145,8 +156,23 @@ async def _upload_document(
         actor="user",
         payload={"doc_type": parsed.value, "ext": ext, "size_bytes": ref.size_bytes},
     )
+    # Field names only: values from a document stay out of the audit trail.
+    if filled:
+        services.audit.record(
+            session_id,
+            "document_fields_filled",
+            actor="system",
+            payload={"doc_type": parsed.value, "fields": filled},
+        )
+    if mismatches:
+        services.audit.record(
+            session_id,
+            "document_mismatch",
+            actor="system",
+            payload={"doc_type": parsed.value, "fields": mismatches},
+        )
     await store.save(session)
-    draft = build_draft_summary(session.draft, master, changed_keys=[])
+    draft = build_draft_summary(session.draft, master, changed_keys=filled)
     document = DocumentResponse(
         doc_type=ref.doc_type.value,
         file_id=ref.file_id,
@@ -154,7 +180,13 @@ async def _upload_document(
         size_bytes=ref.size_bytes,
         uploaded_at=ref.uploaded_at,
     )
-    return UploadDocumentResponse(document=document, card=card, draft=draft)
+    return UploadDocumentResponse(
+        document=document,
+        card=card,
+        draft=draft,
+        fields_filled=filled,
+        mismatches=mismatches,
+    )
 
 
 def _with_review(
@@ -244,7 +276,10 @@ async def _delete_document(
         # inquiry: only this inquiry's reference to it is removed.
         services.storage.delete(session_id, parsed, existing.file_id)
 
-    session.draft = draft_ops.remove_document(session.draft, parsed)
+    base = session.draft
+    if session.mode != "case" and parsed in REVIEWED_DOC_TYPES:
+        base = clear_from_document(base, parsed)  # its filled values go with it (ADR-R4)
+    session.draft = draft_ops.remove_document(base, parsed)
     card = _scoped(_card_for(session, services, master, settings, parsed), session)
     _remember(session, card)
     services.audit.record(

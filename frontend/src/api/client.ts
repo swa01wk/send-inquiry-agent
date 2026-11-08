@@ -81,6 +81,9 @@ export interface DocumentMutationResponse {
   card: UiCard
   draft: DraftSummary
   document?: { doc_type: string; file_name: string; size_bytes: number }
+  /** Demo feedback §3.7: field names a profile filled, or disagrees with (upload only). */
+  fields_filled?: string[]
+  mismatches?: string[]
 }
 
 export async function uploadDocument(

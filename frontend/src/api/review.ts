@@ -141,6 +141,17 @@ export interface CaseBrief {
   }
   stage_ages: { stage: string; entered_at: string; days: number }[]
   next_decision_checklist: string[]
+  /** Demo feedback §3.7: typed values a profile disagrees with. Never a blocker. */
+  document_checks?: BriefDocumentCheck[]
+}
+
+export interface BriefDocumentCheck {
+  field: string
+  label: string
+  typed: string
+  document_value: string
+  doc_type: string
+  doc_label: string
 }
 
 export interface TimelineEntry {

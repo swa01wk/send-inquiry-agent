@@ -224,6 +224,18 @@ export function ReviewCasePage() {
                   ))}
                 </ul>
               ) : null}
+              {brief.document_checks && brief.document_checks.length > 0 ? (
+                <ul className={styles.list} data-testid="document-checks">
+                  {brief.document_checks.map((check) => (
+                    <li
+                      key={`${check.doc_type}-${check.field}`}
+                      data-testid={`document-check-${check.field}`}
+                    >
+                      {`${check.label}: typed “${check.typed}”, ${check.doc_label} says “${check.document_value}”`}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
               {brief.follow_on_of ? (
                 <p className={styles.muted}>Follow-on of {brief.follow_on_of}</p>
               ) : null}

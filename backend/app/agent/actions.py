@@ -23,6 +23,7 @@ from app.api.cards import (
     build_document_upload_card,
     build_review_card,
     build_success_card,
+    parse_doc_type,
     remember_confirm_card_keys,
     split_card_id,
 )
@@ -47,6 +48,7 @@ from app.api.channel_cards import (
 from app.api.schemas import UiCard
 from app.domain import draft_ops
 from app.domain import validation as v
+from app.domain.document_checks import document_mismatches
 from app.domain.fields import document_definitions
 from app.domain.models import NEEDS_CONFIRMATION, DocType, FieldKey, InquiryDraft, Source
 from app.domain.rules import can_submit, contact_verified, remaining_steps
@@ -481,13 +483,36 @@ async def _confirm_card(
     )
 
 
+def document_review_notes(
+    session: Session, runtime: AgentRuntime, doc_type: DocType | None
+) -> list[str]:
+    """What a profile upload changed (demo feedback §3.7), as field names only: never a
+    value from the document (ADR-R5)."""
+    if doc_type is None:
+        return []
+    ref = session.draft.documents.get(doc_type)
+    if ref is None:
+        return []
+    notes: list[str] = []
+    if ref.filled_fields:
+        notes.append(
+            f"[ui_event] document_fields {doc_type.value} filled={','.join(ref.filled_fields)}"
+        )
+    for mismatch in document_mismatches(session.draft, runtime.master, doc_type=doc_type):
+        notes.append(f"[ui_event] document_mismatch {mismatch.field}")
+    return notes
+
+
 async def _documents_updated(
     payload: dict[str, Any],
     session: Session,
     runtime: AgentRuntime,
 ) -> ActionResult:
-    del payload
     draft = session.draft
+    # Optional `doc_type`: the profile just uploaded, sent when it filled a field or
+    # disagrees with one (UploadDocumentResponse.fields_filled / mismatches).
+    uploaded = parse_doc_type(str(payload.get("doc_type") or ""))
+    review_notes = document_review_notes(session, runtime, uploaded)
     pending = [
         doc_type.value
         for doc_type, _label, required in document_definitions()
@@ -498,9 +523,32 @@ async def _documents_updated(
         # doesn't point to Submit too early.
         left = [step for step in remaining_steps(draft) if step not in ("documents", "terms")]
         tail = f" still_needed={','.join(left)}" if left else ""
-        return ActionResult(note=HumanMessage(content=f"[ui_event] documents_complete{tail}"))
+        status = f"[ui_event] documents_complete{tail}"
+    else:
+        status = f"[ui_event] documents_pending {' '.join(pending)}"
+    events: list[SseEvent] = []
+    # Values a profile filled are confirmed on a card like any derived value (golden rule
+    # 2); the upload itself (REST) shows no card, so it's shown here, as for a CR prefill.
+    ref = draft.documents.get(uploaded) if uploaded is not None else None
+    to_confirm = [
+        key
+        for key in (ref.filled_fields if ref else [])
+        if not draft.fields[FieldKey(key)].confirmed
+    ]
+    if to_confirm:
+        card_id = allocate_confirm_card_id(sorted(session.cards_shown))
+        session.cards_shown.add(card_id)
+        card = build_confirm_fields_card(
+            draft,
+            runtime.master,
+            to_confirm,
+            card_id=card_id,
+            title="From your profile — please confirm",
+        )
+        events.append(_card_event(session, card))
     return ActionResult(
-        note=HumanMessage(content=f"[ui_event] documents_pending {' '.join(pending)}"),
+        note=HumanMessage(content="\n".join([*review_notes, status])),
+        events=events,
     )
 
 
