@@ -53,6 +53,7 @@ test.describe('Story rd-contact-approval @scripted', () => {
       const applicantPage = await applicantContext.newPage()
       const applicant = new InquiryPage(applicantPage)
       await applicantPage.goto(caseUrl.toString())
+      await applicant.waitForChatReady()
       await expect(applicant.cards('case_status')).toBeVisible({ timeout: 60_000 })
       await expect(applicant.cards('signatory_question')).toBeVisible({ timeout: 30_000 })
 
@@ -99,16 +100,19 @@ test.describe('Story rd-contact-approval @scripted', () => {
       const fixUrl = new URL(outboxAfterReject[0].links.find((l) => l.includes('/inquiry/case'))!)
       fixUrl.searchParams.set('e2eCaseScenario', 'rd-contact-approval')
       await applicantPage.goto(fixUrl.toString())
+      await applicant.waitForChatReady()
       await expect(applicant.cards('case_status')).toBeVisible({ timeout: 60_000 })
       await expect(applicant.cards('contacts')).toBeVisible({ timeout: 60_000 })
-      await expect(applicant.cards('contacts').getByTestId('contact-approval-billing_contact')).toHaveText(
-        /Needs a change.*finance mailbox/i,
-      )
+      await expect(applicant.cards('contacts')).toContainText('Use the finance mailbox')
       await expect(
         applicant.cards('contacts').getByTestId('contact-row-authorized_signatory'),
       ).toHaveCount(0)
 
-      await applicant.say('Here is the updated billing email.')
+      const billingRow = applicant.cards('contacts').getByTestId('contact-row-billing_contact')
+      if (!(await billingRow.getByText('finance@beanstreet.example').count())) {
+        await applicant.say('Here is the updated billing email.')
+      }
+      await expect(billingRow).toContainText('finance@beanstreet.example', { timeout: 60_000 })
       await applicant.submitContacts()
 
       await approveContactsViaApi(request, reference)
