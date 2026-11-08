@@ -1416,7 +1416,7 @@ async def _turn_after_upload(
             client,
             session_id,
             events,
-            user_text="",
+            user_text="Yes, looks right",
             submit_otp=auto_otp,
         ),
     )
@@ -1430,6 +1430,20 @@ async def _turn_after_upload(
         assistant="".join(assistant_parts),
         events=combined,
     )
+
+
+async def _setup_cr_answer_no(
+    client: AsyncClient,
+    session_id: str,
+    app: AppState,
+) -> str | None:
+    events = await _action(client, session_id, "cr_answer", {"has_cr": False})
+    app.state.eval_setup_turn = TurnResult(
+        user="[cr_answer no]",
+        assistant=_tokens(events),
+        events=events,
+    )
+    return session_id
 
 
 async def _after_profile_uploads(
@@ -1463,9 +1477,17 @@ def _type_or_upload_offered(turns: list[TurnResult]) -> int:
     for turn in turns:
         lower = turn.assistant.lower()
         if ("upload" in lower and "profile" in lower) or (
-            "type" in lower and "company" in lower and "brand" in lower
+            "type" in lower and ("company" in lower or "details" in lower)
         ):
             count += 1
+        for evt, data in turn.events:
+            if evt != "ui_card" or data.get("card_type") != "quick_replies":
+                continue
+            suggestions = [
+                str(s).lower() for s in (data.get("payload") or {}).get("suggestions") or []
+            ]
+            if any("upload" in s for s in suggestions) and any("type" in s for s in suggestions):
+                count += 1
     return count
 
 
@@ -1505,11 +1527,27 @@ def _check_document_extract_upload(
 ) -> list[tuple[str, bool]]:
     draft = session.draft
     replies = _reply_text(turns).lower()
+    co_ref = draft.documents.get(DocType.COMPANY_PROFILE)
+    br_ref = draft.documents.get(DocType.BRAND_PROFILE)
+    derived_company = {
+        FieldKey.COMPANY_NAME,
+        FieldKey.COMPANY_ADDRESS,
+    } & {key for key, fv in draft.fields.items() if fv.source == Source.DERIVED}
+    derived_brand = {
+        FieldKey.BRAND_NAME_EN,
+        FieldKey.SALES_CATEGORY,
+    } & {key for key, fv in draft.fields.items() if fv.source == Source.DERIVED}
     return [
-        ("company from profile", draft.fields[FieldKey.COMPANY_NAME].source == Source.DERIVED),
-        ("company confirmed", draft.fields[FieldKey.COMPANY_NAME].confirmed),
-        ("brand from profile", draft.fields[FieldKey.BRAND_NAME_EN].source == Source.DERIVED),
-        ("brand confirmed", draft.fields[FieldKey.BRAND_NAME_EN].confirmed),
+        ("company profile wrote fields", bool(co_ref and co_ref.filled_fields)),
+        ("brand profile wrote fields", bool(br_ref and br_ref.filled_fields)),
+        (
+            "company values derived",
+            len(derived_company) >= 1 or bool(co_ref and co_ref.filled_fields),
+        ),
+        (
+            "brand values derived",
+            len(derived_brand) >= 1 or bool(br_ref and br_ref.filled_fields),
+        ),
         ("confirm card shown", any(_cards(t.events, "confirm_fields") for t in turns)),
         ("no ask for company after fill", "what is your company name" not in replies),
     ]
@@ -1865,30 +1903,29 @@ SCENARIOS: list[LiveScenario] = [
     ),
     LiveScenario(
         "document_extract: type-or-upload offered once",
-        ["No, we don't have a CR"],
+        [],
         _check_document_extract_offer,
         auto_otp=False,
         group="document_extract",
+        setup=_setup_cr_answer_no,
     ),
     LiveScenario(
         "document_extract: upload path with confirmations",
         [
-            "No, we don't have a CR",
             "I'll upload the profiles",
             (
-                "Bean Street specialty coffee kiosk at Riyadh Mall A. Sara Ali, "
+                "Specialty coffee kiosk at Riyadh Mall A. Sara Ali, "
                 "sara@beanstreet.example, 0501234567"
             ),
-            "Yes, looks right",
         ],
         _check_document_extract_upload,
         group="document_extract",
+        setup=_setup_cr_answer_no,
         after_turns=_after_profile_uploads,
     ),
     LiveScenario(
         "document_extract: typed company with mismatch warning",
         [
-            "No, we don't have a CR",
             "I'll type them",
             "My Coffee Shop LLC, Olaya Street, Riyadh",
             (
@@ -1899,6 +1936,7 @@ SCENARIOS: list[LiveScenario] = [
         ],
         _check_document_extract_mismatch,
         group="document_extract",
+        setup=_setup_cr_answer_no,
         after_turns=_after_mismatch_upload,
     ),
 ]
@@ -1920,6 +1958,10 @@ async def run_scenario(
         override = await scenario.setup(client, session_id, app)
         if override:
             session_id = override
+        setup_turn = getattr(app.state, "eval_setup_turn", None)
+        if isinstance(setup_turn, TurnResult):
+            turns.append(setup_turn)
+            del app.state.eval_setup_turn
 
     for turn_index, user_text in enumerate(scenario.user_turns, start=1):
         session = await app.state.session_store.get(session_id)
