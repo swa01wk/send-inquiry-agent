@@ -132,6 +132,9 @@ class DocumentRef(BaseModel):
     on_file: bool = False
     # The document review service's result for this upload (demo feedback §3.3).
     review: DocumentReview | None = None
+    # Draft fields this upload filled (demo feedback §3.7). A replaced or removed file
+    # takes them back (ADR-R4).
+    filled_fields: list[str] = Field(default_factory=list)
 
 
 class Blocker(BaseModel):

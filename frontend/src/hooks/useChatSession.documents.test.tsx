@@ -124,4 +124,40 @@ describe('useChatSession documents_updated', () => {
     })
     expect(stream.streamChat).not.toHaveBeenCalled()
   })
+
+  it('sends documents_updated with the doc type when a profile fills fields', async () => {
+    const { result } = renderHook(() => useChatSession(), { wrapper })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    if (!docCard) throw new Error('fixture')
+
+    // One profile of two: the old rule alone would not start a turn yet.
+    vi.spyOn(client, 'uploadDocument').mockResolvedValue({
+      document: {
+        doc_type: 'company_profile',
+        file_name: 'company_profile_match.pdf',
+        size_bytes: 10,
+      },
+      card: docCard,
+      draft: baseDraft(),
+      fields_filled: ['company_name', 'company_address'],
+      mismatches: [],
+    })
+
+    await act(async () => {
+      await result.current.uploadDocument(
+        'company_profile',
+        new File(['x'], 'company_profile_match.pdf'),
+      )
+    })
+    expect(stream.streamChat).toHaveBeenCalledTimes(1)
+    expect(stream.streamChat).toHaveBeenCalledWith(
+      'sess-1',
+      { type: 'action', action: 'documents_updated', payload: { doc_type: 'company_profile' } },
+      expect.any(Function),
+      expect.any(AbortSignal),
+    )
+  })
 })

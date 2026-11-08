@@ -13,6 +13,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 from app import clock
+from app.domain.document_checks import DocumentMismatch, document_mismatches
 from app.domain.fields import FIELD_BY_KEY, FieldGroup, document_definitions, document_label
 from app.domain.master import MasterData
 from app.domain.models import DocType, FieldKey
@@ -136,6 +137,9 @@ class CaseBrief(BaseModel):
     yardi: dict[str, Any]
     stage_ages: list[StageAge]
     next_decision_checklist: list[str] = Field(default_factory=list)
+    # Typed values the company or brand profile disagrees with (demo feedback §3.7, D12).
+    # Never a blocker: the Lease Admin decides.
+    document_checks: list[DocumentMismatch] = Field(default_factory=list)
 
 
 STAGE_LABELS: dict[str, str] = {
@@ -176,7 +180,11 @@ def _document_items(case: Case, today: date) -> list[str]:
     return items
 
 
-def _checklist(case: Case, today: date | None = None) -> list[str]:
+def _checklist(
+    case: Case,
+    today: date | None = None,
+    document_checks: list[DocumentMismatch] | None = None,
+) -> list[str]:
     today = today or clock.now().date()
     items: list[str] = []
     if case.status == CaseStatus.REUPLOAD_REQUESTED:
@@ -194,6 +202,9 @@ def _checklist(case: Case, today: date | None = None) -> list[str]:
             items.append(f"Not confirmed by the applicant: {', '.join(unconfirmed)}.")
         if case.draft.cr_status == "skipped":
             items.append("CR was skipped: check the company details against the documents.")
+        if document_checks:
+            labels = ", ".join(check.label for check in document_checks)
+            items.append(f"The profiles differ from what was typed: {labels}.")
         document_items = _document_items(case, today)
         items.extend(document_items)
         if not get_policy().document_approval:
@@ -262,6 +273,13 @@ def format_case_brief_text(brief: CaseBrief) -> str:
         conf = "confirmed" if field.confirmed else "unconfirmed"
         evidence = f" (evidence: {field.evidence})" if field.evidence else ""
         lines.append(f"  - {field.label}: {field.display or '—'} [{src}, {conf}]{evidence}")
+    if brief.document_checks:
+        lines.extend(["", "Profile checks:"])
+        for check in brief.document_checks:
+            lines.append(
+                f"  - {check.label}: typed {check.typed!r}, "
+                f"{check.doc_label} says {check.document_value!r}"
+            )
     lines.extend(["", "Verification:"])
     for key, ok in brief.verification.items():
         lines.append(f"  - {key}: {'yes' if ok else 'no'}")
@@ -349,6 +367,7 @@ def build_case_brief(
             )
         )
     today = now.date()
+    document_checks = document_mismatches(draft, master)
     decisions = current_decisions(case)
     history_counts: dict[DocType, int] = {}
     for old_ref in case.document_history:
@@ -451,7 +470,8 @@ def build_case_brief(
         follow_on_of=draft.follow_on_of,
         yardi=case.yardi.model_dump(mode="json"),
         stage_ages=_stage_ages(case, now),
-        next_decision_checklist=_checklist(case, today),
+        next_decision_checklist=_checklist(case, today, document_checks),
+        document_checks=document_checks,
     )
 
 

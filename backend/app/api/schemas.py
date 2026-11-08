@@ -389,6 +389,10 @@ class UploadDocumentResponse(BaseModel):
     document: DocumentResponse
     card: UiCard
     draft: DraftSummary
+    # Demo feedback §3.7: field names only. The frontend starts an agent turn
+    # (`documents_updated {doc_type}`) when either is non-empty.
+    fields_filled: list[str] = Field(default_factory=list)
+    mismatches: list[str] = Field(default_factory=list)
 
 
 class DeleteDocumentResponse(BaseModel):
