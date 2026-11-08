@@ -11,7 +11,6 @@ from langgraph.prebuilt.tool_node import InjectedState, ToolRuntime
 from langgraph.types import Command
 from pydantic import BaseModel
 
-from app.agent.actions import signatory_answer_result
 from app.agent.handoff import start_handoff
 from app.agent.runtime import runtime_from_config
 from app.agent.state import AgentState
@@ -193,6 +192,8 @@ def record_signatory_answer(
     runtime: ToolRuntime,
 ) -> Command[Any]:
     """Record the answer to "Are you the authorised signatory?" (same as the card buttons)."""
+    from app.agent.actions import signatory_answer_result
+
     rt = runtime_from_config(runtime.config)
     session = _session_from_state(state)
     result = signatory_answer_result(session, rt, is_signatory)
