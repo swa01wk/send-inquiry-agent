@@ -63,7 +63,11 @@ async function demoCases(request: APIRequestContext): Promise<DemoCase[]> {
 
 async function newContext(browser: Browser, page: Page): Promise<BrowserContext> {
   const viewport = page.viewportSize()
-  return browser.newContext(viewport ? { viewport } : {})
+  const context = await browser.newContext(viewport ? { viewport } : {})
+  // A click or file chooser never waits longer than this, so a stuck beat fails with a call
+  // log instead of running out the whole test budget.
+  context.setDefaultTimeout(120_000)
+  return context
 }
 
 /** Newest email of `template` with a link that mentions `reference`. */
@@ -162,6 +166,7 @@ test.describe('Demo script — 10 Nov @demo', () => {
     test.skip(DEMO_STACK, 'The Docker demo stack runs the live model; this test is scripted')
     test.setTimeout(demoTestTimeoutMs())
 
+    page.context().setDefaultTimeout(120_000)
     await request.post(`${API}/api/dev/reset`)
     const seeded = await demoCases(request)
 
@@ -465,6 +470,9 @@ test.describe('Demo script — 10 Nov @demo', () => {
               timeout: 30_000,
             })
             await beat(leaseAdminPage)
+          } catch (error) {
+            console.log('[demo] step 10 replies', JSON.stringify(await typed.allReplies(), null, 1))
+            throw error
           } finally {
             await typedContext.close()
           }
