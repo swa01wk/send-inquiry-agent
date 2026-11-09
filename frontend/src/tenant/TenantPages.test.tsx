@@ -108,11 +108,11 @@ describe('Tenant Central (simulated)', () => {
     renderAt('/tenant/opportunities')
     const card = await screen.findByTestId('opportunity-OPP-103')
     await user.click(within(card).getByRole('button', { name: 'Raise inquiry' }))
-    expect(raise).toHaveBeenCalledWith('T-1001', 'OPP-103', 'TB-1')
+    expect(raise).toHaveBeenCalledWith('T-1001', 'OPP-103')
     expect(await screen.findByText('Chat home')).toBeInTheDocument()
   })
 
-  it('lets a tenant with several brands choose one first', async () => {
+  it('has no brand picker: the new brand is asked for in the chat (R4)', async () => {
     const user = userEvent.setup()
     window.sessionStorage.setItem('cenomi.tenantId', 'T-1002')
     const raise = vi.spyOn(api, 'raiseInquiry').mockResolvedValue({
@@ -122,10 +122,10 @@ describe('Tenant Central (simulated)', () => {
       draft: draftEmpty,
     })
     renderAt('/tenant/opportunities')
-    await user.selectOptions(await screen.findByLabelText('For brand'), 'TB-3')
-    const card = screen.getByTestId('opportunity-OPP-101')
+    const card = await screen.findByTestId('opportunity-OPP-101')
+    expect(screen.queryByLabelText('For brand')).not.toBeInTheDocument()
     await user.click(within(card).getByRole('button', { name: 'Raise inquiry' }))
-    expect(raise).toHaveBeenCalledWith('T-1002', 'OPP-101', 'TB-3')
+    expect(raise).toHaveBeenCalledWith('T-1002', 'OPP-101')
   })
 
   it('lists My inquiries with tracking links', async () => {
