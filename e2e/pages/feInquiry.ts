@@ -79,6 +79,7 @@ export class FeInquiryPage {
     if (cardType === 'existing_cr_choice') return this.page.getByTestId('existing-cr-choice-card')
     if (cardType === 'sign_in_prompt') return this.page.getByTestId('sign-in-prompt-card')
     if (cardType === 'cr_question') return this.page.getByTestId('cr-question-card')
+    if (cardType === 'signatory_question') return this.page.getByTestId('signatory-question-card')
     return this.page.locator(`[data-testid="card-slot-"]`)
   }
 
