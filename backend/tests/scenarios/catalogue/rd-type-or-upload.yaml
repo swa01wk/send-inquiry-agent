@@ -1,0 +1,81 @@
+id: rd-type-or-upload
+layers:
+- e2e_script
+# One linear script, one step per model call. A tool-call step and the reply after it are
+# the same turn (tools → agent). Turns, in order (e2e/tests/rd-type-or-upload.spec.ts):
+#   cr_answer no · "I'll upload the profiles" · brand/contact bundle · confirm (unit type) ·
+#   both channels verified · Company Profile filled · confirm · Brand Profile filled ·
+#   confirm (the guard then shows the review card) · submit.
+model_steps:
+# cr_answer no → the type-or-upload offer
+- content: ''
+  tool_calls:
+  - name: suggest_replies
+    args:
+      options:
+      - I'll type them
+      - I'll upload the profiles
+    id: r3u1
+    type: tool_call
+- content: You can type your company and brand details, or upload your Company Profile and Brand Profile and I'll fill them in for you to check.
+# "I'll upload the profiles"
+- content: Great — you'll upload them on the documents card in a moment. Meanwhile, tell me about the space you'd like, and who our leasing team should contact.
+# "Specialty coffee kiosk at Riyadh Mall A, Arabic brand name بين ستريت. Sara Ali, …"
+- content: ''
+  tool_calls:
+  - name: update_draft
+    args:
+      fields:
+      - key: brand_name_ar
+        value: بين ستريت
+        source: user
+      - key: unit_type
+        value: specialty
+        source: derived
+      - key: malls
+        value:
+        - riyadh-mall-a
+        source: user
+      - key: first_name
+        value: Sara
+        source: user
+      - key: last_name
+        value: Ali
+        source: user
+      - key: email
+        value: sara@beanstreet.example
+        source: user
+      - key: contact_number
+        value: '0501234567'
+        source: user
+    id: r3u2
+    type: tool_call
+- content: ''
+  tool_calls:
+  - name: send_verification
+    args:
+      resend: false
+    id: r3u3
+    type: tool_call
+- content: Please check the unit type on the card. I've sent a verification link to your email and a code by SMS.
+# confirm_card (unit type)
+- content: Thanks. Click the link in your email and enter the SMS code on the card.
+# both channels verified
+- content: ''
+  tool_calls:
+  - name: request_documents
+    args: {}
+    id: r3u4
+    type: tool_call
+- content: Upload your Company Profile and Brand Profile on the documents card and I'll fill in the details for you.
+# documents_updated {company_profile}: company name and address filled
+- content: I've filled your company name and address from the Company Profile — please check them on the card.
+# confirm_card (company)
+- content: Thanks. Now the Brand Profile, please.
+# documents_updated {brand_profile}: brand name and category filled
+- content: I've filled your brand name and category from the Brand Profile — please check them on the card.
+# confirm_card (brand) → review card
+- content: Everything is in. Have a look on the review card and accept the terms when you're ready.
+# submitted
+- content: Thank you — your inquiry is with our leasing team. Your reference is on the card.
+title: Re-demo type or upload — profile upload path

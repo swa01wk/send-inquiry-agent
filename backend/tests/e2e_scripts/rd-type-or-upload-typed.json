@@ -1,0 +1,157 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "suggest_replies",
+        "args": {
+          "options": [
+            "I'll type them",
+            "I'll upload the profiles"
+          ]
+        },
+        "id": "r3t1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "You can type your company and brand details, or upload your Company Profile and Brand Profile and I'll fill them in for you to check."
+  },
+  {
+    "content": "What is your registered company name and address?"
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "company_name",
+              "value": "My Coffee Shop LLC",
+              "source": "user"
+            },
+            {
+              "key": "company_address",
+              "value": "Olaya Street, Riyadh",
+              "source": "user"
+            }
+          ]
+        },
+        "id": "r3t2",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Tell me about your brand and the space you'd like, and who our leasing team should contact."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "brand_name_en",
+              "value": "Bean Street",
+              "source": "user"
+            },
+            {
+              "key": "brand_name_ar",
+              "value": "بين ستريت",
+              "source": "user"
+            },
+            {
+              "key": "unit_type",
+              "value": "specialty",
+              "source": "derived"
+            },
+            {
+              "key": "sales_category",
+              "value": "fnb_cafe",
+              "source": "derived"
+            },
+            {
+              "key": "malls",
+              "value": [
+                "riyadh-mall-a"
+              ],
+              "source": "user"
+            },
+            {
+              "key": "first_name",
+              "value": "Sara",
+              "source": "user"
+            },
+            {
+              "key": "last_name",
+              "value": "Ali",
+              "source": "user"
+            },
+            {
+              "key": "email",
+              "value": "sara@beanstreet.example",
+              "source": "user"
+            },
+            {
+              "key": "contact_number",
+              "value": "0501234567",
+              "source": "user"
+            }
+          ]
+        },
+        "id": "r3t3",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "send_verification",
+        "args": {
+          "resend": false
+        },
+        "id": "r3t4",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Please check the unit type and category on the card. I've sent a verification link to your email and a code by SMS."
+  },
+  {
+    "content": "Thanks. Click the link in your email and enter the SMS code on the card."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "request_documents",
+        "args": {},
+        "id": "r3t5",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Upload your Company Profile and Brand Profile on the documents card."
+  },
+  {
+    "content": "Your Company Profile shows a different company name and address from what you typed. I can use the profile's details, or keep yours — either is fine."
+  },
+  {
+    "content": "No problem — we'll keep what you typed, and the leasing team will see the difference. Upload the Brand Profile when you're ready."
+  },
+  {
+    "content": "Both profiles are in. Have a look on the review card and accept the terms when you're ready."
+  },
+  {
+    "content": "Thank you — your inquiry is with our leasing team. Your reference is on the card."
+  }
+]

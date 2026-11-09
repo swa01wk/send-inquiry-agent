@@ -2,11 +2,27 @@ import type { ConfirmFieldsPayload } from '../../types/contracts'
 import { SourceBadge } from '../draft/SourceBadge'
 import shared from './cards.module.css'
 import styles from './ConfirmFieldsCard.module.css'
+import { parseEvidence } from './formatEvidence'
 
 interface ConfirmFieldsCardProps {
   cardId: string
   payload: ConfirmFieldsPayload
   onConfirm: () => void
+}
+
+function EvidenceLine({ evidence }: { evidence: string }) {
+  const parsed = parseEvidence(evidence)
+  if (parsed.kind === 'document') {
+    return (
+      <span className={styles.evidence}>
+        from: {parsed.label}, {parsed.fileName}
+        {parsed.uploadedAt ? (
+          <span className={styles.evidenceTime}> · {parsed.uploadedAt}</span>
+        ) : null}
+      </span>
+    )
+  }
+  return <span className={styles.evidence}>from: &apos;{parsed.text}&apos;</span>
 }
 
 export function ConfirmFieldsCard({ cardId, payload, onConfirm }: ConfirmFieldsCardProps) {
@@ -19,9 +35,7 @@ export function ConfirmFieldsCard({ cardId, payload, onConfirm }: ConfirmFieldsC
         >
           <span className={styles.label}>{field.label}</span>
           <span className={styles.value}>{field.display ?? '—'}</span>
-          {field.evidence ? (
-            <span className={styles.evidence}>from: &apos;{field.evidence}&apos;</span>
-          ) : null}
+          {field.evidence ? <EvidenceLine evidence={field.evidence} /> : null}
           <SourceBadge source={field.source} confirmed={field.confirmed} />
         </div>
       ))}

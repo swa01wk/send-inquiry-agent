@@ -153,6 +153,32 @@ describe('DocumentChecklistCard', () => {
     expect(crInput).toHaveValue('1010123456')
   })
 
+  it('shows a filled-fields note when the upload response filled keys', () => {
+    if (documentUploadCardExample.card_type !== 'document_upload') throw new Error('bad fixture')
+    render(
+      <DocumentChecklistCard
+        payload={{
+          ...documentUploadCardExample.payload,
+          docs: documentUploadCardExample.payload.docs.map((d) =>
+            d.doc_type === 'company_profile'
+              ? { ...d, uploaded: true, file_name: 'company_profile_match.pdf' }
+              : d,
+          ),
+        }}
+        filledFieldsByDocType={{
+          company_profile: ['company_name', 'company_address'],
+        }}
+        onUpload={async () => undefined}
+        onRemove={async () => undefined}
+        onSetNumber={() => undefined}
+      />,
+    )
+    const note = screen.getByTestId('doc-filled-company_profile')
+    expect(note).toHaveTextContent(/Details filled from this document/)
+    expect(note).toHaveTextContent(/Company name/)
+    expect(note).toHaveTextContent(/Address/)
+  })
+
   it('shows On file and Replace for tenant documents on file', async () => {
     const user = userEvent.setup()
     const onUpload = vi.fn().mockResolvedValue(undefined)

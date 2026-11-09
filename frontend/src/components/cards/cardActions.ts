@@ -4,6 +4,7 @@ export interface ChatCardActions {
   uploadDocument: (docType: string, file: File) => Promise<void>
   removeDocument: (docType: string) => Promise<void>
   setDocumentNumber: (key: string, value: string) => void
+  documentFilledFields?: Record<string, string[]>
   mallsConfirmed: boolean
   isActionQueued?: (action: string, payload: Record<string, unknown>) => boolean
 }

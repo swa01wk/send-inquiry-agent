@@ -1,11 +1,13 @@
 import { useRef, useState } from 'react'
 import type { DocumentNumberRow, DocumentUploadPayload } from '../../types/contracts'
 import shared from './cards.module.css'
+import { filledFieldsLine } from './documentFieldLabels'
 import { formatFileSize, validateDocumentFile } from './documentFileCheck'
 import styles from './DocumentChecklistCard.module.css'
 
 interface DocumentChecklistCardProps {
   payload: DocumentUploadPayload
+  filledFieldsByDocType?: Record<string, string[]>
   onUpload: (docType: string, file: File) => Promise<void>
   onRemove: (docType: string) => Promise<void>
   onSetNumber: (key: string, value: string) => void
@@ -33,6 +35,7 @@ function numberForDoc(
 
 export function DocumentChecklistCard({
   payload,
+  filledFieldsByDocType,
   onUpload,
   onRemove,
   onSetNumber,
@@ -118,6 +121,11 @@ export function DocumentChecklistCard({
           : doc.uploaded && doc.file_name
             ? `Uploaded · ${doc.file_name}${doc.size_bytes != null ? ` · ${formatFileSize(doc.size_bytes)}` : ''}`
             : 'Not uploaded'
+        const filledKeys = filledFieldsByDocType?.[doc.doc_type]
+        const filledNote =
+          filledKeys && filledKeys.length > 0
+            ? `Details filled from this document: ${filledFieldsLine(filledKeys)}`
+            : null
         return (
           <div key={doc.doc_type} className={styles.row} data-testid={`doc-row-${doc.doc_type}`}>
             <div className={styles.info}>
@@ -133,6 +141,11 @@ export function DocumentChecklistCard({
               >
                 {statusText}
               </span>
+              {filledNote ? (
+                <span className={styles.filledNote} data-testid={`doc-filled-${doc.doc_type}`}>
+                  {filledNote}
+                </span>
+              ) : null}
               {!isReupload && numberRow ? (
                 <label className={styles.numberField}>
                   <span className={shared.caption}>{numberRow.label}</span>

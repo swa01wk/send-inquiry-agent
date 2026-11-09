@@ -14,6 +14,8 @@ _UUID_RE = re.compile(
 _REFERENCE_RE = re.compile(r"^GEO-(STR|MED|SPC)-(\d{6})$")
 _ISO_TS_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T")
 _FILE_ID_RE = re.compile(r"^[0-9a-f]{32}$")
+# Document evidence (domain/document_fill.document_evidence): "<label>: <file>, uploaded <time>".
+_UPLOADED_AT_RE = re.compile(r"uploaded \d{2} [A-Z][a-z]{2} \d{4} \d{2}:\d{2}")
 
 
 def _is_uuid(value: str) -> bool:
@@ -32,7 +34,7 @@ def _normalise_string(value: str, *, message_ids: dict[str, str]) -> str:
         return "TIMESTAMP"
     if _FILE_ID_RE.match(value):
         return "FILE_ID"
-    return value
+    return _UPLOADED_AT_RE.sub("uploaded UPLOAD_TIME", value)
 
 
 def _walk(node: Any, message_ids: dict[str, str]) -> Any:
