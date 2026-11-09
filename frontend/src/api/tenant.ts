@@ -68,10 +68,10 @@ export async function listOpportunities(tenantId: string): Promise<Opportunity[]
   return (await request('/api/tenant/opportunities', tenantId)).json() as Promise<Opportunity[]>
 }
 
+/** Every inquiry raised from Leasing Opportunities is for a new brand (demo feedback §3.8). */
 export async function raiseInquiry(
   tenantId: string,
   opportunityId: string,
-  brandId?: string,
 ): Promise<CreateSessionResponse> {
   const extraHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
   if (E2E_MODE) {
@@ -85,7 +85,7 @@ export async function raiseInquiry(
     {
       method: 'POST',
       headers: extraHeaders,
-      body: JSON.stringify(brandId ? { brand_id: brandId } : {}),
+      body: JSON.stringify({}),
     },
   )
   return res.json() as Promise<CreateSessionResponse>

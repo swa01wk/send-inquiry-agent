@@ -1,4 +1,5 @@
 {
+  "_about": "Simulated Yardi companies (L4 §3.2). cr_number and address link a company to its Tenant Central record (tenants.json) for the signed-in new-brand path (demo feedback §3.8, R4).",
   "companies": [
     {
       "id": "YC-1001",
@@ -15,7 +16,9 @@
           "name": "Bean Street Express",
           "source": "proposal"
         }
-      ]
+      ],
+      "cr_number": null,
+      "address": null
     },
     {
       "id": "YC-1002",
@@ -27,7 +30,9 @@
           "name": "Bean Street Roasters",
           "source": "proposal"
         }
-      ]
+      ],
+      "cr_number": null,
+      "address": null
     },
     {
       "id": "YC-1003",
@@ -39,7 +44,9 @@
           "name": "Leaf Tea",
           "source": "lease"
         }
-      ]
+      ],
+      "cr_number": null,
+      "address": null
     },
     {
       "id": "YC-1101",
@@ -61,7 +68,9 @@
           "name": "Stradivarius",
           "source": "proposal"
         }
-      ]
+      ],
+      "cr_number": null,
+      "address": null
     },
     {
       "id": "YC-1102",
@@ -73,7 +82,9 @@
           "name": "Lefties",
           "source": "lease"
         }
-      ]
+      ],
+      "cr_number": null,
+      "address": null
     },
     {
       "id": "YC-1201",
@@ -83,6 +94,41 @@
         {
           "id": "YB-2201",
           "name": "Acme Kids",
+          "source": "lease"
+        }
+      ],
+      "cr_number": null,
+      "address": null
+    },
+    {
+      "id": "YC-1301",
+      "name": "Oasis Coffee Company",
+      "active": true,
+      "cr_number": "1010000000",
+      "address": "Prince Sultan Road, Al Rawdah, Jeddah",
+      "brands": [
+        {
+          "id": "YB-2301",
+          "name": "Oasis Coffee",
+          "source": "lease"
+        }
+      ]
+    },
+    {
+      "id": "YC-1302",
+      "name": "Al Noor Retail Group",
+      "active": true,
+      "cr_number": "1010444444",
+      "address": "King Abdulaziz Road, Al Wurud, Riyadh",
+      "brands": [
+        {
+          "id": "YB-2302",
+          "name": "Noor Fashion",
+          "source": "lease"
+        },
+        {
+          "id": "YB-2303",
+          "name": "Noor Beauty",
           "source": "lease"
         }
       ]

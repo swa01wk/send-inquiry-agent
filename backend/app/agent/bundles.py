@@ -147,9 +147,10 @@ def next_bundle_hint(
         ):
             brands_or = " or ".join(tenant_brands)
             lines.append(
-                f"Next question (brand): ask which brand this inquiry is for — {brands_or} — "
-                "or whether it's a new brand. One question. The mall and space type are already "
-                "set from the unit they chose."
+                "Next question (brand): ask what the new brand is — they can type it or upload "
+                "its Brand Profile for you to fill in. One question. If it matches one they "
+                f"already have ({brands_or}), ask once whether it's that brand or a new one. The "
+                "mall and space type are already set from the unit they chose."
             )
         elif asks := _askable(draft, bundle):
             lines.append(

@@ -113,12 +113,33 @@ def match_single_brand_in_message(tenant: Tenant, message: str) -> TenantBrand |
     return next(iter(unique.values()))
 
 
+def prefill_for_new_brand(
+    draft: InquiryDraft,
+    tenant: Tenant,
+    master: MasterData,
+    *,
+    company_name: str,
+    company_address: str,
+) -> tuple[InquiryDraft, list[str]]:
+    """Signed-in tenant raising from Leasing Opportunities (demo feedback §3.8, R4).
+
+    Every inquiry here is a new brand under the same company: company and contact come from
+    Cenomi's records (company name and address from Yardi by CR, the rest from the tenant
+    record) as `verified`, unconfirmed; no brand field is written. `cr_status` is "tenant".
+    """
+    tenant_view = tenant.model_copy(
+        update={"company_name": company_name, "company_address": company_address}
+    )
+    return prefill_from_tenant(draft, tenant_view, master, include_brand=False)
+
+
 def prefill_from_tenant(
     draft: InquiryDraft,
     tenant: Tenant,
     master: MasterData,
     *,
     brand_id: str | None = None,
+    include_brand: bool = True,
 ) -> tuple[InquiryDraft, list[str]]:
     """Returns the draft and the keys written. `cr_status` becomes "tenant"."""
     entries: list[tuple[str, object, Source]] = [
@@ -140,7 +161,7 @@ def prefill_from_tenant(
         entries.append((WriteKey.CONTACT_NUMBER.value, contact.mobile, Source.VERIFIED))
     updated, written, _errors = draft_ops.write_fields(draft, entries, master=master)
     updated.cr_status = "tenant"
-    brand = tenant.brand(brand_id)
+    brand = tenant.brand(brand_id) if include_brand else None
     if brand is not None:
         updated, brand_written = prefill_brand(updated, tenant, master, brand.id)
         written = [*written, *brand_written]

@@ -2,7 +2,9 @@
 
 Company search by the first word of the company name, active companies only
 (requirements §7.1.1 c); brands from that company's previous leases and proposals;
-`send_lead` returns a lead reference and is idempotent on its key.
+`send_lead` returns a lead reference and is idempotent on its key. `company_by_cr` finds the
+active company registered under a CR number (demo feedback §3.8, R4): a signed-in tenant's
+company details come from it.
 """
 
 from __future__ import annotations
@@ -15,6 +17,7 @@ from typing import Any, Protocol
 
 from pydantic import BaseModel
 
+from app.domain.validation import normalise_digits
 from app.persistence import JsonFile, data_path
 
 YARDI_PATH = Path(__file__).resolve().parent.parent / "data" / "mock_world" / "yardi.json"
@@ -31,12 +34,16 @@ class YardiCompany(BaseModel):
     name: str
     active: bool
     brands: list[YardiBrand]
+    cr_number: str | None = None
+    address: str | None = None
 
 
 class YardiService(Protocol):
     def search_companies(self, name: str) -> list[YardiCompany]: ...
 
     def brands_for_company(self, company_id: str) -> list[YardiBrand]: ...
+
+    def company_by_cr(self, cr_number: str) -> YardiCompany | None: ...
 
     def send_lead(self, payload: dict[str, Any], *, idempotency_key: str) -> str: ...
 
@@ -66,6 +73,15 @@ class MockYardiService:
     def brands_for_company(self, company_id: str) -> list[YardiBrand]:
         company = self.company(company_id)
         return list(company.brands) if company else []
+
+    def company_by_cr(self, cr_number: str) -> YardiCompany | None:
+        wanted = normalise_digits(cr_number).strip()
+        if not wanted:
+            return None
+        return next(
+            (c for c in self._companies if c.active and c.cr_number == wanted),
+            None,
+        )
 
     def send_lead(self, payload: dict[str, Any], *, idempotency_key: str) -> str:
         with self._lock:

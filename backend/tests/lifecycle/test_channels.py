@@ -13,6 +13,7 @@ from app.agent.channels import restamp_staff
 from app.agent.graph import build_assisted_graph, build_graph
 from app.agent.model import ScriptedChatModel
 from app.agent.tools import ASSISTED_TOOLS
+from app.domain.draft_ops import write_fields
 from app.domain.master import load_master_data
 from app.domain.models import FieldKey, Source, new_inquiry_draft
 from app.domain.rules import can_submit
@@ -28,12 +29,19 @@ from tests.lifecycle.conftest import (
     outbox,
     token_from,
 )
-from tests.scenarios.helpers import chat_action, chat_message, ready_to_submit_draft, ui_cards
+from tests.scenarios.helpers import (
+    chat_action,
+    chat_message,
+    ready_to_submit_draft,
+    ui_cards,
+    upload_document,
+)
 
 STAFF = "customer-care-1"
 GUEST_SERVICE = "guest-service-1"
 OASIS = "T-1001"  # one brand, CR 1010000000
 AL_NOOR = "T-1002"  # two brands, CR 1010444444
+PDF = b"%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"
 
 
 @asynccontextmanager
@@ -291,7 +299,7 @@ async def test_application_link_e2e_script_on_applicant_session(life) -> None:
     assert applicant.test_scenario == "a2-applicant"
 
 
-async def test_existing_tenant_e2e_script_shows_review_after_proceed(life) -> None:
+async def test_existing_tenant_e2e_script_asks_for_the_new_brand_after_proceed(life) -> None:
     client, app = life
     raised = await client.post(
         "/api/tenant/opportunities/OPP-103/inquiry",
@@ -302,8 +310,10 @@ async def test_existing_tenant_e2e_script_shows_review_after_proceed(life) -> No
     session_id = raised.json()["session_id"]
     session = await app.state.session_store.get(session_id)
     assert session.test_scenario == "a1-existing-tenant"
+    # R4: no review yet — the new brand and both profiles come first
+    # (tests/lifecycle/test_signed_in_new_brand.py walks the whole script).
     events = await chat_action(client, session_id, "proceed_basic_info")
-    assert ui_cards(events, "review")
+    assert not ui_cards(events, "review")
 
 
 async def test_link_needs_the_basic_info(life) -> None:
@@ -451,34 +461,45 @@ async def test_raise_inquiry_prefills_verifies_and_preselects(life) -> None:
         220,
     )
     assert draft.email_verified and draft.mobile_verified  # signed in
-    assert {"company_profile", "brand_profile"} <= {d.value for d in draft.documents}
+    # R4: a new brand, so both profiles are uploaded afresh; the other documents on file stay.
+    on_file = {d.value for d in draft.documents}
+    assert on_file == {"cr_certificate", "vat_certificate"}
 
 
-async def test_several_brands_asks_which_one(life) -> None:
+async def test_raise_inquiry_asks_for_the_new_brand(life) -> None:
+    """R4 (demo feedback §3.8): every inquiry from Leasing Opportunities is a new brand. No
+    brand is prefilled, even for a one-brand account or with a `brand_id` (ignored)."""
     client, app = life
-    raised = (
-        await client.post(
-            "/api/tenant/opportunities/OPP-101/inquiry", json={}, headers=tenant(AL_NOOR)
+    for who, body in ((OASIS, {}), (AL_NOOR, {}), (AL_NOOR, {"brand_id": "TB-3"})):
+        raised = await client.post(
+            "/api/tenant/opportunities/OPP-101/inquiry", json=body, headers=tenant(who)
         )
-    ).json()
-    assert "Which brand is this for" in raised["messages"][0]["text"]
-    session = await app.state.session_store.get(raised["session_id"])
-    assert session.draft.fields[FieldKey.BRAND_NAME_EN].value is None
-    chosen = (
-        await client.post(
-            "/api/tenant/opportunities/OPP-101/inquiry",
-            json={"brand_id": "TB-3"},
-            headers=tenant(AL_NOOR),
-        )
-    ).json()
-    picked = await app.state.session_store.get(chosen["session_id"])
-    assert picked.draft.fields[FieldKey.BRAND_NAME_EN].value == "Noor Beauty"
-    bad = await client.post(
-        "/api/tenant/opportunities/OPP-101/inquiry",
-        json={"brand_id": "TB-1"},
-        headers=tenant(AL_NOOR),
+        assert raised.status_code == 200, raised.text
+        assert "new brand" in raised.json()["messages"][0]["text"]
+        session = await app.state.session_store.get(raised.json()["session_id"])
+        for key in (FieldKey.BRAND_NAME_EN, FieldKey.BRAND_NAME_AR, FieldKey.SALES_CATEGORY):
+            assert session.draft.fields[key].value is None
+
+
+async def _new_brand_ready(client: AsyncClient, app: Any, session_id: str) -> None:
+    """The tenant gives the new brand and uploads both profiles (file names the mock review
+    service has no fields for)."""
+    store = app.state.session_store
+    session = await store.get(session_id)
+    session.draft, _written, errors = write_fields(
+        session.draft,
+        [
+            (FieldKey.BRAND_NAME_EN.value, "Oasis Bakehouse", Source.USER),
+            (FieldKey.BRAND_NAME_AR.value, "مخبز الواحة", Source.USER),
+            (FieldKey.SALES_CATEGORY.value, "fnb_cafe", Source.USER),
+        ],
+        master=load_master_data(),
     )
-    assert bad.status_code == 400
+    assert not errors
+    await store.save(session)
+    for doc_type in ("company_profile", "brand_profile"):
+        uploaded = await upload_document(client, session_id, doc_type, f"{doc_type}.pdf", PDF)
+        assert uploaded["status_code"] == 200, uploaded
 
 
 async def test_existing_tenant_submits_and_gets_contacts_prefilled(life) -> None:
@@ -490,6 +511,7 @@ async def test_existing_tenant_submits_and_gets_contacts_prefilled(life) -> None
     ).json()
     session_id = raised["session_id"]
     await chat_action(client, session_id, "proceed_basic_info")
+    await _new_brand_ready(client, app, session_id)
     events = await chat_action(client, session_id, "accept_and_submit", {"terms_accepted": True})
     success = ui_cards(events, "success")
     assert success, events

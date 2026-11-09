@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, Header, Query, Request
 from pydantic import BaseModel
 
 from app.agent.actions import tracking_url
-from app.agent.channels import attach_documents_on_file
+from app.agent.channels import NEW_BRAND_UPLOADS, attach_documents_on_file
 from app.agent.e2e_scripts import resolve_e2e_scenario
 from app.agent.runtime import AgentRuntime
 from app.api.channel_cards import build_basic_info_card
@@ -27,7 +27,7 @@ from app.domain.case_brief import STAGE_LABELS
 from app.domain.master import MasterData
 from app.domain.models import FieldKey, Source
 from app.domain.summary import build_draft_summary
-from app.domain.tenant_prefill import prefill_from_tenant
+from app.domain.tenant_prefill import prefill_for_new_brand
 from app.policy.config import get_policy
 from app.services.container import ServiceContainer
 from app.services.tenants import Tenant
@@ -151,13 +151,15 @@ async def raise_inquiry(
     master: MasterData = Depends(get_master_data),
     settings: Settings = Depends(get_settings_dep),
 ) -> CreateSessionResponse:
-    """Existing-tenant mode: prefilled from the tenant record, the property already chosen,
-    verified by the sign-in, documents on file attached (intake channels §3.5)."""
+    """Existing-tenant mode (intake channels §3.5), as changed by demo feedback §3.8 (R4):
+    every inquiry is a new brand under the same company. Company name and address come from
+    Yardi by CR (the tenant record if Yardi has no match), the contact from the tenant
+    record, all `verified` and unconfirmed; no brand is prefilled (`brand_id` is accepted and
+    ignored); the property is the chosen unit; verified by the sign-in; documents on file are
+    attached except the Company and Brand Profiles, which are uploaded afresh."""
     opportunity = services.opportunities.get(opportunity_id)
     if opportunity is None:
         raise ApiError(404, "opportunity_not_found", "That opportunity isn't listed any more.")
-    if body.brand_id is not None and tenant.brand(body.brand_id) is None:
-        raise ApiError(400, "unknown_brand", "That brand isn't on your account.")
     session = await store.create(
         channel="existing_tenant", created_by=tenant.id, tenant_id=tenant.id
     )
@@ -166,7 +168,18 @@ async def raise_inquiry(
         if resolved:
             session.test_scenario = resolved
             session.script_step = 0
-    draft, written = prefill_from_tenant(session.draft, tenant, master, brand_id=body.brand_id)
+    yardi_company = services.yardi.company_by_cr(tenant.cr_number)
+    draft, written = prefill_for_new_brand(
+        session.draft,
+        tenant,
+        master,
+        company_name=yardi_company.name if yardi_company else tenant.company_name,
+        company_address=(
+            yardi_company.address
+            if yardi_company and yardi_company.address
+            else tenant.company_address
+        ),
+    )
     draft, chosen, _errors = draft_ops.write_fields(
         draft,
         [
@@ -189,7 +202,9 @@ async def raise_inquiry(
                 actor="system",
                 payload={"channel": channel, "result": "signed_in"},
             )
-    draft, documents = attach_documents_on_file(runtime, session.id, draft, tenant)
+    draft, documents = attach_documents_on_file(
+        runtime, session.id, draft, tenant, skip=NEW_BRAND_UPLOADS
+    )
     session.draft = draft
     services.audit.record(
         session.id, "inquiry_created", actor="user", payload={"channel": "existing_tenant"}
@@ -203,21 +218,22 @@ async def raise_inquiry(
             "channel": "existing_tenant",
             "keys": [*written, *chosen],
             "documents": documents,
+            "company_source": "yardi" if yardi_company else "tenant_record",
+            "yardi_company_id": yardi_company.id if yardi_company else None,
         },
     )
 
     mall = master.label_for("malls", opportunity.mall) or opportunity.mall
+    company = draft.fields[FieldKey.COMPANY_NAME].value
     greeting = (
-        f"Welcome back, {tenant.primary_contact.first_name}. I've filled in "
-        f"{tenant.company_name}'s details from your Tenant Central account for {mall} "
-        f"(unit {opportunity.unit_ref}). Please check them and press Proceed."
+        f"Welcome back, {tenant.primary_contact.first_name}. I've filled in {company}'s "
+        f"details from your Cenomi record for {mall} (unit {opportunity.unit_ref}). "
+        "Please check them on the card and press Proceed. Then tell me about the new brand: "
+        "type its name, or upload its Brand Profile and I'll fill it in."
     )
-    if tenant.brand(body.brand_id) is None:
-        names = " or ".join(b.name_en for b in tenant.brands)
-        greeting += f" Which brand is this for — {names}? Or tell me if it's a new one."
     message = AssistantMessage(id="tenant-1", text=greeting)
     card = build_basic_info_card(
-        draft, master, started_by="your Tenant Central account", message_id=message.id
+        draft, master, started_by="your Cenomi record", message_id=message.id, new_brand=True
     )
     session.add_message(message.id, "assistant", message.text)
     session.remember_card(card.model_dump())

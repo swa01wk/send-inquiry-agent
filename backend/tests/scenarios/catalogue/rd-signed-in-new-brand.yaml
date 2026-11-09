@@ -1,0 +1,51 @@
+id: rd-signed-in-new-brand
+layers:
+- e2e_script
+# R4 (demo feedback §3.8, D13). Oasis (signed in) raises on OPP-101. Turns: proceed_basic_info
+# (company from Yardi confirmed) · "I'll upload the Brand Profile" · Brand Profile fills the
+# new brand (documents_updated brand_profile) · confirm_card · Arabic brand name · Company
+# Profile disagrees with the Cenomi record (documents_updated company_profile; guard shows the
+# review card) · "Keep the record's name" · submit.
+model_steps:
+# proceed_basic_info
+- content: ''
+  tool_calls:
+  - name: suggest_replies
+    args:
+      options:
+      - I'll type it
+      - I'll upload the Brand Profile
+    id: r4n1
+    type: tool_call
+- content: Thanks, Layla. What's the new brand? Type its name, or upload its Brand Profile and I'll fill it in for you to check.
+# "I'll upload the Brand Profile"
+- content: ''
+  tool_calls:
+  - name: request_documents
+    args: {}
+    id: r4n2
+    type: tool_call
+- content: A new brand needs both the Company Profile and the Brand Profile, even if you've sent them before. Upload them on the documents card.
+# documents_updated {brand_profile}: brand_name_en, sales_category filled
+- content: I've filled the brand name and category from your Brand Profile. Please check them on the card.
+# confirm_card
+- content: Thanks. What's the brand name in Arabic?
+# "مخبز الواحة"
+- content: ''
+  tool_calls:
+  - name: update_draft
+    args:
+      fields:
+      - key: brand_name_ar
+        value: مخبز الواحة
+        source: user
+    id: r4n3
+    type: tool_call
+- content: Saved. Now upload the Company Profile on the documents card.
+# documents_updated {company_profile}: document_mismatch company_name source=cenomi_record
+- content: Your Company Profile shows a different company name from your Cenomi record. You can keep the record's name or tell me the right one.
+# "Keep the record's name"
+- content: Done, we'll keep your record's name, and the leasing team will see the difference. Check the review card and submit when you're ready.
+# accept_and_submit
+- content: Thanks, Layla. Your inquiry for Oasis Bakehouse is with the leasing team.
+title: Re-demo signed-in tenant, new brand (upload path)

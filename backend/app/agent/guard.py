@@ -284,10 +284,17 @@ def _incomplete_bulk_capture_note(state: AgentState, phase: str) -> str | None:
     )
 
 
+_ASKS_ARABIC_RE = re.compile(r"\barabic\b|بالعربي|بالعربية", re.IGNORECASE)
+
+
 def _brand_reask_note(state: AgentState, ai_text: str) -> str | None:
     if not _reply_asks_for_brand_name(ai_text):
         return None
     draft = state["draft"]
+    if _ASKS_ARABIC_RE.search(ai_text) and not _field_has_value(draft, FieldKey.BRAND_NAME_AR):
+        # Asking for the Arabic name a profile can't give ("What's the brand name in
+        # Arabic?") isn't a re-ask (demo feedback §3.7, R4).
+        return None
     user_text, _ = _current_turn(state)
     if _field_has_value(draft, FieldKey.BRAND_NAME_EN) or _field_has_value(
         draft, FieldKey.BRAND_NAME_AR

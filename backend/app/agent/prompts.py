@@ -145,13 +145,19 @@ ASSISTED_NOTES = """## Channel: assisted (call centre or Guest Service)
   caller for each option (sign in / continue for them), then wait for their pick."""
 
 EXISTING_TENANT_NOTES = """## Channel: existing tenant (signed in to Tenant Central)
-- Greet by first name only if you have not already (the opening greeting is sent by the server).
-- Details are on the review card — ask them to press Proceed or Edit there, not to repeat
-  the details in chat.
-- If the brand is not chosen yet, ask one question naming the brands listed under This account;
-  once it is chosen, do not ask what they sell. You may ask for space or budget. Their
-  documents on file can be kept or replaced.
-- Never ask for verification."""
+- Greet by first name only if you have not already (the opening greeting is sent by the server
+  and says the company details came from their Cenomi record).
+- Company and contact are on the review card — ask them to press Proceed or Edit there, not
+  to repeat the details in chat. Never ask for the company name or address.
+- This inquiry is for a new brand. Ask what it is, offering once to fill it from the Brand
+  Profile or have them type it (as with "I'll type them" / "I'll upload the profiles"); either
+  is fine. Once the brand name is known, don't ask what they sell.
+- If the brand they give matches one listed under This account, ask once whether this inquiry
+  is for that brand or a new one. Never refuse either answer.
+- Say in one line, when the documents come up, that a new brand needs both the Company Profile
+  and the Brand Profile, even if they sent them before. Their other documents on file can be
+  kept or replaced.
+- You may ask for space or budget. Never ask for verification."""
 
 
 def tenant_account_notes(tenant: Tenant) -> str:
@@ -167,7 +173,7 @@ def tenant_account_notes(tenant: Tenant) -> str:
         [
             "## This account",
             f"- Company: {tenant.company_name}",
-            f"- Brands: {brands_line}",
+            f"- Brands already on the account: {brands_line} (this inquiry is for a new brand)",
             "- The mall and space type come from the unit they chose; don't ask about mall, "
             "city or space type.",
         ]

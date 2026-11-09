@@ -61,7 +61,9 @@ ALLOWED_KEYS: dict[str, frozenset[str]] = {
     "inquiry_redirected": frozenset({"reason", "channel"}),
     # Demo feedback §3.5: "Are you the authorised signatory?" answered (yes | no).
     "signatory_answered": frozenset({"answer"}),
-    "tenant_prefill": frozenset({"tenant_id", "channel", "keys", "documents"}),
+    "tenant_prefill": frozenset(
+        {"tenant_id", "channel", "keys", "documents", "company_source", "yardi_company_id"}
+    ),
     # Proactive work (L5): what fired, and every decision on it.
     "proactive_raised": frozenset({"item_id", "trigger", "tier", "stage", "hours"}),
     "proactive_decision": frozenset({"item_id", "trigger", "decision", "reason", "by"}),

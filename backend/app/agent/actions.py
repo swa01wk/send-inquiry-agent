@@ -499,7 +499,11 @@ def document_review_notes(
             f"[ui_event] document_fields {doc_type.value} filled={','.join(ref.filled_fields)}"
         )
     for mismatch in document_mismatches(session.draft, runtime.master, doc_type=doc_type):
-        notes.append(f"[ui_event] document_mismatch {mismatch.field}")
+        # R4: a signed-in tenant's company comes from Cenomi's record (Yardi), not from what
+        # they typed, so the agent names the record instead.
+        field = session.draft.fields[FieldKey(mismatch.field)]
+        source = " source=cenomi_record" if field.source == Source.VERIFIED else ""
+        notes.append(f"[ui_event] document_mismatch {mismatch.field}{source}")
     return notes
 
 
@@ -1226,7 +1230,10 @@ async def _proceed_basic_info(
     """The applicant accepts the basic info as shown: every staff, verified or derived
     value on the card is confirmed in one step (intake channels §3.3)."""
     del payload
-    card = build_basic_info_card(session.draft, runtime.master, started_by=None)
+    new_brand = session.channel == "existing_tenant"  # R4: the brand is asked for in chat
+    card = build_basic_info_card(
+        session.draft, runtime.master, started_by=None, new_brand=new_brand
+    )
     if not card.payload["can_proceed"]:
         missing = ", ".join(card.payload["missing"])
         return ActionResult(
@@ -1234,11 +1241,15 @@ async def _proceed_basic_info(
             events=[_card_event(session, card)],
         )
     previous = session.cards.get(BASIC_INFO_CARD_ID, {}).get("payload", {})
-    draft, keys = confirm_basic_info(session.draft)
+    draft, keys = confirm_basic_info(session.draft, new_brand=new_brand)
     session.draft = draft
     _audit(runtime, session, "field_confirmed", keys=keys, via="basic_info_review")
     card = build_basic_info_card(
-        draft, runtime.master, started_by=previous.get("started_by"), proceeded=True
+        draft,
+        runtime.master,
+        started_by=previous.get("started_by"),
+        proceeded=True,
+        new_brand=new_brand,
     )
     return ActionResult(
         note=HumanMessage(content=f"[ui_event] basic_info_confirmed {' '.join(keys)}".strip()),

@@ -148,3 +148,20 @@ def test_incomplete_bulk_skips_the_brand_when_the_profiles_are_coming() -> None:
     # Demo feedback §3.7, live eval 9 Nov: the guard made the model invent a brand.
     state = _kiosk_bundle_state([HumanMessage(content="I'll upload the profiles")])
     assert _incomplete_bulk_capture_note(state, "collecting") is None
+
+
+def test_brand_reask_note_not_when_asking_for_the_missing_arabic_name() -> None:
+    """R4: after the Brand Profile fills the English name, asking for the Arabic one is fine;
+    asking again once it's known is still a re-ask."""
+    master = load_master_data()
+    draft, _, _ = write_fields(
+        new_inquiry_draft(),
+        [(FieldKey.BRAND_NAME_EN.value, "Oasis Bakehouse", Source.DERIVED)],
+        master=master,
+    )
+    state = _state(draft, [])
+    assert _brand_reask_note(state, "Thanks. What's the brand name in Arabic?") is None
+    draft, _, _ = write_fields(
+        draft, [(FieldKey.BRAND_NAME_AR.value, "مخبز الواحة", Source.USER)], master=master
+    )
+    assert _brand_reask_note(_state(draft, []), "What's the brand name in Arabic?") is not None

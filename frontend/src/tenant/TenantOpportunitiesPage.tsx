@@ -1,22 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  listOpportunities,
-  raiseInquiry,
-  type Opportunity,
-  type TenantSummary,
-} from '../api/tenant'
+import { listOpportunities, raiseInquiry, type Opportunity } from '../api/tenant'
 import { TenantLayout } from './TenantLayout'
 import { useTenantId } from './tenantSession'
 import styles from './tenant.module.css'
 
-function OpportunityList({ tenant }: { tenant: TenantSummary }) {
+function OpportunityList() {
   const [tenantId] = useTenantId()
   const navigate = useNavigate()
   const [items, setItems] = useState<Opportunity[] | null>(null)
   const [city, setCity] = useState('')
   const [unitType, setUnitType] = useState('')
-  const [brandId, setBrandId] = useState(tenant.brands.length === 1 ? tenant.brands[0].id : '')
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -52,7 +46,9 @@ function OpportunityList({ tenant }: { tenant: TenantSummary }) {
     setBusy(opportunity.id)
     setError(null)
     try {
-      const session = await raiseInquiry(tenantId, opportunity.id, brandId || undefined)
+      // Every inquiry raised here is for a new brand (demo feedback §3.8): the assistant
+      // asks for it in the chat.
+      const session = await raiseInquiry(tenantId, opportunity.id)
       navigate('/', { state: { resumed: session } })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not start the inquiry.')
@@ -95,26 +91,6 @@ function OpportunityList({ tenant }: { tenant: TenantSummary }) {
             </option>
           ))}
         </select>
-        {tenant.brands.length > 1 ? (
-          <>
-            <label className={styles.label} htmlFor="filter-brand">
-              For brand
-            </label>
-            <select
-              id="filter-brand"
-              className={styles.select}
-              value={brandId}
-              onChange={(e) => setBrandId(e.target.value)}
-            >
-              <option value="">Choose in the chat</option>
-              {tenant.brands.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
-          </>
-        ) : null}
       </div>
       {error ? (
         <p className={styles.error} role="alert">
@@ -154,9 +130,5 @@ function OpportunityList({ tenant }: { tenant: TenantSummary }) {
 
 /** `/tenant/opportunities`: Raise inquiry opens the chat in existing-tenant mode (§3.5). */
 export function TenantOpportunitiesPage() {
-  return (
-    <TenantLayout title="Leasing Opportunities">
-      {(tenant) => <OpportunityList tenant={tenant} />}
-    </TenantLayout>
-  )
+  return <TenantLayout title="Leasing Opportunities">{() => <OpportunityList />}</TenantLayout>
 }

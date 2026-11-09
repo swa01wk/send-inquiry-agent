@@ -1,0 +1,72 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "suggest_replies",
+        "args": {
+          "options": [
+            "I'll type it",
+            "I'll upload the Brand Profile"
+          ]
+        },
+        "id": "r4n1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Thanks, Layla. What's the new brand? Type its name, or upload its Brand Profile and I'll fill it in for you to check."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "request_documents",
+        "args": {},
+        "id": "r4n2",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "A new brand needs both the Company Profile and the Brand Profile, even if you've sent them before. Upload them on the documents card."
+  },
+  {
+    "content": "I've filled the brand name and category from your Brand Profile. Please check them on the card."
+  },
+  {
+    "content": "Thanks. What's the brand name in Arabic?"
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "brand_name_ar",
+              "value": "مخبز الواحة",
+              "source": "user"
+            }
+          ]
+        },
+        "id": "r4n3",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Saved. Now upload the Company Profile on the documents card."
+  },
+  {
+    "content": "Your Company Profile shows a different company name from your Cenomi record. You can keep the record's name or tell me the right one."
+  },
+  {
+    "content": "Done, we'll keep your record's name, and the leasing team will see the difference. Check the review card and submit when you're ready."
+  },
+  {
+    "content": "Thanks, Layla. Your inquiry for Oasis Bakehouse is with the leasing team."
+  }
+]
