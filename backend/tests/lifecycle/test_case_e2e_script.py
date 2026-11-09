@@ -66,3 +66,27 @@ async def test_case_chat_replays_t2_script_after_resubmit(life) -> None:
     assert "thanks, your documents are back with the leasing team for first review." in tokens
     session = await app.state.session_store.get(session_id)
     assert session.script_step == 1
+
+
+async def test_reopening_with_another_script_starts_it(life) -> None:
+    """Day R5: the rehearsal opens the same case chat for the re-upload (t2-reupload), then
+    for the contacts (rd-contact-approval); the second link starts the second script."""
+    client, app = life
+    _reference, token = await _open_reupload_case(client, app)
+    first = await client.post("/api/cases/open", json={"token": token}, headers=T2_SCENARIO_HEADER)
+    session_id = first.json()["session_id"]
+    store = app.state.session_store
+    session = await store.get(session_id)
+    session.script_step = 3
+    await store.save(session)
+
+    same = await client.post("/api/cases/open", json={"token": token}, headers=T2_SCENARIO_HEADER)
+    assert same.json()["session_id"] == session_id
+    assert (await store.get(session_id)).script_step == 3  # same script: carries on
+
+    other = await client.post(
+        "/api/cases/open", json={"token": token}, headers={"X-Test-Scenario": "rd-contact-approval"}
+    )
+    assert other.json()["session_id"] == session_id
+    session = await store.get(session_id)
+    assert (session.test_scenario, session.script_step) == ("rd-contact-approval", 0)

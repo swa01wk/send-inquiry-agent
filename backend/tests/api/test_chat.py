@@ -265,3 +265,46 @@ async def test_select_two_malls_rejected(client: AsyncClient, app) -> None:
         },
     )
     assert session.draft.fields[FieldKey.MALLS].value is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"type": "message", "text": "hello"},
+        # A card action (with no mobile on file it runs an agent turn too).
+        {"type": "action", "action": "resend_otp", "payload": {}},
+    ],
+)
+async def test_done_follows_save_and_lease_release(
+    client: AsyncClient, app, monkeypatch, body
+) -> None:
+    """Day R5: the client sends its next action as soon as it sees `done`. If the turn lease
+    is still held then, that request gets 409 and the chat stays disabled (seen on Postgres),
+    so `done` is sent only after the session is saved and the lease released."""
+    import app.api.chat as chat_api
+
+    store = app.state.session_store
+    session = await store.create()
+    order: list[str] = []
+
+    real_end_turn = store.end_turn
+    real_sse = chat_api._sse
+
+    async def end_turn(session_id: str, lease_id: str) -> None:
+        order.append("end_turn")
+        await real_end_turn(session_id, lease_id)
+
+    def sse(event):  # type: ignore[no-untyped-def]
+        order.append(str(event["event"]))
+        return real_sse(event)
+
+    monkeypatch.setattr(store, "end_turn", end_turn)
+    monkeypatch.setattr(chat_api, "_sse", sse)
+
+    events = await _chat(client, session.id, body)
+    assert events[-1][0] == "done"
+    assert "end_turn" in order and order.index("end_turn") < order.index("done")
+    # The lease is free: the next turn can start at once.
+    lease_id = await store.begin_turn(session.id)
+    await store.end_turn(session.id, lease_id)

@@ -1,6 +1,6 @@
 # Demo script — Send Inquiry Agent
 
-Rehearse: `make e2e-demo` (or `make e2e-demo-headed` / `make e2e-demo-step` to watch or step through). Desktop only; not part of `make e2e-int`.
+Rehearse: `make e2e-demo` (or `make e2e-demo-headed` / `make e2e-demo-step` to watch or step through). Desktop only; not part of `make e2e-int`. The restart beat runs against the Docker stack on Postgres: `make demo` in one terminal, then `make e2e-demo-stack`.
 
 Use with `make demo` (SMS code **1234**; the email link is a demo button). The **self-service happy path** below is ~5 minutes. The **§A3 walkthrough** and **§A4 L3–L5 beats** need mock integrations, the reviewer console, and (for restart) `DATA_DIR` — see [Setup for lifecycle demos](#setup-for-lifecycle-demos).
 
@@ -64,7 +64,7 @@ Use **Restart** in the chat header (demo builds, `VITE_DEMO=1`) to reset the app
 
 Line-by-line requirements live in [workflows-7-1.md](specs/workflows-7-1.md). Rehearse in this order for the Mon 2 Nov demo check.
 
-**Automated (`make e2e-demo`):** `e2e/tests/demo.spec.ts` runs the steps below in one pass (after `POST /api/dev/reset`): `/dev` persona links → self-service (`s1-happy-path`) → call centre (**Sami Al Anazi**) → Guest Service (**Dana Al Rashid**) → existing CR (**both** choices) → Tenant Central + **My inquiries** → public-page sign-in → approvals to Yardi (existing-tenant path with prefilled contacts, **Remove**, reviewer assistant **Use**, no Azure invite for Layla) → L5 clock beats → **Reset demo** cleanup check. L3 stories **S2**, **S3**, and **S13** stay in `make e2e-int`, not in `@demo`.
+**Automated (`make e2e-demo`):** `e2e/tests/demo.spec.ts` ("Demo script — 10 Nov") runs the 10 Nov beats in one pass after `POST /api/dev/reset`, which reseeds Cases A, B and C: `/dev` personas and demo cases → turn by turn, CR? **No** → "I'll upload the profiles" → details from the profiles confirmed → email link and OTP → submit → Lease Admin opens the case from **Inquiry for approval**, approves the Company Profile, rejects the Brand Profile, **Request re-upload** → applicant re-uploads from the case link → Lease Admin approves it and the first level → applicant: **Yes, I'm the authorised signatory** and a billing contact → Lease Admin rejects billing, applicant fixes it, Lease Admin approves → RLM **Approve** → **Approved and sent to Yardi** → tracking page → typed company with a mismatching profile (warning, flag in the brief) → CR? **Yes** → sign in → **Leasing Opportunities** (the signed-in new-brand flow, R4, is shown as designed) → seeded Case A expiry chips and profile check → **Reset demo** reseeds. The scripted run skips the restart beat (Playwright owns that backend); `make e2e-demo-stack` runs it on the Docker stack: Case B's billing contact approved, `docker compose restart backend`, reload, nothing lost, RLM approves to Yardi. The earlier walkthrough beats (call centre, Guest Service, existing CR, Tenant Central, L5) stay covered by their own stories in `make e2e-int`.
 
 | Workflow | Demo path | When |
 | --- | --- | --- |

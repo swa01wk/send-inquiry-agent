@@ -2,6 +2,8 @@ import { defineConfig, devices } from '@playwright/test'
 
 const baseURL = process.env.E2E_BASE_URL ?? 'http://localhost:5173'
 const slowMo = Number(process.env.E2E_SLOW_MO ?? 0)
+// `make e2e-demo-stack`: run against the Docker demo stack (`make demo`) instead of starting one.
+const demoStack = process.env.E2E_DEMO_STACK === '1'
 
 export default defineConfig({
   testDir: './tests',
@@ -25,7 +27,10 @@ export default defineConfig({
     ...(slowMo > 0 ? { launchOptions: { slowMo } } : {}),
   },
   projects: [
-    { name: 'desktop-chrome', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } },
+    {
+      name: 'desktop-chrome',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
+    },
     { name: 'mobile', use: { ...devices['iPhone 13'] } },
   ],
   globalSetup: './global-setup.ts',
@@ -34,12 +39,14 @@ export default defineConfig({
       command: 'uv run uvicorn app.main:app --host 127.0.0.1 --port 8000',
       cwd: '../backend',
       url: 'http://127.0.0.1:8000/api/health',
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: !process.env.CI || demoStack,
       env: {
         AGENT_MODE: process.env.E2E_LIVE ? 'openai' : 'scripted',
         // verifyEmail() clicks the card's demo link button, which needs the token in the card
         EMAIL_LINK_DEMO: 'true',
         DEV_TOOLS: 'true',
+        // `npm run test:demo`: seed demo cases A, B and C on start and on reset (day R5).
+        DEMO_SEED: process.env.E2E_DEMO_SEED === '1' ? 'true' : 'false',
         REVIEWER_CONSOLE: 'true',
         CALLCENTRE_CONSOLE: 'true',
         TENANT_PORTAL: 'true',
@@ -75,7 +82,7 @@ export default defineConfig({
       command: 'npm run dev -- --host 127.0.0.1 --port 5173',
       cwd: '../frontend',
       url: 'http://127.0.0.1:5173',
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: !process.env.CI || demoStack,
       env: {
         VITE_E2E: '1',
         VITE_DEV_TOOLS: '1',

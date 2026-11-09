@@ -230,7 +230,7 @@ Errors: `{"error": {"code": str, "message": str}}` with 4xx/5xx.
 {"type": "action", "action": "select_malls", "payload": {"mall_ids": ["riyadh-mall-a"]}}
 ```
 
-Test hooks: when `AGENT_MODE=scripted`, `POST /api/sessions`, `POST /api/callcentre/inquiries`, `POST /api/tenant/opportunities/{id}/inquiry`, and `POST /api/cases/open` accept an `X-Test-Scenario` header naming a script in `backend/tests/e2e_scripts/`; the session then replays that script (intake tools on inquiry sessions, assisted tools on assisted sessions, case tools on case-mode sessions). `POST /api/verifications/email` with a `complete` token also accepts the header and sets `test_scenario` on the **new applicant** session (not the staff session). Unknown or missing headers leave `test_scenario` unset. It also accepts `X-Mock-Faults` (`service:kind[:count],…`; services `cr`, `email`, `otp`, `notifications`, `submit`, `status`, `storage`, `call_centre`, `llm` (the chat model); kinds `timeout`, `unavailable`, `rejected`) for faults in that session only; a bad spec is 400 `bad_mock_faults`. Both headers are ignored in `openai` mode.
+Test hooks: when `AGENT_MODE=scripted`, `POST /api/sessions`, `POST /api/callcentre/inquiries`, `POST /api/tenant/opportunities/{id}/inquiry`, and `POST /api/cases/open` accept an `X-Test-Scenario` header naming a script in `backend/tests/e2e_scripts/`; the session then replays that script (intake tools on inquiry sessions, assisted tools on assisted sessions, case tools on case-mode sessions). `POST /api/verifications/email` with a `complete` token also accepts the header and sets `test_scenario` on the **new applicant** session (not the staff session). Unknown or missing headers leave `test_scenario` unset. Reopening a case chat with a different script starts that script from its first step; the same script carries on. It also accepts `X-Mock-Faults` (`service:kind[:count],…`; services `cr`, `email`, `otp`, `notifications`, `submit`, `status`, `storage`, `call_centre`, `llm` (the chat model); kinds `timeout`, `unavailable`, `rejected`) for faults in that session only; a bad spec is 400 `bad_mock_faults`. Both headers are ignored in `openai` mode.
 
 Unknown session → 404 `session_not_found`. Sessions expire after 2 hours idle; a signed link (verification, resume) reaches an idle session again. A connected system that fails surfaces as 503 `<service>_<kind>`. Rate limits: 30 chat requests/min per session, 60/min per IP → 429 `rate_limited`.
 
@@ -244,7 +244,7 @@ Each event is `event: <type>` + `data: <json>`.
 | `ui_card` | `UiCard` | Insert after the current assistant message, or replace in place if `card_id` exists. After a follow-on (`inquiry_seq` ≥ 2) card ids carry the inquiry's number (`review~2`, `confirm-1~2`), so the earlier inquiry's cards stay as they were; actions send the id back as received |
 | `draft` | `DraftSummary` | Replace draft state; flash and scroll to `changed_keys` |
 | `message_remove` | `{message_id}` | Remove the assistant bubble with that id (guard retracted a rejected reply) |
-| `done` | `{phase}` | Stop typing indicator, enable composer |
+| `done` | `{phase}` | Stop typing indicator, enable composer. Sent only after the session is saved and the turn lease released, so the client's next request (a queued action) never gets 409 `turn_in_progress`. A save conflict's `error` follows it. |
 | `error` | `{code, message}` | Show a friendly error bubble with Retry |
 
 At the start of each turn the frontend clears the previous `quick_replies` chips.
@@ -386,6 +386,7 @@ process steps · review time · required documents · what a CR number is · wha
 | `MASTER_DATA_SOURCE` | `seed` (`cenomi` is a stub that falls back to the seed) |
 | `INTEGRATIONS` | `mock` (the only tier until Cenomi gives access; `sandbox`/`live` refuse to start) |
 | `DEV_TOOLS` | `false`; `true` mounts `/api/dev/outbox` and `/api/dev/audit/{id}` (refused unless `INTEGRATIONS=mock`) |
+| `DEMO_SEED` | `false`; with `DEV_TOOLS`, seeds the three demo cases (`app/demo_seed.py`) on start when there is no case, and after `POST /api/dev/reset`. `make demo` sets it. The seeds use their own personas, so nothing reaches the live demo applicant's inbox |
 | `MOCK_FAULTS` | empty; `service:kind[:count],…` injects faults into the simulated systems |
 | `DATA_DIR` | empty = memory only; a directory = restart-safe JSON snapshots of sessions, the simulated systems' state (outbox, submissions, links, OTP, sends) and the audit log |
 | `STATE_BACKEND` | `memory` (`postgres` for docker-compose dev) |
@@ -593,7 +594,8 @@ The period is one stay in a stage (the stage plus its start time) or one request
 | POST | `/api/dev/clock/advance` | `{hours}` (0 < h ≤ 720) → moves the clock, runs a tick → `{clock, raised, sent, resolved}` |
 | POST | `/api/dev/clock/to-morning` | Moves to the end of the next quiet-hours window, runs a tick |
 | POST | `/api/dev/proactive/tick` | Runs a tick now |
-| POST | `/api/dev/reset` | Deletes sessions, cases, audit, outbox, invitations, Yardi leads, attention items (every folder under `DATA_DIR` the app writes) and uploads; resets the clock; rebuilds services and graphs → `{reset: true}` |
+| POST | `/api/dev/reset` | Deletes sessions, cases, audit, outbox, invitations, Yardi leads, attention items (every folder under `DATA_DIR` the app writes) and uploads; resets the clock; rebuilds services and graphs → `{reset: true}`; with `DEMO_SEED=true`, seeds the three demo cases again |
+| GET | `/api/dev/demo-cases` | Day R5: the seeded cases `[{key, title, reference, status, first_reviewer, final_reviewer}]` (A first review: expired Company Profile with a profile mismatch, Brand Profile expiring soon; B second review: signatory Yes, billing contact pending; C sent to Yardi). Empty when `DEMO_SEED` is off. `/dev` lists them with "as Lease Admin" / "as RLM" links |
 
 With `PROACTIVE_ENABLED=true` a background task runs `tick()` every `PROACTIVE_TICK_SECONDS`. Moving the clock always runs a tick.
 

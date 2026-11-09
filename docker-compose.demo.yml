@@ -3,6 +3,7 @@ services:
   backend:
     environment:
       DEV_TOOLS: 'true'
+      DEMO_SEED: 'true'
       REVIEWER_CONSOLE: 'true'
       CALLCENTRE_CONSOLE: 'true'
       TENANT_PORTAL: 'true'

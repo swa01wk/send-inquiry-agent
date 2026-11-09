@@ -5,7 +5,7 @@
 .PHONY: dev demo dev-backend dev-frontend \
 	check check-be check-fe lint \
 	test test-be test-fe test-agent golden \
-	e2e e2e-fe e2e-int e2e-demo e2e-demo-headed e2e-demo-step e2e-live e2e-report eval-live \
+	e2e e2e-fe e2e-int e2e-demo e2e-demo-headed e2e-demo-step e2e-demo-stack e2e-live e2e-report eval-live \
 	ci ci-remote gate
 
 SLOW_MO ?= 800
@@ -86,6 +86,10 @@ e2e-demo-headed:
 
 e2e-demo-step:
 	$(E2E_DEPS) && CI=1 E2E_SLOW_MO=$(SLOW_MO) E2E_DEMO_PAUSE_MS=$(DEMO_PAUSE) E2E_DEMO_STEP=1 npm run test:demo -- --headed $(ARGS)
+
+# The restart beat on Postgres: `make demo` in another terminal first (D10).
+e2e-demo-stack:
+	$(E2E_DEPS) && CI=1 E2E_DEMO_STACK=1 npm run test:demo -- $(ARGS)
 
 e2e: e2e-int
 
