@@ -34,8 +34,8 @@ async def test_seed_builds_cases_a_b_and_c(life) -> None:
 
     a = by_key["A"]
     assert a is not None and a.status == CaseStatus.FIRST_REVIEW
-    company = next(d for d in a.document_decisions if d.doc_type == DocType.COMPANY_PROFILE)
-    brand = next(d for d in a.document_decisions if d.doc_type == DocType.BRAND_PROFILE)
+    company = a.document_decisions[DocType.COMPANY_PROFILE]
+    brand = a.document_decisions[DocType.BRAND_PROFILE]
     today = clock.now().date()
     assert company.expiry_extracted is not None and company.expiry_extracted < today  # expired
     assert brand.expiry_extracted is not None
