@@ -1526,19 +1526,6 @@
           }
         },
         {
-          "event": "message_remove",
-          "data": {
-            "message_id": "m3"
-          }
-        },
-        {
-          "event": "token",
-          "data": {
-            "message_id": "m4",
-            "text": "Thanks. Click the link in your email and enter the SMS code on the card."
-          }
-        },
-        {
           "event": "draft",
           "data": {
             "phase": "collecting",
@@ -1776,7 +1763,7 @@
           "data": {
             "card_id": "confirm-1",
             "card_type": "confirm_fields",
-            "message_id": "m4",
+            "message_id": "m3",
             "payload": {
               "title": "Please confirm these details",
               "fields": [
@@ -1798,7 +1785,7 @@
           "data": {
             "card_id": "verification",
             "card_type": "verification",
-            "message_id": "m4",
+            "message_id": "m3",
             "payload": {
               "email": {
                 "masked": "s***@beanstreet.example",
@@ -2091,8 +2078,8 @@
         {
           "event": "token",
           "data": {
-            "message_id": "m5",
-            "text": "Upload your Company Profile and Brand Profile on the documents card and I'll fill in the details for you."
+            "message_id": "m4",
+            "text": "Thanks. Click the link in your email and enter the SMS code on the card."
           }
         },
         {
@@ -2326,127 +2313,6 @@
             "can_submit": false,
             "changed_keys": [],
             "follow_on_of": null
-          }
-        },
-        {
-          "event": "ui_card",
-          "data": {
-            "card_id": "documents",
-            "card_type": "document_upload",
-            "message_id": "m5",
-            "payload": {
-              "mode": "intake",
-              "requested_doc_types": [],
-              "remarks": null,
-              "docs": [
-                {
-                  "doc_type": "company_profile",
-                  "label": "Company Profile",
-                  "required": true,
-                  "uploaded": false,
-                  "file_name": null,
-                  "size_bytes": null,
-                  "on_file": false
-                },
-                {
-                  "doc_type": "brand_profile",
-                  "label": "Brand Profile",
-                  "required": true,
-                  "uploaded": false,
-                  "file_name": null,
-                  "size_bytes": null,
-                  "on_file": false
-                },
-                {
-                  "doc_type": "cr_certificate",
-                  "label": "CR certificate",
-                  "required": false,
-                  "uploaded": false,
-                  "file_name": null,
-                  "size_bytes": null,
-                  "on_file": false
-                },
-                {
-                  "doc_type": "vat_certificate",
-                  "label": "VAT certificate",
-                  "required": false,
-                  "uploaded": false,
-                  "file_name": null,
-                  "size_bytes": null,
-                  "on_file": false
-                },
-                {
-                  "doc_type": "national_id",
-                  "label": "National ID / Iqama",
-                  "required": false,
-                  "uploaded": false,
-                  "file_name": null,
-                  "size_bytes": null,
-                  "on_file": false
-                },
-                {
-                  "doc_type": "national_address",
-                  "label": "National Address",
-                  "required": false,
-                  "uploaded": false,
-                  "file_name": null,
-                  "size_bytes": null,
-                  "on_file": false
-                },
-                {
-                  "doc_type": "articles_of_association",
-                  "label": "Article of Association",
-                  "required": false,
-                  "uploaded": false,
-                  "file_name": null,
-                  "size_bytes": null,
-                  "on_file": false
-                }
-              ],
-              "numbers": [
-                {
-                  "key": "cr_number",
-                  "label": "CR number",
-                  "value": null,
-                  "editable": false,
-                  "error": null
-                },
-                {
-                  "key": "vat_number",
-                  "label": "VAT number",
-                  "value": null,
-                  "editable": true,
-                  "error": null
-                },
-                {
-                  "key": "national_id_number",
-                  "label": "National ID / Iqama",
-                  "value": null,
-                  "editable": true,
-                  "error": null
-                },
-                {
-                  "key": "national_address",
-                  "label": "National address",
-                  "value": null,
-                  "editable": true,
-                  "error": null
-                }
-              ],
-              "required_uploaded": 0,
-              "required_total": 2,
-              "allowed_extensions": [
-                ".doc",
-                ".docx",
-                ".jpeg",
-                ".jpg",
-                ".pdf",
-                ".png",
-                ".xlsx",
-                ".zip"
-              ],
-              "max_mb": 5
-            }
           }
         },
         {
@@ -2998,8 +2864,8 @@
         {
           "event": "token",
           "data": {
-            "message_id": "m6",
-            "text": "I've filled your company name and address from the Company Profile — please check them on the card."
+            "message_id": "m5",
+            "text": "Upload your Company Profile and Brand Profile on the documents card and I'll fill in the details for you."
           }
         },
         {
@@ -3233,6 +3099,127 @@
             "can_submit": false,
             "changed_keys": [],
             "follow_on_of": null
+          }
+        },
+        {
+          "event": "ui_card",
+          "data": {
+            "card_id": "documents",
+            "card_type": "document_upload",
+            "message_id": "m5",
+            "payload": {
+              "mode": "intake",
+              "requested_doc_types": [],
+              "remarks": null,
+              "docs": [
+                {
+                  "doc_type": "company_profile",
+                  "label": "Company Profile",
+                  "required": true,
+                  "uploaded": false,
+                  "file_name": null,
+                  "size_bytes": null,
+                  "on_file": false
+                },
+                {
+                  "doc_type": "brand_profile",
+                  "label": "Brand Profile",
+                  "required": true,
+                  "uploaded": false,
+                  "file_name": null,
+                  "size_bytes": null,
+                  "on_file": false
+                },
+                {
+                  "doc_type": "cr_certificate",
+                  "label": "CR certificate",
+                  "required": false,
+                  "uploaded": false,
+                  "file_name": null,
+                  "size_bytes": null,
+                  "on_file": false
+                },
+                {
+                  "doc_type": "vat_certificate",
+                  "label": "VAT certificate",
+                  "required": false,
+                  "uploaded": false,
+                  "file_name": null,
+                  "size_bytes": null,
+                  "on_file": false
+                },
+                {
+                  "doc_type": "national_id",
+                  "label": "National ID / Iqama",
+                  "required": false,
+                  "uploaded": false,
+                  "file_name": null,
+                  "size_bytes": null,
+                  "on_file": false
+                },
+                {
+                  "doc_type": "national_address",
+                  "label": "National Address",
+                  "required": false,
+                  "uploaded": false,
+                  "file_name": null,
+                  "size_bytes": null,
+                  "on_file": false
+                },
+                {
+                  "doc_type": "articles_of_association",
+                  "label": "Article of Association",
+                  "required": false,
+                  "uploaded": false,
+                  "file_name": null,
+                  "size_bytes": null,
+                  "on_file": false
+                }
+              ],
+              "numbers": [
+                {
+                  "key": "cr_number",
+                  "label": "CR number",
+                  "value": null,
+                  "editable": false,
+                  "error": null
+                },
+                {
+                  "key": "vat_number",
+                  "label": "VAT number",
+                  "value": null,
+                  "editable": true,
+                  "error": null
+                },
+                {
+                  "key": "national_id_number",
+                  "label": "National ID / Iqama",
+                  "value": null,
+                  "editable": true,
+                  "error": null
+                },
+                {
+                  "key": "national_address",
+                  "label": "National address",
+                  "value": null,
+                  "editable": true,
+                  "error": null
+                }
+              ],
+              "required_uploaded": 0,
+              "required_total": 2,
+              "allowed_extensions": [
+                ".doc",
+                ".docx",
+                ".jpeg",
+                ".jpg",
+                ".pdf",
+                ".png",
+                ".xlsx",
+                ".zip"
+              ],
+              "max_mb": 5
+            }
           }
         },
         {
@@ -3618,7 +3605,7 @@
                   "display": "Bean Street Trading Co.",
                   "source": "derived",
                   "confirmed": false,
-                  "evidence": "Company Profile: company_profile_match.pdf, uploaded 08 Nov 2026 23:59"
+                  "evidence": "Company Profile: company_profile_match.pdf, uploaded 09 Nov 2026 05:35"
                 },
                 {
                   "key": "company_address",
@@ -3626,7 +3613,7 @@
                   "display": "King Fahd Road, Al Olaya, Riyadh",
                   "source": "derived",
                   "confirmed": false,
-                  "evidence": "Company Profile: company_profile_match.pdf, uploaded 08 Nov 2026 23:59"
+                  "evidence": "Company Profile: company_profile_match.pdf, uploaded 09 Nov 2026 05:35"
                 }
               ],
               "all_confirmed": false
@@ -3636,8 +3623,8 @@
         {
           "event": "token",
           "data": {
-            "message_id": "m7",
-            "text": "Thanks. Now the Brand Profile, please."
+            "message_id": "m6",
+            "text": "I've filled your company name and address from the Company Profile — please check them on the card."
           }
         },
         {
@@ -4135,7 +4122,7 @@
                   "display": "Bean Street Trading Co.",
                   "source": "derived",
                   "confirmed": true,
-                  "evidence": "Company Profile: company_profile_match.pdf, uploaded 08 Nov 2026 23:59"
+                  "evidence": "Company Profile: company_profile_match.pdf, uploaded 09 Nov 2026 05:35"
                 },
                 {
                   "key": "company_address",
@@ -4143,7 +4130,7 @@
                   "display": "King Fahd Road, Al Olaya, Riyadh",
                   "source": "derived",
                   "confirmed": true,
-                  "evidence": "Company Profile: company_profile_match.pdf, uploaded 08 Nov 2026 23:59"
+                  "evidence": "Company Profile: company_profile_match.pdf, uploaded 09 Nov 2026 05:35"
                 }
               ],
               "all_confirmed": true
@@ -4153,8 +4140,8 @@
         {
           "event": "token",
           "data": {
-            "message_id": "m8",
-            "text": "I've filled your brand name and category from the Brand Profile — please check them on the card."
+            "message_id": "m7",
+            "text": "Thanks. Now the Brand Profile, please."
           }
         },
         {
@@ -4773,7 +4760,7 @@
                   "display": "Bean Street",
                   "source": "derived",
                   "confirmed": false,
-                  "evidence": "Brand Profile: brand_profile_match.pdf, uploaded 08 Nov 2026 23:59"
+                  "evidence": "Brand Profile: brand_profile_match.pdf, uploaded 09 Nov 2026 05:35"
                 },
                 {
                   "key": "sales_category",
@@ -4781,7 +4768,7 @@
                   "display": "Food & Beverage · Café",
                   "source": "derived",
                   "confirmed": false,
-                  "evidence": "Brand Profile: brand_profile_match.pdf, uploaded 08 Nov 2026 23:59"
+                  "evidence": "Brand Profile: brand_profile_match.pdf, uploaded 09 Nov 2026 05:35"
                 }
               ],
               "all_confirmed": false
@@ -4791,8 +4778,8 @@
         {
           "event": "token",
           "data": {
-            "message_id": "m9",
-            "text": "Everything is in. Have a look on the review card and accept the terms when you're ready."
+            "message_id": "m8",
+            "text": "I've filled your brand name and category from the Brand Profile — please check them on the card."
           }
         },
         {
@@ -5290,7 +5277,7 @@
                   "display": "Bean Street",
                   "source": "derived",
                   "confirmed": true,
-                  "evidence": "Brand Profile: brand_profile_match.pdf, uploaded 08 Nov 2026 23:59"
+                  "evidence": "Brand Profile: brand_profile_match.pdf, uploaded 09 Nov 2026 05:35"
                 },
                 {
                   "key": "sales_category",
@@ -5298,7 +5285,7 @@
                   "display": "Food & Beverage · Café",
                   "source": "derived",
                   "confirmed": true,
-                  "evidence": "Brand Profile: brand_profile_match.pdf, uploaded 08 Nov 2026 23:59"
+                  "evidence": "Brand Profile: brand_profile_match.pdf, uploaded 09 Nov 2026 05:35"
                 }
               ],
               "all_confirmed": true
@@ -5308,21 +5295,8 @@
         {
           "event": "token",
           "data": {
-            "message_id": "m10",
-            "text": "Thank you — your inquiry is with our leasing team. Your reference is on the card."
-          }
-        },
-        {
-          "event": "message_remove",
-          "data": {
-            "message_id": "m10"
-          }
-        },
-        {
-          "event": "token",
-          "data": {
-            "message_id": "m11",
-            "text": "(no more scripted steps)"
+            "message_id": "m9",
+            "text": "Everything is in. Have a look on the review card and accept the terms when you're ready."
           }
         },
         {
@@ -5563,7 +5537,7 @@
           "data": {
             "card_id": "review",
             "card_type": "review",
-            "message_id": "m11",
+            "message_id": "m9",
             "payload": {
               "groups": [
                 {
