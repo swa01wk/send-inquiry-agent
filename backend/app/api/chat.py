@@ -5,7 +5,7 @@ from __future__ import annotations
 import contextlib
 import json
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator, AsyncIterator
 from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, Request
@@ -177,7 +177,7 @@ async def chat_stream(
                 payload={"card_type": data.get("card_type"), "card_id": data.get("card_id")},
             )
 
-    async def turn_events() -> AsyncIterator[SseEvent]:
+    async def turn_events() -> AsyncGenerator[SseEvent, None]:
         nonlocal turn_user_message
         for item in action_events:
             if item["event"] == "ui_card":
