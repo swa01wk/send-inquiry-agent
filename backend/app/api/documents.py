@@ -53,7 +53,7 @@ async def upload_document(
     master: MasterData = Depends(get_master_data),
     settings: Settings = Depends(get_settings),
 ) -> UploadDocumentResponse:
-    lease_id = await store.begin_turn(session_id)
+    lease_id = await store.begin_turn_waiting(session_id, settings.upload_turn_wait_seconds)
     try:
         return await _upload_document(
             session_id,
@@ -238,7 +238,7 @@ async def delete_document(
     master: MasterData = Depends(get_master_data),
     settings: Settings = Depends(get_settings),
 ) -> DeleteDocumentResponse:
-    lease_id = await store.begin_turn(session_id)
+    lease_id = await store.begin_turn_waiting(session_id, settings.upload_turn_wait_seconds)
     try:
         return await _delete_document(
             session_id,

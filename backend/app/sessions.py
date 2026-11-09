@@ -488,6 +488,23 @@ class SessionStore:
         except RepoTurnInProgress as exc:
             raise TurnInProgress from exc
 
+    async def begin_turn_waiting(self, session_id: str, wait_s: float) -> str:
+        """`begin_turn`, waiting up to `wait_s` for a turn already running to finish.
+
+        For a card action that doesn't run the agent itself, such as a document upload: the
+        user can pick a file while the agent is still replying, and the upload should land
+        once that reply ends rather than fail with 409 `turn_in_progress`.
+        """
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + max(wait_s, 0.0)
+        while True:
+            try:
+                return await self.begin_turn(session_id)
+            except TurnInProgress:
+                if loop.time() >= deadline:
+                    raise
+                await asyncio.sleep(0.2)
+
     async def end_turn(self, session_id: str, lease_id: str) -> None:
         from app.store.session_bridge import inquiry_id_for
 
