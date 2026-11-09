@@ -155,7 +155,10 @@ export async function raiseNewBrandFromOpportunities(
   page: Page,
   beat?: DemoBeat,
 ): Promise<{ inquiry: InquiryPage; reference: string }> {
-  await page.goto('/tenant/opportunities?e2eScenario=rd-signed-in-new-brand')
+  // Same origin as the sign-in: the sign-in card's link is absolute (PUBLIC_BASE_URL), and the
+  // mock sign-in lives in that origin's sessionStorage.
+  const path = '/tenant/opportunities?e2eScenario=rd-signed-in-new-brand'
+  await page.goto(page.url().startsWith('http') ? new URL(path, page.url()).toString() : path)
   const opportunity = page.getByTestId('opportunity-OPP-101')
   await expect(opportunity).toBeVisible({ timeout: 30_000 })
   await expect(page.getByLabel('For brand')).toHaveCount(0)
