@@ -6,6 +6,11 @@ import { appendLiveResult, type LiveScenarioResult } from '../support/liveResult
 import { countSentences } from '../support/plainLanguage'
 import { afterLiveTurn, doneCount } from '../support/turnChecks'
 
+// Since R1 (demo feedback F1) the public page asks "Do you have a CR?" and never looks a CR
+// number up, so the personas answer the question instead of typing a CR number. Persona 04
+// checks what happens when someone types one anyway.
+const NO_CR = "No, we don't have a CR"
+
 const hasLlmCredentials = () =>
   Boolean(process.env.OPENAI_API_KEY || process.env.AZURE_OPENAI_API_KEY)
 
@@ -55,8 +60,9 @@ test.describe('Live LLM personas @live', () => {
     const inquiry = new InquiryPage(page)
     await inquiry.open()
     await trackTurns(inquiry, 'hi')
-    await trackTurns(inquiry, '1010123456')
-    await trackTurns(inquiry, 'coffee kiosk riyadh mall a')
+    await trackTurns(inquiry, NO_CR)
+    await trackTurns(inquiry, 'Bean Street Trading Co., Olaya Street, Riyadh')
+    await trackTurns(inquiry, 'Bean Street coffee kiosk riyadh mall a')
     await trackTurns(inquiry, 'sara ali sara@beanstreet.example 0501234567')
     expect(await inquiry.cards('verification').count()).toBeGreaterThan(0)
     const draft = await inquiry.draft()
@@ -67,10 +73,11 @@ test.describe('Live LLM personas @live', () => {
   test('02 front loader @live', async ({ page }) => {
     const inquiry = new InquiryPage(page)
     await inquiry.open()
-    await trackTurns(inquiry, '1010123456')
+    await trackTurns(inquiry, NO_CR)
     await trackTurns(
       inquiry,
-      'Bean Street kiosk Riyadh Mall A Sara Ali sara@beanstreet.example 0501234567',
+      'Bean Street Trading Co., Olaya Street, Riyadh. Bean Street kiosk Riyadh Mall A ' +
+        'Sara Ali sara@beanstreet.example 0501234567',
     )
     expect(await inquiry.cards('verification').count()).toBeGreaterThan(0)
   })
@@ -85,11 +92,22 @@ test.describe('Live LLM personas @live', () => {
     expect(fieldDisplay(draft, 'company_name')).toBeTruthy()
   })
 
+  test('04 types a CR number @live', async ({ page }) => {
+    const inquiry = new InquiryPage(page)
+    await inquiry.open()
+    await trackTurns(inquiry, 'My CR number is 1010123456')
+    const replies = (await inquiry.allReplies()).join(' ')
+    expect(replies, 'the number is never repeated').not.toContain('1010123456')
+    const signIn = (await inquiry.cards('sign_in_prompt').count()) > 0
+    expect(signIn || /sign[ -]?in/i.test(replies), 'points to Tenant Central sign-in').toBe(true)
+    expect(fieldDisplay(await inquiry.draft(), 'cr_number') ?? '').toBeFalsy()
+  })
+
   test('05 Arabic @live', async ({ page }) => {
     const inquiry = new InquiryPage(page)
     await inquiry.open()
     await trackTurns(inquiry, 'السلام عليكم')
-    await trackTurns(inquiry, 'رقم السجل 1010123456')
+    await trackTurns(inquiry, 'ما عندنا سجل تجاري')
     await trackTurns(inquiry, 'كشك قهوة في Riyadh Mall A')
     await trackTurns(inquiry, 'سارة علي sara@beanstreet.example 0501234567')
     const replies = await inquiry.allReplies()
@@ -101,8 +119,9 @@ test.describe('Live LLM personas @live', () => {
     const inquiry = new InquiryPage(page)
     await inquiry.open()
     await trackTurns(inquiry, 'hiii 👋 pls help')
-    await trackTurns(inquiry, 'cr 1010123456 🙏')
-    await trackTurns(inquiry, 'we sell coffee ☕ small kiosk riyadh mall a')
+    await trackTurns(inquiry, 'no cr yet 🙏')
+    await trackTurns(inquiry, 'bean street trading co, olaya st riyadh')
+    await trackTurns(inquiry, 'brand is Bean Street, we sell coffee ☕ small kiosk riyadh mall a')
     await trackTurns(inquiry, 'Sara Ali sara@beanstreet.example 0501234567')
     const draft = await inquiry.draft()
     expect(fieldDisplay(draft, 'brand_name_en')).toBeTruthy()
@@ -111,7 +130,8 @@ test.describe('Live LLM personas @live', () => {
   test('09 changes mind @live', async ({ page }) => {
     const inquiry = new InquiryPage(page)
     await inquiry.open()
-    await trackTurns(inquiry, '1010123456')
+    await trackTurns(inquiry, NO_CR)
+    await trackTurns(inquiry, 'Bean Street Trading Co., Olaya Street, Riyadh')
     await trackTurns(inquiry, 'Bean Street kiosk riyadh mall a')
     await trackTurns(inquiry, 'actually make it a full shop not kiosk')
     const draft = await inquiry.draft()
@@ -121,7 +141,8 @@ test.describe('Live LLM personas @live', () => {
   test('10 unsure category @live', async ({ page }) => {
     const inquiry = new InquiryPage(page)
     await inquiry.open()
-    await trackTurns(inquiry, '1010123456')
+    await trackTurns(inquiry, NO_CR)
+    await trackTurns(inquiry, 'Bean Street Trading Co., Olaya Street, Riyadh')
     await trackTurns(inquiry, 'Bean Street kiosk riyadh mall a')
     await trackTurns(inquiry, 'not sure about the category')
     const cat = draftFields(await inquiry.draft()).find((f) => f.key === 'sales_category')
@@ -172,8 +193,9 @@ test.describe('Live LLM personas @live', () => {
     await inquiry.open()
     const turns = [
       'Marhaba',
-      'My CR number is 1010123456',
-      "Yes, that's correct",
+      NO_CR,
+      "I'll type them",
+      'Bean Street Trading Co., Olaya Street, Riyadh',
       'Bean Street kiosk at Riyadh Mall A Sara Ali sara@beanstreet.example +966501234567',
       'Yes, all correct',
       'Actually we want a full store unit',
@@ -194,7 +216,8 @@ test.describe('Live LLM personas @live', () => {
   test('22 lost mid-way @flaky @live', async ({ page }) => {
     const inquiry = new InquiryPage(page)
     await inquiry.open()
-    await trackTurns(inquiry, '1010123456')
+    await trackTurns(inquiry, NO_CR)
+    await trackTurns(inquiry, 'Bean Street Trading Co., Olaya Street, Riyadh')
     await trackTurns(inquiry, 'Bean Street kiosk riyadh mall a')
     const before = await inquiry.draft()
     await trackTurns(inquiry, 'what? i dont understand')
