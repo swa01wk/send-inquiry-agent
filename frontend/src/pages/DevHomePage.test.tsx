@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -110,7 +110,9 @@ describe('DevHomePage', () => {
       resolved: 0,
     })
     renderPage()
-    expect(await screen.findByTestId('dev-clock')).toHaveTextContent('10:00')
+    // The clock box shows "Loading…" until the clock request resolves; wait for the time
+    // itself (flaky in CI on #80 when the page rendered faster than the mock resolved).
+    await waitFor(() => expect(screen.getByTestId('dev-clock')).toHaveTextContent('10:00'))
     await user.click(screen.getByRole('button', { name: '+48 h' }))
     expect(advance).toHaveBeenCalledWith(48)
     expect(await screen.findByTestId('dev-message')).toHaveTextContent('1 raised')
