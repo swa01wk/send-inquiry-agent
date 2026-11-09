@@ -1,10 +1,10 @@
 # POC lifecycle: the process, the agent, and what proves it
 
-**26 Oct 2026.** One place that explains the whole inquiry-to-lead lifecycle the POC covers, and verifies it three ways: against the agent's design (who does what, what code enforces), against the maturity framework (L1–L5), and against the specs.
+**26 Oct 2026, updated 9 Nov 2026** for the 3–4 Nov demo feedback (F14, F15): the approvals (§2.2, §3.6–3.8), the CR question, type or upload, and the signed-in new brand (§3.1–3.4). One place that explains the whole inquiry-to-lead lifecycle the POC covers, and verifies it three ways: against the agent's design (who does what, what code enforces), against the maturity framework (L1–L5), and against the specs.
 
 **Sources:** Cenomi Requirements Document v2.1.7.1 — §7.1, §7.1.1, §7.1.2 (process flows and both swimlane diagrams), the roles table, §6 phases, §7.12 Tenant Administration Platform, §7.14 Dashboard, §7.15 Notifications. Line-by-line coverage of §7.1 is in [`docs/specs/workflows-7-1.md`](specs/workflows-7-1.md); delivery order is in [`docs/DELIVERY-PLAN.md`](DELIVERY-PLAN.md).
 
-**How to read the "When" column:** Built = on `main` today · Day N = the 5-day plan (27 Oct – 2 Nov) · S1 / S2 = Sprint 1 / Sprint 2 · Closing = 1–16 Dec.
+**How to read the "When" column:** Built = on `main` today · Day N = the 5-day plan (27 Oct – 2 Nov) · R1–R5 = the re-demo build days (5–9 Nov, [demo feedback](specs/demo-feedback.md)) · S1 / S2 = Sprint 1 / Sprint 2 · Closing = 1–16 Dec.
 
 ---
 
@@ -62,23 +62,30 @@ flowchart TD
 
 ### 2.2 From submitted inquiry to a Yardi-ready lead
 
+Updated for the demo feedback (F8, F12, F16, F18, F19). Every approval is a person's decision. The system never approves or rejects on its own (ADR-R6).
+
 ```mermaid
 flowchart TD
-  REF["Submitted inquiry"] --> RT["Route by product line and region<br/>RLM-Store / RPLM-Media / RPLM-Specialty"]
+  REF["Submitted inquiry"] --> RT["Route by mall region and product line<br/>first level: Lease Admin of the region<br/>final level: RLM-Store / RPLM-Media / RPLM-Specialty"]
+  RT --> MAIL["'Inquiry for approval' email<br/>to the Lease Admin, link to the case (F7)"]
 
-  subgraph L1["First-level verification (§7.1.1 b)"]
-    RT --> V1{"Reviewer checks profile<br/>and documents"}
-    V1 -- "document not OK" --> RU["Re-upload request<br/>email with link"] --> RUA["Applicant re-uploads<br/>in chat"] --> V1
-    V1 -- "reject + remarks" --> RJ1["Rejected<br/>rejection email"]
-    V1 -- "approve" --> AD1["Azure AD account + invitation<br/>(only if no account)"]
-    AD1 --> AC["Contacts request opens automatically<br/>('on contact creation')"]
+  subgraph L1["First-level verification (§7.1.1 b): Lease Admin"]
+    MAIL --> EXP["Confirms each profile's expiry<br/>(extracted by the document review service)"]
+    EXP --> DOC{"Approves or rejects<br/>each document, with remarks"}
+    DOC -- "rejected" --> RU["Re-upload request<br/>(only the rejected documents)"] --> RUA["Applicant re-uploads<br/>in the case chat"] --> DOC
+    DOC -- "every required document approved" --> AF{"Approve first level"}
+    AF -- "reject + remarks" --> RJ1["Rejected<br/>rejection email"]
+    AF -- "approve" --> AD1["Azure AD invitation<br/>(only if no account)"]
+    AD1 --> AC["Contacts request:<br/>'Are you the authorised signatory?'"]
   end
 
   AC --> LEAD["Lead — second review"]
 
   subgraph L2["Second-level verification (§7.1.1 c)"]
-    LEAD --> V2{"Reviewer works the lead"}
-    V2 -- "contacts" --> CT["Authorized Signatory, Billing Contact (required);<br/>Leasing Manager, Financial Controller, Company Admin<br/>(prefilled for existing tenants; reviewer can remove)"] --> V2
+    LEAD --> SIG["Applicant: signatory Yes / No;<br/>billing and other contacts"]
+    SIG --> CA{"Lease Admin approves or rejects<br/>each contact, with remarks"}
+    CA -- "rejected" --> CF["Applicant fixes that contact"] --> CA
+    CA -- "required contacts approved" --> V2{"RLM / RPLM works the lead"}
     V2 -- "estimated sales data" --> SD["Request → applicant uploads<br/>→ reviewer notified"] --> V2
     V2 -- "re-link" --> RL["Company: first-name search, active Yardi companies;<br/>brand: from that company's leases and proposals"] --> V2
     V2 -- "reject + remarks" --> RJ2["Rejected<br/>rejection email"]
@@ -88,6 +95,8 @@ flowchart TD
   AD2 --> ACC["Acceptance email"] --> Y["Send to Yardi:<br/>customer, brand, contacts, sales data, documents"]
   Y --> PROP["Proposal stage (§7.2, out of scope)"]
 ```
+
+A re-uploaded document and a resubmitted contact go back to *waiting for a decision* (F16). An approval sent for a file that has since been replaced is refused. An expired document can't be approved. A "Yes, I'm the authorised signatory" answer needs no separate approval, because the email link and OTP already verified that person (*pending Cenomi*, M8).
 
 ### 2.3 Case states (the workflow state machine, M0 §6)
 
@@ -181,14 +190,15 @@ Each stage lists what the requirements ask for, what deterministic code does, wh
 | --- | --- | --- | --- | --- | --- |
 | Self-service, prospective | §7.1.1 a1 | Session, welcome, `route_message()` | Intake agent; routes status, General Inquiry, existing-tenant and off-topic messages; offers a person | L3 §3.5 | Built; router Day 3 |
 | Call centre or Guest Service | §7.1.1 a2, §7.1.2 a2; roles table | Staff sign-in, `channel: assisted`, `staff` source | Intake agent in assisted mode: talks to the executive about "the caller" | Channels §3.2 | Day 5 |
-| Existing tenant, signed in | §7.1.2 a1 | Tenant sign-in, opportunities, prefill, preselected property | Intake agent in existing-tenant mode: greets by name, asks only what's missing | Channels §3.4–3.5 | Day 5 |
-| Existing CR on the public page | §7.1 | `existing_tenant_policy` | Explains and offers sign-in, or continues with prefill | Channels §3.6 | Days 1, 5 |
+| Existing tenant, signed in | §7.1.2 a1 | Tenant sign-in, Leasing Opportunities, preselected property. Every inquiry is a **new brand**: company name and address from Yardi by CR (`verified`, confirmed by the tenant), no brand prefilled, both profiles uploaded afresh | Intake agent in existing-tenant mode: greets by name, says the details come from the Cenomi record, asks for the new brand (typed or from the Brand Profile), asks once if it repeats an existing brand | Channels §3.4–3.5; demo feedback §3.8 | Day 5; R4 |
+| Public page: "Do you have a CR?" | §7.1; demo feedback F1, F2 | `cr_question` card; `public_cr_check: ask_then_sign_in`. Yes → sign-in card → Leasing Opportunities. A typed CR number is never looked up, stored or repeated (INV8) | Asks the question, points to the sign-in button; on No, offers type or upload | Demo feedback §3.1 | R1 |
 
 ### 3.2 Intake: basic info
 
 | Requirement | System (code) | Agent | Spec | When |
 | --- | --- | --- | --- | --- |
-| CR check, optional and skippable | `verify_cr`; CR prefill as `verified` | Asks once, explains what a CR is, offers to skip | `docs/spec.md` §3 | Built |
+| CR check | Public page: the CR question only (3.1). Call centre: staff still enter and check CRs (`verify_cr`, prefill as `verified`) | Asks once; never asks for the number on the public page | `docs/spec.md` §3; demo feedback §3.1 | Built; R1 |
+| Type or upload (F6) | A Company or Brand Profile fills empty fields as `derived` with the document as evidence (mock document review service); typed values are compared with the profile, and a difference is flagged (never a blocker) | Offers once to type the details or upload the profiles; warns in one sentence on a difference | Demo feedback §3.7 | R3 |
 | 12 fields (names, company, address, brand EN and AR, sales category, product line, one mall, mobile and/or landline, email) | Validators, `can_submit`, policy file | Three bundled questions; extracts many fields per message; derives Arabic name, unit type and category; confirms by summary | `docs/spec.md` §2; L3 §3.7 | Built; policy Day 1 |
 | Derived and prefilled values are confirmed before submit | `confirm_fields` only for values already shown on a card; `staff` values need Proceed | Moves on when the user carries on; holds a value when they hesitate (English and Arabic) | Pre-baseline F1; Channels §3.1; L3 §3.10 | Day 1; Day 3 |
 | Arabic users | Arabic-Indic digits normalised before every rule | Replies in Arabic | L3 §3.10 | Day 3 |
@@ -209,7 +219,8 @@ Each stage lists what the requirements ask for, what deterministic code does, wh
 | Company Profile and Brand Profile required; CR, VAT, National ID, National Address optional | Presence, type and size only; no content read | Says which are required, mentions optional ones once | `docs/spec.md` §2 | Built |
 | CR ID shown read-only; VAT ID, National ID, National Address entered with their documents | `numbers[]` on the card, existing validators | — | Pre-baseline F5 | Day 1 |
 | Moving on when the required documents are in | `documents_updated` runs a turn; review card appears | One-line thanks and pointer | Pre-baseline F2 | Day 1 |
-| Existing tenants: documents on file | Referenced from the tenant record; keep or replace | Offers them | Channels §3.4 | Day 5 |
+| Existing tenants: documents on file | Referenced from the tenant record; keep or replace. Not for the Company and Brand Profiles, which a new brand uploads afresh; the Company Profile is checked against the Yardi record | Offers them; says both profiles are needed for a new brand | Channels §3.4; demo feedback §3.8 | Day 5; R4 |
+| Profile expiry | The document review service extracts the expiry date; the Lease Admin confirms it; expired, expiring soon or valid from `policy.yaml` and the clock | — | Demo feedback §3.4 | R1, R2 |
 
 ### 3.5 Review, consent, submit
 
@@ -224,29 +235,32 @@ Each stage lists what the requirements ask for, what deterministic code does, wh
 
 | Requirement | System (code) | Agent | Spec | When |
 | --- | --- | --- | --- | --- |
-| Store → RLM-Store, Media → RPLM-Media, Specialty → RPLM-Specialty, by region | `submitted` effect `routed(queue)`; policy `review_routing`; mall → region | — | L4 §3.2 | Day 4 |
-| Only that queue's reviewers can act | Actor check in the state machine | — | M0 §6 | Day 4 |
+| First level: the Lease Admin of the mall's region (policy `first_level_review_role`). Final level: Store → RLM-Store, Media → RPLM-Media, Specialty → RPLM-Specialty, by region | `submitted` effect `routed(queue)`; policy `review_routing`; mall → region | — | L4 §3.2; demo feedback §3.2 | Day 4; R1 |
+| "Inquiry for approval" email to the Lease Admin, linking straight to the case (F7) | `review_assigned` effect | — | Demo feedback §3.2 | R1 |
+| Only the right role acts at each level | Actor check: first-level events by the region's Lease Admin, final-level events by the RLM / RPLM of the product line; any other role refused (D4) | — | M0 §6; demo feedback §3.2 | Day 4; R1 |
 
-### 3.7 First-level verification (RLM / RPLM)
+### 3.7 First-level verification (Lease Admin)
 
 | Requirement | System (code) | Agent | Spec | When |
 | --- | --- | --- | --- | --- |
-| Reviewer verifies the customer profile and documents | Queue and case page; documents viewable; only legal actions shown | **Reviewer assistant:** grounded case brief (every value's source and evidence, verification checks, documents, related or duplicate inquiries, what's missing) | L4 §3.3, §3.6 | Day 4; assistant Day 5 |
-| A document isn't acceptable → re-upload request | `reupload_requested(doc_types, remarks)`; `reupload_request` email with a case link | Reviewer assistant drafts the remarks. **Case assistant:** explains which document and why, shows only those uploads; Resubmit returns the case to review | L4 §3.5 | Day 4 |
+| The Lease Admin verifies the customer profile and documents | Queue and case page; documents viewable; only legal actions shown | **Reviewer assistant:** grounded case brief (every value's source and evidence, verification checks, documents with expiry chips, profile checks, related or duplicate inquiries, what's missing) | L4 §3.3, §3.6; demo feedback §3.4 | Day 4; R2 |
+| Each document approved or rejected, with remarks (F8) | `document_approved` / `document_rejected {doc_type, file_id, remarks}`; first-level approval refused until every required document is approved; an expired document can't be approved; a decision on a replaced file is refused | Reviewer assistant drafts remarks; never decides | Demo feedback §3.4 (D5–D7) | R2 |
+| A rejected document → re-upload request | `reupload_requested` with the rejected documents and remarks; `reupload_request` email with a case link; the new file is decided again (F16) | **Case assistant:** explains which document and why, shows only those uploads; Resubmit returns the case to review | L4 §3.5; demo feedback §3.4 | Day 4; R2 |
 | Background checks → reject with remarks | `rejected(remarks, category)`; rejection email | Case assistant explains the remarks plainly and what the applicant can do next; never reopens | L4 §3.4–3.5 | Day 4 |
-| Approve → Azure AD account and invitation | `approved_first`: invite unless the contact has an account | Case assistant explains the invitation | L4 §3.4 | Day 4 |
-| "On contact creation, a notification … to provide additional tenant contacts" | System contacts request opens automatically | Case assistant collects contacts (3.8) | L4 §3.4 | Day 4 |
+| Approve first level → Azure AD account and invitation | `approved_first`: invite unless the contact has an account | Case assistant explains the invitation | L4 §3.4 | Day 4 |
+| "On contact creation, a notification … to provide additional tenant contacts" | Contacts request opens automatically | Case assistant asks the signatory question (3.8) | L4 §3.4; demo feedback §3.5 | Day 4; R2 |
 | The tenant is then a **lead** for second-level verification | Status "Lead — second review" | Uses the same word | L4 §3.8 | Day 5 |
 
-### 3.8 Second-level verification (RLM / RPLM)
+### 3.8 Second-level verification (contacts: Lease Admin; final: RLM / RPLM)
 
 | Requirement | System (code) | Agent | Spec | When |
 | --- | --- | --- | --- | --- |
-| Additional contacts: Authorized Signatory and Billing Contact required; Leasing Manager, Financial Controller, Company Admin optional | Contacts request; policy `second_level_contacts`; validators | **Case assistant:** one bundle question; "that's me" reuses the primary contact (confirmed) | L4 §3.5 | Day 4 |
+| Additional contacts: Authorized Signatory and Billing Contact required; Leasing Manager, Financial Controller, Company Admin optional | Contacts request; policy `second_level_contacts`; validators | **Case assistant:** asks "Are you the authorised signatory?" (F19); Yes uses the verified primary contact, No collects the signatory; then the billing and other contacts | L4 §3.5; demo feedback §3.5 | Day 4; R2 |
+| Each contact approved or rejected by the Lease Admin, with remarks (F12, F18) | `contact_approved` / `contact_rejected {contact_id, remarks}`; a rejected contact reopens a contacts request for that role only; an edited contact goes back to pending (F16); final approval needs the required contacts **approved** (D8) | Case assistant shows the remarks and asks only for that contact | Demo feedback §3.5 | R2 |
 | Existing tenants: contacts prefilled, reviewer can delete | Prefill from the tenant record; `contact_removed` | Shows prefilled contacts for confirmation | Channels §3.7 | Day 5 |
 | Estimated sales data: request → upload → reviewer notified | `sales_data_requested` / `provided`; both notifications | Explains the request, takes the upload | L4 §3.4–3.5 | Day 4 |
 | Re-link company and brand from Yardi | `company_relinked`, `brand_relinked`, checked against Yardi | **Reviewer assistant:** suggests matches with the reason (first-word rule, active companies; brands from the company's leases and proposals); **Use** fills the form, never submits | L4 §3.3, §3.6 | Day 5 |
-| Approve or reject the lead | Console actions; contacts required before approval (policy) | Reviewer assistant declines to decide: points to the button | L4 §3.3 | Days 4–5 |
+| Approve or reject the lead (RLM / RPLM) | Console actions; required contacts approved before approval (policy); document and contact decisions shown read-only to the final reviewer | Reviewer assistant declines to decide: points to the button | L4 §3.3; demo feedback §3.2 | Days 4–5; R2 |
 | Approve → Azure AD accounts for contacts without one, roles assigned | `has_account` check; invite with the contact's role | Case assistant explains | L4 §3.4 | Day 5 |
 
 ### 3.9 Handover to Yardi
