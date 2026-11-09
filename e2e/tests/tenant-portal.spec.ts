@@ -18,11 +18,13 @@ test.describe('Tenant Central (existing tenant) @scripted', () => {
     await expect(unit).toContainText('Jeddah Mall B')
     await unit.getByRole('button', { name: 'Raise inquiry' }).click()
 
-    // The chat opens in existing-tenant mode: greeted by name, details from the record.
+    // The chat opens in existing-tenant mode: greeted by name, the company from the Cenomi
+    // record (Yardi by CR), and asked for the new brand (R4, demo feedback §3.8).
     // The sr-only live region repeats the same text for screen readers.
     const greeting = page.getByTestId('bot-bubble-text').filter({ hasText: /Welcome back, Layla/ })
     await expect(greeting).toBeVisible({ timeout: 30_000 })
-    await expect(greeting).toContainText("Oasis Coffee Company's details")
+    await expect(greeting).toContainText("Oasis Coffee Company's details from your Cenomi record")
+    await expect(greeting).toContainText('new brand')
 
     await page.goto('/tenant/inquiries')
     await expect(page.getByTestId('my-inquiries-empty')).toBeVisible()
