@@ -180,12 +180,20 @@ async def test_rd_signed_in_new_brand_script_plays_turn_by_turn(life) -> None:
     so every later turn plays its own step."""
     client, app = life
     session_id = await _raise_scripted(client, "rd-signed-in-new-brand")
+    log: list[str] = []
+
+    def said(label: str, events: list[tuple[str, dict[str, Any]]]) -> str:
+        text = token_text(events)
+        cards = [c.get("card_type") for c in ui_cards(events)]
+        removed = sum(1 for name, _ in events if name == "message_remove")
+        log.append(f"{label}: {text!r} cards={cards} removed={removed}")
+        return text
 
     events = await chat_action(client, session_id, "proceed_basic_info")
-    assert "What's the new brand?" in token_text(events)
+    assert "What's the new brand?" in said("proceed", events), log
 
     events = await chat_message(client, session_id, "I'll upload the Brand Profile")
-    assert "both the Company Profile and the Brand Profile" in token_text(events)
+    assert "both the Company Profile and the Brand Profile" in said("upload choice", events), log
     assert ui_cards(events, "document_upload")
 
     uploaded = await upload_document(
@@ -195,14 +203,14 @@ async def test_rd_signed_in_new_brand_script_plays_turn_by_turn(life) -> None:
     events = await chat_action(
         client, session_id, "documents_updated", {"doc_type": "brand_profile"}
     )
-    assert "filled the brand name and category" in token_text(events)
+    assert "filled the brand name and category" in said("brand profile", events), log
     [confirm] = ui_cards(events, "confirm_fields")
 
     events = await chat_action(client, session_id, "confirm_card", {"card_id": confirm["card_id"]})
-    assert "brand name in Arabic" in token_text(events)
+    assert "brand name in Arabic" in said("confirm", events), log
 
     events = await chat_message(client, session_id, "مخبز الواحة")
-    assert "upload the Company Profile" in token_text(events)
+    assert "upload the Company Profile" in said("arabic", events), log
 
     uploaded = await upload_document(
         client, session_id, "company_profile", "oasis_company_profile_mismatch.pdf", PDF
@@ -211,11 +219,11 @@ async def test_rd_signed_in_new_brand_script_plays_turn_by_turn(life) -> None:
     events = await chat_action(
         client, session_id, "documents_updated", {"doc_type": "company_profile"}
     )
-    assert "different company name from your Cenomi record" in token_text(events)
+    assert "different company name from your Cenomi record" in said("company profile", events), log
     assert ui_cards(events, "review")
 
     events = await chat_message(client, session_id, "Keep the record's name")
-    assert "keep your record's name" in token_text(events)
+    assert "keep your record's name" in said("keep", events), log
 
     events = await chat_action(client, session_id, "accept_and_submit", {"terms_accepted": True})
     assert ui_cards(events, "success")
