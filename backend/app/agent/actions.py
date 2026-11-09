@@ -499,7 +499,11 @@ def document_review_notes(
             f"[ui_event] document_fields {doc_type.value} filled={','.join(ref.filled_fields)}"
         )
     for mismatch in document_mismatches(session.draft, runtime.master, doc_type=doc_type):
-        notes.append(f"[ui_event] document_mismatch {mismatch.field}")
+        # R4: a signed-in tenant's company comes from Cenomi's record (Yardi), not from what
+        # they typed, so the agent names the record instead.
+        field = session.draft.fields[FieldKey(mismatch.field)]
+        source = " source=cenomi_record" if field.source == Source.VERIFIED else ""
+        notes.append(f"[ui_event] document_mismatch {mismatch.field}{source}")
     return notes
 
 

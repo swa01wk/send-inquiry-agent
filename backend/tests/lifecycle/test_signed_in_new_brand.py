@@ -1,0 +1,159 @@
+"""R4 (demo feedback §3.8, D13): a signed-in tenant raising from Leasing Opportunities.
+
+Every inquiry is a new brand under the same company: company name and address come from
+Yardi by CR, verified and unconfirmed; no brand is prefilled; both profiles are uploaded
+afresh, and the Company Profile is checked against the Yardi record (R3 checks).
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from app.domain.document_checks import document_mismatches
+from app.domain.draft_ops import write_fields
+from app.domain.master import load_master_data
+from app.domain.models import DocType, FieldKey, Source
+from app.domain.rules import can_submit
+from app.services.yardi import YardiCompany
+from tests.lifecycle.conftest import STORE_CENTRAL
+from tests.scenarios.helpers import chat_action, ui_cards, upload_document
+
+OASIS = "T-1001"
+PDF = b"%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"
+
+
+async def _raise(client: Any, tenant_id: str = OASIS) -> dict[str, Any]:
+    raised = await client.post(
+        "/api/tenant/opportunities/OPP-101/inquiry", json={}, headers={"X-Tenant-Id": tenant_id}
+    )
+    assert raised.status_code == 200, raised.text
+    return raised.json()
+
+
+def _audit(app: Any, session_id: str, event: str) -> list[dict[str, Any]]:
+    return [e.payload for e in app.state.services.audit.for_session(session_id) if e.type == event]
+
+
+async def test_company_comes_from_yardi_verified_and_unconfirmed(life) -> None:
+    client, app = life
+    body = await _raise(client)
+    session = await app.state.session_store.get(body["session_id"])
+    draft = session.draft
+    for key, value in (
+        (FieldKey.COMPANY_NAME, "Oasis Coffee Company"),
+        (FieldKey.COMPANY_ADDRESS, "Prince Sultan Road, Al Rawdah, Jeddah"),
+    ):
+        field = draft.fields[key]
+        assert (field.value, field.source, field.confirmed) == (value, Source.VERIFIED, False)
+    [prefill] = _audit(app, session.id, "tenant_prefill")
+    assert (prefill["company_source"], prefill["yardi_company_id"]) == ("yardi", "YC-1301")
+    card = body["cards"][0]
+    assert card["card_type"] == "basic_info_review"
+    assert "Oasis Coffee Company" in str(card["payload"])
+    assert "Cenomi record" in body["messages"][0]["text"]
+
+
+async def test_the_yardi_record_wins_over_the_tenant_record(life, monkeypatch) -> None:
+    client, app = life
+    yardi = app.state.services.yardi
+    renamed = YardiCompany(
+        id="YC-1301",
+        name="Oasis Coffee Co.",
+        active=True,
+        brands=[],
+        cr_number="1010000000",
+        address="Tahlia Street, Jeddah",
+    )
+    monkeypatch.setattr(yardi, "company_by_cr", lambda cr: renamed if cr == "1010000000" else None)
+    session = await app.state.session_store.get((await _raise(client))["session_id"])
+    assert session.draft.fields[FieldKey.COMPANY_NAME].value == "Oasis Coffee Co."
+    assert session.draft.fields[FieldKey.COMPANY_ADDRESS].value == "Tahlia Street, Jeddah"
+
+
+async def test_no_yardi_match_falls_back_to_the_tenant_record(life, monkeypatch) -> None:
+    client, app = life
+    monkeypatch.setattr(app.state.services.yardi, "company_by_cr", lambda _cr: None)
+    session = await app.state.session_store.get((await _raise(client))["session_id"])
+    assert session.draft.fields[FieldKey.COMPANY_NAME].value == "Oasis Coffee Company"
+    [prefill] = _audit(app, session.id, "tenant_prefill")
+    assert (prefill["company_source"], prefill["yardi_company_id"]) == ("tenant_record", None)
+
+
+async def test_no_brand_and_both_profiles_required(life) -> None:
+    client, app = life
+    session = await app.state.session_store.get((await _raise(client))["session_id"])
+    draft = session.draft
+    for key in (FieldKey.BRAND_NAME_EN, FieldKey.BRAND_NAME_AR, FieldKey.SALES_CATEGORY):
+        assert draft.fields[key].value is None
+    assert DocType.COMPANY_PROFILE not in draft.documents
+    assert DocType.BRAND_PROFILE not in draft.documents
+    assert draft.documents[DocType.CR_CERTIFICATE].on_file  # other documents on file stay
+    tokens = {b.token for b in can_submit(draft)}
+    assert {"missing_document:company_profile", "missing_document:brand_profile"} <= tokens
+
+
+async def test_brand_profile_fills_the_new_brand(life) -> None:
+    client, app = life
+    session_id = (await _raise(client))["session_id"]
+    uploaded = await upload_document(
+        client, session_id, "brand_profile", "new_brand_profile.pdf", PDF
+    )
+    assert uploaded["status_code"] == 200, uploaded
+    assert set(uploaded["body"]["fields_filled"]) == {"brand_name_en", "sales_category"}
+    draft = (await app.state.session_store.get(session_id)).draft
+    brand = draft.fields[FieldKey.BRAND_NAME_EN]
+    assert (brand.value, brand.source, brand.confirmed) == (
+        "Oasis Bakehouse",
+        Source.DERIVED,
+        False,
+    )
+
+
+async def test_company_profile_is_checked_against_yardi_and_never_blocks(life) -> None:
+    client, app = life
+    session_id = (await _raise(client))["session_id"]
+    await chat_action(client, session_id, "proceed_basic_info")
+    uploaded = await upload_document(
+        client, session_id, "company_profile", "oasis_company_profile_mismatch.pdf", PDF
+    )
+    assert uploaded["body"]["mismatches"] == ["company_name"]
+    assert uploaded["body"]["fields_filled"] == []  # the Yardi value is kept
+    store = app.state.session_store
+    session = await store.get(session_id)
+    [check] = document_mismatches(session.draft, load_master_data())
+    assert (check.field, check.typed, check.document_value) == (
+        "company_name",
+        "Oasis Coffee Company",
+        "Oasis Coffee Trading Establishment",
+    )
+
+    # The tenant gives the brand and the Brand Profile; the mismatch doesn't block submit.
+    await upload_document(client, session_id, "brand_profile", "brand_profile.pdf", PDF)
+    session = await store.get(session_id)
+    session.draft, _w, errors = write_fields(
+        session.draft,
+        [
+            (FieldKey.BRAND_NAME_EN.value, "Oasis Bakehouse", Source.USER),
+            (FieldKey.BRAND_NAME_AR.value, "مخبز الواحة", Source.USER),
+            (FieldKey.SALES_CATEGORY.value, "fnb_cafe", Source.USER),
+        ],
+        master=load_master_data(),
+    )
+    assert not errors
+    await store.save(session)
+    events = await chat_action(client, session_id, "accept_and_submit", {"terms_accepted": True})
+    [success] = ui_cards(events, "success")
+    reference = success["payload"]["reference"]
+    detail = (
+        await client.get(f"/api/review/cases/{reference}", headers={"X-Reviewer-Id": STORE_CENTRAL})
+    ).json()
+    assert [c["field"] for c in detail["brief"]["document_checks"]] == ["company_name"]
+
+
+async def test_a_matching_company_profile_raises_no_flag(life) -> None:
+    client, app = life
+    session_id = (await _raise(client))["session_id"]
+    uploaded = await upload_document(
+        client, session_id, "company_profile", "oasis_company_profile.pdf", PDF
+    )
+    assert uploaded["body"]["mismatches"] == []

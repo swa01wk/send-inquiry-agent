@@ -20,6 +20,18 @@
     "company_profile_seed_expired.pdf": {
       "company_name": "Qahwa House Holding Company",
       "company_address": "Tahlia Street, Riyadh"
+    },
+    "oasis_company_profile.pdf": {
+      "company_name": "Oasis Coffee Company",
+      "company_address": "Prince Sultan Road, Al Rawdah, Jeddah"
+    },
+    "oasis_company_profile_mismatch.pdf": {
+      "company_name": "Oasis Coffee Trading Establishment",
+      "company_address": "Prince Sultan Road, Al Rawdah, Jeddah"
+    },
+    "new_brand_profile.pdf": {
+      "brand_name_en": "Oasis Bakehouse",
+      "sales_category": "fnb_cafe"
     }
   }
 }
