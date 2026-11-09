@@ -5,6 +5,18 @@ test.describe('Tenant Central (existing tenant) @scripted', () => {
   test('sign in from /dev, filter opportunities, raise an inquiry prefilled and verified', async ({
     page,
   }) => {
+    // Raising opens a draft only: My inquiries lists submitted inquiries, so its count stays
+    // the same (other stories in the run may already have submitted for Oasis).
+    const mine = async () =>
+      (
+        (await (
+          await page.request.get('http://127.0.0.1:8000/api/tenant/inquiries', {
+            headers: { 'X-Tenant-Id': 'T-1001' },
+          })
+        ).json()) as unknown[]
+      ).length
+    const before = await mine()
+
     await page.goto('/dev')
     await page
       .getByTestId('dev-tenants')
@@ -27,6 +39,9 @@ test.describe('Tenant Central (existing tenant) @scripted', () => {
     await expect(greeting).toContainText('new brand')
 
     await page.goto('/tenant/inquiries')
-    await expect(page.getByTestId('my-inquiries-empty')).toBeVisible()
+    await expect(
+      page.getByTestId(before === 0 ? 'my-inquiries-empty' : 'my-inquiries'),
+    ).toBeVisible()
+    expect(await mine()).toBe(before)
   })
 })
