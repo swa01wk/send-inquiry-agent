@@ -15,7 +15,7 @@ export function demoStepMode(): boolean {
 
 /** Scale the demo test timeout when pauses are enabled (headed rehearsal). */
 export function demoTestTimeoutMs(): number {
-  return demoPauseMs() > 0 ? 45 * 60_000 : 15 * 60_000
+  return demoPauseMs() > 0 ? 60 * 60_000 : 30 * 60_000
 }
 
 /** Fixed overlay with the section name; removed when the next caption runs. */
