@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "test": "playwright test",
-    "test:demo": "playwright test --grep @demo --project=desktop-chrome",
+    "test:demo": "E2E_DEMO_SEED=1 playwright test --grep @demo --project=desktop-chrome",
     "test:fe": "playwright test --config=playwright.fe.config.ts --grep @fe",
     "test:scripted": "playwright test --grep @scripted",
     "test:live": "playwright test --grep @live",
