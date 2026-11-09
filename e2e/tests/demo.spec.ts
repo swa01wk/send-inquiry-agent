@@ -459,7 +459,10 @@ test.describe('Demo script — 10 Nov @demo', () => {
             await beat(typedPage)
             await typed.say('Keep my company name')
             await typed.upload('Brand Profile', 'brand_profile_match.pdf')
-            await typed.confirmCard()
+            // The Brand Profile agrees with what was typed, so there may be nothing to confirm:
+            // the upload waits for its turn, so a confirm card would already be showing.
+            const looksRight = typedPage.getByRole('button', { name: 'Looks right' }).last()
+            if (await looksRight.isVisible()) await typed.confirmCard()
             await expect(typed.cards('review')).toBeVisible({ timeout: 90_000 })
             await typed.acceptAndSubmit()
             const typedReference = await typed.successReference()
