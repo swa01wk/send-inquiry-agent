@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import uuid
 from collections.abc import AsyncIterator
@@ -157,125 +158,146 @@ async def chat_stream(
                 ),
             ) from exc
 
-    async def event_generator() -> AsyncIterator[dict[str, str]]:
-        nonlocal turn_user_message
-        replies: dict[str, str] = {}
-        removed: set[str] = set()
+    replies: dict[str, str] = {}
+    removed: set[str] = set()
 
-        def observe(item: SseEvent) -> None:
-            data = item["data"]
-            if item["event"] == "token":
-                message_id = str(data.get("message_id", ""))
-                replies[message_id] = replies.get(message_id, "") + str(data.get("text", ""))
-            elif item["event"] == "message_remove":
-                removed.add(str(data.get("message_id", "")))
-            elif item["event"] == "ui_card":
-                session.remember_card(data)
-                audit.record(
-                    session.id,
-                    "card_shown",
-                    actor="agent",
-                    payload={"card_type": data.get("card_type"), "card_id": data.get("card_id")},
-                )
-
-        try:
-            for item in action_events:
-                if item["event"] == "ui_card":
-                    remember_confirm_card_keys(session, UiCard.model_validate(item["data"]))
-                item = _scoped(item, session)
-                observe(item)
-                yield _sse(item)
-            if action_quiet:
-                # The card already shows the outcome (wrong code, resend, one channel of two
-                # verified): no agent turn, so no extra reply (spec §6, quiet card actions).
-                yield _sse(
-                    SseEvent(event="done", data={"phase": compute_phase(session.draft).value})
-                )
-                return
-            if session.form_mode and user_text is None:
-                # Form mode (L3 §3.14): the action is applied; no agent turn runs. The phase
-                # decides the next card.
-                for card in await form_mode_cards(session, runtime):
-                    remember_confirm_card_keys(session, card)
-                    item = _scoped(SseEvent(event="ui_card", data=card.model_dump()), session)
-                    observe(item)
-                    yield _sse(item)
-                summary = build_draft_summary(session.draft, runtime.master, [])
-                yield _sse(SseEvent(event="draft", data=summary.model_dump()))
-                yield _sse(
-                    SseEvent(event="done", data={"phase": compute_phase(session.draft).value})
-                )
-                return
-            if user_text is not None and route_decision is not None:
-                intent = route_decision.intent
-                if intent == Intent.HUMAN_HELP:
-                    session.add_message(user_message_id, "user", user_text)
-                    result = await handle_ui_action(
-                        "request_handoff",
-                        {"reason": "user_asked"},
-                        session,
-                        runtime,
-                    )
-                    for item in result.events:
-                        if item["event"] == "ui_card":
-                            remember_confirm_card_keys(session, UiCard.model_validate(item["data"]))
-                        item = _scoped(item, session)
-                        observe(item)
-                        yield _sse(item)
-                    note_content = str(result.note.content)
-                    turn_user_message = HumanMessage(content=f"{user_text}\n\n{note_content}")
-                elif intent in (
-                    Intent.GENERAL_INQUIRY,
-                    Intent.EXISTING_TENANT_NEW_SPACE,
-                    Intent.OFF_TOPIC,
-                ):
-                    async for item in stream_redirect_reply(intent, user_text, session, runtime):
-                        observe(item)
-                        yield _sse(item)
-                    return
-            async for item in run_turn(
-                graph,
-                session,
-                turn_user_message,
-                runtime=runtime,
-                settings=settings,
-                store=store,
-                lease_id=lease_id,
-            ):
-                item = _scoped(item, session)
-                observe(item)
-                yield _sse(item)
-        finally:
-            if user_text is not None and not any(
-                m.get("id") == user_message_id for m in session.transcript
-            ):
-                session.add_message(user_message_id, "user", user_text)
-            for message_id, text in replies.items():
-                if message_id not in removed and text.strip():
-                    session.add_message(message_id, "assistant", text)
-            record_draft_changes(
-                audit,
+    def observe(item: SseEvent) -> None:
+        data = item["data"]
+        if item["event"] == "token":
+            message_id = str(data.get("message_id", ""))
+            replies[message_id] = replies.get(message_id, "") + str(data.get("text", ""))
+        elif item["event"] == "message_remove":
+            removed.add(str(data.get("message_id", "")))
+        elif item["event"] == "ui_card":
+            session.remember_card(data)
+            audit.record(
                 session.id,
-                before_draft,
-                session.draft,
-                actor="user" if user_text is None else "agent",
-                via="card" if user_text is None else "agent",
+                "card_shown",
+                actor="agent",
+                payload={"card_type": data.get("card_type"), "card_id": data.get("card_id")},
             )
-            try:
-                await store.save(session)
-            except TurnConflict:
-                yield _sse(
-                    SseEvent(
-                        event="error",
-                        data={
-                            "code": "turn_conflict",
-                            "message": (
-                                "This turn couldn't be saved because the inquiry changed "
-                                "elsewhere. Please try again."
-                            ),
-                        },
-                    )
+
+    async def turn_events() -> AsyncIterator[SseEvent]:
+        nonlocal turn_user_message
+        for item in action_events:
+            if item["event"] == "ui_card":
+                remember_confirm_card_keys(session, UiCard.model_validate(item["data"]))
+            item = _scoped(item, session)
+            observe(item)
+            yield item
+        if action_quiet:
+            # The card already shows the outcome (wrong code, resend, one channel of two
+            # verified): no agent turn, so no extra reply (spec §6, quiet card actions).
+            yield SseEvent(event="done", data={"phase": compute_phase(session.draft).value})
+            return
+        if session.form_mode and user_text is None:
+            # Form mode (L3 §3.14): the action is applied; no agent turn runs. The phase
+            # decides the next card.
+            for card in await form_mode_cards(session, runtime):
+                remember_confirm_card_keys(session, card)
+                item = _scoped(SseEvent(event="ui_card", data=card.model_dump()), session)
+                observe(item)
+                yield item
+            summary = build_draft_summary(session.draft, runtime.master, [])
+            yield SseEvent(event="draft", data=summary.model_dump())
+            yield SseEvent(event="done", data={"phase": compute_phase(session.draft).value})
+            return
+        if user_text is not None and route_decision is not None:
+            intent = route_decision.intent
+            if intent == Intent.HUMAN_HELP:
+                session.add_message(user_message_id, "user", user_text)
+                result = await handle_ui_action(
+                    "request_handoff",
+                    {"reason": "user_asked"},
+                    session,
+                    runtime,
                 )
-            await store.end_turn(session_id, lease_id)
+                for item in result.events:
+                    if item["event"] == "ui_card":
+                        remember_confirm_card_keys(session, UiCard.model_validate(item["data"]))
+                    item = _scoped(item, session)
+                    observe(item)
+                    yield item
+                note_content = str(result.note.content)
+                turn_user_message = HumanMessage(content=f"{user_text}\n\n{note_content}")
+            elif intent in (
+                Intent.GENERAL_INQUIRY,
+                Intent.EXISTING_TENANT_NEW_SPACE,
+                Intent.OFF_TOPIC,
+            ):
+                async for item in stream_redirect_reply(intent, user_text, session, runtime):
+                    observe(item)
+                    yield item
+                return
+        async for item in run_turn(
+            graph,
+            session,
+            turn_user_message,
+            runtime=runtime,
+            settings=settings,
+            store=store,
+            lease_id=lease_id,
+        ):
+            item = _scoped(item, session)
+            observe(item)
+            yield item
+
+    async def finish() -> bool:
+        """Record the turn, save the session and release the turn lease. Returns whether
+        the save hit a conflict."""
+        if user_text is not None and not any(
+            m.get("id") == user_message_id for m in session.transcript
+        ):
+            session.add_message(user_message_id, "user", user_text)
+        for message_id, text in replies.items():
+            if message_id not in removed and text.strip():
+                session.add_message(message_id, "assistant", text)
+        record_draft_changes(
+            audit,
+            session.id,
+            before_draft,
+            session.draft,
+            actor="user" if user_text is None else "agent",
+            via="card" if user_text is None else "agent",
+        )
+        conflict = False
+        try:
+            await store.save(session)
+        except TurnConflict:
+            conflict = True
+        await store.end_turn(session_id, lease_id)
+        return conflict
+
+    async def event_generator() -> AsyncIterator[dict[str, str]]:
+        # `done` goes out only once the session is saved and the turn lease released: the
+        # client sends its next action (a queued `documents_updated`, a card click) as soon as
+        # it sees `done`, and on Postgres that request used to arrive while the lease was still
+        # held, so it got 409 `turn_in_progress` and the chat stayed disabled (day R5).
+        held_done: SseEvent | None = None
+        conflict = False
+        try:
+            async with contextlib.aclosing(turn_events()) as events:
+                async for item in events:
+                    if item["event"] == "done":
+                        held_done = item
+                        continue
+                    yield _sse(item)
+        finally:
+            conflict = await finish()
+        if held_done is not None:
+            yield _sse(held_done)
+        if conflict:
+            yield _sse(
+                SseEvent(
+                    event="error",
+                    data={
+                        "code": "turn_conflict",
+                        "message": (
+                            "This turn couldn't be saved because the inquiry changed "
+                            "elsewhere. Please try again."
+                        ),
+                    },
+                )
+            )
 
     return EventSourceResponse(event_generator())
