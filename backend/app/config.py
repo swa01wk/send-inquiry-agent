@@ -142,6 +142,11 @@ class Settings(BaseSettings):
     turn_lease_seconds: int = Field(
         default=120, ge=30, le=600, validation_alias="TURN_LEASE_SECONDS"
     )
+    # An upload or document removal waits this long for a chat turn in progress to finish
+    # before answering 409 turn_in_progress (the agent may still be replying).
+    upload_turn_wait_seconds: float = Field(
+        default=30.0, ge=0, le=120, validation_alias="UPLOAD_TURN_WAIT_SECONDS"
+    )
     draft_retention_days: int = Field(
         default=30, ge=1, le=365, validation_alias="DRAFT_RETENTION_DAYS"
     )

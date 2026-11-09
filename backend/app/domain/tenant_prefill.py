@@ -64,8 +64,13 @@ def prefill_brand(
 
 
 def _latin_brand_name_in_message(name: str, message: str) -> bool:
-    pattern = rf"(?<!\w){re.escape(name)}(?!\w)"
-    return bool(re.search(pattern, message, re.IGNORECASE))
+    """The brand's own name, not the start of a longer one: "Oasis Coffee Express" is a
+    different brand from "Oasis Coffee" (a capitalised word right after the name)."""
+    pattern = rf"(?<!\w)(?i:{re.escape(name)})(?!\w)(?!\s+[A-Z])"
+    return bool(re.search(pattern, message))
+
+
+_NEW_BRAND_RE = re.compile(r"\bnew\s+brand\b|علامة\s+(?:تجارية\s+)?جديدة", re.IGNORECASE)
 
 
 def tenant_brand_record_filled(draft: InquiryDraft, brand: TenantBrand) -> bool:
@@ -92,7 +97,10 @@ def apply_tenant_brand_pick_from_message(
     master: MasterData,
     message: str,
 ) -> tuple[InquiryDraft, list[str]]:
-    """When the message names one account brand, prefill the full brand record if needed."""
+    """When the message names one account brand, prefill the full brand record if needed.
+    A message that says it's a new brand never picks an account brand."""
+    if _NEW_BRAND_RE.search(message):
+        return draft, []
     matched = match_single_brand_in_message(tenant, message)
     if matched is None or tenant_brand_record_filled(draft, matched):
         return draft, []

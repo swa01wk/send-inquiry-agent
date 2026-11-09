@@ -78,3 +78,47 @@ async def test_delete_document(client: AsyncClient) -> None:
     doc_row = next(d for d in body["draft"]["documents"] if d["doc_type"] == "company_profile")
     assert doc_row["uploaded"] is False
     assert body["draft"]["checks"]["required_docs_uploaded"] == 0
+
+
+@pytest.mark.asyncio
+async def test_upload_waits_for_a_reply_in_progress(client: AsyncClient, app) -> None:
+    """The user can pick a file while the agent is still replying: the upload lands once the
+    turn ends instead of failing with 409 turn_in_progress (re-demo, 9 Nov)."""
+    import asyncio
+
+    session_id = await _create_session(client)
+    store = app.state.session_store
+    lease_id = await store.begin_turn(session_id)
+
+    async def finish_reply() -> None:
+        await asyncio.sleep(0.5)
+        await store.end_turn(session_id, lease_id)
+
+    releasing = asyncio.create_task(finish_reply())
+    response = await client.post(
+        f"/api/sessions/{session_id}/documents",
+        data={"doc_type": "company_profile"},
+        files={"file": ("company.pdf", b"%PDF-sample", "application/pdf")},
+    )
+    await releasing
+    assert response.status_code == 200, response.text
+
+
+@pytest.mark.asyncio
+async def test_upload_still_409_when_the_turn_outlasts_the_wait(
+    client: AsyncClient, app, settings
+) -> None:
+    session_id = await _create_session(client)
+    app.state.settings = settings.model_copy(update={"upload_turn_wait_seconds": 0.3})
+    store = app.state.session_store
+    lease_id = await store.begin_turn(session_id)
+    try:
+        response = await client.post(
+            f"/api/sessions/{session_id}/documents",
+            data={"doc_type": "company_profile"},
+            files={"file": ("company.pdf", b"%PDF-sample", "application/pdf")},
+        )
+        assert response.status_code == 409
+        assert response.json()["error"]["code"] == "turn_in_progress"
+    finally:
+        await store.end_turn(session_id, lease_id)

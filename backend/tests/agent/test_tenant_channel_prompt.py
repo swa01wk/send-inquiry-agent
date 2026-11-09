@@ -190,3 +190,23 @@ def test_assisted_guard_one_note_for_name_and_verification_claim(
     assert note.count(GUARD_PREFIX) == 1
     assert "don't send or promise a verification link or code" in note
     assert "Don't greet or thank the caller by name" in note
+
+
+def test_brand_pick_ignores_a_longer_new_name_and_a_new_brand(agent_runtime: AgentRuntime) -> None:
+    """Re-demo, 9 Nov: "Oasis Coffee Express" is a new brand, not the account's "Oasis Coffee";
+    nor is anything the tenant calls a new brand."""
+    from app.domain.tenant_prefill import match_single_brand_in_message
+
+    oasis = agent_runtime.services.tenants.get_by_id("T-1001")
+    assert oasis is not None
+    master = load_master_data()
+    draft = new_inquiry_draft()
+    assert match_single_brand_in_message(oasis, "It's for Oasis Coffee.") is not None
+    assert match_single_brand_in_message(oasis, "it's for oasis coffee") is not None
+    assert match_single_brand_in_message(oasis, "Oasis Coffee Express, a kiosk") is None
+    _, written = apply_tenant_brand_pick_from_message(
+        draft, oasis, master, "A new brand under Oasis Coffee, called Bakehouse"
+    )
+    assert written == []
+    _, written = apply_tenant_brand_pick_from_message(draft, oasis, master, "It's Oasis Coffee")
+    assert FieldKey.BRAND_NAME_EN.value in written
