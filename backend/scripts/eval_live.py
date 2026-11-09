@@ -1730,7 +1730,8 @@ SCENARIOS: list[LiveScenario] = [
         "Arabic user",
         [
             "السلام عليكم، نريد افتتاح كشك قهوة",
-            "رقم السجل 1010123456",
+            # No CR: the public page sends a typed CR to sign-in (R1); cr_privacy covers that.
+            "ما عندنا سجل تجاري. الشركة: شركة بين ستريت للتجارة، شارع العليا، الرياض",
             "اسم العلامة بين ستريت، كشك قهوة مختصة في Riyadh Mall A",
             "سارة علي، sara@beanstreet.example، 0501234567",
         ],

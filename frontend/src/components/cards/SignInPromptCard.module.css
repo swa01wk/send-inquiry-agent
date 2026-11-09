@@ -19,3 +19,10 @@
   text-decoration: none;
   box-sizing: border-box;
 }
+
+/* It's a link: the global a:hover (0,1,1) would turn the text brand purple on the accent
+   background (2.9:1, axe color-contrast on mobile after a tap). */
+.signInBtn:hover,
+.signInBtn:visited {
+  color: var(--color-surface);
+}
