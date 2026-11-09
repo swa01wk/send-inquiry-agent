@@ -267,7 +267,7 @@ def _incomplete_bulk_capture_note(state: AgentState, phase: str) -> str | None:
         return None
     draft = state["draft"]
     missing: list[str] = []
-    expected = (FieldKey.BRAND_NAME_EN, FieldKey.UNIT_TYPE, FieldKey.EMAIL)
+    expected: tuple[FieldKey, ...] = (FieldKey.BRAND_NAME_EN, FieldKey.UNIT_TYPE, FieldKey.EMAIL)
     if _profiles_coming(state):
         expected = (FieldKey.UNIT_TYPE, FieldKey.EMAIL)
     for key in expected:
