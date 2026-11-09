@@ -10,6 +10,8 @@ name: e2e
 #     (re)written on ubuntu-latest and committed to that branch.
 #   Run workflow → suite "demo": the Day 5 demo rehearsal (`make e2e-demo`, @demo); set
 #     state_backend=postgres to rehearse on the store `make demo` uses.
+#   Run workflow → suite "demo_stack": the restart beat (D10) on the Docker demo stack:
+#     `make demo` in the background, then `make e2e-demo-stack` (no model needed).
 # Nightly live runs are opt-in: set the repository variable NIGHTLY_LIVE=true (model cost).
 
 on:
@@ -18,7 +20,7 @@ on:
       suite:
         description: Which suite to run
         type: choice
-        options: [scripted, live, eval, fe, demo]
+        options: [scripted, live, eval, fe, demo, demo_stack]
         default: scripted
       group:
         description: eval-live scenario group (eval suite only)
@@ -141,6 +143,48 @@ jobs:
         if: always()
         with:
           name: playwright-demo-report
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+
+  playwright-demo-stack:
+    if: github.event_name == 'workflow_dispatch' && inputs.suite == 'demo_stack'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+      - name: backend/.env for the stack
+        # docker-compose.yml reads backend/.env. The restart test makes no model call, so
+        # the agent runs scripted and no key is needed.
+        run: |
+          cp backend/.env.example backend/.env
+          sed -i 's/^AGENT_MODE=.*/AGENT_MODE=scripted/' backend/.env
+      - name: Start the demo stack (make demo, detached)
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d --build
+          for i in $(seq 1 90); do
+            if curl -fsS http://127.0.0.1:8000/api/health >/dev/null && curl -fsS http://127.0.0.1:5173 >/dev/null; then
+              echo "stack up after $((i * 5)) s"; exit 0
+            fi
+            sleep 5
+          done
+          docker compose -f docker-compose.yml -f docker-compose.demo.yml logs --tail 80
+          exit 1
+      - name: Install Playwright
+        run: cd e2e && npm ci && npx playwright install --with-deps chromium
+      - name: Restart beat (make e2e-demo-stack)
+        run: set -o pipefail; make e2e-demo-stack 2>&1 | tee /tmp/playwright.log
+      - name: Stack logs
+        if: failure()
+        run: docker compose -f docker-compose.yml -f docker-compose.demo.yml logs --tail 120 backend
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-demo-stack-report
           path: |
             e2e/playwright-report/
             e2e/test-results/
