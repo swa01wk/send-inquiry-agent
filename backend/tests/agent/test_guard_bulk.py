@@ -108,3 +108,43 @@ def test_incomplete_bulk_capture_after_partial_update() -> None:
     note = _incomplete_bulk_capture_note(state, "collecting")
     assert note is not None
     assert "brand_name_en" in note
+
+
+def _kiosk_bundle_state(messages):
+    # The upload path's bundle: space and contact, no brand (the Brand Profile gives it).
+    draft = new_inquiry_draft()
+    draft.cr_status = "skipped"
+    draft, _, _ = write_fields(
+        draft,
+        [
+            (FieldKey.UNIT_TYPE.value, "specialty", Source.DERIVED),
+            (FieldKey.EMAIL.value, "sara@beanstreet.example", Source.USER),
+            (FieldKey.MOBILE.value, "+966501234567", Source.USER),
+        ],
+        master=load_master_data(),
+    )
+    bundle = (
+        "Specialty coffee kiosk at Riyadh Mall A. Sara Ali, sara@beanstreet.example, 0501234567"
+    )
+    tool_call = {"name": "update_draft", "args": {"fields": []}, "id": "t1", "type": "tool_call"}
+    return _state(
+        draft,
+        [
+            *messages,
+            HumanMessage(content=bundle),
+            AIMessage(content="", tool_calls=[tool_call]),
+            AIMessage(content="Thanks, Sara."),
+        ],
+    )
+
+
+def test_incomplete_bulk_still_asks_for_the_brand_on_a_typed_bundle() -> None:
+    state = _kiosk_bundle_state([HumanMessage(content="I'll type them")])
+    note = _incomplete_bulk_capture_note(state, "collecting")
+    assert note is not None and "brand_name_en" in note
+
+
+def test_incomplete_bulk_skips_the_brand_when_the_profiles_are_coming() -> None:
+    # Demo feedback §3.7, live eval 9 Nov: the guard made the model invent a brand.
+    state = _kiosk_bundle_state([HumanMessage(content="I'll upload the profiles")])
+    assert _incomplete_bulk_capture_note(state, "collecting") is None

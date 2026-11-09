@@ -50,7 +50,10 @@ function confirmed(draft: Record<string, unknown>, key: string): boolean | undef
 }
 
 /** Upload path up to the review card (shared by the first and third tests). */
-async function uploadPathToReview(inquiry: InquiryPage, request: Parameters<typeof fetchDevOutbox>[0]) {
+async function uploadPathToReview(
+  inquiry: InquiryPage,
+  request: Parameters<typeof fetchDevOutbox>[0],
+) {
   await answerCrNo(inquiry)
   await inquiry.say("I'll upload the profiles")
   await afterTurnChecks(inquiry)
@@ -60,9 +63,7 @@ async function uploadPathToReview(inquiry: InquiryPage, request: Parameters<type
   await verifyBoth(inquiry, request)
 
   await uploadProfile(inquiry, 'Company Profile', 'company_profile_match.pdf')
-  await expect(inquiry.page.getByTestId('doc-filled-company_profile')).toContainText(
-    'Company name',
-  )
+  await expect(inquiry.page.getByTestId('doc-filled-company_profile')).toContainText('Company name')
   const companyCard = inquiry.page.getByTestId(/confirm-fields-/).last()
   await expect(companyCard).toContainText('Bean Street Trading Co.')
   await expect(companyCard).toContainText(/from: Company Profile, company_profile_match\.pdf/i)
@@ -161,8 +162,12 @@ test.describe('Story rd-type-or-upload @scripted', () => {
     expect(fieldDisplay(draft, 'company_name')).toMatch(/Bean Street Trading/i)
     expect(confirmed(draft, 'company_name')).toBe(false)
     expect(draft.can_submit).toBe(false)
-    await expect(inquiry.page.getByTestId(/confirm-fields-/).last()).toContainText(
-      'Bean Street Trading Co.',
-    )
+    // The new card for the same fields updates the company card in place (chatStore
+    // mergeOverlappingConfirmCard): it asks for confirmation again.
+    const companyCard = inquiry.page
+      .getByTestId(/confirm-fields-/)
+      .filter({ hasText: 'Bean Street Trading Co.' })
+    await expect(companyCard).toHaveCount(1)
+    await expect(companyCard.getByRole('button', { name: 'Looks right' })).toBeEnabled()
   })
 })

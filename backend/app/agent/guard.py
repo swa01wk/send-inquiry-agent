@@ -242,6 +242,23 @@ def _incomplete_contact_capture_note(
     )
 
 
+_PROFILES_COMING_RE = re.compile(r"\bupload\b[^.?!\n]{0,40}\bprofiles?\b", re.IGNORECASE)
+
+
+def _profiles_coming(state: AgentState) -> bool:
+    """The applicant chose to upload the Company and Brand Profiles (demo feedback §3.7):
+    the brand comes from the Brand Profile, so a message without one isn't a missed capture."""
+    for message in state.get("messages") or []:
+        if not isinstance(message, HumanMessage):
+            continue
+        text = str(message.content)
+        if text.startswith("[ui_event]") or text.startswith(GUARD_PREFIX):
+            continue
+        if _PROFILES_COMING_RE.search(text):
+            return True
+    return False
+
+
 def _incomplete_bulk_capture_note(state: AgentState, phase: str) -> str | None:
     user_text, turn_messages = _current_turn(state)
     if phase not in ("gate", "collecting", "verifying") or not _is_bulk_inquiry_message(user_text):
@@ -250,7 +267,10 @@ def _incomplete_bulk_capture_note(state: AgentState, phase: str) -> str | None:
         return None
     draft = state["draft"]
     missing: list[str] = []
-    for key in (FieldKey.BRAND_NAME_EN, FieldKey.UNIT_TYPE, FieldKey.EMAIL):
+    expected = (FieldKey.BRAND_NAME_EN, FieldKey.UNIT_TYPE, FieldKey.EMAIL)
+    if _profiles_coming(state):
+        expected = (FieldKey.UNIT_TYPE, FieldKey.EMAIL)
+    for key in expected:
         if not _field_has_value(draft, key):
             missing.append(key.value)
     if not (_field_has_value(draft, FieldKey.MOBILE) or _field_has_value(draft, FieldKey.LANDLINE)):
