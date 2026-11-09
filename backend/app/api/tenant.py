@@ -233,7 +233,7 @@ async def raise_inquiry(
     )
     message = AssistantMessage(id="tenant-1", text=greeting)
     card = build_basic_info_card(
-        draft, master, started_by="your Cenomi record", message_id=message.id
+        draft, master, started_by="your Cenomi record", message_id=message.id, new_brand=True
     )
     session.add_message(message.id, "assistant", message.text)
     session.remember_card(card.model_dump())

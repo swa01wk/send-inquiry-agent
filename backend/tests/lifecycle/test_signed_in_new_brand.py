@@ -37,7 +37,7 @@ async def _raise(client: Any, tenant_id: str = OASIS) -> dict[str, Any]:
 
 
 def _audit(app: Any, session_id: str, event: str) -> list[dict[str, Any]]:
-    return [e.payload for e in app.state.services.audit.for_session(session_id) if e.type == event]
+    return [e["payload"] for e in app.state.services.audit.events(session_id) if e["type"] == event]
 
 
 async def test_company_comes_from_yardi_verified_and_unconfirmed(life) -> None:

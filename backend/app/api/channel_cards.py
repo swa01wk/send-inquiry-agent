@@ -40,7 +40,19 @@ BASIC_KEYS: tuple[FieldKey, ...] = tuple(
 )
 
 
-def basic_info_missing(draft: InquiryDraft) -> list[str]:
+# A signed-in tenant's inquiry is for a new brand (demo feedback §3.8, R4): the basic-info
+# card covers the company and contact from Cenomi's records; the brand is asked for in the
+# chat (typed or from the Brand Profile) and confirmed on its own card.
+NEW_BRAND_KEYS: frozenset[FieldKey] = frozenset(
+    {FieldKey.BRAND_NAME_EN, FieldKey.BRAND_NAME_AR, FieldKey.SALES_CATEGORY}
+)
+
+
+def _card_keys(new_brand: bool) -> tuple[FieldKey, ...]:
+    return tuple(k for k in BASIC_KEYS if not (new_brand and k in NEW_BRAND_KEYS))
+
+
+def basic_info_missing(draft: InquiryDraft, *, new_brand: bool = False) -> list[str]:
     """Labels of required basic-info fields still empty (contact = mobile or landline)."""
     missing: list[str] = []
     for blocker in can_submit(draft):
@@ -51,16 +63,20 @@ def basic_info_missing(draft: InquiryDraft) -> list[str]:
             missing.append("Mobile or landline")
             continue
         definition = FIELD_BY_KEY.get(FieldKey(key))
+        if new_brand and FieldKey(key) in NEW_BRAND_KEYS:
+            continue
         if definition is not None and definition.group in BASIC_GROUPS:
             missing.append(definition.label)
     return missing
 
 
-def confirm_basic_info(draft: InquiryDraft) -> tuple[InquiryDraft, list[str]]:
+def confirm_basic_info(
+    draft: InquiryDraft, *, new_brand: bool = False
+) -> tuple[InquiryDraft, list[str]]:
     """Proceed: confirm every derived, verified or staff basic-info value in one step."""
     keys = [
         key.value
-        for key in BASIC_KEYS
+        for key in _card_keys(new_brand)
         if draft.fields[key].value not in (None, "", [])
         and draft.fields[key].source in NEEDS_CONFIRMATION
         and not draft.fields[key].confirmed
@@ -76,9 +92,10 @@ def build_basic_info_card(
     title: str = "Please check your details",
     proceeded: bool = False,
     message_id: str | None = None,
+    new_brand: bool = False,
 ) -> UiCard:
     rows: list[BasicInfoRow] = []
-    for key in BASIC_KEYS:
+    for key in _card_keys(new_brand):
         definition = FIELD_BY_KEY[key]
         field = draft.fields[key]
         display = definition.display(draft, master)
@@ -96,7 +113,7 @@ def build_basic_info_card(
                 required=definition.required,
             )
         )
-    missing = basic_info_missing(draft)
+    missing = basic_info_missing(draft, new_brand=new_brand)
     payload = BasicInfoReviewPayload(
         title=title,
         started_by=started_by,
