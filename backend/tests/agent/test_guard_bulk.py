@@ -158,10 +158,25 @@ def test_brand_reask_note_not_when_asking_for_the_missing_arabic_name() -> None:
         new_inquiry_draft(),
         [(FieldKey.BRAND_NAME_EN.value, "Oasis Bakehouse", Source.DERIVED)],
         master=master,
+        evidence={
+            "brand_name_en": "Brand Profile: new_brand_profile.pdf, uploaded 09 Nov 2026 18:00"
+        },
     )
     state = _state(draft, [])
     assert _brand_reask_note(state, "Thanks. What's the brand name in Arabic?") is None
     draft, _, _ = write_fields(
         draft, [(FieldKey.BRAND_NAME_AR.value, "مخبز الواحة", Source.USER)], master=master
+    )
+    assert _brand_reask_note(_state(draft, []), "What's the brand name in Arabic?") is not None
+
+
+def test_brand_reask_note_still_on_an_arabic_ask_for_a_typed_brand() -> None:
+    """A typed or dictated Latin brand: the model proposes the Arabic name itself, so asking
+    for it is still a re-ask (live eval "channels: dictated caller", 10 Nov)."""
+    master = load_master_data()
+    draft, _, _ = write_fields(
+        new_inquiry_draft(),
+        [(FieldKey.BRAND_NAME_EN.value, "Bean Street", Source.USER)],
+        master=master,
     )
     assert _brand_reask_note(_state(draft, []), "What's the brand name in Arabic?") is not None

@@ -37,7 +37,8 @@ from app.api.cards import (
 )
 from app.api.channel_cards import basic_info_missing, build_send_link_card
 from app.api.schemas import UiCard
-from app.domain.models import NEEDS_CONFIRMATION, FieldKey
+from app.domain.fields import document_label
+from app.domain.models import NEEDS_CONFIRMATION, DocType, FieldKey, InquiryDraft, Source
 from app.domain.rules import compute_phase, contact_verified, remaining_steps
 from app.domain.summary import build_draft_summary
 from app.domain.validation import normalise_digits
@@ -287,13 +288,26 @@ def _incomplete_bulk_capture_note(state: AgentState, phase: str) -> str | None:
 _ASKS_ARABIC_RE = re.compile(r"\barabic\b|بالعربي|بالعربية", re.IGNORECASE)
 
 
+def _brand_from_brand_profile(draft: InquiryDraft) -> bool:
+    """`brand_name_en` is still the value the Brand Profile filled (derived, with its evidence)."""
+    field = draft.fields[FieldKey.BRAND_NAME_EN]
+    label = document_label(DocType.BRAND_PROFILE)
+    return field.source == Source.DERIVED and (field.evidence or "").startswith(f"{label}:")
+
+
 def _brand_reask_note(state: AgentState, ai_text: str) -> str | None:
     if not _reply_asks_for_brand_name(ai_text):
         return None
     draft = state["draft"]
-    if _ASKS_ARABIC_RE.search(ai_text) and not _field_has_value(draft, FieldKey.BRAND_NAME_AR):
-        # Asking for the Arabic name a profile can't give ("What's the brand name in
-        # Arabic?") isn't a re-ask (demo feedback §3.7, R4).
+    if (
+        _ASKS_ARABIC_RE.search(ai_text)
+        and not _field_has_value(draft, FieldKey.BRAND_NAME_AR)
+        and _brand_from_brand_profile(draft)
+    ):
+        # The Brand Profile filled the English name but can't give the Arabic one, so
+        # asking for it ("What's the brand name in Arabic?") isn't a re-ask (demo feedback
+        # §3.7, R4). When the brand was typed or dictated, the model proposes the Arabic
+        # name itself (system prompt), so asking is still a re-ask.
         return None
     user_text, _ = _current_turn(state)
     if _field_has_value(draft, FieldKey.BRAND_NAME_EN) or _field_has_value(
