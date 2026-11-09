@@ -79,10 +79,11 @@ async def open_case(
     session, created = await _case_session(store, case)
     if settings.agent_mode == "scripted":
         scenario = resolve_e2e_scenario(request.headers.get("X-Test-Scenario"))
-        if scenario and (created or not session.test_scenario):
+        # A link opened with another script (the 10 Nov rehearsal opens the same case chat
+        # for the re-upload, then for the contacts) starts that script from its first step.
+        if scenario and (created or scenario != session.test_scenario):
             session.test_scenario = scenario
-            if created:
-                session.script_step = 0
+            session.script_step = 0
     if created:
         case.case_session_id = session.id
         services.cases.save(case)
