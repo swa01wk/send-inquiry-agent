@@ -16,7 +16,13 @@ from app.domain.models import DocType, FieldKey, Source
 from app.domain.rules import can_submit
 from app.services.yardi import YardiCompany
 from tests.lifecycle.conftest import STORE_CENTRAL
-from tests.scenarios.helpers import chat_action, ui_cards, upload_document
+from tests.scenarios.helpers import (
+    chat_action,
+    chat_message,
+    token_text,
+    ui_cards,
+    upload_document,
+)
 
 OASIS = "T-1001"
 PDF = b"%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"
@@ -157,3 +163,86 @@ async def test_a_matching_company_profile_raises_no_flag(life) -> None:
         client, session_id, "company_profile", "oasis_company_profile.pdf", PDF
     )
     assert uploaded["body"]["mismatches"] == []
+
+
+async def _raise_scripted(client: Any, scenario: str) -> str:
+    raised = await client.post(
+        "/api/tenant/opportunities/OPP-101/inquiry",
+        json={},
+        headers={"X-Tenant-Id": OASIS, "X-Test-Scenario": scenario},
+    )
+    assert raised.status_code == 200, raised.text
+    return str(raised.json()["session_id"])
+
+
+async def test_rd_signed_in_new_brand_script_plays_turn_by_turn(life) -> None:
+    """The Playwright story's script, turn by turn: one reply per turn and no guard retry,
+    so every later turn plays its own step."""
+    client, app = life
+    session_id = await _raise_scripted(client, "rd-signed-in-new-brand")
+
+    events = await chat_action(client, session_id, "proceed_basic_info")
+    assert "What's the new brand?" in token_text(events)
+
+    events = await chat_message(client, session_id, "I'll upload the Brand Profile")
+    assert "both the Company Profile and the Brand Profile" in token_text(events)
+    assert ui_cards(events, "document_upload")
+
+    uploaded = await upload_document(
+        client, session_id, "brand_profile", "new_brand_profile.pdf", PDF
+    )
+    assert set(uploaded["body"]["fields_filled"]) == {"brand_name_en", "sales_category"}
+    events = await chat_action(
+        client, session_id, "documents_updated", {"doc_type": "brand_profile"}
+    )
+    assert "filled the brand name and category" in token_text(events)
+    [confirm] = ui_cards(events, "confirm_fields")
+
+    events = await chat_action(client, session_id, "confirm_card", {"card_id": confirm["card_id"]})
+    assert "brand name in Arabic" in token_text(events)
+
+    events = await chat_message(client, session_id, "مخبز الواحة")
+    assert "upload the Company Profile" in token_text(events)
+
+    uploaded = await upload_document(
+        client, session_id, "company_profile", "oasis_company_profile_mismatch.pdf", PDF
+    )
+    assert uploaded["body"]["mismatches"] == ["company_name"]
+    events = await chat_action(
+        client, session_id, "documents_updated", {"doc_type": "company_profile"}
+    )
+    assert "different company name from your Cenomi record" in token_text(events)
+    assert ui_cards(events, "review")
+
+    events = await chat_message(client, session_id, "Keep the record's name")
+    assert "keep your record's name" in token_text(events)
+
+    events = await chat_action(client, session_id, "accept_and_submit", {"terms_accepted": True})
+    assert ui_cards(events, "success")
+    session = await app.state.session_store.get(session_id)
+    draft = session.draft
+    assert draft.fields[FieldKey.COMPANY_NAME].value == "Oasis Coffee Company"
+    assert draft.fields[FieldKey.BRAND_NAME_EN].value == "Oasis Bakehouse"
+
+
+async def test_a1_existing_tenant_script_types_the_new_brand(life) -> None:
+    """The a1 stories' script: the brand typed in one message, both profiles uploaded."""
+    client, app = life
+    session_id = await _raise_scripted(client, "a1-existing-tenant")
+
+    events = await chat_action(client, session_id, "proceed_basic_info")
+    assert "What's the new brand?" in token_text(events)
+
+    events = await chat_message(client, session_id, "Oasis Bakehouse (مخبز الواحة), a café")
+    assert "both the Company Profile and the Brand Profile" in token_text(events)
+    assert ui_cards(events, "document_upload")
+
+    for doc_type in ("company_profile", "brand_profile"):
+        uploaded = await upload_document(client, session_id, doc_type, f"{doc_type}.pdf", PDF)
+        assert uploaded["status_code"] == 200
+    events = await chat_action(client, session_id, "documents_updated", {})
+    assert "Both profiles are in" in token_text(events)
+    assert ui_cards(events, "review")
+
+    events = await chat_action(client, session_id, "accept_and_submit", {"terms_accepted": True})
+    assert ui_cards(events, "success")

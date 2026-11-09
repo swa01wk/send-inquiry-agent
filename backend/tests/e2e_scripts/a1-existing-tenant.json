@@ -1,16 +1,43 @@
 [
   {
+    "content": "Thanks, Layla. What's the new brand? Type its name, or upload its Brand Profile and I'll fill it in for you to check."
+  },
+  {
     "content": "",
     "tool_calls": [
       {
-        "name": "show_review",
-        "args": {},
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "brand_name_en",
+              "value": "Oasis Bakehouse",
+              "source": "user"
+            },
+            {
+              "key": "brand_name_ar",
+              "value": "مخبز الواحة",
+              "source": "user"
+            },
+            {
+              "key": "sales_category",
+              "value": "fnb_cafe",
+              "source": "user"
+            }
+          ]
+        },
         "id": "a1e1",
         "type": "tool_call"
       }
     ]
   },
   {
-    "content": "Everything from your Tenant Central account is on the review card — submit when you're ready."
+    "content": "Thanks. A new brand needs both the Company Profile and the Brand Profile, even if you've sent them before. Upload them on the documents card."
+  },
+  {
+    "content": "Both profiles are in. Check the review card and submit when you're ready."
+  },
+  {
+    "content": "Thanks, Layla. Your inquiry is with the leasing team."
   }
 ]

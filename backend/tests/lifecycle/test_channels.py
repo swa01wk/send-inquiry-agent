@@ -299,7 +299,7 @@ async def test_application_link_e2e_script_on_applicant_session(life) -> None:
     assert applicant.test_scenario == "a2-applicant"
 
 
-async def test_existing_tenant_e2e_script_shows_review_after_proceed(life) -> None:
+async def test_existing_tenant_e2e_script_asks_for_the_new_brand_after_proceed(life) -> None:
     client, app = life
     raised = await client.post(
         "/api/tenant/opportunities/OPP-103/inquiry",
@@ -310,8 +310,10 @@ async def test_existing_tenant_e2e_script_shows_review_after_proceed(life) -> No
     session_id = raised.json()["session_id"]
     session = await app.state.session_store.get(session_id)
     assert session.test_scenario == "a1-existing-tenant"
+    # R4: no review yet — the new brand and both profiles come first
+    # (tests/lifecycle/test_signed_in_new_brand.py walks the whole script).
     events = await chat_action(client, session_id, "proceed_basic_info")
-    assert ui_cards(events, "review")
+    assert not ui_cards(events, "review")
 
 
 async def test_link_needs_the_basic_info(life) -> None:
