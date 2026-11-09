@@ -187,6 +187,7 @@ async def test_rd_signed_in_new_brand_script_plays_turn_by_turn(life) -> None:
         cards = [c.get("card_type") for c in ui_cards(events)]
         removed = sum(1 for name, _ in events if name == "message_remove")
         log.append(f"{label}: {text!r} cards={cards} removed={removed}")
+        print(log[-1])  # shown under "Captured stdout" when a turn is out of step
         return text
 
     events = await chat_action(client, session_id, "proceed_basic_info")
