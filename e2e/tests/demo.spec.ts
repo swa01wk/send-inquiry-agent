@@ -18,6 +18,7 @@ import {
   assertDevPersonasOpenInOneClick,
   openCaseAs,
   resetDemoFromDevPage,
+  raiseNewBrandFromOpportunities,
 } from '../support/stories'
 import { reviewerFor } from '../support/submit'
 import { afterTurnChecks } from '../support/turnChecks'
@@ -32,7 +33,7 @@ import { afterTurnChecks } from '../support/turnChecks'
  * - "survives a backend restart": only against the Docker demo stack on Postgres
  *   (`make demo`, then `make e2e-demo-stack`). It uses the seeded Case B, so it needs no model.
  *
- * Step 11 stops at Leasing Opportunities: the signed-in new-brand flow (R4) is shown as designed.
+ * Step 11 continues from Leasing Opportunities into the signed-in new-brand flow (R4, F3).
  */
 
 const API = 'http://127.0.0.1:8000'
@@ -487,7 +488,7 @@ test.describe('Demo script — 10 Nov @demo', () => {
       )
 
       await beatStep(
-        '11. "Yes, I have a CR" → sign in → Leasing Opportunities (F2; F3 shown as designed)',
+        '11. "Yes, I have a CR" → sign in → Leasing Opportunities → new brand (F2, F3)',
         async () => {
           await caption(page, '11. CR? Yes → sign in → Leasing Opportunities')
           const crContext = await newContext(browser, page)
@@ -509,12 +510,23 @@ test.describe('Demo script — 10 Nov @demo', () => {
             await expect(link).toHaveAttribute('href', /\/tenant\/?$/)
             await link.click()
             await expect(crPage.getByTestId('tenant-sign-in')).toBeVisible({ timeout: 30_000 })
-            await crPage.getByLabel('Company').selectOption({ index: 1 })
+            await crPage.getByLabel('Company').selectOption('T-1001') // Oasis Coffee Company
             await crPage.getByRole('button', { name: 'Sign in' }).click()
             await expect(
               crPage.getByRole('heading', { name: /leasing opportunities/i }),
             ).toBeVisible()
             await beat(crPage)
+
+            // R4 (F3): the company from Yardi, the new brand from its Brand Profile, both
+            // profiles, and the Company Profile checked against the Cenomi record.
+            await caption(crPage, '11. Leasing Opportunities → a new brand')
+            const { reference: newBrand } = await raiseNewBrandFromOpportunities(crPage, beat)
+            await openCaseAs(leaseAdminPage, leaseAdmin, newBrand)
+            await caption(leaseAdminPage, '11. Lease Admin: Company Profile vs the Cenomi record')
+            await expect(leaseAdminPage.getByTestId('document-check-company_name')).toBeVisible({
+              timeout: 30_000,
+            })
+            await beat(leaseAdminPage)
           } finally {
             await crContext.close()
           }

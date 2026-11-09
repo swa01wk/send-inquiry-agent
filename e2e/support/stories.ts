@@ -2,6 +2,7 @@ import { expect, type APIRequestContext, type Browser, type Page } from '@playwr
 import { InquiryPage } from '../pages/inquiry'
 import { A2_CALL_CENTRE_TURNS, C1_EXISTING_CR_TURN } from './channelScripts'
 import type { DemoBeat } from './demoPace'
+import { fieldDisplay, fieldSource } from './draft'
 import {
   clearDevOutbox,
   completeVerifyLink,
@@ -142,6 +143,65 @@ export async function openCaseAs(
     `/review/cases/${encodeURIComponent(reference)}?as=${encodeURIComponent(reviewer.id)}${extra}`,
   )
   await expect(page.getByTestId('case-stage')).toBeVisible()
+}
+
+/**
+ * R4 (demo feedback §3.8, D13), script rd-signed-in-new-brand: a signed-in Oasis raises on
+ * OPP-101. The company comes from the Cenomi record (Yardi) and is confirmed; the new brand is
+ * filled from the Brand Profile; the Company Profile disagrees with the record (warned, kept).
+ * Returns the reference.
+ */
+export async function raiseNewBrandFromOpportunities(
+  page: Page,
+  beat?: DemoBeat,
+): Promise<{ inquiry: InquiryPage; reference: string }> {
+  await page.goto('/tenant/opportunities?e2eScenario=rd-signed-in-new-brand')
+  const opportunity = page.getByTestId('opportunity-OPP-101')
+  await expect(opportunity).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByLabel('For brand')).toHaveCount(0)
+  if (beat) await beat(page)
+  await opportunity.getByRole('button', { name: 'Raise inquiry' }).click()
+
+  const inquiry = new InquiryPage(page)
+  await inquiry.waitForChatReady()
+  await expect(
+    page.getByTestId('bot-bubble-text').filter({ hasText: /from your Cenomi record/ }),
+  ).toBeVisible({ timeout: 30_000 })
+  await expect(inquiry.cards('basic_info_review')).toContainText('Oasis Coffee Company')
+  const draft = await inquiry.draft()
+  expect(fieldSource(draft, 'company_name')).toBe('verified')
+  expect(fieldDisplay(draft, 'brand_name_en') ?? '').toBeFalsy()
+  if (beat) await beat(page)
+  await inquiry.proceedBasicInfo()
+
+  await inquiry.say("I'll upload the Brand Profile")
+  const documents = inquiry.cards('document_upload')
+  await expect(documents).toBeVisible({ timeout: 60_000 })
+  await expect(documents.getByTestId('doc-row-company_profile')).toBeVisible()
+  await expect(documents.getByTestId('doc-row-brand_profile')).toBeVisible()
+  if (beat) await beat(page)
+
+  await inquiry.upload('Brand Profile', 'new_brand_profile.pdf')
+  await expect(page.getByTestId(/confirm-fields-/).last()).toContainText('Oasis Bakehouse', {
+    timeout: 60_000,
+  })
+  if (beat) await beat(page)
+  await inquiry.confirmCard()
+  await inquiry.say('مخبز الواحة')
+
+  await inquiry.upload('Company Profile', 'oasis_company_profile_mismatch.pdf')
+  expect((await inquiry.lastReply()).toLowerCase()).toMatch(/cenomi record/)
+  if (beat) await beat(page)
+  await inquiry.say("Keep the record's name")
+  await expect(inquiry.cards('review')).toBeVisible({ timeout: 60_000 })
+  const reviewed = await inquiry.draft()
+  expect(fieldDisplay(reviewed, 'company_name')).toBe('Oasis Coffee Company')
+  expect(fieldSource(reviewed, 'brand_name_en')).toBe('derived')
+  if (beat) await beat(page)
+  await inquiry.acceptAndSubmit()
+  const reference = await inquiry.successReference()
+  if (beat) await beat(page)
+  return { inquiry, reference }
 }
 
 /** The new brand as an existing tenant types it (scripts a1-existing-tenant). */
