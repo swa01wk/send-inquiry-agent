@@ -169,6 +169,10 @@ test.describe('Demo script — 10 Nov @demo', () => {
     page.context().setDefaultTimeout(120_000)
     await request.post(`${API}/api/dev/reset`)
     const seeded = await demoCases(request)
+    if (process.env.E2E_DEMO_SEED === '1' && process.env.CI) {
+      // `make e2e-demo` starts its own backend with DEMO_SEED, so the seeds must be there.
+      expect(seeded.map((c) => c.key)).toEqual(['A', 'B', 'C'])
+    }
 
     let reference = ''
     const leaseAdminContext = await newContext(browser, page)
