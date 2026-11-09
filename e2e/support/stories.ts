@@ -144,7 +144,11 @@ export async function openCaseAs(
   await expect(page.getByTestId('case-stage')).toBeVisible()
 }
 
-/** Existing tenant: sign in, raise on an opportunity, confirm prefilled info, submit. */
+/** The new brand as an existing tenant types it (scripts a1-existing-tenant). */
+export const NEW_BRAND_TYPED = 'Oasis Bakehouse (مخبز الواحة), a café'
+
+/** Existing tenant: sign in, raise on an opportunity, confirm the company from the Cenomi
+ * record, type the new brand, upload both profiles, submit. */
 export async function raiseTenantInquiry(
   page: Page,
   tenantName: RegExp | string,
@@ -189,6 +193,13 @@ export async function raiseTenantInquiry(
     inquiry.cards('basic_info_review').getByText('Basic information confirmed'),
   ).toBeVisible()
   if (beat) await beat(page)
+  // R4 (demo feedback §3.8): every inquiry raised here is a new brand, and both profiles
+  // are uploaded afresh (the a1-existing-tenant script types the brand).
+  await inquiry.say(NEW_BRAND_TYPED)
+  await expect(inquiry.cards('document_upload')).toBeVisible({ timeout: 60_000 })
+  if (beat) await beat(page)
+  await inquiry.upload('Company Profile', 'company_profile.pdf')
+  await inquiry.upload('Brand Profile', 'brand_profile.pdf')
   await expect(inquiry.cards('review')).toBeVisible({ timeout: 60_000 })
   if (beat) await beat(page)
   await inquiry.acceptAndSubmit()
