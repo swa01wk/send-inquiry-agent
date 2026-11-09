@@ -152,7 +152,7 @@ def _draft(persona: _Persona, master: MasterData) -> InquiryDraft:
         (FieldKey.FIRST_NAME.value, persona.first_name, Source.USER),
         (FieldKey.LAST_NAME.value, persona.last_name, Source.USER),
         (FieldKey.EMAIL.value, persona.email, Source.USER),
-        (FieldKey.CONTACT_NUMBER.value, persona.mobile, Source.USER),
+        (FieldKey.MOBILE.value, persona.mobile, Source.USER),
     ]
     draft, _written, errors = draft_ops.write_fields(
         draft_ops.new_inquiry_draft(), entries, master=master
