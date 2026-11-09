@@ -30,3 +30,21 @@ def test_e2e_script_parses_and_uses_known_tools(name: str) -> None:
     for step in steps:
         for call in step.get("tool_calls") or []:
             assert call["name"] in _TOOL_NAMES
+
+
+_TOOLS_BY_NAME = {t.name: t for t in (*TOOLS, *CASE_TOOLS, *ASSISTED_TOOLS, *REVIEWER_TOOLS)}
+
+
+@pytest.mark.parametrize("name", list_e2e_script_names())
+def test_e2e_script_tool_args_match_the_tool(name: str) -> None:
+    """A wrong argument name makes the scripted tool call fail, and the model is called again:
+    every later turn then plays the wrong step (rd-type-or-upload used `suggestions` for
+    suggest_replies' `options`)."""
+    for index, step in enumerate(load_e2e_script_steps(name)):
+        for call in step.get("tool_calls") or []:
+            schema = _TOOLS_BY_NAME[call["name"]].tool_call_schema
+            assert isinstance(schema, type), call["name"]
+            try:
+                schema.model_validate(call.get("args") or {})  # type: ignore[attr-defined]
+            except Exception as err:  # pydantic.ValidationError
+                pytest.fail(f"{name} step {index}: {call['name']} args: {err}")

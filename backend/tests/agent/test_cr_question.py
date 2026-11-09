@@ -84,6 +84,7 @@ def test_scripted_scenarios_keep_the_lookup_unless_listed(ask_first) -> None:
 
 def test_listed_scenarios_ask_even_under_lookup() -> None:
     assert cr_question_active(assisted=False, channel=None, test_scenario="rd-cr-question")
+    assert cr_question_active(assisted=False, channel=None, test_scenario="rd-type-or-upload")
     assert not cr_question_active(assisted=True, channel="assisted", test_scenario="rd-cr-question")
 
 

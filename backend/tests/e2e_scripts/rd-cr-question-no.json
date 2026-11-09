@@ -1,0 +1,48 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "suggest_replies",
+        "args": {
+          "options": [
+            "I'll type them",
+            "I'll upload the profiles"
+          ]
+        },
+        "id": "rdn1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "You can type your company and brand details here, or upload your Company Profile and Brand Profile and I'll fill them in for you to check."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "company_name",
+              "value": "Acme Trading LLC",
+              "source": "user"
+            },
+            {
+              "key": "company_address",
+              "value": "King Abdullah Road, Riyadh",
+              "source": "user"
+            }
+          ]
+        },
+        "id": "rdn2",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Tell me about your brand and the space you're looking for."
+  }
+]

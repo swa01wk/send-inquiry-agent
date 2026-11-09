@@ -1,0 +1,123 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "suggest_replies",
+        "args": {
+          "options": [
+            "I'll type them",
+            "I'll upload the profiles"
+          ]
+        },
+        "id": "r3u1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "You can type your company and brand details, or upload your Company Profile and Brand Profile and I'll fill them in for you to check."
+  },
+  {
+    "content": "Great — you'll upload them on the documents card in a moment. Meanwhile, tell me about the space you'd like, and who our leasing team should contact."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "brand_name_ar",
+              "value": "بين ستريت",
+              "source": "user"
+            },
+            {
+              "key": "unit_type",
+              "value": "specialty",
+              "source": "derived"
+            },
+            {
+              "key": "malls",
+              "value": [
+                "riyadh-mall-a"
+              ],
+              "source": "user"
+            },
+            {
+              "key": "first_name",
+              "value": "Sara",
+              "source": "user"
+            },
+            {
+              "key": "last_name",
+              "value": "Ali",
+              "source": "user"
+            },
+            {
+              "key": "email",
+              "value": "sara@beanstreet.example",
+              "source": "user"
+            },
+            {
+              "key": "contact_number",
+              "value": "0501234567",
+              "source": "user"
+            }
+          ]
+        },
+        "id": "r3u2",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "send_verification",
+        "args": {
+          "resend": false
+        },
+        "id": "r3u3",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Please check the unit type on the card. I've sent a verification link to your email and a code by SMS."
+  },
+  {
+    "content": "Thanks. Click the link in your email and enter the SMS code on the card."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "request_documents",
+        "args": {},
+        "id": "r3u4",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Upload your Company Profile and Brand Profile on the documents card and I'll fill in the details for you."
+  },
+  {
+    "content": "I've filled your company name and address from the Company Profile — please check them on the card."
+  },
+  {
+    "content": "Thanks. Now the Brand Profile, please."
+  },
+  {
+    "content": "I've filled your brand name and category from the Brand Profile — please check them on the card."
+  },
+  {
+    "content": "Everything is in. Have a look on the review card and accept the terms when you're ready."
+  },
+  {
+    "content": "Thank you — your inquiry is with our leasing team. Your reference is on the card."
+  }
+]

@@ -1,0 +1,33 @@
+id: rd-cr-question-no
+layers:
+- e2e_script
+# One linear script per path: scripted mode plays the steps in order, one model call each
+# (a tool-call step is followed by the reply step in the same turn).
+model_steps:
+# cr_answer no → the type-or-upload offer (demo feedback §3.7)
+- content: ''
+  tool_calls:
+  - name: suggest_replies
+    args:
+      options:
+      - I'll type them
+      - I'll upload the profiles
+    id: rdn1
+    type: tool_call
+- content: You can type your company and brand details here, or upload your Company Profile and Brand Profile and I'll fill them in for you to check.
+# "Acme Trading LLC, King Abdullah Road, Riyadh"
+- content: ''
+  tool_calls:
+  - name: update_draft
+    args:
+      fields:
+      - key: company_name
+        value: Acme Trading LLC
+        source: user
+      - key: company_address
+        value: King Abdullah Road, Riyadh
+        source: user
+    id: rdn2
+    type: tool_call
+- content: Tell me about your brand and the space you're looking for.
+title: Re-demo CR question — No path (type-or-upload offer)

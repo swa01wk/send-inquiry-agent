@@ -221,6 +221,48 @@ def all_scenarios() -> list[ParityScenario]:
                 ),
             ],
         ),
+        ParityScenario(
+            name="rd-type-or-upload",
+            model_steps=_load_e2e_steps("rd-type-or-upload"),
+            # The recorder doesn't run the frontend, so it sends documents_updated {doc_type}
+            # after each profile upload itself, as useChatSession does.
+            script=[
+                ScriptStep(kind="action", action="cr_answer", payload={"has_cr": False}),
+                ScriptStep(kind="message", text="I'll upload the profiles"),
+                ScriptStep(
+                    kind="message",
+                    text=(
+                        "Specialty coffee kiosk at Riyadh Mall A, Arabic brand name بين ستريت. "
+                        "Sara Ali, sara@beanstreet.example, 0501234567"
+                    ),
+                ),
+                ScriptStep(kind="confirm_latest"),
+                ScriptStep(kind="verify_email"),
+                ScriptStep(kind="submit_otp", payload={"code": "1234"}),
+                ScriptStep(
+                    kind="upload",
+                    doc_type="company_profile",
+                    file_name="company_profile_match.pdf",
+                ),
+                ScriptStep(
+                    kind="action",
+                    action="documents_updated",
+                    payload={"doc_type": "company_profile"},
+                ),
+                ScriptStep(kind="confirm_latest"),
+                ScriptStep(
+                    kind="upload",
+                    doc_type="brand_profile",
+                    file_name="brand_profile_match.pdf",
+                ),
+                ScriptStep(
+                    kind="action",
+                    action="documents_updated",
+                    payload={"doc_type": "brand_profile"},
+                ),
+                ScriptStep(kind="confirm_latest"),
+            ],
+        ),
     ]
 
 

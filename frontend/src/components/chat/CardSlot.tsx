@@ -80,6 +80,7 @@ export function CardSlot({
       {card.card_type === 'document_upload' ? (
         <DocumentChecklistCard
           payload={card.payload}
+          filledFieldsByDocType={actions.documentFilledFields}
           onUpload={actions.uploadDocument}
           onRemove={actions.removeDocument}
           onSetNumber={actions.setDocumentNumber}

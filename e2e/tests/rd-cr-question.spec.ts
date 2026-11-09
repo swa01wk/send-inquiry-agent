@@ -32,7 +32,7 @@ test.describe('Re-demo CR question @scripted', () => {
 
   test('No → company intake questions', async ({ page }) => {
     const inquiry = new InquiryPage(page)
-    await inquiry.open('rd-cr-question')
+    await inquiry.open('rd-cr-question-no')
     await expect(inquiry.cards('cr_question')).toBeVisible()
     const doneBefore = await readDoneEventCount(page)
     await inquiry
@@ -41,8 +41,9 @@ test.describe('Re-demo CR question @scripted', () => {
       .click()
     await inquiry.waitForTurnDone(doneBefore)
     await afterTurnChecks(inquiry)
-    const reply = await inquiry.lastReply()
-    expect(reply.toLowerCase()).toMatch(/company|address/)
+    const replies = await inquiry.allReplies()
+    const combined = replies.join('\n').toLowerCase()
+    expect(combined).toMatch(/type|upload|profile/)
     await inquiry.say('Acme Trading LLC, King Abdullah Road, Riyadh')
     await afterTurnChecks(inquiry)
     const draft = await inquiry.draft()
