@@ -77,6 +77,9 @@ class Settings(BaseSettings):
     )
     # Dev-only endpoints: /api/dev/outbox and /api/dev/audit/{id}. Mock integrations only.
     dev_tools: bool = Field(default=False, validation_alias="DEV_TOOLS")
+    # Day R5: seed the three demo cases (app/demo_seed.py) on start when there is no case, and
+    # again after POST /api/dev/reset. Dev tools only; `make demo` turns it on.
+    demo_seed: bool = Field(default=False, validation_alias="DEMO_SEED")
     # Fault injection for mocks: "service:kind[:count],..." (kind: timeout|unavailable|rejected).
     mock_faults: str = Field(default="", validation_alias="MOCK_FAULTS")
     # Where restart-safe snapshots live (sessions, mock systems, audit). Empty = memory only.

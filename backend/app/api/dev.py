@@ -171,3 +171,27 @@ async def reset_demo(request: Request) -> dict[str, bool]:
     """Delete every demo record and start from the mock world as shipped."""
     await request.app.state.reset_demo()
     return {"reset": True}
+
+
+class DemoCaseOut(BaseModel):
+    """A seeded demo case (day R5) with the reviewers who act on it."""
+
+    key: str
+    title: str
+    reference: str
+    status: str
+    first_reviewer: str | None
+    final_reviewer: str | None
+
+
+@router.get("/demo-cases", response_model=list[DemoCaseOut])
+async def demo_cases(
+    services: ServiceContainer = Depends(get_services),
+    master: MasterData = Depends(get_master_data),
+    settings: Settings = Depends(get_settings_dep),
+) -> list[DemoCaseOut]:
+    """Cases A, B and C seeded by DEMO_SEED (empty when seeding is off)."""
+    from app.demo_seed import list_demo_cases
+
+    runtime = AgentRuntime(services=services, master=master, settings=settings)
+    return [DemoCaseOut(**vars(case)) for case in list_demo_cases(runtime)]

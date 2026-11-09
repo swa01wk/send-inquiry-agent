@@ -36,6 +36,7 @@ describe('DevHomePage', () => {
     vi.restoreAllMocks()
     vi.spyOn(dev, 'getClock').mockResolvedValue(clock)
     vi.spyOn(review, 'listReviewers').mockResolvedValue([reviewerCentral])
+    vi.spyOn(dev, 'listDemoCases').mockResolvedValue([])
     vi.spyOn(callcentre, 'listStaff').mockResolvedValue([
       {
         id: 'customer-care-1',
@@ -61,6 +62,30 @@ describe('DevHomePage', () => {
     expect(await screen.findByRole('link', { name: /Faisal Al Qahtani/ })).toHaveAttribute(
       'href',
       '/review?as=rlm_store-central',
+    )
+  })
+
+  it('lists the seeded demo cases with one-click reviewer links', async () => {
+    vi.spyOn(dev, 'listDemoCases').mockResolvedValue([
+      {
+        key: 'B',
+        title: 'Second review: billing contact waiting for approval',
+        reference: 'GEO-STR-123456',
+        status: 'second_review',
+        first_reviewer: 'lease_admin-central',
+        final_reviewer: 'rlm_store-central',
+      },
+    ])
+    renderPage()
+    const row = await screen.findByTestId('dev-demo-case-B')
+    expect(row).toHaveTextContent('GEO-STR-123456')
+    expect(screen.getByRole('link', { name: 'as Lease Admin' })).toHaveAttribute(
+      'href',
+      '/review/cases/GEO-STR-123456?as=lease_admin-central',
+    )
+    expect(screen.getByRole('link', { name: 'as RLM' })).toHaveAttribute(
+      'href',
+      '/review/cases/GEO-STR-123456?as=rlm_store-central',
     )
   })
 

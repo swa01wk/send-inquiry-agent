@@ -4,8 +4,10 @@ import {
   advanceClock,
   clockToMorning,
   getClock,
+  listDemoCases,
   resetDemo,
   type ClockState,
+  type DemoCase,
   type TickResult,
 } from '../api/dev'
 import { listStaff, type StaffMember } from '../api/callcentre'
@@ -33,6 +35,7 @@ function clockText(clock: ClockState): string {
 export function DevHomePage() {
   const [clock, setClock] = useState<ClockState | null>(null)
   const [reviewers, setReviewers] = useState<Reviewer[]>([])
+  const [demoCases, setDemoCases] = useState<DemoCase[]>([])
   const [staff, setStaff] = useState<StaffMember[]>([])
   const [tenants, setTenants] = useState<TenantSummary[]>([])
   const [message, setMessage] = useState<string | null>(null)
@@ -53,6 +56,9 @@ export function DevHomePage() {
       listReviewers()
         .then(setReviewers)
         .catch(() => setReviewers([]))
+      listDemoCases()
+        .then(setDemoCases)
+        .catch(() => setDemoCases([]))
     }
     if (CALLCENTRE_CONSOLE) {
       listStaff()
@@ -130,6 +136,35 @@ export function DevHomePage() {
                     <Link className={styles.link} to={`/tenant?as=${encodeURIComponent(t.id)}`}>
                       {t.company_name} — {t.contact_name}
                     </Link>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
+          {REVIEWER_CONSOLE && demoCases.length > 0 ? (
+            <>
+              <h3 className={styles.subtitle}>Demo cases</h3>
+              <ul className={styles.links} data-testid="dev-demo-cases">
+                {demoCases.map((c) => (
+                  <li key={c.reference} data-testid={`dev-demo-case-${c.key}`}>
+                    Case {c.key}: {c.title} ({c.reference}) —{' '}
+                    {c.first_reviewer ? (
+                      <Link
+                        className={styles.link}
+                        to={`/review/cases/${encodeURIComponent(c.reference)}?as=${encodeURIComponent(c.first_reviewer)}`}
+                      >
+                        as Lease Admin
+                      </Link>
+                    ) : null}
+                    {c.first_reviewer && c.final_reviewer ? ' · ' : null}
+                    {c.final_reviewer ? (
+                      <Link
+                        className={styles.link}
+                        to={`/review/cases/${encodeURIComponent(c.reference)}?as=${encodeURIComponent(c.final_reviewer)}`}
+                      >
+                        as RLM
+                      </Link>
+                    ) : null}
                   </li>
                 ))}
               </ul>

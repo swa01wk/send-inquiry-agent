@@ -43,3 +43,19 @@ export function clockToMorning(): Promise<TickResult> {
 export function resetDemo(): Promise<{ reset: boolean }> {
   return post<{ reset: boolean }>('/api/dev/reset')
 }
+
+/** Day R5: the seeded demo cases (DEMO_SEED), with the reviewers who act on each. */
+export interface DemoCase {
+  key: string
+  title: string
+  reference: string
+  status: string
+  first_reviewer: string | null
+  final_reviewer: string | null
+}
+
+export async function listDemoCases(): Promise<DemoCase[]> {
+  const res = await fetch(`${API_BASE}/api/dev/demo-cases`)
+  if (!res.ok) throw new Error(`demo cases failed (${res.status})`)
+  return res.json() as Promise<DemoCase[]>
+}

@@ -113,6 +113,25 @@ def create_app(
             checkpointer=cp,
         )
 
+    async def seed_demo_cases(app: FastAPI, *, only_if_empty: bool) -> None:
+        """Day R5: the three demo cases (DEMO_SEED with dev tools). Never fails start-up."""
+        if not (cfg.demo_seed and cfg.dev_tools):
+            return
+        from app.agent.runtime import AgentRuntime
+        from app.demo_seed import seed_demo
+        from app.domain.master import load_master_data
+
+        services = app.state.services
+        if only_if_empty and services.cases.all():
+            return  # a restart keeps what's there
+        runtime = AgentRuntime(services=services, master=load_master_data(), settings=cfg)
+        try:
+            seeded = await seed_demo(runtime, app.state.session_store)
+        except Exception:
+            logger.exception("demo seed failed")
+            return
+        logger.info("demo seed: %s", ", ".join(f"{c.key}={c.reference}" for c in seeded))
+
     async def reset_demo() -> None:
         """Delete every demo record (dev tools only) and rebuild the state from scratch."""
         if cfg.state_backend == "postgres" and cfg.database_url:
@@ -128,6 +147,7 @@ def create_app(
                 else:
                     child.unlink(missing_ok=True)
         init_state(app, checkpointer=getattr(app.state, "checkpointer", None))
+        await seed_demo_cases(app, only_if_empty=False)
         logger.info("demo reset")
 
     async def purge_loop() -> None:
@@ -165,6 +185,7 @@ def create_app(
             async with postgres_checkpointer(cfg.database_url) as checkpointer:
                 await checkpointer.setup()
                 init_state(app, checkpointer=checkpointer)
+                await seed_demo_cases(app, only_if_empty=True)
                 purge_task = asyncio.create_task(purge_loop())
                 task = asyncio.create_task(proactive_loop()) if cfg.proactive_enabled else None
                 try:
@@ -179,6 +200,7 @@ def create_app(
                             await task
             return
         init_state(app, checkpointer=memory_checkpointer())
+        await seed_demo_cases(app, only_if_empty=True)
         purge_task = asyncio.create_task(purge_loop())
         task = asyncio.create_task(proactive_loop()) if cfg.proactive_enabled else None
         yield

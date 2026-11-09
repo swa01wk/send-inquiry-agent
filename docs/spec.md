@@ -386,6 +386,7 @@ process steps · review time · required documents · what a CR number is · wha
 | `MASTER_DATA_SOURCE` | `seed` (`cenomi` is a stub that falls back to the seed) |
 | `INTEGRATIONS` | `mock` (the only tier until Cenomi gives access; `sandbox`/`live` refuse to start) |
 | `DEV_TOOLS` | `false`; `true` mounts `/api/dev/outbox` and `/api/dev/audit/{id}` (refused unless `INTEGRATIONS=mock`) |
+| `DEMO_SEED` | `false`; with `DEV_TOOLS`, seeds the three demo cases (`app/demo_seed.py`) on start when there is no case, and after `POST /api/dev/reset`. `make demo` sets it. The seeds use their own personas, so nothing reaches the live demo applicant's inbox |
 | `MOCK_FAULTS` | empty; `service:kind[:count],…` injects faults into the simulated systems |
 | `DATA_DIR` | empty = memory only; a directory = restart-safe JSON snapshots of sessions, the simulated systems' state (outbox, submissions, links, OTP, sends) and the audit log |
 | `STATE_BACKEND` | `memory` (`postgres` for docker-compose dev) |
@@ -593,7 +594,8 @@ The period is one stay in a stage (the stage plus its start time) or one request
 | POST | `/api/dev/clock/advance` | `{hours}` (0 < h ≤ 720) → moves the clock, runs a tick → `{clock, raised, sent, resolved}` |
 | POST | `/api/dev/clock/to-morning` | Moves to the end of the next quiet-hours window, runs a tick |
 | POST | `/api/dev/proactive/tick` | Runs a tick now |
-| POST | `/api/dev/reset` | Deletes sessions, cases, audit, outbox, invitations, Yardi leads, attention items (every folder under `DATA_DIR` the app writes) and uploads; resets the clock; rebuilds services and graphs → `{reset: true}` |
+| POST | `/api/dev/reset` | Deletes sessions, cases, audit, outbox, invitations, Yardi leads, attention items (every folder under `DATA_DIR` the app writes) and uploads; resets the clock; rebuilds services and graphs → `{reset: true}`; with `DEMO_SEED=true`, seeds the three demo cases again |
+| GET | `/api/dev/demo-cases` | Day R5: the seeded cases `[{key, title, reference, status, first_reviewer, final_reviewer}]` (A first review: expired Company Profile with a profile mismatch, Brand Profile expiring soon; B second review: signatory Yes, billing contact pending; C sent to Yardi). Empty when `DEMO_SEED` is off. `/dev` lists them with "as Lease Admin" / "as RLM" links |
 
 With `PROACTIVE_ENABLED=true` a background task runs `tick()` every `PROACTIVE_TICK_SECONDS`. Moving the clock always runs a tick.
 
