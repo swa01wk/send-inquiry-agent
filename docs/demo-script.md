@@ -1,87 +1,201 @@
-# Demo script — Send Inquiry Agent
+# Demo script — Send Inquiry Agent, re-demo Tue 10 Nov 2026
 
-Rehearse: `make e2e-demo` (or `make e2e-demo-headed` / `make e2e-demo-step` to watch or step through). Desktop only; not part of `make e2e-int`. The restart beat runs against the Docker stack on Postgres: `make demo` in one terminal, then `make e2e-demo-stack`.
+**Audience:** Muzammil (Cenomi). **Length:** about 25 minutes, plus questions. **Order:** the 10 Nov script in [demo feedback](specs/demo-feedback.md) §3.6 and the R5 day prompt. Each beat names the feedback it answers (F = client feedback, I = our improvement), so Muzammil can tick them off as you go. The checklist at the end maps every feedback point to its beat.
 
-Use with `make demo` (SMS code **1234**; the email link is a demo button). The **self-service happy path** below is ~5 minutes. The **§A3 walkthrough** and **§A4 L3–L5 beats** need mock integrations, the reviewer console, and (for restart) `DATA_DIR` — see [Setup for lifecycle demos](#setup-for-lifecycle-demos).
-
-**Full user story (Sara):** [demo-queries.md](./demo-queries.md). **Coverage map:** [DELIVERY-PLAN.md](./DELIVERY-PLAN.md) §A3 (workflows) and §A4 (L3–L5 core).
+**Rehearse:**
+- `make e2e-demo` runs this script end to end, scripted. Use `make e2e-demo-headed` to watch it, or `make e2e-demo-step` to step through it.
+- For the restart beat on Postgres, run `make demo` in one terminal, then `make e2e-demo-stack` in another.
+- Desktop only; not part of `make e2e-int`.
 
 ---
 
-## Setup for lifecycle demos
+## Before the call (10 minutes)
 
-| Need | Backend (`backend/.env`) | Frontend (env or `docker-compose`) |
+1. Run `make demo`. It uses Postgres, mock integrations, the SMS code **1234**, an email link button, and every console.
+2. Open **http://localhost:5173/dev** and press **Reset demo**. This clears everything and seeds three cases:
+   - **Case A**, first review: an expired profile, a profile expiring soon, and a profile check.
+   - **Case B**, second review: the billing contact is waiting for approval.
+   - **Case C**: approved and sent to Yardi.
+
+   "Demo cases" on `/dev` links each case "as Lease Admin" and "as RLM".
+3. **Profile files.** The mock document review reads fields **by file name**; any other name gives no fields. Copy these from `e2e/fixtures/files/` to a folder on the desktop:
+
+| File | What the mock reads |
+| --- | --- |
+| `company_profile_match.pdf` | Bean Street Trading Co., King Fahd Road, Al Olaya, Riyadh |
+| `brand_profile_match.pdf` | Bean Street, café |
+| `company_profile_mismatch.pdf` | Bean Street **Holding Company** (differs) |
+| `new_brand_profile.pdf` | Oasis Bakehouse, café (R4) |
+| `oasis_company_profile_mismatch.pdf` | Oasis Coffee **Trading Establishment** (differs from the Cenomi record) |
+| `brand_profile.pdf`, `company_profile.pdf` | nothing (plain uploads) |
+
+4. Open these tabs, each in its own browser window or profile so the sign-ins don't mix:
+   - the applicant: **http://localhost:5173**;
+   - the Lease Admin and the RLM: from `/dev` (reviewer links, or "Demo cases").
+5. Send Muzammil the three-lane flow (`docs/POC-LIFECYCLE.md` §2.4) and the updated design doc (F14, F15).
+
+**If the model is slow on the day:** form mode finishes the intake without it (story S13). Set `FORM_MODE=true` and restart the backend; the chat shows the form-mode card and every step still works.
+
+---
+
+## Run of show
+
+| # | Who | Beat | Feedback |
+| --- | --- | --- | --- |
+| 0 | Presenter | `/dev`: personas, Reset demo, the seeded cases | I6 |
+| 1 | Applicant | Turn by turn: CR? **No** → upload the profiles → confirm → email link + code → submit | F1, F5, F6, I15, I19 |
+| 2 | Lease Admin | "Inquiry for approval" email → case → expiry → approve one profile, reject one → **Request re-upload** | F7, F8, I13, I18 |
+| 3 | Applicant | Case link → re-upload → **Resubmit** | F16 |
+| 4 | Lease Admin | The new file needs approval again → approve → **Approve first level** | F8, F16, I4 |
+| 5 | Applicant | "Are you the authorised signatory?" → **Yes** → billing contact | F19, I16 |
+| 6 | Lease Admin | Reject the billing contact → the applicant fixes it → approve | F12, F16, F18, I5 |
+| 7 | Presenter | *(optional)* restart the backend, reload: nothing lost | I6 |
+| 8 | RLM | **Approve** → sent to Yardi | F8 (levels), I8 |
+| 9 | Applicant | Tracking page shows the outcome | — |
+| 10 | Applicant + Lease Admin | Typed company, mismatching profile → one-sentence warning → the flag in the brief | F6, I19 |
+| 11 | Tenant + Lease Admin | CR? **Yes** → sign in → Leasing Opportunities → new brand: company from Yardi, both profiles, checked against the record | F2, F3, I3, I9 |
+| 12 | Lease Admin | Seeded Case A: expired and expiring soon | F8, I18 |
+| 13 | Applicant | *(optional, "power user")* everything in one message | I15 |
+
+---
+
+## The beats
+
+### 0. `/dev` (I6)
+Show **Demo cases** (A, B, C) and the persona links. Say: every flow today runs on Postgres, and reset puts the demo back exactly here.
+
+### 1. Applicant, turn by turn (F1, F5, F6, I15, I19)
+Applicant tab, **http://localhost:5173**. Keep the draft panel open.
+
+| Step | Do | Point out |
 | --- | --- | --- |
-| Dev inbox, audit API | `INTEGRATIONS=mock`, `DEV_TOOLS=true` | `VITE_DEV_TOOLS=1` |
-| Reviewer console + assistant | `REVIEWER_CONSOLE=true` | `VITE_REVIEWER_CONSOLE=1` |
-| Draft survives backend restart | `DATA_DIR=./.data` (default in `.env.example`) | — |
-| Form mode without the model | `FORM_MODE=true` (testing only; restart backend) | — |
+| a | Type `Hi, I'd like to lease a space` | The welcome, then the card **Does your company have a CR?** |
+| b | Press **No, we don't** | The public page never asks for, looks up or repeats a CR number (F1) |
+| c | The agent offers **I'll type them** / **I'll upload the profiles**. Press **I'll upload the profiles** | One line, no push either way (F6, I19) |
+| d | Answer its questions one at a time, e.g. `A specialty coffee kiosk at Riyadh Mall A`, then `Sara Ali, sara@beanstreet.example, 0501234567` | One question at a time, not a form (F5); it doesn't ask for the company or brand, because the profiles will give them |
+| e | Confirm the unit type and category on the card | Values the agent worked out are confirmed by the applicant |
+| f | On the verification card: **Open verification link (demo)**, then code **1234** | Verification stays in the chat (accepted on 3 Nov) |
+| g | On the documents card, upload `company_profile_match.pdf` | The confirm card shows the company name and address **from: Company Profile, company_profile_match.pdf** |
+| h | **Looks right**. Upload `brand_profile_match.pdf` → **Looks right**. Give the Arabic brand name if asked (`بين ستريت`) | Nothing filled from a document is used until the applicant confirms it |
+| i | Review card → tick the terms → **Submit inquiry** | The reference **GEO-…**; submit is a button, never the model |
 
-`make demo` sets `OTP_MOCK_CODE=1234`, `VITE_DEMO=1`, dev tools, reviewer console, call centre, tenant portal, and proactivity (`DEV_TOOLS`, `REVIEWER_CONSOLE`, `CALLCENTRE_CONSOLE`, `TENANT_PORTAL`, `PROACTIVE_ENABLED`).
+### 2. Lease Admin: the approval email (F7, F8, I13, I18)
+`/dev/inbox` → the newest **Inquiry for approval: Bean Street at Riyadh Mall A (GEO-…)** → its link opens the case, signed in as the Lease Admin.
 
-**Personas (URLs):**
+- **Case brief** and **First review**. **Approve first level** is disabled until every document is approved (F8).
+- Each profile shows its expiry: **Valid until …** (I18). Approve the **Company Profile**.
+- **Brand Profile:** remarks `The logo page is missing` → **Reject** → **Request re-upload**. The stage reads *waiting for re-upload*.
+
+### 3. Applicant re-uploads (F16)
+`/dev/inbox` → `reupload_request` to `sara@beanstreet.example` → open the case link.
+- The upload card asks only for the Brand Profile and shows the remarks.
+- Upload `brand_profile.pdf` → **Resubmit**. The status card reads **First review**.
+
+### 4. Lease Admin approves again (F8, F16, I4)
+Reload the case.
+- The new Brand Profile is back to **Waiting for a decision**; the Company Profile keeps its approval (F16).
+- Approve it → **Approve first level** → **Lead — second review**.
+- The timeline shows *Document rejected: brand profile*.
+
+### 5. Applicant: the signatory question (F19, I16)
+`/dev/inbox` → `contacts_request` → case link.
+- The case chat asks **Are you the authorised signatory for your company?**
+- Press **Yes, I'm the authorised signatory**.
+- Give a billing contact, e.g. `Billing is Omar Saleh, omar@beanstreet.example, +966551234567` → **Send contacts**.
+- One question replaces the contact form (F19). The signatory is already verified by the email link and code.
+
+### 6. Lease Admin: contact approval (F12, F16, F18, I5)
+Reload the case.
+- **Authorized Signatory: Approved**; **Billing Contact: Waiting for approval**.
+- Remarks `Use the finance mailbox` → **Reject**. The applicant gets a new `contacts_request` with the remarks, fixes the email in the case chat → **Send contacts**.
+- Back in the console: **Approve** the billing contact. Every contact is approved individually, and a resubmitted one is approved again (F16).
+
+### 7. *(Optional)* Restart (I6)
+In a terminal: `docker compose -f docker-compose.yml -f docker-compose.demo.yml restart backend`. Wait about 10 seconds, then reload every tab. The case, its decisions and the chats are all there.
+
+### 8. RLM: final approval (F8, I8)
+On `/dev` → the reviewer list (or "Demo cases") → the RLM, or open the case with `?as=` the RLM.
+- The RLM sees the document and contact decisions read-only.
+- Press **Approve** → **Approved and sent to Yardi**.
+- `/dev/inbox` shows `inquiry_accepted` to Sara, and Tenant Central invitations for the contacts without an account.
+
+### 9. Tracking
+Open the tracking link from Sara's submission email. It reads *Approved — your details are with the leasing team for a proposal*.
+
+### 10. Typed company and a profile check (F6, I19)
+Applicant tab → **Restart** (chat header) → `Hi, I'd like to lease a space` → **No, we don't** → **I'll type them**.
+1. Type `My Coffee Shop LLC, Olaya Street, Riyadh`, then the brand, space and contact as in beat 1.
+2. After verification, upload `company_profile_mismatch.pdf`. The agent says in one sentence that the profile shows a different company name and asks which to keep.
+3. Reply `Keep my company name`. Upload `brand_profile_match.pdf` → submit. A difference never blocks submit.
+4. In the Lease Admin tab, open the new case. The brief lists the **profile check** (company name: typed vs Company Profile).
+
+### 11. Signed in: a new brand (F2, F3, I3, I9)
+Applicant tab → **Restart** → **Yes, we have a CR** → **Sign in to Tenant Central** → sign in as **Oasis Coffee Company — Layla Hassan**. This lands on **Leasing Opportunities** (F2).
+1. **Raise inquiry** on **OPP-101** (Riyadh Mall A). There's no brand picker: every inquiry raised here is for a new brand.
+2. The greeting says the company details come from **your Cenomi record**. The card shows Oasis Coffee Company, filled from Yardi by CR and marked verified (F3). Press **Proceed**.
+3. `I'll upload the Brand Profile` → the documents card asks for **both** profiles, even though Oasis sent them before.
+4. Upload `new_brand_profile.pdf` → confirm **Oasis Bakehouse** → give the Arabic name `مخبز الواحة`.
+5. Upload `oasis_company_profile_mismatch.pdf`. The agent says the profile differs from **the Cenomi record**. Reply `Keep the record's name` → **Submit inquiry**.
+6. In the Lease Admin tab, the new case's brief flags the company name against the record.
+
+### 12. Seeded Case A: expiry (F8, I18)
+On `/dev` → **Demo cases** → Case A **as Lease Admin**.
+- Company Profile: **Expired on …**. **Approve** is disabled and **Reject** comes with the remarks proposed. Nothing is approved or rejected automatically.
+- Brand Profile: **Expiring soon**. The Lease Admin decides.
+- The brief also shows the profile check (company name).
+
+*Short on time?* Case B "as Lease Admin" shows the contact approval (beat 6) in one click, and Case C shows a case sent to Yardi.
+
+### 13. *(Optional)* Power user (I15)
+Applicant tab → **Restart** → **No, we don't** → **I'll type them**, then paste one message:
+`Acme Trading LLC, King Abdullah Road, Riyadh. Bean Street (بين ستريت) specialty café at Riyadh Mall A — Sara Ali, sara@beanstreet.example, +966501234567.`
+The agent fills everything it can and asks only for what's left.
+
+---
+
+## Feedback checklist (for Muzammil)
+
+| Feedback | What we show | Beat |
+| --- | --- | --- |
+| F1 — no CR lookup on the public page | CR question; a typed CR number gets the sign-in reply and isn't stored | 1, 11 |
+| F2 — Yes → sign in → land where the inquiry is raised | Sign-in card → Leasing Opportunities | 11 |
+| F3 — don't ask registered companies for what Cenomi holds | Company from Yardi by CR; new brand with both profiles | 11 |
+| F5 — don't open with one all-fields message | Turn-by-turn opening; the paste is optional | 1, 13 |
+| F6 — check documents against the answers | Fill from profiles with evidence; mismatch warning and brief flag | 1, 10, 11 |
+| F7 — the reviewer starts from an "inquiry for approval" notification | `review_assigned` email opens the case | 2 |
+| F8 — approve documents before the first level | Per-document approval; first level waits for it; expiry | 2, 4, 12 |
+| F12, F18 — contacts approved individually | Per-contact approval with remarks | 6 |
+| F14, F15 — three-lane flow; approvals in the design doc | Shared before the call | Before the call |
+| F16 — re-uploads and resubmitted contacts need approval again | Brand Profile and billing contact decided again | 4, 6 |
+| F19 — "Are you the authorised signatory?" | Signatory card instead of a contact form | 5 |
+
+Not in this round (agreed 4 Nov): F4 request access, F9 UAT walkthrough, F10 the real document review agent, F11 lead codes, F20 CR certificate.
+
+---
+
+## Personas and links
 
 | Persona | URL |
 | --- | --- |
 | Demo hub | http://localhost:5173/dev |
 | Applicant chat | http://localhost:5173 |
-| Call centre / Guest Service | http://localhost:5173/callcentre (pick staff on the page, or open from **/dev**) |
-| Tenant Central | http://localhost:5173/tenant (mock tenants linked from **/dev**) |
-| Dev notification inbox | http://localhost:5173/dev/inbox |
-| Reviewer queue / case | http://localhost:5173/review → open a **GEO-…** row |
+| Tenant Central | http://localhost:5173/tenant (or the tenant links on `/dev`) |
+| Dev inbox | http://localhost:5173/dev/inbox |
+| Reviewer queue / case | http://localhost:5173/review, or a case link from an email |
 | Needs attention | http://localhost:5173/review/attention |
-| Applicant case link | From email in dev inbox → `/inquiry/case?t=…` |
-| Applicant complete link (assisted) | `complete_application` email → `/inquiry/verify?t=…` (new session, email verified) |
-| Tracking | `/inquiry/status/{reference}?t=` from submission email |
+| Call centre / Guest Service | http://localhost:5173/callcentre |
+| Applicant case link | From an email in the dev inbox → `/inquiry/case?t=…` |
+| Tracking | `/inquiry/status/{reference}?t=…` from the submission email |
 
-Use **Restart** in the chat header (demo builds, `VITE_DEMO=1`) to reset the applicant chat without reloading the page.
-
----
-
-## Happy path — §7.1.1 a1 self-service (~5 min)
-
-1. Open **http://localhost:5173** → welcome + suggestion chips.
-2. Click **I have my CR number**, then send: `My CR number is 1010123456`.
-3. Confirm company details on the **confirm** card (or say “Yes, that’s correct”).
-4. One natural message, e.g.  
-   `Bean Street specialty coffee kiosk at Riyadh Mall A — Sara Ali, sara@beanstreet.example, +966501234567`
-5. Confirm any derived fields (Arabic name, unit type, category).
-6. In the verification card, click **Open verification link (demo)**, then enter the SMS code **1234**.
-7. Upload **Company Profile** and **Brand Profile** (any small PDF).
-8. Review card → accept terms → **Submit** → note the **GEO-…** reference.
+**Automated (`make e2e-demo`):** `e2e/tests/demo.spec.ts` ("Demo script — 10 Nov") runs beats 0–6 and 8–12 in order after `POST /api/dev/reset`, with outbox checks on `review_assigned`, `reupload_request`, `contacts_request` and `inquiry_accepted`. The scripted run skips the restart beat, because Playwright owns that backend. `make e2e-demo-stack` runs the restart on the Docker stack: Case B's billing contact is approved, the backend restarts, the page reloads with nothing lost, and the RLM approves to Yardi.
 
 ---
 
-## Wow moments (intake)
+## Appendix — flows from the 3 Nov demo (still working)
 
-1. **Multi-field capture** — After skip CR or post-CR confirm, paste company + brand + mall + contact in **one** message; watch the draft panel populate without re-asks.
-2. **Arabic name suggestion + confirm** — Agent proposes `بين ستريت` (or similar) as derived; confirm card shows source **Suggested · confirm** and an evidence line where the spec requires it.
-3. **Draft panel live** — Keep the draft panel visible; each tool write flashes updated rows and the checks list moves toward submit-ready.
+These aren't in the 10 Nov run of show but still work if Muzammil asks. Each has its own Playwright story in `make e2e-int`.
 
----
-
-## §A3 — Full walkthrough (workflows)
-
-Line-by-line requirements live in [workflows-7-1.md](specs/workflows-7-1.md). Rehearse in this order for the Mon 2 Nov demo check.
-
-**Automated (`make e2e-demo`):** `e2e/tests/demo.spec.ts` ("Demo script — 10 Nov") runs the 10 Nov beats in one pass after `POST /api/dev/reset`, which reseeds Cases A, B and C: `/dev` personas and demo cases → turn by turn, CR? **No** → "I'll upload the profiles" → details from the profiles confirmed → email link and OTP → submit → Lease Admin opens the case from **Inquiry for approval**, approves the Company Profile, rejects the Brand Profile, **Request re-upload** → applicant re-uploads from the case link → Lease Admin approves it and the first level → applicant: **Yes, I'm the authorised signatory** and a billing contact → Lease Admin rejects billing, applicant fixes it, Lease Admin approves → RLM **Approve** → **Approved and sent to Yardi** → tracking page → typed company with a mismatching profile (warning, flag in the brief) → CR? **Yes** → sign in → **Leasing Opportunities** → **Raise inquiry** (company from the Cenomi record, the new brand from its Brand Profile, both profiles, the Company Profile checked against the record; the flag shows in the brief) → seeded Case A expiry chips and profile check → **Reset demo** reseeds. The scripted run skips the restart beat (Playwright owns that backend); `make e2e-demo-stack` runs it on the Docker stack: Case B's billing contact approved, `docker compose restart backend`, reload, nothing lost, RLM approves to Yardi. The earlier walkthrough beats (call centre, Guest Service, existing CR, Tenant Central, L5) stay covered by their own stories in `make e2e-int`.
-
-| Workflow | Demo path | When |
-| --- | --- | --- |
-| §7.1.1 **a1** — prospective, self-service | [Happy path](#happy-path--711-a1-self-service-5-min) above → submit → tracking email | **Today** (Days 1–3) |
-| §7.1.1 **a2** — prospective, call centre | [Call centre / Guest Service](#call-centre-and-guest-service-711-a2) → [applicant from link](#applicant-completes-an-assisted-link-711-a2) | **Today** |
-| §7.1.2 **a1** — existing tenant, signed in | [Tenant Central](#tenant-central-712-a1) | **Today** |
-| §7.1.2 **a2** — existing tenant, call centre | [Existing CR choice](#call-centre-and-guest-service-711-a2) → prefilled assisted chat → link → applicant completes | **Today** |
-| §7.1 — existing tenant on public page | [Public-page sign-in](#public-page-existing-tenant-71) (`sign_in` or `allow_inquiry`) | **Today** |
-| §7.1.1 **b** / §7.1.2 **b** — first-level review | Reviewer queue → optional [re-upload (T2)](#l4--re-upload-loop-story-t2) → or **Approve first level** | **Today** (Day 4+) |
-| §7.1.1 **c** / §7.1.2 **c** — second-level review | **Lead — second review** → [contacts + Yardi (T1)](#l4--contacts-and-final-approval-to-yardi-story-t1) → optional [reviewer assistant](#l4--reviewer-assistant-yardi-match) on re-link | **Today** (Day 4–5 track) |
-| Tracking throughout | Status page: stage, owner role, **Waiting for you**; after Yardi, approved copy for the applicant | **Today** |
-
-**Suggested presenter arc (~15 min):** start at **/dev** → self-service submit (or call-centre path) → **/review** from `review_assigned` → first approval **or** re-upload → second review with contacts → reviewer assistant **Use** on Yardi pickers (optional) → final approval → tracking shows *Approved — your details are with the leasing team for a proposal* → [L5 clock beats](#l5--governed-proactivity) on a stalled case → **Audit timeline** on the case page.
-
----
-
-## Call centre and Guest Service (§7.1.1 a2)
+### Call centre and Guest Service (§7.1.1 a2)
 
 Use **http://localhost:5173/callcentre** or open staff from **/dev** (**Sami Al Anazi** for the call centre; **Dana Al Rashid** for Guest Service). Mock sign-in if prompted (`?as=customer-care-1` or pick a row on **/dev**).
 
@@ -104,7 +218,7 @@ Handoff cases from self-service appear under **Open handoffs** on the same page;
 
 ---
 
-## Applicant completes an assisted link (§7.1.1 a2)
+### Applicant completes an assisted link (§7.1.1 a2)
 
 1. From **/dev/inbox**, open the **complete_application** email → **Open link** (demo) or follow `/inquiry/verify?t=…`.
 2. New applicant session: email is already verified; **basic info review** card lists staff-entered fields — **Edit** optional → **Proceed**.
@@ -114,42 +228,15 @@ Handoff cases from self-service appear under **Open handoffs** on the same page;
 
 ---
 
-## Tenant Central (§7.1.2 a1)
-
-1. From **/dev**, open a mock tenant (e.g. **Layla Hassan — Oasis Coffee Company**).
-2. **Leasing Opportunities** — **Raise inquiry** on **OPP-101** (or filter to Oasis Coffee Company).
-3. Chat greets by name; one confirm card for prefilled company, property and documents on file; pick brand if several; optional space note.
-4. Signed-in tenants skip email/mobile verification → review → **Submit**.
-5. **My inquiries** lists the new reference and stage.
-
----
-
-## Public-page existing tenant (§7.1)
-
-1. Open **http://localhost:5173** (applicant chat).
-2. **Sign-in policy:** send CR `1010000000` → **sign_in_prompt** card → **Sign in to Tenant Central** links to `/tenant/`; draft **cannot submit** on the public chat.
-3. **Allow inquiry policy:** CR on the allow list → prefilled **basic info review** → **Proceed** → complete verification/documents if required → submit.
-
----
-
-## /dev landing
-
-**http://localhost:5173/dev** (`VITE_DEV_TOOLS=1`): one link per persona (applicant, inbox, each call-centre / Guest Service staff, each mock tenant, each reviewer queue, **Needs attention**), plus:
-
-1. **Advance clock** — +24 h, +48 h, **To morning** (quiet-hours demo).
-2. **Reset demo** — clears sessions, cases, outbox, clock and mock world for a clean rehearsal.
-
----
-
-## §A4 — Agentic core (L3–L5 moments)
+### §A4 — Agentic core (L3–L5 moments)
 
 Each beat maps to [DELIVERY-PLAN.md](./DELIVERY-PLAN.md) §A4. Automated twins: Playwright `@scripted` stories cited below.
 
-### L3 — Reliable intake
+#### L3 — Reliable intake
 
 | Capability | How to show it | Notes |
 | --- | --- | --- |
-| Self-service intake | [Happy path](#happy-path--711-a1-self-service-5-min) + [demo-queries.md](./demo-queries.md) | Routing, bundles, evidence, guardrails |
+| Self-service intake | Beat 1 + [demo-queries.md](./demo-queries.md) | Routing, bundles, evidence, guardrails |
 | **Restart mid-inquiry** | With `DATA_DIR` set: start CR + one bundle message → **restart the backend** (same browser tab, same session) → send the next message; draft and transcript continue | Day 2; no Playwright shortcut in repo — manual or API test `test_backend_restart_mid_inquiry_continues` |
 | **Form mode (model down)** | Set `FORM_MODE=true`, restart backend, new session: fixed bubble + **form mode** card; fill fields, mall picker, verification, documents, review → submit. Send a chat message after submit: assistant “welcome back” and form mode clears | Story **S13** (`llm:unavailable:2` in scripted e2e); live demo uses `FORM_MODE` |
 | Audit (intake) | After any session with `DEV_TOOLS`: `GET /api/dev/audit/{session_id}` — redacted turns, tools, `form_mode_entered`, submit | Case page timeline merges session + case ids after submit |
@@ -160,7 +247,7 @@ Each beat maps to [DELIVERY-PLAN.md](./DELIVERY-PLAN.md) §A4. Automated twins: 
 - **Existing account:** CR `1010000000` → Sign In guidance, no submit.
 - **Resilience:** Stop the backend mid-reply → **Retry**; restart backend and send a message → **Start again** when the session expires.
 
-### L4 — Outcome assistance
+#### L4 — Outcome assistance
 
 | Capability | How to show it | Notes |
 | --- | --- | --- |
@@ -171,7 +258,7 @@ Each beat maps to [DELIVERY-PLAN.md](./DELIVERY-PLAN.md) §A4. Automated twins: 
 
 Case chat after submit: no intake re-asks; only open requests (re-upload, contacts) drive the dialogue.
 
-### L5 — Governed proactivity
+#### L5 — Governed proactivity
 
 | Capability | How to show it | Notes |
 | --- | --- | --- |
@@ -179,11 +266,11 @@ Case chat after submit: no intake re-asks; only open requests (re-upload, contac
 | Escalation → region manager | Same case → **+48 h** again → `review_escalated`; region manager **Needs attention** shows escalation | 96 h total (`review_escalate_hours`) |
 | Unanswered request → drafted reminder | Same case → **Approve first level** → **+48 h** then **+24 h** (no auto-send yet) → **Needs attention** → **Draft with assistant** → **Use draft** on the reminder → **Approve and send** | Tier 2; scripted `e2eScenario=r2-tenant-reminder` in automation |
 | Quiet hours (Riyadh) | After **Approve and send** at **23:00** local → **held until** morning; **To morning (08:00)** → exactly **one** `applicant_reminder` in the inbox | Policy `22:00–08:00 Asia/Riyadh` |
-| `/dev` landing | Personas, **Reset demo**, clock buttons | [Dev landing](#dev-landing) |
+| `/dev` landing | Personas, demo cases, **Reset demo**, clock buttons (+24 h, +48 h, **To morning**) | Beat 0 |
 
 ---
 
-## Reviewer console cheat sheet (T1 / T2)
+### Reviewer console cheat sheet (T1 / T2)
 
 1. **http://localhost:5173/review** → pick reviewer (mock sign-in) → open **GEO-…** from the queue or from `review_assigned` / request emails in **/dev/inbox**.
 2. Read the **case brief** (deterministic, no model).
@@ -192,7 +279,3 @@ Case chat after submit: no intake re-asks; only open requests (re-upload, contac
 5. End on **Audit timeline** and applicant **/inquiry/status/…** for the Yardi handover message.
 
 ---
-
-## End-of-day check (Day 5)
-
-Run **`make e2e-demo`** (or watch with **`make e2e-demo-headed`**). It implements the checklist in [prompts/breadth/day5-yardi-channels-demo.md](../prompts/breadth/day5-yardi-channels-demo.md) (*End-of-day demo check*). L3 restart, form mode, and evidence remain in **`make e2e-int`** (S2, S3, S13). [STATUS.md](./STATUS.md) §0 records ✅ when this passes.
