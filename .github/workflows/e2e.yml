@@ -23,7 +23,7 @@ on:
       group:
         description: eval-live scenario group (eval suite only)
         type: choice
-        options: [intake, case, channels, all]
+        options: [intake, case, channels, cr_privacy, signatory, document_extract, all]
         default: intake
       scenario:
         description: eval-live scenarios whose name contains this text (eval suite only; empty = all)
@@ -231,7 +231,13 @@ jobs:
           (cd frontend && npm ci)
           (cd e2e && npm ci && npx playwright install --with-deps chromium webkit)
       - name: Run live e2e
-        run: make e2e-live
+        run: |
+          # Empty repository variables would fail the backend's Settings (see eval-live).
+          for v in LLM_PROVIDER LLM_MODEL LLM_TEMPERATURE LLM_REASONING_EFFORT OPENAI_MODEL \
+                   AZURE_OPENAI_ENDPOINT AZURE_OPENAI_API_VERSION; do
+            if [ -z "${!v}" ]; then unset "$v"; fi
+          done
+          make e2e-live
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -298,6 +304,12 @@ jobs:
         run: cd backend && uv sync
       - name: AGENT-LIVE eval
         run: |
+          # An unset repository variable arrives as an empty string, which Settings rejects
+          # for its Literal fields (LLM_PROVIDER, LLM_REASONING_EFFORT): drop the empty ones.
+          for v in LLM_PROVIDER LLM_MODEL LLM_TEMPERATURE LLM_REASONING_EFFORT OPENAI_MODEL \
+                   AZURE_OPENAI_ENDPOINT AZURE_OPENAI_API_VERSION; do
+            if [ -z "${!v}" ]; then unset "$v"; fi
+          done
           GROUP=""
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.group }}" != "all" ]; then
             GROUP="${{ inputs.group }}"
