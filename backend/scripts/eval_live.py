@@ -1244,14 +1244,40 @@ def _check_channels_existing_tenant_brand_ask(
         "mobile number",
         "contact number",
     )
+    # R4 (demo feedback §3.8): every inquiry from Leasing Opportunities is a new brand.
     return [
-        ("asks which brand", "brand" in lower),
-        ("names Noor Fashion", "noor fashion" in lower),
-        ("names Noor Beauty", "noor beauty" in lower),
+        ("asks for the brand", "brand" in lower),
+        ("frames it as a new brand", "new" in lower),
         ("at most one question", first.count("?") <= 1),
         ("no verification ask", "verification" not in lower and "otp" not in lower),
         ("no company/contact re-ask", not any(phrase in lower for phrase in detail_asks)),
     ]
+
+
+def _check_channels_existing_tenant_new_brand(
+    session: Session,
+    turns: list[TurnResult],
+    _app: AppState | None = None,
+) -> list[tuple[str, bool]]:
+    """R4: the new brand is saved as given, nothing is refused, and the tenant hears that a
+    new brand needs both profiles."""
+    checks = _check_channels_existing_tenant_brand_ask(_session=session, turns=turns[:1])
+    draft = session.draft
+    replies = " ".join(t.assistant.lower() for t in turns)
+    checks += [
+        ("brand_name_en is Noor Kids", draft.fields[FieldKey.BRAND_NAME_EN].value == "Noor Kids"),
+        ("brand_name_ar saved", draft.fields[FieldKey.BRAND_NAME_AR].value == "نور للأطفال"),
+        (
+            "company still from the record",
+            draft.fields[FieldKey.COMPANY_NAME].value == "Al Noor Retail Group",
+        ),
+        ("mentions the Brand Profile", "brand profile" in replies),
+        (
+            "never refuses",
+            not any(w in replies for w in ("can't help", "cannot help", "unable to")),
+        ),
+    ]
+    return checks
 
 
 def _check_channels_existing_tenant_brand_set(
@@ -1856,6 +1882,16 @@ SCENARIOS: list[LiveScenario] = [
         auto_otp=False,
         group="channels",
         setup=_setup_callcentre_inquiry,
+    ),
+    LiveScenario(
+        "channels: existing tenant, new brand typed",
+        [
+            "Thanks, the details look right.",
+            "It's a new brand: Noor Kids (نور للأطفال), children's fashion.",
+        ],
+        _check_channels_existing_tenant_new_brand,
+        group="channels",
+        setup=_setup_tenant_two_brands,
     ),
     LiveScenario(
         "channels: existing tenant, two brands",
