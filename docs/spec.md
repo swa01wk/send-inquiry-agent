@@ -530,7 +530,7 @@ Contacts being collected live on the case session (`Session.contacts_draft`); `w
 | `document_approved` | `doc_type, file_id, remarks?` | Pending; not `expired`; an `unknown` expiry is confirmed first |
 | `document_rejected` | `doc_type, file_id, remarks` (required) | Pending |
 
-`reupload_requested` with no `doc_types` asks for the rejected documents, with `"<label>: <remarks>"` lines as the request's remarks unless others are given. `approved_first` is refused while `first_approval_blockers(case)` isn't empty: `document_pending:<type>` (a required document not approved), `document_rejected:<type>`, `expiry_unconfirmed:<type>`. Nothing changes a decision on its own (ADR-R6): an expired document stays pending until the reviewer rejects it.
+`reupload_requested` with no `doc_types` asks for the rejected documents, with `"<label>: <remarks>"` lines as the request's remarks unless others are given. With `doc_types` and no remarks, the request takes those lines from the ticked documents when every one was rejected with remarks; otherwise remarks are required. `approved_first` is refused while `first_approval_blockers(case)` isn't empty: `document_pending:<type>` (a required document not approved), `document_rejected:<type>`, `expiry_unconfirmed:<type>`. Nothing changes a decision on its own (ADR-R6): an expired document stays pending until the reviewer rejects it.
 
 **Contact decisions.** `TenantContact` gains `contact_id`, `approval` (pending | approved | rejected), `approval_remarks`, `approved_by` (a reviewer id or `system:<reason>`) and `added_by` (tenant | reviewer | system). The state machine sets them and ignores what a payload says.
 - `contacts_provided`: an unchanged contact that was approved or pending keeps its id and state; a new, changed or previously rejected one is pending under a new id. The applicant as signatory (`authorized_signatory` with `same_as_primary`) is approved on entry (`system:verified_primary`) unless `contacts.applicant_signatory_needs_approval`.
@@ -556,7 +556,7 @@ With `contacts.approval_required`, the `approved` blockers gain `contact_not_app
 - Document rows (`doc-row-<type>`): viewer link, expiry chip (`doc-expiry-status-<type>`), date input (`doc-expiry-<type>`, **Save date**), approval chip (`doc-approval-<type>`), **Approve** (`doc-approve-<type>`, disabled when expired or unknown) and **Reject** (`doc-reject-<type>`, remarks required, prefilled for an expired document).
 - Contact rows (`contact-row-<role>`): approval chip (`contact-approval-<role>`), **Approve** (`contact-approve-<role>`) and **Reject** (`contact-reject-<role>`, remarks required).
 - The buttons show only for the role whose actions they are; the final reviewer sees the chips.
-- **Approve first level** is disabled, with the `first-approval-blockers` list, until the documents are decided. **Request re-upload** with nothing ticked asks for the rejected documents.
+- **Approve first level** is disabled, with the `first-approval-blockers` list, until the documents are decided. **Request re-upload** with nothing ticked asks for the rejected documents. Ticking only rejected documents also enables it with no remarks typed (`reupload-ticked-rejected-hint` names the rejection remarks that will be sent).
 
 ## 14. Proactive work and demo operability (L5 core, Day 5)
 

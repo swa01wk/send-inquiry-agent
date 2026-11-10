@@ -245,9 +245,20 @@ def _routed(case: Case, event: WorkflowEvent, actor: Actor, now: datetime) -> No
     case.review_queue = ReviewQueue.model_validate(raw)
 
 
+def _rejection_remarks(case: Case, doc_types: list[DocType]) -> str:
+    """The rejection remarks for these documents, when every one was rejected with remarks;
+    otherwise empty (the reviewer types remarks for the rest)."""
+    decisions = current_decisions(case)
+    picked = [decisions.get(d) for d in doc_types]
+    if not picked or any(d is None or d.status != "rejected" or not d.remarks for d in picked):
+        return ""
+    return "\n".join(f"{document_label(d.doc_type)}: {d.remarks}" for d in picked if d)
+
+
 def _reupload_requested(case: Case, event: WorkflowEvent, actor: Actor, now: datetime) -> None:
     """Documents to re-upload, with remarks. No `doc_types`: the rejected documents, with
-    their rejection remarks as the request's remarks unless others are given (§3.4)."""
+    their rejection remarks as the request's remarks unless others are given (§3.4). Ticked
+    documents that were all rejected with remarks use those remarks the same way."""
     raw = event.payload.get("doc_types")
     rejected = [d for d in current_decisions(case).values() if d.status == "rejected"]
     if (raw is None or raw == []) and rejected:
@@ -265,7 +276,12 @@ def _reupload_requested(case: Case, event: WorkflowEvent, actor: Actor, now: dat
         raise _invalid("Unknown document type.") from exc
     if DocType.SALES_DATA in doc_types:
         raise _invalid("Sales data is requested on its own, not as a re-upload.")
-    remarks = remarks or _remarks(event.payload, required=True)
+    remarks = (
+        remarks
+        or _remarks(event.payload, required=False)
+        or _rejection_remarks(case, doc_types)
+        or _remarks(event.payload, required=True)
+    )
     case.requests.append(
         CaseRequest(
             id=f"req_{uuid.uuid4().hex[:10]}",
