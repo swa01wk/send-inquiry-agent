@@ -10,6 +10,7 @@ from app.agent.case_guard import (
     _CONTACTS_SENT_RE,
     _DOC_RESUBMITTED_RE,
     _contacts_card_missing_note,
+    _contacts_not_saved_note,
     _false_outcome_note,
 )
 from app.agent.runtime import AgentRuntime
@@ -230,3 +231,33 @@ def test_contacts_card_missing_note_for_a_fix_request(agent_runtime: AgentRuntim
     note = _contacts_card_missing_note(turn, case, [{"role": "billing_contact"}])
     assert note is not None
     assert "show_contacts_review" in note
+
+
+_FIX = "The billing email is finance@beanstreet.example"
+
+
+def test_contacts_not_saved_note_when_details_given_and_nothing_saved(
+    agent_runtime: AgentRuntime,
+) -> None:
+    # Live run 10 Nov, flow 1: the corrected billing email never reached the card.
+    case = _contacts_request_case(agent_runtime)
+    turn = [HumanMessage(content=_FIX), AIMessage(content="Thanks, I've updated the email.")]
+    note = _contacts_not_saved_note(_FIX, turn, case)
+    assert note is not None
+    assert "update_contacts" in note
+
+
+def test_contacts_not_saved_note_quiet_when_saved(agent_runtime: AgentRuntime) -> None:
+    case = _contacts_request_case(agent_runtime)
+    turn = _contacts_turn("update_contacts", "show_contacts_review")
+    assert _contacts_not_saved_note(_FIX, turn, case) is None
+
+
+def test_contacts_not_saved_note_quiet_without_details_or_request(
+    agent_runtime: AgentRuntime,
+) -> None:
+    case = _contacts_request_case(agent_runtime)
+    turn = [HumanMessage(content="Who should be the billing contact?"), AIMessage(content="…")]
+    assert _contacts_not_saved_note("Who should be the billing contact?", turn, case) is None
+    no_request = _second_review_case(agent_runtime)
+    assert _contacts_not_saved_note(_FIX, [HumanMessage(content=_FIX)], no_request) is None
