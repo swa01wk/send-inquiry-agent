@@ -198,7 +198,7 @@ Rules (in order): a `GEO-{STR\|MED\|SPC}-{6 digits}` reference → `inquiry_stat
 
 After the agent's final reply each turn:
 1. Recompute `phase`; emit a `draft` event.
-2. Attach the card for a phase the user just entered if it hasn't been shown: `documents` → `document_upload`, `review` → `review`. (`verifying` cards come from `send_verification`.)
+2. Attach the card for a phase the user just entered if it hasn't been shown: `documents` → `document_upload`, `review` → `review`. (`verifying` cards come from `send_verification`.) On the upload path (the user said they'll upload the profiles, after CR = no), `document_upload` is attached in `collecting` or `verifying` too: the company and brand fields come from the profiles, so the phase can't reach `documents` before they're uploaded (`_documents_card_due` in `guard.py`).
 3. If the reply claims the inquiry was submitted (`claims_submission` in `guard.py`: "has been submitted", "I've sent your inquiry", "your reference is …"; conditional mentions such as "once the inquiry is sent" don't count) while `reference` is None → add a system note and route back to `agent` once. After a follow-on, a reply about the earlier inquiry (it names `follow_on_of`, or `start_follow_on` ran this turn) is allowed.
 4. If phase is `existing_account`, ensure the reply points to Sign In.
 5. Doubt: when the user doubts a derived or prefilled value ("not sure about the category", «مو متأكد من الفئة»), that field is un-confirmed (values the user typed are left alone). Doubt is attributed to the nearest field named after the doubt phrase, else before it, in the same sentence.

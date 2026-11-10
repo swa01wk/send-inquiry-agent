@@ -260,6 +260,16 @@ def _profiles_coming(state: AgentState) -> bool:
     return False
 
 
+def _documents_card_due(state: AgentState, phase: str) -> bool:
+    """Attach the documents card when the user enters the documents phase, or as soon as they
+    choose to upload the profiles (demo feedback §3.7). On that path the company and brand
+    fields come from the profiles, so the phase can't reach `documents` until they're
+    uploaded: waiting for it left the user with nothing to upload with."""
+    if phase == "documents":
+        return True
+    return phase in ("collecting", "verifying") and _profiles_coming(state)
+
+
 def _incomplete_bulk_capture_note(state: AgentState, phase: str) -> str | None:
     user_text, turn_messages = _current_turn(state)
     if phase not in ("gate", "collecting", "verifying") or not _is_bulk_inquiry_message(user_text):
@@ -640,7 +650,7 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
 
     _emit_draft({**state, "draft": draft}, runtime, draft_changed)
 
-    if phase == "documents" and "documents" not in cards_shown:
+    if "documents" not in cards_shown and _documents_card_due(state, phase):
         card = build_document_upload_card(
             draft,
             runtime.master,
