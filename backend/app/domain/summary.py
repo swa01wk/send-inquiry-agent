@@ -126,8 +126,15 @@ def _has_field_value(draft: InquiryDraft, key: FieldKey) -> bool:
 
 
 def _count_unconfirmed(draft: InquiryDraft) -> int:
+    """Unconfirmed suggested values, counted as `can_submit` does: document numbers (VAT,
+    national address, ...) are checked on the documents card, not confirmed (re-demo flow 3,
+    10 Nov: a tenant's record filled two, so "2 suggested values to confirm" showed with
+    nothing to confirm and Submit enabled)."""
     count = 0
     for key in FieldKey:
+        definition = FIELD_BY_KEY.get(key)
+        if definition is not None and definition.group == FieldGroup.DOCUMENTS:
+            continue
         field = draft.fields[key]
         if field.value is None:
             continue

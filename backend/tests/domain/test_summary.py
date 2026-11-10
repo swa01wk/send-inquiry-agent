@@ -38,3 +38,21 @@ def test_prompt_summary_contains_dynamic_lines(master):
     assert "Missing required:" in text
     assert "Email verified: no" in text
     assert "Mobile verified: not needed (no mobile)" in text
+
+
+def test_document_numbers_are_not_counted_as_values_to_confirm(master):
+    # Re-demo flow 3 (10 Nov): a tenant's record filled the VAT number and national address
+    # (verified, not on any confirm card); the review card said "2 suggested values to
+    # confirm" while Submit was enabled. Counted as `can_submit` counts.
+    draft = new_inquiry_draft()
+    draft, _, _ = write_fields(
+        draft,
+        [
+            ("company_name", "Oasis Coffee Company", Source.VERIFIED),
+            ("vat_number", "300000000000003", Source.VERIFIED),
+            ("national_address", "RRRD2929", Source.VERIFIED),
+        ],
+        master=master,
+    )
+    draft.cr_status = "tenant"
+    assert build_draft_summary(draft, master).checks.unconfirmed == 1

@@ -12,8 +12,8 @@ from dataclasses import dataclass
 
 from app.api.channel_cards import basic_info_missing
 from app.domain.fields import FIELD_BY_KEY
-from app.domain.models import NEEDS_CONFIRMATION, FieldKey, InquiryDraft, Source
-from app.domain.rules import contact_verified, remaining_steps
+from app.domain.models import NEEDS_CONFIRMATION, DocType, FieldKey, InquiryDraft, Source
+from app.domain.rules import contact_verified, open_fields, remaining_steps
 from app.policy.config import get_policy
 
 
@@ -76,6 +76,17 @@ def _askable(draft: InquiryDraft, bundle: Bundle) -> list[str]:
     if bundle is CONTACT and not _has_contact_number(draft):
         asks.append("Phone number")
     return asks
+
+
+def _arabic_name_to_ask(draft: InquiryDraft) -> bool:
+    """The Brand Profile filled the brand and the Arabic name is still missing: ask for it,
+    don't infer it (system prompt: "Ask for the Arabic name only when the Brand Profile
+    filled the brand"). Re-demo flow 3, 10 Nov: the hint said "infer the remaining
+    values", the opposite, and the agent asked for neither."""
+    if _has_value(draft, FieldKey.BRAND_NAME_AR):
+        return False
+    profile = draft.documents.get(DocType.BRAND_PROFILE)
+    return profile is not None and FieldKey.BRAND_NAME_EN.value in profile.filled_fields
 
 
 def _verification_sent(draft: InquiryDraft) -> bool:
@@ -152,6 +163,12 @@ def next_bundle_hint(
                 f"already have ({brands_or}), ask once whether it's that brand or a new one. The "
                 "mall and space type are already set from the unit they chose."
             )
+        elif bundle is BRAND_AND_SPACE and _arabic_name_to_ask(draft):
+            lines.append(
+                "Next question (brand): ask for the brand name in Arabic, in chat (no card "
+                "holds it). The Brand Profile gave the English name and doesn't give the "
+                "Arabic one, so don't propose one. One question."
+            )
         elif asks := _askable(draft, bundle):
             lines.append(
                 f"Next question ({bundle.name}): ask for {', '.join(asks)} together, "
@@ -213,9 +230,29 @@ _STILL_NEEDED_LABELS: dict[str, str] = {
 }
 
 
+def _field_labels(keys: list[str]) -> str:
+    return ", ".join(
+        "Mobile or landline" if key == "contact" else _label(FieldKey(key)) for key in keys
+    )
+
+
+def _fields_left(draft: InquiryDraft) -> list[str]:
+    """The `fields` step named field by field (re-demo flow 3, 10 Nov: a missing Arabic
+    brand name wasn't listed, so the hint said only the terms were left)."""
+    missing, unconfirmed = open_fields(draft)
+    parts: list[str] = []
+    if missing:
+        parts.append(f"{_field_labels(missing)} (ask in chat)")
+    if unconfirmed:
+        parts.append(f"confirming {_field_labels(unconfirmed)} (on the card that shows it)")
+    return parts
+
+
 def still_needed_line(draft: InquiryDraft) -> str:
     """What's left before submit, from `can_submit`; the user may do it in any order."""
-    steps = [step for step in remaining_steps(draft) if step in _STILL_NEEDED_LABELS]
+    steps = [
+        step for step in remaining_steps(draft) if step in _STILL_NEEDED_LABELS or step == "fields"
+    ]
     if not steps:
         return "Still needed before submit: nothing."
     if steps == ["terms"]:
@@ -223,7 +260,10 @@ def still_needed_line(draft: InquiryDraft) -> str:
             "Still needed before submit: only the terms. Call show_review if the review card "
             "isn't showing; the user ticks the box and presses Submit there."
         )
-    left = "; ".join(_STILL_NEEDED_LABELS[step] for step in steps)
+    parts: list[str] = []
+    for step in steps:
+        parts.extend(_fields_left(draft) if step == "fields" else [_STILL_NEEDED_LABELS[step]])
+    left = "; ".join(parts)
     return (
         f"Still needed before submit (any order): {left}. Don't call anything the last step "
         "or point to Submit while more than the terms is left. If the user asks what's next "

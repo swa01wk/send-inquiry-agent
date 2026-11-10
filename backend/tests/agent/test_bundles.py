@@ -166,3 +166,34 @@ def test_only_terms_left_points_to_the_review_card() -> None:
     hint = next_bundle_hint(draft)
     assert "only the terms" in hint
     assert "show_review" in hint
+
+
+def test_arabic_name_is_asked_for_when_the_brand_profile_filled_the_brand() -> None:
+    # Re-demo flow 3 (10 Nov): the Brand Profile filled the brand, the documents and contact
+    # were done, the Arabic name was missing; the hint said "infer the remaining values"
+    # and the agent kept pointing to a review card that couldn't show.
+    from app.domain.models import DocType
+
+    draft = _uploaded(_ready_for_verification())
+    draft.email_verified = True
+    draft.mobile_verified = True
+    draft.fields[FieldKey.BRAND_NAME_AR] = FieldValue()
+    draft.documents[DocType.BRAND_PROFILE].filled_fields = ["brand_name_en", "sales_category"]
+    hint = next_bundle_hint(draft)
+    assert "ask for the brand name in Arabic" in hint
+    assert "infer the remaining values" not in hint
+
+
+def test_arabic_name_is_still_inferred_when_the_brand_was_typed() -> None:
+    draft = _uploaded(_ready_for_verification())
+    draft.fields[FieldKey.BRAND_NAME_AR] = FieldValue()
+    assert "infer the remaining values (Brand name (AR))" in next_bundle_hint(draft)
+
+
+def test_an_unconfirmed_value_is_named_in_the_still_needed_line() -> None:
+    draft = _uploaded(_ready_for_verification())
+    draft.email_verified = True
+    draft.mobile_verified = True
+    draft.fields[FieldKey.UNIT_TYPE] = FieldValue(value="specialty", source=Source.DERIVED)
+    still_needed = next_bundle_hint(draft).split("Still needed before submit")[1]
+    assert "confirming Unit type" in still_needed
