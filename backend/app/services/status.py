@@ -19,6 +19,7 @@ from app.workflow.store import CaseStore
 
 StatusValue = Literal["under_review", "approved", "sent_to_yardi", "rejected"]
 StageKey = Literal["submitted", "first_review", "second_review", "outcome"]
+StageState = Literal["done", "current", "upcoming"]
 
 STAGES: list[tuple[StageKey, str]] = [
     ("submitted", "Inquiry submitted"),
@@ -58,6 +59,29 @@ FINAL_APPROVAL_LABELS: dict[Literal["approved", "sent_to_yardi"], str] = {
     "approved": "Approved — we're passing your details to the leasing team",
     "sent_to_yardi": "Approved — your details are with the leasing team for a proposal",
 }
+
+
+# The last stage once there is one: done, and named (re-demo flow 1, 10 Nov: it stayed
+# "Outcome", marked in progress, after the case was approved).
+OUTCOME_LABELS: dict[StatusValue, str] = {
+    "approved": "Outcome — Approved",
+    "sent_to_yardi": "Outcome — Approved",
+    "rejected": "Outcome — Not approved",
+}
+
+
+def status_stages(inquiry: InquiryStatus) -> list[tuple[StageKey, str, StageState]]:
+    """`(key, label, state)` per stage; a decided outcome is done and says what it was."""
+    current = next(i for i, (key, _label) in enumerate(STAGES) if key == inquiry.current_stage)
+    decided = inquiry.current_stage == "outcome" and inquiry.status in OUTCOME_LABELS
+    stages: list[tuple[StageKey, str, StageState]] = []
+    for i, (key, label) in enumerate(STAGES):
+        if key == "outcome" and decided:
+            stages.append((key, OUTCOME_LABELS[inquiry.status], "done"))
+            continue
+        state: StageState = "done" if i < current else "current" if i == current else "upcoming"
+        stages.append((key, label, state))
+    return stages
 
 
 def final_approval_label(status: StatusValue) -> str | None:
