@@ -107,7 +107,8 @@ def _contacts_card_missing_note(
     The applicant sends contacts from the review card, so a turn that captures them must show
     it (case prompt, "Contacts"). Live eval "Case: contacts bundle" missed it about 1 run in 3.
     """
-    if case is None or case.open_request("contacts") is None:
+    request = case.open_request("contacts") if case is not None else None
+    if request is None:
         return None
     called: set[str] = set()
     update_ids: set[str] = set()
@@ -124,7 +125,10 @@ def _contacts_card_missing_note(
     if not (isinstance(last, str) and last.startswith("Contacts draft updated")):
         return None
     roles = {c.get("role") for c in contacts_draft}
-    if not set(get_policy().second_level_contacts.required) <= roles:
+    # A request opened by a rejected contact asks only for those roles (demo feedback §3.5):
+    # live run 10 Nov, flow 1, the billing fix was saved but the card kept the old email.
+    needed = {str(r) for r in request.roles} or set(get_policy().second_level_contacts.required)
+    if not needed <= roles:
         return None
     return (
         f"{GUARD_PREFIX} The contacts are saved but the applicant can't see them yet. Call "

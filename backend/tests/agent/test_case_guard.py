@@ -217,3 +217,16 @@ def test_contacts_card_missing_note_quiet_without_open_request(agent_runtime: Ag
     case = _second_review_case(agent_runtime)
     note = _contacts_card_missing_note(_contacts_turn("update_contacts"), case, _BOTH_ROLES)
     assert note is None
+
+
+def test_contacts_card_missing_note_for_a_fix_request(agent_runtime: AgentRuntime) -> None:
+    # Live run 10 Nov, flow 1: after the billing contact was rejected, the fix request asks
+    # only for billing; the corrected email was saved but the card kept the old one.
+    case = _contacts_request_case(agent_runtime)
+    request = case.open_request("contacts")
+    assert request is not None
+    request.roles = ["billing_contact"]  # type: ignore[list-item]
+    turn = _contacts_turn("update_contacts", result="Contacts draft updated (1 role(s)).")
+    note = _contacts_card_missing_note(turn, case, [{"role": "billing_contact"}])
+    assert note is not None
+    assert "show_contacts_review" in note

@@ -215,6 +215,30 @@ def _missing_send_verification_note(
     )
 
 
+def _verification_after_proceed_note(
+    state: AgentState,
+    draft: Any,
+    user_text: str,
+    turn_messages: list[BaseMessage],
+    cards_shown: list[str],
+) -> str | None:
+    """The applicant from a call-centre link pressed Proceed (the email is verified by the
+    link, the mobile isn't): the verification card comes next. Live run 10 Nov, flow 4: the
+    model moved on to documents and the mobile was never verified."""
+    if not user_text.startswith("[ui_event] basic_info_confirmed"):
+        return None
+    if state.get("channel") == "existing_tenant" or state.get("assisted"):
+        return None  # a signed-in tenant's contact comes from the Cenomi record
+    if VERIFICATION_CARD_ID in cards_shown or contact_verified(draft):
+        return None
+    if not contact_fields_ready(draft) or "send_verification" in _tools_called(turn_messages):
+        return None
+    return (
+        f"{GUARD_PREFIX} The applicant confirmed their details, but the contact isn't verified "
+        "yet. Call send_verification before you reply, then point them to the card."
+    )
+
+
 def _incomplete_contact_capture_note(
     state: AgentState,
     draft: Any,
@@ -644,6 +668,13 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
                     None
                     if state.get("assisted")  # no verification in assisted mode
                     else _missing_send_verification_note(
+                        state,
+                        draft,
+                        user_text,
+                        turn_messages,
+                        cards_shown,
+                    )
+                    or _verification_after_proceed_note(
                         state,
                         draft,
                         user_text,

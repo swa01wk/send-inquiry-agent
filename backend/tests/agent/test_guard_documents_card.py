@@ -13,8 +13,10 @@ from app.agent.guard import guard_node
 from app.agent.runtime import AgentRuntime
 from app.agent.state import initial_agent_state
 from app.domain.draft_ops import new_inquiry_draft
+from app.domain.master import load_master_data
 from app.domain.rules import compute_phase
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+from tests.domain.conftest import fill_minimal_collectible
 
 
 def _run(
@@ -168,3 +170,35 @@ def test_a_change_in_chat_resends_the_review_card(agent_runtime: AgentRuntime) -
         cards_shown=["documents", "review"],
     )
     assert [e for e in events if e["type"] == "ui_card" and e["data"]["card_type"] == "review"]
+
+
+def _proceed_turn(agent_runtime: AgentRuntime, channel: str) -> dict[str, Any]:
+    draft = fill_minimal_collectible(new_inquiry_draft(), load_master_data())
+    draft.cr_status = "skipped"
+    draft.email_verified = True  # the call-centre link verified the email
+    state = initial_agent_state(session_id="sess-proceed", draft=draft, phase="verifying")
+    state["channel"] = channel
+    state["messages"] = [
+        HumanMessage(content="[ui_event] basic_info_confirmed first_name last_name"),
+        AIMessage(content="Thanks, Sara. Next, please upload your Company Profile."),
+    ]
+    state["cards_shown"] = []
+    with patch("app.agent.guard.get_stream_writer", return_value=lambda _e: None):
+        return guard_node(state, runtime=agent_runtime)
+
+
+def test_proceed_with_the_mobile_unverified_asks_for_verification(
+    agent_runtime: AgentRuntime,
+) -> None:
+    # Live run 10 Nov, flow 4: the applicant from the call-centre link pressed Proceed and the
+    # model went on to documents; the mobile was never verified.
+    result = _proceed_turn(agent_runtime, "assisted")
+    assert result["retry_agent"] is True
+    assert "send_verification" in str(result["messages"][0].content)
+
+
+def test_proceed_for_a_signed_in_tenant_never_asks_for_verification(
+    agent_runtime: AgentRuntime,
+) -> None:
+    result = _proceed_turn(agent_runtime, "existing_tenant")
+    assert "send_verification" not in str((result.get("messages") or [""])[0])
