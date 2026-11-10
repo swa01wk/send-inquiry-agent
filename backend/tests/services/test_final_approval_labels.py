@@ -11,6 +11,7 @@ from app.services.status import (
     InquiryStatus,
     final_approval_label,
     inquiry_status_summary,
+    status_stages,
 )
 from app.workflow.models import Case, CaseStatus
 
@@ -39,6 +40,31 @@ def test_inquiry_status_summary_uses_final_approval_copy():
         current_stage="outcome",
     )
     assert inquiry_status_summary(sent) == FINAL_APPROVAL_LABELS["sent_to_yardi"]
+
+
+def test_a_decided_outcome_stage_is_done_and_named():
+    """Re-demo flow 1 (10 Nov): after approval the last stage stayed "Outcome", in progress."""
+    for status, label in [
+        ("sent_to_yardi", "Outcome — Approved"),
+        ("approved", "Outcome — Approved"),
+        ("rejected", "Outcome — Not approved"),
+    ]:
+        inquiry = InquiryStatus(
+            reference="GEO-STR-000003", status=status, submitted_at=T0, current_stage="outcome"
+        )
+        assert status_stages(inquiry) == [
+            ("submitted", "Inquiry submitted", "done"),
+            ("first_review", "First review", "done"),
+            ("second_review", "Lead — second review", "done"),
+            ("outcome", label, "done"),
+        ]
+    reviewing = InquiryStatus(reference="GEO-STR-000004", status="under_review", submitted_at=T0)
+    assert [s[1:] for s in status_stages(reviewing)] == [
+        ("Inquiry submitted", "done"),
+        ("First review", "current"),
+        ("Lead — second review", "upcoming"),
+        ("Outcome", "upcoming"),
+    ]
 
 
 def test_case_status_card_exposes_status_headline():

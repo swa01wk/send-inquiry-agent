@@ -419,6 +419,29 @@ async def test_tracking_page_follows_the_case(life) -> None:
     assert body["waiting_on_you"] == ["Add company contacts"]
 
 
+async def test_tracking_page_names_a_rejection(life) -> None:
+    client, app = life
+    reference = await submit_case(client, app)
+    rejected = await act(
+        client,
+        STORE_CENTRAL,
+        reference,
+        "reject",
+        remarks="Not a fit.",
+        reason_category="not_a_fit",
+    )
+    assert rejected.status_code == 200
+    tracking = outbox(app, APPLICANT, "submission_email")[0]["links"][0]
+    status = await client.get(f"/api/inquiries/{reference}", params={"t": token_from(tracking)})
+    body = status.json()
+    assert body["current_stage"] == "outcome"
+    assert body["stages"][-1] == {
+        "key": "outcome",
+        "label": "Outcome — Not approved",
+        "state": "done",
+    }
+
+
 # ---- effects (X5) -----------------------------------------------------------------------
 
 
