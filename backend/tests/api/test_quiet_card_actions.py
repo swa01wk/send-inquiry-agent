@@ -156,3 +156,46 @@ async def test_documents_before_the_email_link_say_what_is_still_needed(client, 
 
     notes = await _notes(app, session.id)
     assert notes[-1] == "[ui_event] documents_complete still_needed=verify_email"
+
+
+@pytest.mark.asyncio
+async def test_documents_complete_names_a_missing_field(client, app) -> None:
+    # Re-demo flow 3 (10 Nov): `still_needed=fields` led the agent to the verification card;
+    # the Arabic brand name was what was missing.
+    from app.domain.models import FieldValue
+
+    session = await _session_with_contact(client, app)
+    session.draft = _upload_required(session.draft)
+    session.draft.email_verified = True
+    session.draft.mobile_verified = True
+    session.draft.fields[FieldKey.BRAND_NAME_AR] = FieldValue()
+
+    await _action(client, session.id, "documents_updated")
+
+    notes = await _notes(app, session.id)
+    assert notes[-1] == "[ui_event] documents_complete still_needed=brand_name_ar"
+
+
+@pytest.mark.asyncio
+async def test_an_edit_resends_the_review_card_once_it_is_shown(client, app) -> None:
+    # Re-demo flow 3 (10 Nov): rent and lease edits left the review card showing
+    # "Not yet collected".
+    session = await _session_with_contact(client, app)
+    session.remember_card({"card_id": "review", "card_type": "review", "message_id": "m7"})
+
+    events = await _action(client, session.id, "edit_field", {"key": "lease_period", "value": "3y"})
+
+    reviews = [d for n, d in events if n == "ui_card" and d["card_type"] == "review"]
+    assert len(reviews) == 1
+    assert reviews[0]["message_id"] == "m7"
+    lease = [
+        row for g in reviews[0]["payload"]["groups"] for row in g["rows"] if row["key"] == "lease"
+    ]
+    assert lease and lease[0]["display"]
+
+
+@pytest.mark.asyncio
+async def test_an_edit_sends_no_review_card_before_it_is_shown(client, app) -> None:
+    session = await _session_with_contact(client, app)
+    events = await _action(client, session.id, "edit_field", {"key": "first_name", "value": "Sara"})
+    assert not [d for n, d in events if n == "ui_card" and d["card_type"] == "review"]

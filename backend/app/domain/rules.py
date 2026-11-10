@@ -89,6 +89,20 @@ def can_submit(draft: InquiryDraft) -> list[Blocker]:
 RemainingStep = Literal["cr", "fields", "verify_email", "verify_mobile", "documents", "terms"]
 
 
+def open_fields(draft: InquiryDraft) -> tuple[list[str], list[str]]:
+    """The field keys behind the `fields` step, from `can_submit`: (missing, unconfirmed).
+    `contact` stands for a mobile or landline."""
+    missing: list[str] = []
+    unconfirmed: list[str] = []
+    for blocker in can_submit(draft):
+        kind, _sep, key = blocker.token.partition(":")
+        if kind == "missing_field" and key not in missing:
+            missing.append(key)
+        elif kind == "unconfirmed_field" and key not in unconfirmed:
+            unconfirmed.append(key)
+    return missing, unconfirmed
+
+
 def remaining_steps(draft: InquiryDraft) -> list[RemainingStep]:
     """What is still needed before submit, derived from `can_submit`, in the usual order.
 

@@ -51,7 +51,7 @@ from app.domain import validation as v
 from app.domain.document_checks import document_mismatches
 from app.domain.fields import document_definitions
 from app.domain.models import NEEDS_CONFIRMATION, DocType, FieldKey, InquiryDraft, Source
-from app.domain.rules import can_submit, contact_verified, remaining_steps
+from app.domain.rules import can_submit, contact_verified, open_fields, remaining_steps
 from app.domain.summary import build_draft_summary
 from app.domain.tenant_prefill import prefill_from_tenant
 from app.domain.validation import validate_malls
@@ -93,6 +93,17 @@ def _draft_event(draft: InquiryDraft, runtime: AgentRuntime, changed_keys: list[
 def _card_event(session: Session, card: UiCard) -> SseEvent:
     remember_confirm_card_keys(session, card)
     return SseEvent(event="ui_card", data=card.model_dump())
+
+
+def _review_refresh(session: Session, draft: InquiryDraft, runtime: AgentRuntime) -> list[SseEvent]:
+    """The review card shows a snapshot of the draft. Once it's on screen, a change made on
+    another card (or on the review card itself) re-sends it, same card id, updated in place
+    (re-demo flow 3, 10 Nov: rent and lease edits left it showing "Not yet collected")."""
+    shown = session.cards.get("review")
+    if not shown:
+        return []
+    card = build_review_card(draft, runtime.master, message_id=shown.get("message_id"))
+    return [_card_event(session, card)]
 
 
 async def handle_ui_action(
@@ -438,7 +449,7 @@ async def _edit_field(
     session.draft = draft
     return ActionResult(
         note=HumanMessage(content=f"[ui_event] field_edited {key}"),
-        events=[_draft_event(draft, runtime, written)],
+        events=[_draft_event(draft, runtime, written), *_review_refresh(session, draft, runtime)],
         changed_keys=written,
     )
 
@@ -482,6 +493,7 @@ async def _confirm_card(
     events: list[SseEvent] = [_draft_event(draft, runtime, keys)]
     card = build_confirm_fields_card(draft, runtime.master, listed, card_id=card_id)
     events.append(_card_event(session, card))
+    events.extend(_review_refresh(session, draft, runtime))
     return ActionResult(
         note=HumanMessage(content=f"[ui_event] fields_confirmed {' '.join(keys)}"),
         events=events,
@@ -513,6 +525,22 @@ def document_review_notes(
     return notes
 
 
+def _still_needed_tokens(draft: InquiryDraft) -> list[str]:
+    """What's open besides documents and terms, with the `fields` step as field keys (e.g.
+    `brand_name_ar`), so the agent asks for a field instead of guessing a card."""
+    tokens: list[str] = []
+    for step in remaining_steps(draft):
+        if step in ("documents", "terms"):
+            continue
+        if step == "fields":
+            missing, unconfirmed = open_fields(draft)
+            tokens.extend(missing)
+            tokens.extend(f"confirm:{key}" for key in unconfirmed)
+            continue
+        tokens.append(step)
+    return tokens
+
+
 async def _documents_updated(
     payload: dict[str, Any],
     session: Session,
@@ -531,7 +559,7 @@ async def _documents_updated(
     if not pending:
         # Documents can come before verification; say what's still open so the agent
         # doesn't point to Submit too early.
-        left = [step for step in remaining_steps(draft) if step not in ("documents", "terms")]
+        left = _still_needed_tokens(draft)
         tail = f" still_needed={','.join(left)}" if left else ""
         status = f"[ui_event] documents_complete{tail}"
     else:
@@ -556,6 +584,7 @@ async def _documents_updated(
             title="From your profile — please confirm",
         )
         events.append(_card_event(session, card))
+    events.extend(_review_refresh(session, draft, runtime))
     return ActionResult(
         note=HumanMessage(content="\n".join([*review_notes, status])),
         events=events,

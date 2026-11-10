@@ -150,3 +150,21 @@ def test_upload_choice_for_the_brand_profile_attaches_the_documents_card(
         ],
     )
     assert len(_document_cards(events)) == 1
+
+
+def test_a_change_in_chat_resends_the_review_card(agent_runtime: AgentRuntime) -> None:
+    # Re-demo flow 3 (10 Nov): the review card is a snapshot; an edit made after it was
+    # shown must refresh it.
+    _, events = _run(
+        [
+            HumanMessage(content="Make it a 3 year lease"),
+            AIMessage(
+                content="",
+                tool_calls=[{"name": "update_draft", "args": {"fields": []}, "id": "u1"}],
+            ),
+            AIMessage(content="Done, 3 years."),
+        ],
+        agent_runtime,
+        cards_shown=["documents", "review"],
+    )
+    assert [e for e in events if e["type"] == "ui_card" and e["data"]["card_type"] == "review"]

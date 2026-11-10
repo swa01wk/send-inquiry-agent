@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from app.api.channel_cards import basic_info_missing
 from app.domain.fields import FIELD_BY_KEY
 from app.domain.models import NEEDS_CONFIRMATION, FieldKey, InquiryDraft, Source
-from app.domain.rules import contact_verified, remaining_steps
+from app.domain.rules import contact_verified, open_fields, remaining_steps
 from app.policy.config import get_policy
 
 
@@ -213,9 +213,29 @@ _STILL_NEEDED_LABELS: dict[str, str] = {
 }
 
 
+def _field_labels(keys: list[str]) -> str:
+    return ", ".join(
+        "Mobile or landline" if key == "contact" else _label(FieldKey(key)) for key in keys
+    )
+
+
+def _fields_left(draft: InquiryDraft) -> list[str]:
+    """The `fields` step named field by field (re-demo flow 3, 10 Nov: a missing Arabic
+    brand name wasn't listed, so the hint said only the terms were left)."""
+    missing, unconfirmed = open_fields(draft)
+    parts: list[str] = []
+    if missing:
+        parts.append(f"{_field_labels(missing)} (ask in chat)")
+    if unconfirmed:
+        parts.append(f"confirming {_field_labels(unconfirmed)} (on the card that shows it)")
+    return parts
+
+
 def still_needed_line(draft: InquiryDraft) -> str:
     """What's left before submit, from `can_submit`; the user may do it in any order."""
-    steps = [step for step in remaining_steps(draft) if step in _STILL_NEEDED_LABELS]
+    steps = [
+        step for step in remaining_steps(draft) if step in _STILL_NEEDED_LABELS or step == "fields"
+    ]
     if not steps:
         return "Still needed before submit: nothing."
     if steps == ["terms"]:
@@ -223,7 +243,10 @@ def still_needed_line(draft: InquiryDraft) -> str:
             "Still needed before submit: only the terms. Call show_review if the review card "
             "isn't showing; the user ticks the box and presses Submit there."
         )
-    left = "; ".join(_STILL_NEEDED_LABELS[step] for step in steps)
+    parts: list[str] = []
+    for step in steps:
+        parts.extend(_fields_left(draft) if step == "fields" else [_STILL_NEEDED_LABELS[step]])
+    left = "; ".join(parts)
     return (
         f"Still needed before submit (any order): {left}. Don't call anything the last step "
         "or point to Submit while more than the terms is left. If the user asks what's next "

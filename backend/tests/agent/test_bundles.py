@@ -166,3 +166,26 @@ def test_only_terms_left_points_to_the_review_card() -> None:
     hint = next_bundle_hint(draft)
     assert "only the terms" in hint
     assert "show_review" in hint
+
+
+def test_a_missing_field_is_named_rather_than_only_the_terms() -> None:
+    # Re-demo flow 3 (10 Nov): the Brand Profile filled the brand, the documents and contact
+    # were done, the Arabic name was missing; the hint said "only the terms", so the agent
+    # kept pointing to a review card that couldn't show.
+    draft = _uploaded(_ready_for_verification())
+    draft.email_verified = True
+    draft.mobile_verified = True
+    draft.fields[FieldKey.BRAND_NAME_AR] = FieldValue()
+    hint = next_bundle_hint(draft)
+    still_needed = hint.split("Still needed before submit")[1]
+    assert "only the terms" not in still_needed
+    assert "Brand name (AR) (ask in chat)" in still_needed
+
+
+def test_an_unconfirmed_value_is_named_in_the_still_needed_line() -> None:
+    draft = _uploaded(_ready_for_verification())
+    draft.email_verified = True
+    draft.mobile_verified = True
+    draft.fields[FieldKey.UNIT_TYPE] = FieldValue(value="specialty", source=Source.DERIVED)
+    still_needed = next_bundle_hint(draft).split("Still needed before submit")[1]
+    assert "confirming Unit type" in still_needed

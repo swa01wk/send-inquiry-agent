@@ -688,6 +688,12 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
         card = build_review_card(draft, runtime.master)
         _emit_card(card, writer)
         cards_shown.append("review")
+    elif "review" in cards_shown and (
+        draft_changed or _CAPTURE_TOOLS & _tools_called(turn_messages)
+    ):
+        # The review card is a snapshot: a change made in chat re-sends it (same card id,
+        # updated in place), as `_review_refresh` does for card actions.
+        _emit_card(build_review_card(draft, runtime.master), writer)
 
     return {
         "draft": draft,
