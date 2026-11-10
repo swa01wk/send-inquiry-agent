@@ -6,7 +6,7 @@
  * in a flow instead of stopping at the first, and still fails at the end. Steps the flow
  * can't continue without stay hard expectations in the spec.
  */
-import { expect, type APIRequestContext, type Page } from '@playwright/test'
+import { expect, type APIRequestContext, type Page, type TestInfo } from '@playwright/test'
 import type { InquiryPage } from '../pages/inquiry'
 import { readCapturedEvents, readDoneEventCount } from './events'
 import { assertSafetyInvariants, sliceEventsAfterDone } from './invariants'
@@ -94,13 +94,53 @@ async function draftOrEmpty(
  * by soft checks: at most one retracted reply, no internal wording in the reply, and the
  * safety invariants I1–I8 on what the turn did.
  */
+const openChats: LiveChat[] = []
+
+/**
+ * On failure, attach each chat's replies and draft fields (who said what, and what the draft
+ * held), then forget the chats. Call from `test.afterEach`.
+ */
+export async function attachLiveTranscripts(testInfo: TestInfo): Promise<void> {
+  const chats = openChats.splice(0)
+  if (testInfo.status === testInfo.expectedStatus) return
+  for (const chat of chats) {
+    if (chat.page.isClosed()) continue
+    const replies = await chat.inquiry.allReplies().catch(() => [] as string[])
+    const draft = await draftOrEmpty(chat.page.request, chat.inquiry.sessionId)
+    type Field = { key: string; display: string | null; source: string | null; confirmed: boolean }
+    const fields = ((draft.fields ?? []) as Field[])
+      .filter((f) => f.display)
+      .map((f) => `${f.key} = ${f.display} (${f.source}${f.confirmed ? ', confirmed' : ''})`)
+    await testInfo.attach(`${chat.name} transcript.txt`, {
+      body: `${replies.map((r, i) => `[${i + 1}] ${r}`).join('\n\n')}\n\n--- draft ---\n${fields.join('\n')}`,
+      contentType: 'text/plain',
+    })
+  }
+}
+
+/** Soft check on the newest reply; the failure shows the reply. */
+export async function replyCheck(
+  chat: LiveChat,
+  label: string,
+  pattern: RegExp,
+  expected: 'matches' | 'does not match' = 'matches',
+): Promise<void> {
+  const reply = await chat.lastReply()
+  await softly(`${chat.name}: ${label}`, () => {
+    const ok = pattern.test(reply) === (expected === 'matches')
+    expect(ok, `reply ${expected} ${pattern}: "${reply.slice(0, 300)}"`).toBe(true)
+  })
+}
+
 export class LiveChat {
   constructor(
     readonly inquiry: InquiryPage,
     /** Public self-service chat (I8: no CR number or registry details anywhere). */
     readonly publicCr: boolean,
     readonly name: string,
-  ) {}
+  ) {
+    openChats.push(this)
+  }
 
   get page(): Page {
     return this.inquiry.page
