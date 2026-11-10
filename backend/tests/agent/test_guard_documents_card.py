@@ -82,3 +82,71 @@ def test_documents_card_is_attached_once(agent_runtime: AgentRuntime) -> None:
         cards_shown=["documents"],
     )
     assert _document_cards(events) == []
+
+
+def _quick_replies(events: list[dict[str, Any]]) -> list[list[str]]:
+    return [
+        [option["text"] for option in e["data"]["payload"]["options"]]
+        for e in events
+        if e["type"] == "ui_card" and e["data"]["card_type"] == "quick_replies"
+    ]
+
+
+def _tenant_turn(agent_runtime: AgentRuntime, turn: list[BaseMessage]) -> list[dict[str, Any]]:
+    draft = new_inquiry_draft()
+    draft.cr_status = "tenant"
+    state = initial_agent_state(session_id="sess-tenant", draft=draft, phase="collecting")
+    state["channel"] = "existing_tenant"
+    state["messages"] = turn
+    state["cards_shown"] = []
+    events: list[dict[str, Any]] = []
+    with patch("app.agent.guard.get_stream_writer", return_value=events.append):
+        guard_node(state, runtime=agent_runtime)
+    return events
+
+
+def test_tenant_brand_question_gets_the_type_or_upload_chips(agent_runtime: AgentRuntime) -> None:
+    """Re-demo flow 3 (10 Nov): after Proceed the live model asked for the new brand without
+    chips, so there was no way to choose the upload."""
+    events = _tenant_turn(
+        agent_runtime,
+        [
+            HumanMessage(content="[ui_event] basic_info_confirmed company_name company_address"),
+            AIMessage(content="What's the new brand? Type it, or upload its Brand Profile."),
+        ],
+    )
+    assert _quick_replies(events) == [["I'll type it", "I'll upload the Brand Profile"]]
+
+
+def test_no_extra_chips_when_the_model_suggested_them(agent_runtime: AgentRuntime) -> None:
+    events = _tenant_turn(
+        agent_runtime,
+        [
+            HumanMessage(content="[ui_event] basic_info_confirmed company_name"),
+            AIMessage(
+                content="",
+                tool_calls=[
+                    {
+                        "name": "suggest_replies",
+                        "args": {"options": ["I'll type it", "I'll upload the Brand Profile"]},
+                        "id": "c1",
+                    }
+                ],
+            ),
+            AIMessage(content="What's the new brand?"),
+        ],
+    )
+    assert _quick_replies(events) == []
+
+
+def test_upload_choice_for_the_brand_profile_attaches_the_documents_card(
+    agent_runtime: AgentRuntime,
+) -> None:
+    events = _tenant_turn(
+        agent_runtime,
+        [
+            HumanMessage(content="I'll upload the Brand Profile"),
+            AIMessage(content="Upload both profiles on the documents card."),
+        ],
+    )
+    assert len(_document_cards(events)) == 1
