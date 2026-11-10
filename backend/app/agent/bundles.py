@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 from app.api.channel_cards import basic_info_missing
 from app.domain.fields import FIELD_BY_KEY
-from app.domain.models import NEEDS_CONFIRMATION, FieldKey, InquiryDraft, Source
+from app.domain.models import NEEDS_CONFIRMATION, DocType, FieldKey, InquiryDraft, Source
 from app.domain.rules import contact_verified, open_fields, remaining_steps
 from app.policy.config import get_policy
 
@@ -76,6 +76,17 @@ def _askable(draft: InquiryDraft, bundle: Bundle) -> list[str]:
     if bundle is CONTACT and not _has_contact_number(draft):
         asks.append("Phone number")
     return asks
+
+
+def _arabic_name_to_ask(draft: InquiryDraft) -> bool:
+    """The Brand Profile filled the brand and the Arabic name is still missing: ask for it,
+    don't infer it (system prompt: "Ask for the Arabic name only when the Brand Profile
+    filled the brand"). Re-demo flow 3, 10 Nov: the hint said "infer the remaining
+    values", the opposite, and the agent asked for neither."""
+    if _has_value(draft, FieldKey.BRAND_NAME_AR):
+        return False
+    profile = draft.documents.get(DocType.BRAND_PROFILE)
+    return profile is not None and FieldKey.BRAND_NAME_EN.value in profile.filled_fields
 
 
 def _verification_sent(draft: InquiryDraft) -> bool:
@@ -151,6 +162,12 @@ def next_bundle_hint(
                 "its Brand Profile for you to fill in. One question. If it matches one they "
                 f"already have ({brands_or}), ask once whether it's that brand or a new one. The "
                 "mall and space type are already set from the unit they chose."
+            )
+        elif bundle is BRAND_AND_SPACE and _arabic_name_to_ask(draft):
+            lines.append(
+                "Next question (brand): ask for the brand name in Arabic, in chat (no card "
+                "holds it). The Brand Profile gave the English name and doesn't give the "
+                "Arabic one, so don't propose one. One question."
             )
         elif asks := _askable(draft, bundle):
             lines.append(
