@@ -5,7 +5,7 @@
 .PHONY: dev demo dev-backend dev-frontend \
 	check check-be check-fe lint \
 	test test-be test-fe test-agent golden \
-	e2e e2e-fe e2e-int e2e-demo e2e-demo-headed e2e-demo-step e2e-demo-stack e2e-live e2e-report eval-live \
+	e2e e2e-fe e2e-int e2e-demo e2e-demo-headed e2e-demo-step e2e-demo-stack e2e-live e2e-live-flows e2e-report eval-live \
 	ci ci-remote gate
 
 SLOW_MO ?= 800
@@ -106,6 +106,15 @@ LOAD_ENV = if [ -f backend/.env ]; then set -a; . ./backend/.env; set +a; fi
 # E2E-LIVE: Playwright with the real model (@live suites).
 e2e-live:
 	$(LOAD_ENV); $(E2E_DEPS) && CI=1 E2E_LIVE=1 npm run test:live -- $(ARGS)
+
+# The 10 Nov re-demo script, flows 1–5, on the live model (e2e/tests/rd-live-flows.spec.ts),
+# demo seed on (flow 5 needs it). One flow: LIVE_FLOWS="Re-demo flow 3"; phone layout:
+# LIVE_PROJECT=mobile. Extra Playwright flags go in ARGS (e.g. ARGS=--headed).
+LIVE_FLOWS ?= Re-demo flow
+LIVE_PROJECT ?= desktop-chrome
+e2e-live-flows:
+	$(LOAD_ENV); $(E2E_DEPS) && CI=1 E2E_LIVE=1 E2E_DEMO_SEED=1 npx playwright test \
+		tests/rd-live-flows.spec.ts -g "$(LIVE_FLOWS)" --project=$(LIVE_PROJECT) $(ARGS)
 
 e2e-report:
 	cd e2e && npx playwright show-report
