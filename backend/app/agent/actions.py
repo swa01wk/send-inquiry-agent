@@ -162,8 +162,14 @@ async def _select_malls(
 
 
 def _verification_note(event: str, draft: InquiryDraft) -> HumanMessage:
-    """`[ui_event] <event>` plus whether the contact is now fully verified."""
-    tail = " verification_complete" if contact_verified(draft) else ""
+    """`[ui_event] <event>` plus whether the contact is now fully verified, and whether the
+    required documents are already in (the upload path sends them first: re-demo flow 1,
+    10 Nov), so the agent doesn't show and list the documents again."""
+    tail = ""
+    if contact_verified(draft):
+        tail = " verification_complete"
+        if "documents" not in remaining_steps(draft):
+            tail += " documents_complete"
     return HumanMessage(content=f"[ui_event] {event}{tail}")
 
 

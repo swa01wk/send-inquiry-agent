@@ -128,6 +128,24 @@ async def test_one_channel_verified_is_quiet_both_verified_gets_a_reply(client, 
 
 
 @pytest.mark.asyncio
+async def test_verification_after_the_documents_says_they_are_in(client, app) -> None:
+    """Re-demo flow 1 (10 Nov): on the upload path the profiles come before verification,
+    so verification_complete must say so, or the agent shows and lists them again."""
+    session = await _session_with_contact(client, app)
+    session.draft = _upload_required(session.draft)
+    session.draft.mobile_verified = True
+    email = str(session.draft.fields[FieldKey.EMAIL].value)
+    services = app.state.services
+    await services.email_verification.send_link(session.id, email)
+    session.draft.email_link_sent_to = email
+
+    token = services.email_verification.demo_token(session.id)
+    await _action(client, session.id, "verify_email", {"token": token})
+    notes = await _notes(app, session.id)
+    assert notes == ["[ui_event] email_verified verification_complete documents_complete"]
+
+
+@pytest.mark.asyncio
 async def test_documents_before_the_email_link_say_what_is_still_needed(client, app) -> None:
     session = await _session_with_contact(client, app)
     draft = _upload_required(session.draft)
