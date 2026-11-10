@@ -33,6 +33,7 @@ from app.agent.state import AgentState
 from app.api.cards import (
     VERIFICATION_CARD_ID,
     build_document_upload_card,
+    build_quick_replies_card,
     build_review_card,
 )
 from app.api.channel_cards import basic_info_missing, build_send_link_card
@@ -268,6 +269,24 @@ def _documents_card_due(state: AgentState, phase: str) -> bool:
     if phase == "documents":
         return True
     return phase in ("collecting", "verifying") and _profiles_coming(state)
+
+
+NEW_BRAND_CHOICES = ("I'll type it", "I'll upload the Brand Profile")
+
+
+def _new_brand_choice_due(
+    state: AgentState, draft: Any, user_text: str, turn_messages: list[BaseMessage]
+) -> bool:
+    """R4: after Proceed, a signed-in tenant is asked for the new brand, typed or filled from
+    the Brand Profile. The prompt asks for these chips; when the model skips them the tenant
+    has no visible way to choose the upload (re-demo flow 3, 10 Nov). "I'll upload the Brand
+    Profile" then brings the documents card (`_documents_card_due`)."""
+    return (
+        state.get("channel") == "existing_tenant"
+        and user_text.startswith("[ui_event] basic_info_confirmed")
+        and not _field_has_value(draft, FieldKey.BRAND_NAME_EN)
+        and "suggest_replies" not in _tools_called(turn_messages)
+    )
 
 
 def _incomplete_bulk_capture_note(state: AgentState, phase: str) -> str | None:
@@ -658,6 +677,12 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
         )
         _emit_card(card, writer)
         cards_shown.append("documents")
+
+    if _new_brand_choice_due(state, draft, user_text, turn_messages):
+        _emit_card(
+            build_quick_replies_card([(opt, opt, None, None) for opt in NEW_BRAND_CHOICES]),
+            writer,
+        )
 
     if phase == "review" and "review" not in cards_shown:
         card = build_review_card(draft, runtime.master)

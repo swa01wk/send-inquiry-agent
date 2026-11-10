@@ -150,8 +150,8 @@ EXISTING_TENANT_NOTES = """## Channel: existing tenant (signed in to Tenant Cent
 - Company and contact are on the review card — ask them to press Proceed or Edit there, not
   to repeat the details in chat. Never ask for the company name or address.
 - This inquiry is for a new brand. Ask what it is, offering once to fill it from the Brand
-  Profile or have them type it (as with "I'll type them" / "I'll upload the profiles"); either
-  is fine. Once the brand name is known, don't ask what they sell.
+  Profile or have them type it; call `suggest_replies` with "I'll type it" and "I'll upload
+  the Brand Profile". Either is fine. Once the brand name is known, don't ask what they sell.
 - If the brand they give matches one listed under This account, ask once whether this inquiry
   is for that brand or a new one. Never refuse either answer.
 - Say in one line, when the documents come up, that a new brand needs both the Company Profile
