@@ -89,6 +89,36 @@ describe('ActionsPanel', () => {
     expect(onAct).toHaveBeenCalledWith('request_reupload', { doc_types: [], remarks: '' })
   })
 
+  it('sends the rejection remarks when only rejected documents are ticked', async () => {
+    // Re-demo flow 1 (10 Nov): ticking the rejected document disabled the button.
+    const user = userEvent.setup()
+    const base = caseDetail()
+    const onAct = renderPanel({
+      ...base,
+      brief: {
+        ...base.brief,
+        documents: [
+          { ...base.brief.documents[0], approval: 'rejected', approval_remarks: 'Unreadable' },
+        ],
+      },
+    })
+    const form = within(screen.getByTestId('action-request_reupload'))
+    await user.click(form.getByLabelText('CR certificate'))
+    expect(form.getByTestId('reupload-ticked-rejected-hint')).toHaveTextContent(
+      'CR certificate: Unreadable',
+    )
+    const send = form.getByRole('button', { name: 'Request re-upload' })
+    expect(send).toBeEnabled()
+    await user.click(send)
+    expect(onAct).toHaveBeenCalledWith('request_reupload', {
+      doc_types: ['cr_certificate'],
+      remarks: '',
+    })
+    // A ticked document that wasn't rejected still needs remarks.
+    await user.click(form.getByLabelText('VAT certificate'))
+    expect(send).toBeDisabled()
+  })
+
   it('needs a reason and remarks before rejecting', async () => {
     const user = userEvent.setup()
     const onAct = renderPanel()

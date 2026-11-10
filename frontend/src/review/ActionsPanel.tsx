@@ -276,6 +276,12 @@ export function ActionsPanel({
   // Demo feedback §3.4: with nothing ticked, a re-upload asks for the rejected documents.
   const rejectedDocs = detail.brief.documents.filter((d) => d.approval === 'rejected')
   const reuploadRejected = reuploadDocs.length === 0 && rejectedDocs.length > 0
+  // Ticked documents that were all rejected with remarks reuse those remarks (flow 1, 10 Nov).
+  const tickedRejected = reuploadDocs
+    .map((docType) => rejectedDocs.find((d) => d.doc_type === docType && d.approval_remarks))
+    .filter((d): d is (typeof rejectedDocs)[number] => d !== undefined)
+  const tickedUseRejectionRemarks =
+    reuploadDocs.length > 0 && tickedRejected.length === reuploadDocs.length
 
   return (
     <section className={styles.panel} aria-labelledby="actions-title" data-testid="actions-panel">
@@ -340,6 +346,12 @@ export function ActionsPanel({
               {rejectedDocs.map((d) => d.label).join(', ')}) with their remarks.
             </p>
           ) : null}
+          {tickedUseRejectionRemarks && !reuploadRemarks.trim() ? (
+            <p className={styles.muted} data-testid="reupload-ticked-rejected-hint">
+              No remarks typed: sends the rejection remarks (
+              {tickedRejected.map((d) => `${d.label}: ${d.approval_remarks}`).join('; ')}).
+            </p>
+          ) : null}
           <label className={styles.label} htmlFor="reupload-remarks">
             Remarks for the applicant
           </label>
@@ -353,7 +365,10 @@ export function ActionsPanel({
             type="button"
             className={styles.secondaryBtn}
             disabled={
-              busy || (!reuploadRejected && (reuploadDocs.length === 0 || !reuploadRemarks.trim()))
+              busy ||
+              (!reuploadRejected &&
+                !tickedUseRejectionRemarks &&
+                (reuploadDocs.length === 0 || !reuploadRemarks.trim()))
             }
             onClick={() =>
               onAct(

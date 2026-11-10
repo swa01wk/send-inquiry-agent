@@ -222,6 +222,32 @@ def test_reupload_with_nothing_picked_asks_for_the_rejected_documents() -> None:
         _go(_case(), "reupload_requested", LEASE_ADMIN, doc_types=[], remarks="x")
 
 
+def test_reupload_of_ticked_rejected_documents_uses_their_rejection_remarks() -> None:
+    """Re-demo flow 1 (10 Nov): ticking the rejected Brand Profile with no remarks typed
+    sends its rejection remarks, as nothing ticked does."""
+    case = _doc(_case(), "company_profile", "document_approved")
+    case = _doc(case, "brand_profile", "document_rejected", remarks="The logo page is missing")
+    ticked = _go(case, "reupload_requested", LEASE_ADMIN, 2, doc_types=["brand_profile"])
+    request = ticked.open_request("reupload")
+    assert request is not None
+    assert request.doc_types == [DocType.BRAND_PROFILE]
+    assert request.remarks == "Brand Profile: The logo page is missing"
+    # Typed remarks still win.
+    typed = _go(
+        case, "reupload_requested", LEASE_ADMIN, 2, doc_types=["brand_profile"], remarks="Add logo"
+    )
+    assert typed.open_request("reupload").remarks == "Add logo"  # type: ignore[union-attr]
+    # A ticked document that wasn't rejected still needs remarks.
+    with pytest.raises(IllegalTransition, match="Remarks are required"):
+        _go(
+            case,
+            "reupload_requested",
+            LEASE_ADMIN,
+            2,
+            doc_types=["brand_profile", "company_profile"],
+        )
+
+
 def test_a_reupload_starts_a_new_decision_and_refuses_the_old_file() -> None:
     case = _doc(_case(), "company_profile", "document_approved")
     case = _doc(case, "brand_profile", "document_rejected", remarks="Old logo")
