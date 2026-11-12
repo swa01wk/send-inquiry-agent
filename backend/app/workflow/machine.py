@@ -121,6 +121,8 @@ TABLE: dict[tuple[CaseStatus, str], tuple[CaseStatus, frozenset[ActorKind]]] = {
     (S.LEAD_APPROVED, "request_withdrawn"): (S.LEAD_APPROVED, frozenset({"reviewer"})),
     (S.LEAD_APPROVED, "company_relinked"): (S.LEAD_APPROVED, frozenset({"reviewer"})),
     (S.LEAD_APPROVED, "brand_relinked"): (S.LEAD_APPROVED, frozenset({"reviewer"})),
+    # API only (no Remove in the console, V14): an existing tenant's prefilled contact.
+    (S.LEAD_APPROVED, "contact_removed"): (S.LEAD_APPROVED, frozenset({"reviewer"})),
     (S.LEAD_APPROVED, "approved"): (S.APPROVED, frozenset({"reviewer"})),
     (S.APPROVED, "sent_to_yardi"): (S.SENT_TO_YARDI, frozenset({"system"})),
     (S.APPROVED, "yardi_failed"): (S.APPROVED, frozenset({"system"})),

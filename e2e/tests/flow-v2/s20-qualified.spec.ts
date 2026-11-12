@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { reviewerAct, trackingStages } from '../../support/flowV2'
+import { expectFlowPath, reviewerAct, trackingStages } from '../../support/flowV2'
 import { fetchDevOutbox, latestByTemplate } from '../../support/outbox'
 import { openCaseAs } from '../../support/stories'
 import {
@@ -12,7 +12,7 @@ import {
 /**
  * S20 Qualified (flow v2 §3.5, FV2; docs/flow-v2/scenarios.json): Approve Prospective Tenant?
  * = Yes → Primary Tenant Contact Creation (Azure AD invitation) → "Tenant Qualified", with the
- * Regional Sales Manager next. F2 adds `expectFlowPath` and checks no contacts request opens.
+ * Regional Sales Manager next. F2: the chart path, and no contacts request until Approve Lead.
  */
 test.describe('S20 Qualified @flow-v2 @scripted', () => {
   test('first approval is named Tenant Qualified and invites the primary contact', async ({
@@ -53,5 +53,13 @@ test.describe('S20 Qualified @flow-v2 @scripted', () => {
       'Outcome',
     ])
     expect(stages.find((s) => s.key === 'second_review')?.state).toBe('current')
+
+    // F2 (§3.7): the contacts wait for "Approve Lead?" = Yes.
+    expect(latestByTemplate(mail, 'contacts_request')).toBeFalsy()
+    await expectFlowPath(request, reference, [
+      ['complete1', 'vla', 'docsok', 'approve_pt', 'ptc_create', 'qualified'],
+      ['ptc_create', 'az1'],
+      ['ptc_create', 'reg_link1', 'reg1'],
+    ])
   })
 })

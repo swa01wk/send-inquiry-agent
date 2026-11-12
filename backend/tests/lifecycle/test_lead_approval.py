@@ -154,7 +154,11 @@ async def test_approve_lead_opens_contacts_and_cannot_be_rejected(life) -> None:
     data = await detail(client, STORE_CENTRAL, reference)
     assert "reject" not in data["legal_actions"]
     assert "approve" not in data["legal_actions"]
-    assert data["approval_blockers"] == ["open_request:contacts"]
+    assert data["approval_blockers"] == [
+        "open_request:contacts",
+        "missing_contact:authorized_signatory",
+        "missing_contact:billing_contact",
+    ]
     refused = await act(client, STORE_CENTRAL, reference, "reject", remarks="Changed my mind")
     assert refused.status_code == 409
 

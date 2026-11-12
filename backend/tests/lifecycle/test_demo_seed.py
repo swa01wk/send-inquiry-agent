@@ -84,3 +84,25 @@ async def test_no_seed_without_the_flag(life) -> None:
     client, _app = life
     assert (await client.post("/api/dev/reset")).json() == {"reset": True}
     assert (await client.get("/api/dev/demo-cases")).json() == []
+
+
+@pytest.mark.lead_approval
+async def test_seed_follows_the_flow_v2_second_level(life) -> None:
+    """Flow v2 (§3.7): B is "Lead Approved" with its unit and contacts in, ready for the final
+    Approve Lead; C went through Approve Lead to Yardi."""
+    _client, app = life
+    seeded = await seed_demo(_runtime(app), app.state.session_store)
+    by_key = {c.key: app.state.services.cases.get(c.reference) for c in seeded}
+
+    b = by_key["B"]
+    assert b is not None and b.status == CaseStatus.LEAD_APPROVED
+    assert b.assigned_unit is not None
+    assert {c.role for c in b.tenant_contacts} >= {"authorized_signatory", "billing_contact"}
+    assert all(r.status != "open" for r in b.requests)
+
+    c = by_key["C"]
+    assert c is not None and c.status == CaseStatus.SENT_TO_YARDI
+    assert [d.outcome for d in c.decisions if d.level == "second"] == [
+        "lead_approved",
+        "approved",
+    ]

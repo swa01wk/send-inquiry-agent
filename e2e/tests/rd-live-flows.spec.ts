@@ -27,7 +27,7 @@ import {
   type OutboxRow,
 } from '../support/outbox'
 import { OASIS_APPLICANT_EMAIL, openCaseAs } from '../support/stories'
-import { approveDocumentsViaApi, reviewerFor } from '../support/submit'
+import { approveDocumentsViaApi, approveLeadViaApi, reviewerFor } from '../support/submit'
 
 /**
  * The 10 Nov re-demo script, flows 1–5, against the LIVE model (`make e2e-live`).
@@ -294,6 +294,8 @@ test.describe('Re-demo flows (live model) @live', () => {
         .getByRole('button', { name: 'Approve first level' })
         .click()
       await expect(la.getByTestId('case-stage')).toHaveText('Tenant Qualified')
+      // Flow v2 (§3.7): the final reviewer assigns the unit and approves the lead first.
+      await approveLeadViaApi(request, reference)
 
       const mail = await latestMail(request, 'contacts_request', opts.applicantEmail)
       const casePage = await caseContext.newPage()
@@ -301,18 +303,11 @@ test.describe('Re-demo flows (live model) @live', () => {
       const caseChat = new LiveChat(new InquiryPage(casePage), false, `${opts.flow} case chat`)
       await giveContacts(caseChat, caseLink(mail), opts.contactsMessage, opts.billingEmail, true)
 
-      await la.reload()
-      await expect(la.getByTestId('contact-approval-billing_contact')).toHaveText(
-        'Waiting for approval',
-      )
-      await la.getByTestId('contact-approve-billing_contact').click()
-      await expect(la.getByTestId('contact-approval-billing_contact')).toHaveText('Approved')
-
       const rlm = await finalContext.newPage()
       const rlmErrors = watchPageErrors(rlm)
       await openCaseAs(rlm, finalReviewer, reference)
       await expect(rlm.getByTestId('approval-blockers')).toHaveCount(0)
-      await rlm.getByTestId('action-approve').getByRole('button', { name: 'Approve' }).click()
+      await rlm.getByTestId('approve-lead-final').click()
       await expect(rlm.getByTestId('case-stage')).toHaveText('Approved and sent to Yardi')
       await latestMail(request, 'inquiry_accepted', opts.applicantEmail)
 
@@ -461,6 +456,8 @@ test.describe('Re-demo flows (live model) @live', () => {
           .getByRole('button', { name: 'Approve first level' })
           .click()
         await expect(la.getByTestId('case-stage')).toHaveText('Tenant Qualified')
+        // Flow v2 (§3.7): unit and "Approve Lead?" = Yes open the contacts.
+        await approveLeadViaApi(request, reference)
       })
 
       await test.step('16–17. Applicant: signatory Yes, billing contact', async () => {
@@ -468,42 +465,12 @@ test.describe('Re-demo flows (live model) @live', () => {
         await giveContacts(caseChat, caseLink(mail), OMAR_LINE, 'omar@beanstreet.example', false)
       })
 
-      await test.step('18–20. Lease Admin rejects billing; applicant fixes it; approve', async () => {
-        await la.reload()
-        await la
-          .getByTestId('contact-row-billing_contact')
-          .getByLabel('Remarks (needed to reject)')
-          .fill('Use the finance mailbox')
-        await la.getByTestId('contact-reject-billing_contact').click()
-        await expect(la.getByTestId('contact-approval-billing_contact')).toContainText(
-          'Rejected: Use the finance mailbox',
-        )
-        const fix = await latestMail(request, 'contacts_request', SARA, 2)
-        await casePage.goto(caseLink(fix))
-        await caseChat.inquiry.waitForChatReady()
-        const contacts = caseChat.inquiry.cards('contacts')
-        await expect(contacts).toBeVisible({ timeout: 60_000 })
-        await expect(contacts).toContainText('Use the finance mailbox')
-        await caseChat.say('The billing email is finance@beanstreet.example')
-        await expect(contacts.getByTestId('contact-row-billing_contact')).toContainText(
-          'finance@beanstreet.example',
-          { timeout: 60_000 },
-        )
-        await caseChat.turn('Send contacts (fixed)', () => caseChat.inquiry.submitContacts())
-        await la.reload()
-        await expect(la.getByTestId('contact-approval-billing_contact')).toHaveText(
-          'Waiting for approval',
-        )
-        await la.getByTestId('contact-approve-billing_contact').click()
-        await expect(la.getByTestId('contact-approval-billing_contact')).toHaveText('Approved')
-      })
-
       await test.step('21. Final reviewer approves → Yardi', async () => {
         const rlmPage = await rlmContext.newPage()
         const rlmErrors = watchPageErrors(rlmPage)
         await openCaseAs(rlmPage, rlm, reference)
         await expect(rlmPage.getByTestId('approval-blockers')).toHaveCount(0)
-        await rlmPage.getByTestId('action-approve').getByRole('button', { name: 'Approve' }).click()
+        await rlmPage.getByTestId('approve-lead-final').click()
         await expect(rlmPage.getByTestId('case-stage')).toHaveText('Approved and sent to Yardi')
         await latestMail(request, 'inquiry_accepted', SARA)
         await assertNoPageLeaks(rlmPage, 'flow 1 final reviewer')
@@ -903,9 +870,10 @@ test.describe('Re-demo flows (live model) @live', () => {
           .getByRole('button', { name: 'Approve first level' })
           .click()
         await expect(la.getByTestId('case-stage')).toHaveText('Tenant Qualified')
+        await approveLeadViaApi(request, A.reference)
       })
 
-      await test.step('A5–6. Contacts, Lease Admin approves billing, RLM approves', async () => {
+      await test.step('A5–6. Contacts, then the final Approve Lead', async () => {
         const mail = await latestMail(request, 'contacts_request', NOURA)
         await giveContacts(
           caseChat,
@@ -914,22 +882,17 @@ test.describe('Re-demo flows (live model) @live', () => {
           'billing@qahwahouse.example',
           false,
         )
-        await la.reload()
-        await la.getByTestId('contact-approve-billing_contact').click()
-        await expect(la.getByTestId('contact-approval-billing_contact')).toHaveText('Approved')
         await openCaseAs(rlm, as(A.final_reviewer), A.reference)
-        await rlm.getByTestId('action-approve').getByRole('button', { name: 'Approve' }).click()
+        await rlm.getByTestId('approve-lead-final').click()
         await expect(rlm.getByTestId('case-stage')).toHaveText('Approved and sent to Yardi')
       })
 
-      await test.step('B. Lease Admin approves billing; RLM approves', async () => {
+      await test.step('B. Lead Approved with contacts in; the final Approve Lead', async () => {
         const B = byKey.B
-        await openCaseAs(la, as(B.first_reviewer), B.reference)
-        await la.getByTestId('contact-approve-billing_contact').click()
-        await expect(la.getByTestId('contact-approval-billing_contact')).toHaveText('Approved')
         await openCaseAs(rlm, as(B.final_reviewer), B.reference)
+        await expect(rlm.getByTestId('case-stage')).toHaveText('Lead Approved')
         await expect(rlm.getByTestId('approval-blockers')).toHaveCount(0)
-        await rlm.getByTestId('action-approve').getByRole('button', { name: 'Approve' }).click()
+        await rlm.getByTestId('approve-lead-final').click()
         await expect(rlm.getByTestId('case-stage')).toHaveText('Approved and sent to Yardi')
       })
 

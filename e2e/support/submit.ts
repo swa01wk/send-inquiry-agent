@@ -222,3 +222,29 @@ export async function approveContactsViaApi(
     })
   }
 }
+
+/**
+ * Flow v2 day F2 (spec §3.7): the final reviewer assigns a unit on the inquiry's first mall
+ * and answers "Approve Lead?" = Yes, which opens the contacts request. Stories that aren't
+ * about the second level call this after **Approve first level**, before the contacts.
+ */
+export async function approveLeadViaApi(
+  request: APIRequestContext,
+  reference: string,
+  unit: { unit_ref?: string; area_sqm?: number } = {},
+): Promise<void> {
+  const reviewer = await reviewerFor(request, reference, 'final')
+  const res = await request.get(`${API}/api/review/cases/${encodeURIComponent(reference)}`, {
+    headers: { 'X-Reviewer-Id': reviewer.id },
+  })
+  expect(res.ok(), await res.text()).toBeTruthy()
+  const detail = (await res.json()) as { inquiry_malls?: { id: string }[] }
+  const mall = detail.inquiry_malls?.[0]?.id
+  expect(mall, 'the inquiry has a mall').toBeTruthy()
+  await actAs(request, reviewer.id, reference, 'assign_unit', {
+    mall_id: mall,
+    unit_ref: unit.unit_ref ?? 'G-014',
+    area_sqm: unit.area_sqm ?? 95,
+  })
+  await actAs(request, reviewer.id, reference, 'approve_lead', {})
+}

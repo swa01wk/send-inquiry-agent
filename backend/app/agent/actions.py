@@ -727,7 +727,7 @@ async def _accept_and_submit(
     await _send_submission_notices(runtime, session, draft, reference, link)
     # Flow v2 §3.1: "Complete form and submit" → "Reference No." on the chart, recorded on
     # the case id (the reference) before the case's own steps.
-    submitter = "staff" if session.created_by else "user"
+    submitter: Literal["staff", "user"] = "staff" if session.created_by else "user"
     record_flow_step(runtime, inquiry_id=reference, node=FlowNode.COMPLETE1, actor=submitter)
     record_flow_step(runtime, inquiry_id=reference, node=FlowNode.REF1)
     # The review lifecycle starts (L4): the case is created and routed to its queue.

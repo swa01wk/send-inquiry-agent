@@ -8,7 +8,7 @@ import {
   raiseTenantInquiry,
   signInReviewer,
 } from '../support/stories'
-import { approveContactsViaApi, approveDocumentsViaApi, reviewerFor } from '../support/submit'
+import { approveDocumentsViaApi, approveLeadViaApi, reviewerFor } from '../support/submit'
 
 const LAYLA_EMAIL = 'layla.hassan@oasiscoffee.example'
 const OMAR_EMAIL = 'omar@beanstreet.example'
@@ -48,9 +48,12 @@ test.describe('Story A1 approvals and Yardi @scripted', () => {
         .click()
       await expect(reviewerPage.getByTestId('case-stage')).toHaveText('Tenant Qualified')
 
-      // Final review: the RLM takes over from the Lease Admin (demo feedback §3.2).
+      // Final review: the RSM takes over from the Leasing Admin (demo feedback §3.2), assigns
+      // the unit and answers "Approve Lead?" = Yes, which opens the contacts (flow v2 §3.7).
       const finalReviewer = await reviewerFor(request, reference, 'final')
+      await approveLeadViaApi(request, reference)
       await openCaseAs(reviewerPage, finalReviewer, reference)
+      await expect(reviewerPage.getByTestId('case-stage')).toHaveText('Lead Approved')
       // Flow v2 V14: the console has no Remove; the API event still exists for this story.
       await expect(reviewerPage.getByTestId('action-remove_contact')).toHaveCount(0)
       const removed = await request.post(
@@ -108,14 +111,10 @@ test.describe('Story A1 approvals and Yardi @scripted', () => {
       await yardi.getByRole('button', { name: 'Link company' }).click()
       await expect(yardi.getByTestId('yardi-linked')).toContainText('YC-1001')
 
-      // Day R2: the Lease Admin approves the re-sent billing contact (§3.5).
-      await approveContactsViaApi(request, reference)
+      // Flow v2: no per-contact approval; the final Approve Lead once both contacts are in.
       await reviewerPage.reload()
-      await expect(reviewerPage.getByTestId('action-approve')).toBeVisible()
-      await reviewerPage
-        .getByTestId('action-approve')
-        .getByRole('button', { name: 'Approve' })
-        .click()
+      await expect(reviewerPage.getByTestId('approve-lead-final')).toBeEnabled()
+      await reviewerPage.getByTestId('approve-lead-final').click()
       await expect(reviewerPage.getByTestId('case-stage')).toHaveText('Approved and sent to Yardi')
 
       expect(
