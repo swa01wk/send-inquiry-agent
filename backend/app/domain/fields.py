@@ -46,7 +46,7 @@ def _display_str(draft: InquiryDraft, key: FieldKey) -> str | None:
     return str(val)
 
 
-def _cr_display(draft: InquiryDraft) -> str | None:
+def cr_display(draft: InquiryDraft) -> str | None:
     """Flow v2 public intake (I8): the applicant's CR is shown back masked until submit;
     staff see it in full once the inquiry has a reference."""
     value = _display_str(draft, FieldKey.CR_NUMBER)
@@ -73,7 +73,7 @@ FIELD_DEFINITIONS: list[FieldDefinition] = [
         FieldGroup.COMPANY,
         False,
         lambda raw, _m: v.validate_cr_number(str(raw)),
-        lambda d, _m: _cr_display(d),
+        lambda d, _m: cr_display(d),
     ),
     FieldDefinition(
         FieldKey.COMPANY_NAME,

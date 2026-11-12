@@ -124,3 +124,16 @@ def test_rules_in_force_carry_the_v2_intake_rules() -> None:
     assert "## Sections, in the app's order" in content
     v1 = str(build_system_message(new_inquiry_draft(), master).content)
     assert "## Sections, in the app's order" not in v1
+
+
+def test_cr_is_masked_on_the_documents_card_on_v2() -> None:
+    from app.api.cards import build_document_upload_card
+
+    master = load_master_data()
+    draft = new_inquiry_draft()
+    draft.fields[FieldKey.CR_NUMBER].value = "1010123456"
+    draft.intake_flow = "v2"
+    card = build_document_upload_card(draft, master, max_mb=5)
+    rows = {row.key: row for row in card.payload.numbers}  # type: ignore[union-attr]
+    assert rows["cr_number"].value == "•••••• 3456"
+    assert "1010123456" not in card.model_dump_json()
