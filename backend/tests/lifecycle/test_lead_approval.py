@@ -10,7 +10,7 @@ from typing import Any
 import pytest
 from app.workflow.models import CaseStatus
 from tests.lifecycle.conftest import APPLICANT, STORE_CENTRAL, act, outbox, submit_case
-from tests.lifecycle.test_contact_approval import OMAR, _open, _send
+from tests.lifecycle.test_contact_approval import OMAR, _card, _open, _send
 from tests.lifecycle.test_document_approval import (
     LEASE_ADMIN,
     approve_documents,
@@ -174,6 +174,13 @@ async def test_lead_goes_to_yardi_with_the_unit_after_contacts(life) -> None:
     data = await detail(client, STORE_CENTRAL, reference)
     assert data["approval_blockers"] == []
     assert "approve" in data["legal_actions"]
+    # V7: no per-contact approval, so no approval state in the console or on the card.
+    contacts = data["brief"]["contacts"]
+    assert {c["role"] for c in contacts} == {"authorized_signatory", "billing_contact"}
+    assert all(c["approval"] is None and c["approved_by"] is None for c in contacts)
+    reopened = await _open(client, outbox(app, APPLICANT, "contacts_request")[0]["links"][0])
+    rows = _card(reopened, "contacts")[0]["payload"]["rows"]
+    assert rows and all(r["approval"] is None for r in rows)
     final = await act(client, STORE_CENTRAL, reference, "approve")
     assert final.status_code == 200, final.text
     case = app.state.services.cases.get(reference)

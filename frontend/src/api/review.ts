@@ -102,7 +102,8 @@ export interface BriefContact {
   same_as_primary: boolean
   // Demo feedback §3.5: the first-level reviewer approves each contact.
   contact_id?: string | null
-  approval?: ApprovalStatus
+  /** Absent or null when per-contact approval is off (flow v2, V7). */
+  approval?: ApprovalStatus | null
   approval_remarks?: string | null
   approved_by?: string | null
   added_by?: string
