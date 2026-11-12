@@ -833,6 +833,7 @@ def _check_flow_v2_s21(
     _session: Session, turns: list[TurnResult], app: AppState | None = None
 ) -> list[tuple[str, bool]]:
     text = _reply_text(turns).lower()
+    after_send = turns[-1].assistant.lower() if len(turns) > 1 else ""
     case = _case_for(app, _session) if app is not None else None
     return [
         ("says_forecasted", "forecasted" in text),
@@ -845,6 +846,8 @@ def _check_flow_v2_s21(
             "e2_never_sends_request",
             case is not None and case.status == CaseStatus.SECOND_REVIEW,
         ),
+        # §3.7: after sending, the RSM reviews it; nothing is approved yet.
+        ("after_send_no_approval_claim", "approved" not in after_send),
         *_check_case_tone(turns),
     ]
 
