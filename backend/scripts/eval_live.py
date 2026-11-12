@@ -354,6 +354,37 @@ async def _reviewer_for_reference(client: AsyncClient, reference: str) -> str:
     raise RuntimeError(f"no reviewer queue holds {reference}")
 
 
+async def _reviewer_who_can(client: AsyncClient, reference: str, action: str) -> str:
+    """The reviewer whose case detail offers `action` (first level, then the RSM/RPLM)."""
+    reviewers_resp = await client.get("/api/review/reviewers")
+    reviewers_resp.raise_for_status()
+    for rev in reviewers_resp.json():
+        detail = await client.get(
+            f"/api/review/cases/{reference}",
+            headers={"X-Reviewer-Id": rev["id"]},
+        )
+        if detail.status_code == 200 and action in detail.json().get("legal_actions", []):
+            return str(rev["id"])
+    raise RuntimeError(f"no reviewer can {action} on {reference}")
+
+
+async def _first_mall(client: AsyncClient, reference: str, reviewer_id: str) -> str:
+    detail = await client.get(
+        f"/api/review/cases/{reference}",
+        headers={"X-Reviewer-Id": reviewer_id},
+    )
+    detail.raise_for_status()
+    return str(detail.json()["inquiry_malls"][0]["id"])
+
+
+# Flow v2 (spec §3.7): contacts open at "Approve Lead?" = Yes, not at first approval.
+LEAD_APPROVED: list[dict[str, Any]] = [
+    {"action": "approve_first"},
+    {"action": "assign_unit", "mall_id": "$first_mall", "unit_ref": "G-014", "area_sqm": 95},
+    {"action": "approve_lead"},
+]
+
+
 async def _approve_intake_documents(client: AsyncClient, reference: str) -> None:
     """Day R2: first-level approval requires every document approved (demo feedback §3.4)."""
     reviewer_id = await _reviewer_for_reference(client, reference)
@@ -395,10 +426,12 @@ async def _open_case(
     reference = await _submit_inquiry(client, app)
     if any(step.get("action") == "approve_first" for step in then):
         await _approve_intake_documents(client, reference)
-    reviewer_id = await _reviewer_for_reference(client, reference)
     for step in then:
         action = step["action"]
         payload = {k: v for k, v in step.items() if k != "action"}
+        reviewer_id = await _reviewer_who_can(client, reference, action)
+        if payload.get("mall_id") == "$first_mall":
+            payload["mall_id"] = await _first_mall(client, reference, reviewer_id)
         response = await client.post(
             f"/api/review/cases/{reference}/actions",
             json={"action": action, "payload": payload},
@@ -1826,7 +1859,7 @@ SCENARIOS: list[LiveScenario] = [
         ],
         _check_case_contacts_bundle,
         group="case",
-        setup=_case_setup([{"action": "approve_first"}]),
+        setup=_case_setup(LEAD_APPROVED),
     ),
     LiveScenario(
         "signatory: yes that's me",
@@ -1834,7 +1867,7 @@ SCENARIOS: list[LiveScenario] = [
         _check_signatory_yes,
         auto_otp=False,
         group="signatory",
-        setup=_case_setup([{"action": "approve_first"}]),
+        setup=_case_setup(LEAD_APPROVED),
     ),
     LiveScenario(
         "signatory: partner Ahmed signs",
@@ -1845,7 +1878,7 @@ SCENARIOS: list[LiveScenario] = [
         _check_signatory_no_ahmed,
         auto_otp=False,
         group="signatory",
-        setup=_case_setup([{"action": "approve_first"}]),
+        setup=_case_setup(LEAD_APPROVED),
     ),
     LiveScenario(
         "signatory: not sure",
@@ -1853,7 +1886,7 @@ SCENARIOS: list[LiveScenario] = [
         _check_signatory_unsure,
         auto_otp=False,
         group="signatory",
-        setup=_case_setup([{"action": "approve_first"}]),
+        setup=_case_setup(LEAD_APPROVED),
     ),
     LiveScenario(
         "Case: rejection explained",
