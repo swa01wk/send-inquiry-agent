@@ -56,9 +56,14 @@ def _next_step(case: Case) -> str:
     if case.status == CaseStatus.REUPLOAD_REQUESTED:
         return "Re-upload the requested documents, then press Resubmit."
     open_requests = [r for r in case.requests if r.status == "open"]
-    if case.status == CaseStatus.SECOND_REVIEW and open_requests:
+    if case.status in (CaseStatus.SECOND_REVIEW, CaseStatus.LEAD_APPROVED) and open_requests:
         return "The leasing team is waiting for the items below."
-    if case.status in (CaseStatus.SUBMITTED, CaseStatus.FIRST_REVIEW, CaseStatus.SECOND_REVIEW):
+    if case.status in (
+        CaseStatus.SUBMITTED,
+        CaseStatus.FIRST_REVIEW,
+        CaseStatus.SECOND_REVIEW,
+        CaseStatus.LEAD_APPROVED,
+    ):
         return "Nothing is needed from you right now; the leasing team is reviewing."
     if case.status == CaseStatus.REJECTED:
         return get_policy().after_rejection

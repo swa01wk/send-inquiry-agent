@@ -21,6 +21,7 @@ class InquiryStatus(StrEnum):
     FIRST_REVIEW = "first_review"
     REUPLOAD_REQUESTED = "reupload_requested"
     SECOND_REVIEW = "second_review"
+    LEAD_APPROVED = "lead_approved"
     APPROVED = "approved"
     REJECTED = "rejected"
     SENT_TO_YARDI = "sent_to_yardi"

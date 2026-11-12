@@ -48,21 +48,35 @@ test.describe('Reviewer console @scripted', () => {
     await expect(page.getByTestId('action-approve_first')).toHaveCount(0)
     await expect(page.getByTestId('action-yardi')).toHaveCount(0)
 
-    // The RLM takes over (demo feedback §3.2). The contacts request opened automatically,
-    // so final approval is blocked.
+    // The Regional Sales Manager takes over (demo feedback §3.2). Flow v2 (§3.7): no
+    // contacts request yet; "Approve Lead?" waits for the unit.
     const finalReviewer = await reviewerFor(request, reference, 'final')
     await openCaseAs(page, finalReviewer, reference)
     await expect(page.getByTestId('case-stage')).toHaveText('Tenant Qualified')
     await expect(page.getByTestId('action-approve_first')).toHaveCount(0)
     await expect(page.getByTestId('action-approve')).toHaveCount(0)
-    await expect(page.getByTestId('approval-blockers')).toContainText('Contacts request still open')
+    await expect(page.getByTestId('action-approve_lead')).toHaveCount(0)
+    await expect(page.getByTestId('lead-approval-blockers')).toContainText('Assign the unit first')
     await expect(page.getByTestId('action-yardi')).toBeVisible()
-    await expect(page.getByTestId('action-withdraw_request')).toBeVisible()
     const requests = page.getByTestId('action-requests')
-    await expect(requests.getByRole('button', { name: 'Request sales data' })).toBeVisible()
+    await expect(
+      requests.getByRole('button', { name: 'Request Forecasted Sales Data' }),
+    ).toBeVisible()
     await expect(requests.getByRole('button', { name: 'Request contacts' })).toHaveCount(0)
-    await expect(page.getByTestId('requests')).toContainText('contacts · open')
     await expect(page.getByTestId('timeline')).toContainText(/approved/i)
+
+    // Assign the unit: "Approve Lead?" opens.
+    await page.getByTestId('assign-unit-ref').fill('G-014')
+    await page.getByTestId('assign-unit-area').fill('95')
+    await page.getByTestId('assign-unit-submit').click()
+    await expect(page.getByTestId('assigned-unit')).toContainText('G-014')
+    await expect(page.getByTestId('lead-approval-blockers')).toHaveCount(0)
+    await page.getByTestId('approve-lead-yes').click()
+    await expect(page.getByTestId('case-stage')).toHaveText('Lead Approved')
+    await expect(page.getByTestId('approve-lead-final')).toBeDisabled()
+    await expect(page.getByTestId('approval-blockers')).toContainText('Contacts request still open')
+    await expect(page.getByTestId('requests')).toContainText('contacts · open')
+    await expect(page.getByTestId('action-reject')).toHaveCount(0)
 
     // Back on the queue, the case now waits on the applicant.
     await page.getByRole('link', { name: '← Back to the queue' }).click()

@@ -327,6 +327,24 @@ test.describe('Demo script — 10 Nov @demo', () => {
         },
       )
 
+      await beatStep('4b. RSM: assign the unit, then "Approve Lead?" = Yes (flow v2)', async () => {
+        await openCaseAs(rlmPage, rlm, reference)
+        await caption(rlmPage, '4b. Regional Sales Manager: assign the unit, then Approve Lead?')
+        await expect(rlmPage.getByTestId('case-stage')).toHaveText('Tenant Qualified')
+        await expect(rlmPage.getByTestId('lead-approval-blockers')).toContainText(
+          'Assign the unit first',
+        )
+        await rlmPage.getByTestId('assign-unit-ref').fill('G-014')
+        await rlmPage.getByTestId('assign-unit-area').fill('95')
+        await rlmPage.getByTestId('assign-unit-submit').click()
+        await expect(rlmPage.getByTestId('assigned-unit')).toContainText('G-014')
+        await beat(rlmPage)
+        await rlmPage.getByTestId('approve-lead-yes').click()
+        await expect(rlmPage.getByTestId('case-stage')).toHaveText('Lead Approved')
+        await expect(rlmPage.getByTestId('approve-lead-final')).toBeDisabled()
+        await beat(rlmPage)
+      })
+
       await beatStep(
         '5. Applicant: "Yes, I\'m the authorised signatory" → billing contact (F19)',
         async () => {
@@ -350,72 +368,22 @@ test.describe('Demo script — 10 Nov @demo', () => {
         },
       )
 
-      await beatStep(
-        '6. Lease Admin rejects the billing contact; the applicant fixes it; approve (F16)',
-        async () => {
-          await caption(leaseAdminPage, '6. Lease Admin: approve each contact')
-          await leaseAdminPage.reload()
-          await expect(
-            leaseAdminPage.getByTestId('contact-approval-authorized_signatory'),
-          ).toHaveText('Approved')
-          await expect(leaseAdminPage.getByTestId('contact-approval-billing_contact')).toHaveText(
-            'Waiting for approval',
-          )
-          await leaseAdminPage
-            .getByTestId('contact-row-billing_contact')
-            .getByLabel('Remarks (needed to reject)')
-            .fill('Use the finance mailbox')
-          await leaseAdminPage.getByTestId('contact-reject-billing_contact').click()
-          await expect(
-            leaseAdminPage.getByTestId('contact-approval-billing_contact'),
-          ).toContainText('Rejected: Use the finance mailbox')
-          await beat(leaseAdminPage)
-
-          const fix = await latestMail(request, 'contacts_request', APPLICANT_EMAIL, 2)
-          await casePage.goto(caseLink(fix, 'rd-contact-approval'))
-          await caption(casePage, '6. Applicant: fix the billing contact')
-          await caseChat.waitForChatReady()
-          const contacts = caseChat.cards('contacts')
-          await expect(contacts).toBeVisible({ timeout: 60_000 })
-          await expect(contacts).toContainText('Use the finance mailbox')
-          const billingRow = contacts.getByTestId('contact-row-billing_contact')
-          if (!(await billingRow.getByText('finance@beanstreet.example').count())) {
-            await caseChat.say('Here is the updated billing email.')
-          }
-          await expect(billingRow).toContainText('finance@beanstreet.example', { timeout: 60_000 })
-          await beat(casePage)
-          await caseChat.submitContacts()
-
-          await leaseAdminPage.reload()
-          await expect(leaseAdminPage.getByTestId('contact-approval-billing_contact')).toHaveText(
-            'Waiting for approval',
-          )
-          await leaseAdminPage.getByTestId('contact-approve-billing_contact').click()
-          await expect(leaseAdminPage.getByTestId('contact-approval-billing_contact')).toHaveText(
-            'Approved',
-          )
-          await beat(leaseAdminPage)
-        },
-      )
-
       await beatStep('7. Restart the backend (Docker demo stack only)', async () => {
         testInfo.annotations.push({
           type: 'skipped step',
           description:
             'Playwright owns this backend. The restart runs in "survives a backend restart" against `make demo` (E2E_DEMO_STACK=1).',
         })
-        for (const p of [page, casePage, leaseAdminPage]) await p.reload()
-        await expect(leaseAdminPage.getByTestId('contact-approval-billing_contact')).toHaveText(
-          'Approved',
-        )
+        for (const p of [page, casePage, rlmPage]) await p.reload()
+        await expect(rlmPage.getByTestId('case-stage')).toHaveText('Lead Approved')
       })
 
-      await beatStep('8. RLM: approve → Yardi', async () => {
+      await beatStep('8. RSM: the final Approve Lead → Yardi', async () => {
         await openCaseAs(rlmPage, rlm, reference)
-        await caption(rlmPage, '8. RLM: final approval → Yardi')
+        await caption(rlmPage, '8. Regional Sales Manager: Approve Lead → Yardi')
         await expect(rlmPage.getByTestId('approval-blockers')).toHaveCount(0)
         await beat(rlmPage)
-        await rlmPage.getByTestId('action-approve').getByRole('button', { name: 'Approve' }).click()
+        await rlmPage.getByTestId('approve-lead-final').click()
         await expect(rlmPage.getByTestId('case-stage')).toHaveText('Approved and sent to Yardi')
         await beat(rlmPage)
         await latestMail(request, 'inquiry_accepted', APPLICANT_EMAIL)
@@ -592,20 +560,16 @@ test.describe('Demo script — 10 Nov @demo', () => {
     await request.post(`${API}/api/dev/reset`)
     const seeded = await demoCases(request)
     const caseB = seeded.find((c) => c.key === 'B')
-    expect(caseB?.status).toBe('second_review')
+    // Flow v2 (§3.7): case B is "Lead Approved" with its contacts in.
+    expect(caseB?.status).toBe('lead_approved')
 
     const rlmContext = await newContext(browser, page)
     try {
-      await beatStep('Lease Admin approves the billing contact on Case B', async () => {
-        await caption(page, 'Case B: Lease Admin approves the billing contact')
-        await page.goto('/dev')
-        await page
-          .getByTestId('dev-demo-case-B')
-          .getByRole('link', { name: 'as Leasing Admin' })
-          .click()
-        await expect(page.getByTestId('case-stage')).toHaveText('Tenant Qualified')
-        await page.getByTestId('contact-approve-billing_contact').click()
-        await expect(page.getByTestId('contact-approval-billing_contact')).toHaveText('Approved')
+      await beatStep('Case B: Lead Approved, contacts in', async () => {
+        await caption(page, 'Case B: Lead Approved, ready for the final Approve Lead')
+        await openCaseAs(page, { id: caseB!.final_reviewer!, name: '' }, caseB!.reference)
+        await expect(page.getByTestId('case-stage')).toHaveText('Lead Approved')
+        await expect(page.getByTestId('approve-lead-final')).toBeEnabled()
         await beat(page)
       })
 
@@ -627,17 +591,17 @@ test.describe('Demo script — 10 Nov @demo', () => {
         await waitForHealth(request)
         expect(await demoCases(request)).toEqual(seeded)
         await page.reload()
-        await expect(page.getByTestId('case-stage')).toHaveText('Tenant Qualified')
-        await expect(page.getByTestId('contact-approval-billing_contact')).toHaveText('Approved')
+        await expect(page.getByTestId('case-stage')).toHaveText('Lead Approved')
+        await expect(page.getByTestId('approve-lead-final')).toBeEnabled()
         await beat(page)
       })
 
-      await beatStep('8. RLM: approve → Yardi; the applicant is told', async () => {
+      await beatStep('8. RSM: the final Approve Lead → Yardi; the applicant is told', async () => {
         const rlmPage = await rlmContext.newPage()
         await openCaseAs(rlmPage, { id: caseB!.final_reviewer!, name: '' }, caseB!.reference)
-        await caption(rlmPage, '8. RLM: final approval → Yardi')
+        await caption(rlmPage, '8. Regional Sales Manager: Approve Lead → Yardi')
         await expect(rlmPage.getByTestId('approval-blockers')).toHaveCount(0)
-        await rlmPage.getByTestId('action-approve').getByRole('button', { name: 'Approve' }).click()
+        await rlmPage.getByTestId('approve-lead-final').click()
         await expect(rlmPage.getByTestId('case-stage')).toHaveText('Approved and sent to Yardi')
         await latestMail(request, 'inquiry_accepted', CASE_B_APPLICANT)
         await beat(rlmPage)

@@ -7,6 +7,8 @@ export interface OutboxRow {
   template: string
   to: string
   subject?: string
+  /** The case reference (or session) the message belongs to. */
+  inquiry_id?: string
   body: string
   links: string[]
 }

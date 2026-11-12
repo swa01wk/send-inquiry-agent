@@ -85,8 +85,16 @@ after_rejection: >-
 require_contacts_before_approval: true
 
 # First-level approval opens a contacts request automatically (requirements §7.1.1 b,
-# "on contact creation"; L4 A10).
-auto_request_contacts_after_first_approval: true
+# "on contact creation"; L4 A10). Off since flow v2 (V6): the contacts request opens when
+# the final reviewer answers "Approve Lead?" with Yes (`lead_approval` below).
+auto_request_contacts_after_first_approval: false
+
+# The second level as on the v2 chart (flow v2 §3.7, V6, V11): the Regional Sales Manager
+# assigns the unit, may ask for Forecasted Sales Data, then decides "Approve Lead?". Yes →
+# contacts request → the same reviewer gives the final "Approve Lead".
+lead_approval:
+  enabled: true
+  require_unit_assigned: true
 
 # Per-document approval (demo feedback §3.4, day R2): the first-level reviewer approves or
 # rejects each document; first-level approval waits until every required one is approved.
@@ -103,8 +111,9 @@ document_expiry:
 
 # Tenant contacts at second review (demo feedback §3.5, day R2).
 contacts:
-  # The Lease Admin approves each contact; final approval waits for the required ones.
-  approval_required: true
+  # Flow v2 (V7, M15, M26): no per-contact approval; the required contacts must be given
+  # before the final "Approve Lead". true: the Leasing Admin approves each one (R2).
+  approval_required: false
   # The contacts request opens with "Are you the authorised signatory?".
   ask_signatory: true
   # "Yes, I'm the signatory" copies the verified primary contact, approved on entry (M8).

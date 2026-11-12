@@ -14,6 +14,7 @@ import {
   APPLICANT_EMAIL,
   APPLICANT_MOBILE,
   approveDocumentsViaApi,
+  approveLeadViaApi,
   completeApplicationLinkFlow,
   reviewerFor,
   submitScriptedInquiry,
@@ -367,6 +368,8 @@ export async function runL5AttentionFlow(
   await page.reload()
   await page.getByRole('button', { name: 'Approve first level' }).click()
   await expect(page.getByTestId('case-stage')).toHaveText('Tenant Qualified')
+  // Flow v2 (§3.7): the contacts request opens at "Approve Lead?" = Yes.
+  await approveLeadViaApi(request, reference)
   if (beat) await beat(page)
   await advanceClockFromDevPage(page, '+48 h')
   await advanceClockFromDevPage(page, '+24 h')

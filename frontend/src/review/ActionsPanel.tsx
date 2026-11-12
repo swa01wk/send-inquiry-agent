@@ -39,6 +39,8 @@ const ORDER: ReviewAction[] = [
   'relink_company',
   'relink_brand',
   // No 'remove_contact' in the console (flow v2 V14, 10 Nov demo).
+  'assign_unit',
+  'approve_lead',
   'approve',
   'reject',
 ]
@@ -53,6 +55,13 @@ const TITLES: Record<string, string> = {
   relink_brand: 'Yardi brand',
   approve: 'Approve',
   reject: 'Reject',
+  assign_unit: 'Assign the unit',
+  approve_lead: 'Approve Lead?',
+}
+
+const CONTACT_LABELS: Record<string, string> = {
+  authorized_signatory: 'Authorized Signatory',
+  billing_contact: 'Billing Contact',
 }
 
 const REQUEST_LABELS: Record<string, string> = {
@@ -66,18 +75,102 @@ function categoryLabel(category: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
-/** `missing_contact:billing_contact` → "Billing contact missing" (codes from approval_blockers
+/** `missing_contact:billing_contact` → "Billing Contact still needed" (codes from approval_blockers
  * and first_approval_blockers). */
 function blockerLabel(code: string): string {
   const [kind, subject = ''] = code.split(':')
-  if (kind === 'missing_contact') return `${categoryLabel(subject)} missing`
+  if (kind === 'missing_contact')
+    return `${CONTACT_LABELS[subject] ?? categoryLabel(subject)} still needed`
   if (kind === 'open_request')
     return `${REQUEST_LABELS[subject] ?? categoryLabel(subject)} request still open`
   if (kind === 'contact_not_approved') return `${categoryLabel(subject)} not approved yet`
   if (kind === 'document_pending') return `${categoryLabel(subject)}: approve or reject it`
   if (kind === 'document_rejected') return `${categoryLabel(subject)} rejected: request a re-upload`
   if (kind === 'expiry_unconfirmed') return `${categoryLabel(subject)}: confirm the expiry date`
+  if (kind === 'unit_not_assigned') return 'Assign the unit first'
+  if (kind === 'sales_data_pending') return 'Forecasted Sales Data not received yet'
   return categoryLabel(code)
+}
+
+/** Flow v2 §3.7 (V11): the final reviewer assigns the unit while verifying. */
+function AssignUnit({
+  detail,
+  busy,
+  onAct,
+}: {
+  detail: CaseDetail
+  busy: boolean
+  onAct: ActionsPanelProps['onAct']
+}) {
+  const malls = detail.inquiry_malls ?? []
+  const current = detail.assigned_unit ?? null
+  const [mallId, setMallId] = useState(current?.mall_id ?? malls[0]?.id ?? '')
+  const [unitRef, setUnitRef] = useState(current?.unit_ref ?? '')
+  const [area, setArea] = useState(current?.area_sqm != null ? String(current.area_sqm) : '')
+  return (
+    <div className={styles.action} data-testid="action-assign_unit">
+      <h3 className={styles.actionTitle}>{TITLES.assign_unit}</h3>
+      {current ? (
+        <p className={styles.muted} data-testid="assigned-unit">
+          Assigned: {current.unit_ref} at{' '}
+          {malls.find((m) => m.id === current.mall_id)?.label ?? current.mall_id}
+          {current.area_sqm != null ? ` (${current.area_sqm} sq m)` : ''}
+        </p>
+      ) : null}
+      <label className={styles.label} htmlFor="assign-unit-mall">
+        Mall
+      </label>
+      <select
+        id="assign-unit-mall"
+        data-testid="assign-unit-mall"
+        className={styles.select}
+        value={mallId}
+        onChange={(e) => setMallId(e.target.value)}
+      >
+        {malls.map((m) => (
+          <option key={m.id} value={m.id}>
+            {m.label}
+          </option>
+        ))}
+      </select>
+      <label className={styles.label} htmlFor="assign-unit-ref">
+        Unit
+      </label>
+      <input
+        id="assign-unit-ref"
+        data-testid="assign-unit-ref"
+        className={styles.input}
+        value={unitRef}
+        onChange={(e) => setUnitRef(e.target.value)}
+      />
+      <label className={styles.label} htmlFor="assign-unit-area">
+        Area (sq m, optional)
+      </label>
+      <input
+        id="assign-unit-area"
+        data-testid="assign-unit-area"
+        className={styles.input}
+        inputMode="decimal"
+        value={area}
+        onChange={(e) => setArea(e.target.value)}
+      />
+      <button
+        type="button"
+        className={styles.secondaryBtn}
+        data-testid="assign-unit-submit"
+        disabled={busy || !mallId || !unitRef.trim()}
+        onClick={() =>
+          onAct('assign_unit', {
+            mall_id: mallId,
+            unit_ref: unitRef.trim(),
+            ...(area.trim() ? { area_sqm: Number(area) } : {}),
+          })
+        }
+      >
+        {current ? 'Change unit' : 'Assign unit'}
+      </button>
+    </div>
+  )
 }
 
 /** Link the case to a Yardi company, then one of that company's brands (second review). */
@@ -269,7 +362,16 @@ export function ActionsPanel({
       current.includes(docType) ? current.filter((d) => d !== docType) : [...current, docType],
     )
 
-  const awaitingApproval = detail.brief.status === 'second_review' && !legal.includes('approve')
+  const leadApproved = detail.brief.status === 'lead_approved'
+  const awaitingApproval =
+    (detail.brief.status === 'second_review' || leadApproved) && !legal.includes('approve')
+  // Flow v2 §3.7: "Approve Lead?" waits for the unit and any Forecasted Sales Data.
+  const leadBlockers = detail.lead_approval_blockers ?? []
+  const awaitingLead =
+    detail.brief.status === 'second_review' &&
+    !legal.includes('approve_lead') &&
+    !legal.includes('approve') &&
+    leadBlockers.length > 0
   const firstBlockers = detail.first_approval_blockers ?? []
   // Demo feedback §3.4: with nothing ticked, a re-upload asks for the rejected documents.
   const rejectedDocs = detail.brief.documents.filter((d) => d.approval === 'rejected')
@@ -461,25 +563,90 @@ export function ActionsPanel({
         />
       ) : null}
 
+      {legal.includes('assign_unit') ? (
+        <AssignUnit detail={detail} busy={busy} onAct={onAct} />
+      ) : null}
+
+      {legal.includes('approve_lead') ? (
+        <div className={styles.action} data-testid="action-approve_lead">
+          <h3 className={styles.actionTitle}>{TITLES.approve_lead}</h3>
+          <p className={styles.muted}>
+            Yes opens the contacts request; the final Approve Lead follows once the Authorized
+            Signatory and Billing Contact are in. To say No, use Reject below.
+          </p>
+          <button
+            type="button"
+            className={styles.primaryBtn}
+            data-testid="approve-lead-yes"
+            disabled={busy}
+            onClick={() => onAct('approve_lead', {})}
+          >
+            Yes, approve lead
+          </button>
+          {legal.includes('reject') ? (
+            <button
+              type="button"
+              className={styles.secondaryBtn}
+              data-testid="approve-lead-no"
+              disabled={busy}
+              onClick={() => {
+                // No → Reject Lead: the reason and remarks are in the Reject box below.
+                const reject = document.getElementById('reject-category')
+                reject?.scrollIntoView?.({ block: 'center' })
+                reject?.focus()
+              }}
+            >
+              No, reject lead
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+      {awaitingLead ? (
+        <div className={styles.action} data-testid="lead-approval-blockers">
+          <h3 className={styles.actionTitle}>Before Approve Lead?</h3>
+          <ul className={styles.list}>
+            {leadBlockers.map((b) => (
+              <li key={b}>{blockerLabel(b)}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       {legal.includes('approve') ? (
         <div className={styles.action} data-testid="action-approve">
-          <h3 className={styles.actionTitle}>{TITLES.approve}</h3>
+          <h3 className={styles.actionTitle}>{leadApproved ? 'Approve Lead' : TITLES.approve}</h3>
           <p className={styles.muted}>
             Final approval: contacts are invited and the lead goes to Yardi.
           </p>
           <button
             type="button"
             className={styles.primaryBtn}
+            data-testid={leadApproved ? 'approve-lead-final' : undefined}
             disabled={busy}
             onClick={() => onAct('approve', {})}
           >
-            Approve
+            {leadApproved ? 'Approve Lead' : 'Approve'}
+          </button>
+        </div>
+      ) : leadApproved ? (
+        // Flow v2 §3.7: the final Approve Lead stays visible, disabled until the contacts are in.
+        <div className={styles.action} data-testid="action-approve">
+          <h3 className={styles.actionTitle}>Approve Lead</h3>
+          <button
+            type="button"
+            className={styles.primaryBtn}
+            data-testid="approve-lead-final"
+            disabled
+          >
+            Approve Lead
           </button>
         </div>
       ) : null}
-      {awaitingApproval && detail.approval_blockers.length > 0 ? (
+      {awaitingApproval && detail.approval_blockers.length > 0 && !awaitingLead ? (
         <div className={styles.action} data-testid="approval-blockers">
-          <h3 className={styles.actionTitle}>Before final approval</h3>
+          <h3 className={styles.actionTitle}>
+            {leadApproved ? 'Before the final Approve Lead' : 'Before final approval'}
+          </h3>
           <ul className={styles.list}>
             {detail.approval_blockers.map((b) => (
               <li key={b}>{blockerLabel(b)}</li>

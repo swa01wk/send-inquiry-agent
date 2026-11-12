@@ -70,6 +70,7 @@ def _approval_claim_allowed(case: Case | None) -> bool:
         return False
     return case.status in (
         CaseStatus.SECOND_REVIEW,
+        CaseStatus.LEAD_APPROVED,
         CaseStatus.APPROVED,
         CaseStatus.SENT_TO_YARDI,
     )

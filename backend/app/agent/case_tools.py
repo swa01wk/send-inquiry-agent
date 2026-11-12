@@ -29,7 +29,7 @@ from app.policy.config import get_policy
 from app.services.status import REQUEST_LABELS, _from_case, final_approval_label
 from app.sessions import Session
 from app.workflow.contacts import write_contacts
-from app.workflow.models import Case, TenantContact
+from app.workflow.models import CONTACT_ROLE_LABELS, Case, CaseStatus, TenantContact
 
 # Re-export shared tools for the case allowlist.
 __all__ = [
@@ -112,7 +112,21 @@ def _status_summary(case: Case) -> str:
         parts.append(chunk + ".")
     if not open_any and status.status != "rejected":
         parts.append("No open requests on the case.")
+    if case.status == CaseStatus.LEAD_APPROVED:
+        missing = missing_contacts(case)
+        if missing:
+            parts.append(f"Still needed before the final Approve Lead: {', '.join(missing)}.")
     return " ".join(parts)
+
+
+def missing_contacts(case: Case) -> list[str]:
+    """The mandatory contact roles not given yet (flow v2 §3.7, E3), as display names."""
+    given = {c.role for c in case.tenant_contacts}
+    return [
+        CONTACT_ROLE_LABELS.get(role, role)
+        for role in get_policy().second_level_contacts.required
+        if role not in given
+    ]
 
 
 class ContactEntry(BaseModel):

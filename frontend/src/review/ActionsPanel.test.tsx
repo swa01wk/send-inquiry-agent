@@ -137,7 +137,7 @@ describe('ActionsPanel', () => {
   it('lists what blocks final approval in plain words', () => {
     renderPanel(secondReviewDetail())
     const blockers = screen.getByTestId('approval-blockers')
-    expect(within(blockers).getByText('Authorized signatory missing')).toBeInTheDocument()
+    expect(within(blockers).getByText('Authorized Signatory still needed')).toBeInTheDocument()
     expect(within(blockers).getByText('Contacts request still open')).toBeInTheDocument()
     expect(screen.queryByTestId('action-approve')).not.toBeInTheDocument()
   })
@@ -182,5 +182,109 @@ describe('ActionsPanel', () => {
     await user.selectOptions(form.getByLabelText('Brand'), 'YB-2002')
     await user.click(form.getByRole('button', { name: 'Link brand' }))
     expect(onAct).toHaveBeenCalledWith('relink_brand', { brand_id: 'YB-2002' })
+  })
+
+  describe('flow v2 second level (§3.7)', () => {
+    const MALLS = [
+      { id: 'riyadh-mall-a', label: 'Riyadh Mall A' },
+      { id: 'riyadh-mall-b', label: 'Riyadh Mall B' },
+    ]
+
+    function qualified(overrides: Partial<ReturnType<typeof secondReviewDetail>> = {}) {
+      return secondReviewDetail({
+        legal_actions: ['request_sales_data', 'assign_unit', 'reject'],
+        approval_blockers: [],
+        lead_approval_blockers: ['unit_not_assigned'],
+        assigned_unit: null,
+        inquiry_malls: MALLS,
+        ...overrides,
+      })
+    }
+
+    it('assigns the unit with an optional area', async () => {
+      const user = userEvent.setup()
+      const onAct = renderPanel(qualified())
+      const form = within(screen.getByTestId('action-assign_unit'))
+      const submit = form.getByTestId('assign-unit-submit')
+      expect(submit).toBeDisabled()
+      await user.selectOptions(form.getByTestId('assign-unit-mall'), 'riyadh-mall-b')
+      await user.type(form.getByTestId('assign-unit-ref'), ' RMB-G-007 ')
+      await user.click(submit)
+      expect(onAct).toHaveBeenLastCalledWith('assign_unit', {
+        mall_id: 'riyadh-mall-b',
+        unit_ref: 'RMB-G-007',
+      })
+      await user.type(form.getByTestId('assign-unit-area'), '95')
+      await user.click(submit)
+      expect(onAct).toHaveBeenLastCalledWith('assign_unit', {
+        mall_id: 'riyadh-mall-b',
+        unit_ref: 'RMB-G-007',
+        area_sqm: 95,
+      })
+    })
+
+    it('shows what blocks Approve Lead? until the unit is in', () => {
+      renderPanel(qualified())
+      const blockers = screen.getByTestId('lead-approval-blockers')
+      expect(within(blockers).getByText('Assign the unit first')).toBeInTheDocument()
+      expect(screen.queryByTestId('action-approve_lead')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('approval-blockers')).not.toBeInTheDocument()
+    })
+
+    it('shows the assigned unit and offers Yes and No', async () => {
+      const user = userEvent.setup()
+      const onAct = renderPanel(
+        qualified({
+          legal_actions: ['request_sales_data', 'assign_unit', 'approve_lead', 'reject'],
+          lead_approval_blockers: [],
+          assigned_unit: {
+            mall_id: 'riyadh-mall-a',
+            unit_ref: 'RMA-G-014',
+            area_sqm: 95,
+            by: 'rlm_store-central',
+            at: '2026-11-14T09:00:00Z',
+          },
+        }),
+      )
+      expect(screen.getByTestId('assigned-unit')).toHaveTextContent(
+        'Assigned: RMA-G-014 at Riyadh Mall A (95 sq m)',
+      )
+      expect(screen.getByTestId('assign-unit-submit')).toHaveTextContent('Change unit')
+      await user.click(screen.getByTestId('approve-lead-no'))
+      expect(onAct).not.toHaveBeenCalled()
+      expect(document.activeElement).toBe(screen.getByLabelText('Reason'))
+      await user.click(screen.getByTestId('approve-lead-yes'))
+      expect(onAct).toHaveBeenCalledWith('approve_lead', {})
+    })
+
+    it('keeps the final Approve Lead disabled until the contacts are in', () => {
+      const base = secondReviewDetail()
+      renderPanel({
+        ...base,
+        brief: { ...base.brief, status: 'lead_approved', stage_label: 'Lead Approved' },
+        legal_actions: ['relink_company', 'relink_brand'],
+        approval_blockers: ['missing_contact:billing_contact', 'open_request:contacts'],
+      })
+      expect(screen.getByTestId('approve-lead-final')).toBeDisabled()
+      const blockers = screen.getByTestId('approval-blockers')
+      expect(within(blockers).getByText('Before the final Approve Lead')).toBeInTheDocument()
+      expect(within(blockers).getByText('Billing Contact still needed')).toBeInTheDocument()
+      expect(screen.queryByTestId('action-reject')).not.toBeInTheDocument()
+    })
+
+    it('approves the lead once the contacts are in', async () => {
+      const user = userEvent.setup()
+      const base = secondReviewDetail()
+      const onAct = renderPanel({
+        ...base,
+        brief: { ...base.brief, status: 'lead_approved', stage_label: 'Lead Approved' },
+        legal_actions: ['relink_company', 'relink_brand', 'approve'],
+        approval_blockers: [],
+      })
+      const final = screen.getByTestId('approve-lead-final')
+      expect(final).toBeEnabled()
+      await user.click(final)
+      expect(onAct).toHaveBeenCalledWith('approve', {})
+    })
   })
 })

@@ -7,6 +7,10 @@
 - `GET /api/dev/clock`, `POST /api/dev/clock/advance {hours}`, `POST /api/dev/clock/to-morning`:
   the simulated clock (L5 §3.1); moving it runs a proactive tick.
 - `POST /api/dev/proactive/tick`: evaluate the triggers now.
+- `GET /api/dev/flow/{id}`: the v2 chart steps a case reached (flow v2 §3.1), by case id,
+  reference, inquiry id or session id.
+- `POST /api/dev/flow/seed {stage, unit_type?, malls?}`: a case at `submitted`, `qualified`
+  or `lead_approved`, built from the real events (flow v2 §3.1).
 - `POST /api/dev/reset`: start the demo clean (sessions, cases, outbox, invitations, Yardi
   leads, audit, attention items, uploads, clock).
 """
@@ -14,14 +18,14 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
 from app.agent.runtime import AgentRuntime
-from app.api.deps import get_master_data, get_services
+from app.api.deps import get_master_data, get_services, get_session_store
 from app.api.deps import get_settings as get_settings_dep
 from app.api.errors import ApiError
 from app.clock import SimulatedClock
@@ -31,6 +35,7 @@ from app.policy.config import get_policy
 from app.proactive.engine import TickResult, tick
 from app.proactive.notification_policy import quiet_hours_end
 from app.services.container import ServiceContainer
+from app.sessions import SessionNotFound, SessionStore
 
 router = APIRouter(prefix="/api/dev", tags=["dev"])
 
@@ -78,6 +83,110 @@ async def get_audit(
     services: ServiceContainer = Depends(get_services),
 ) -> dict[str, Any]:
     return {"inquiry_id": inquiry_id, "events": services.audit.events(inquiry_id)}
+
+
+class FlowStepOut(BaseModel):
+    seq: int | None = None
+    at: str | None = None
+    node: str | None = None
+    outcome: str | None = None
+    actor: str | None = None
+
+
+class FlowOut(BaseModel):
+    inquiry_id: str
+    reference: str | None
+    status: str | None
+    path: list[str]
+    steps: list[FlowStepOut]
+
+
+@router.get("/flow/{id_}", response_model=FlowOut)
+async def get_flow(
+    id_: str,
+    services: ServiceContainer = Depends(get_services),
+    master: MasterData = Depends(get_master_data),
+    settings: Settings = Depends(get_settings_dep),
+    store: SessionStore = Depends(get_session_store),
+) -> FlowOut:
+    """Flow v2 §3.1: the chart path, for tests (`expectFlowPath`). Steps recorded before
+    submit sit on the session's inquiry; those after on the case (same id once submitted)."""
+    from app.workflow.flow import flow_path
+
+    runtime = AgentRuntime(services=services, master=master, settings=settings)
+    case = services.cases.get(id_)
+    ids: list[str] = []
+    if case is None:
+        try:
+            session = await store.get(id_)
+        except SessionNotFound:
+            session = None
+        if session is not None:
+            reference = session.draft.reference
+            case = services.cases.get(reference) if reference else None
+            ids += [session.inquiry_id or session.id, session.id]
+    else:
+        ids.append(case.session_id)
+    if case is not None:
+        ids.append(case.id)
+    if not ids:
+        ids.append(id_)
+    steps: list[dict[str, Any]] = []
+    for inquiry_id in dict.fromkeys(ids):
+        steps += flow_path(runtime, inquiry_id)
+    steps.sort(key=lambda s: str(s.get("at") or ""))
+    if not steps and case is None:
+        raise ApiError(404, "flow_not_found", "No flow steps for that id.")
+    return FlowOut(
+        inquiry_id=case.id if case else id_,
+        reference=case.reference if case else None,
+        status=case.status.value if case else None,
+        path=[str(s["node"]) for s in steps if s.get("node")],
+        steps=[FlowStepOut(**s) for s in steps],
+    )
+
+
+class FlowSeedIn(BaseModel):
+    stage: Literal["submitted", "qualified", "lead_approved"]
+    unit_type: Literal["store", "office", "media", "specialty"] | None = None
+    malls: list[str] | None = None
+
+
+class FlowSeedOut(BaseModel):
+    reference: str
+    case_id: str
+    status: str
+    applicant_email: str
+    first_reviewer: str | None
+    final_reviewer: str | None
+
+
+@router.post("/flow/seed", response_model=FlowSeedOut)
+async def seed_flow(
+    body: FlowSeedIn,
+    services: ServiceContainer = Depends(get_services),
+    master: MasterData = Depends(get_master_data),
+    settings: Settings = Depends(get_settings_dep),
+    store: SessionStore = Depends(get_session_store),
+) -> FlowSeedOut:
+    from app.demo_seed import reviewer_for, seed_flow_case
+    from app.workflow.machine import IllegalTransition
+
+    runtime = AgentRuntime(services=services, master=master, settings=settings)
+    try:
+        case, email = await seed_flow_case(
+            runtime, store, body.stage, unit_type=body.unit_type, malls=body.malls
+        )
+    except (IllegalTransition, RuntimeError, ValueError) as exc:
+        raise ApiError(409, "seed_failed", str(exc)) from exc
+    return FlowSeedOut(
+        reference=case.reference,
+        case_id=case.id,
+        status=case.status.value,
+        applicant_email=email,
+        first_reviewer=reviewer_for(runtime, case, "first"),
+        final_reviewer=reviewer_for(runtime, case, "final"),
+    )
 
 
 class ClockOut(BaseModel):

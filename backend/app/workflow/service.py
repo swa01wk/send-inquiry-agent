@@ -16,6 +16,7 @@ from app.domain.models import FieldKey, InquiryDraft
 from app.policy.config import get_policy
 from app.security import tokens
 from app.workflow.documents import current_decisions
+from app.workflow.flow import record_transition_steps
 from app.workflow.machine import SYSTEM, Actor, IllegalTransition, transition
 from app.workflow.models import Case, CaseStatus, ReviewQueue, WorkflowEvent
 
@@ -130,6 +131,9 @@ async def apply_event(
         raise
     store.save(updated)
     _audit_transition(runtime, case, event, actor, "applied", updated.status.value)
+    record_transition_steps(
+        runtime, case, updated, event, "reviewer" if actor.kind == "reviewer" else actor.kind
+    )
     return await run_effects(runtime, updated, event)
 
 

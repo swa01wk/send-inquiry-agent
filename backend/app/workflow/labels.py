@@ -23,6 +23,7 @@ STAGE_LABELS: dict[str, str] = {
     "first_review": "With the Leasing Admin",
     "reupload_requested": "With the Leasing Admin — waiting for re-upload",
     "second_review": "Tenant Qualified",
+    "lead_approved": "Lead Approved",
     "approved": "Approved — sending to Yardi",
     "sent_to_yardi": "Approved and sent to Yardi",
     "rejected": "Not approved",

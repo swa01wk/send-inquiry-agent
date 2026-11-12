@@ -1,0 +1,14 @@
+kind: information
+channel: email
+subject: Your inquiry $reference: Lead Approved
+---
+Hello $first_name,
+
+Good news: the Regional Sales Manager approved your lead for $brand at $mall (Lead Approved).
+
+One step is left before the final approval: tell us your company contacts. The Authorized
+Signatory and the Billing Contact are required; you'll get a separate link to add them.
+
+Follow your inquiry: $case_url
+
+Cenomi Tenant Central
