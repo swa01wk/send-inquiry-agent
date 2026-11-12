@@ -31,7 +31,14 @@ function visibleRows(payload: ContactsPayload): ContactRow[] {
 export function ContactsCard({ payload, onSubmit }: ContactsCardProps) {
   const labelByRole = Object.fromEntries(payload.rows.map((r) => [r.role, r.label]))
   const rows = visibleRows(payload)
-  const stillNeeded = rows.filter((row) => row.required && !row.email).map((row) => row.label)
+  // Missing mandatory roles come from the backend's blockers (one rule, in code); they show
+  // once, as "Still needed", and the rest stay under "Before you can send".
+  const missing = payload.blockers.filter((code) => code.startsWith('missing_contact:'))
+  const stillNeeded = missing.map((code) => {
+    const role = code.split(':')[1] ?? ''
+    return labelByRole[role] ?? contactBlockerLabel(code).replace(/ is missing$/, '')
+  })
+  const otherBlockers = payload.blockers.filter((code) => !code.startsWith('missing_contact:'))
 
   return (
     <div className={`${shared.shell} ${styles.shell}`} data-testid="contacts-card">
@@ -68,11 +75,11 @@ export function ContactsCard({ payload, onSubmit }: ContactsCardProps) {
           Still needed: {stillNeeded.join(', ')}
         </p>
       ) : null}
-      {payload.blockers.length > 0 ? (
+      {otherBlockers.length > 0 ? (
         <div className={styles.blockers} data-testid="contacts-blockers">
           <p className={styles.blockersTitle}>Before you can send</p>
           <ul className={styles.blockersList}>
-            {payload.blockers.map((code) => (
+            {otherBlockers.map((code) => (
               <li key={code}>{contactBlockerLabel(code, labelByRole[code.split(':')[1] ?? ''])}</li>
             ))}
           </ul>

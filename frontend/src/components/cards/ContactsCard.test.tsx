@@ -43,7 +43,11 @@ describe('ContactsCard', () => {
     render(<ContactsCard payload={sample} onSubmit={onSubmit} />)
 
     expect(screen.getByText('Sara Al-Harbi · sara@example.com · +966501234567')).toBeInTheDocument()
-    expect(screen.getByText('Billing Contact is missing')).toBeInTheDocument()
+    expect(screen.getByTestId('contacts-still-needed')).toHaveTextContent(
+      'Still needed: Billing Contact',
+    )
+    // Shown once: not repeated under "Before you can send".
+    expect(screen.queryByText('Billing Contact is missing')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /send contacts/i })).toBeDisabled()
   })
 
@@ -100,6 +104,24 @@ describe('ContactsCard', () => {
     )
     expect(screen.getByTestId('contact-row-authorized_signatory')).toHaveTextContent('Required')
     expect(screen.getByTestId('contact-row-billing_contact')).toHaveTextContent('Required')
+  })
+
+  it('keeps other blockers under "Before you can send"', () => {
+    render(
+      <ContactsCard
+        payload={{
+          ...sample,
+          blockers: ['missing_contact:billing_contact', 'incomplete_contact:authorized_signatory'],
+        }}
+        onSubmit={() => undefined}
+      />,
+    )
+    expect(screen.getByTestId('contacts-still-needed')).toHaveTextContent(
+      'Still needed: Billing Contact',
+    )
+    const blockers = screen.getByTestId('contacts-blockers')
+    expect(blockers).toHaveTextContent('Authorized Signatory is incomplete')
+    expect(blockers).not.toHaveTextContent('Billing Contact')
   })
 
   it('shows approval chips on each row', () => {
