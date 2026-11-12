@@ -45,3 +45,21 @@ These come from the 3–4 Nov client demos and our 4 Nov review ([`docs/specs/de
 | Document approval | The Lease Admin approves or rejects each uploaded document, with remarks. First-level approval waits until every required document is approved. A re-uploaded document needs approval again. | — | R2 |
 | Contact approval | The Lease Admin approves or rejects each second-level contact the tenant enters. An applicant who answers "Yes, I'm the authorised signatory" needs no separate approval for now, because the email link and OTP already verify them (*pending Cenomi*, M8). Contacts the Lease Admin adds are approved on entry. Final approval needs the required contacts approved, not just present. | — | R2 |
 | CR certificate | Stays an optional document, with nothing extracted, until the client confirms whether it's required (*pending Cenomi*, M1). | — | — |
+
+## Flow v2 assumptions (confirmed 11–12 Nov 2026)
+
+These come from the v2 business flowchart, the app's Send Inquiry screens and Cenomi's answers on 11–12 Nov ([`docs/specs/flow-v2-alignment.md`](specs/flow-v2-alignment.md), decisions M13–M26). Each row applies from the build day named in **Lands in** (F1–F5, Fri 13 – Wed 18 Nov). Until then, the rows above still describe `main`. When a row lands, its PR removes or rewords the older row it replaces.
+
+| Id | Area | Assumption | Replaces | Lands in |
+| --- | --- | --- | --- | --- |
+| A1 | Email with an existing login, no CR | An email that already has a Tenant Central (Azure AD) login can still raise an inquiry without a CR. It's treated as a new request from a new prospect. At first approval no new login is created (an email has one Azure AD account); the existing login stays and is never revoked (M19). | — | F1 (revoke), F3 (intake) |
+| A2 | Pending inquiry | A pending inquiry (saved when verification succeeds) stays open for 2 hours (`pending_inquiry_ttl_minutes: 120`), matching the chat session, then becomes abandoned. To continue, the applicant re-verifies the email through "Continue my inquiry" (M24). | Session ("no cross-session resume") | F3 |
+| A3 | Unit types | This round offers Store and Office only; both go to the Regional Sales Manager. Media and Specialty, and the Regional Product Line Manager branch, are switched off in `policy.yaml` (M21). Reverses the pre-baseline "no Office product line". | Unit type, sales category | F3 |
+| — | CR on the public page | Company Registration with Verify or Skip; Skip asks "Are you sure you want to proceed without CR ID?". A CR registered in Tenant Central → "Customer already registered. Please login" → sign in; no login request (M13, M18). A CR not registered stays on the inquiry, and the company name and address are asked (M23). The CR never reaches the model. | CR on the public page (demo feedback) | F3 |
+| — | Contact approval | No per-contact approval and no contact verification. Authorized Signatory and Billing Contact must be given before the final "Approve Lead"; missing ones are chased with reminders (M15, M26). | Contact approval (demo feedback) | F2 |
+| — | Reviewer roles | First level: **Leasing Admin**. Final level for Store and Office: **Regional Sales Manager** (RLM-Store renamed; same queue, `rlm_store`), who decides "Approve Lead?" and gives the final "Approve Lead" (M14, M17). | Reviewer roles (demo feedback) | F1, F2 |
+| — | Property Details | At least one mall, up to 5 per inquiry; the first mall's region routes the first level (M25, G5). No units are shown to the tenant; the Regional Sales Manager assigns the unit. | Property fields ("exactly one mall") | F3 |
+| — | Verification | Unchanged: email by link and mobile by OTP; a landline-only applicant is verified by the email link alone (M22, G1). | — | — |
+| — | Sales categories | The 7 seed categories stay until Cenomi shares the app's list; then it's a data change (G4). | — | — |
+| A-F1 | Forecasted sales suggestion (E2) | Demo rule: suggest asking for forecasted sales data when the company is new to Cenomi or the minimum area is at least 150 sqm (`forecasted_sales.suggest_when`). The reviewer decides. *Pending Cenomi* for real thresholds. | — | F4 |
+

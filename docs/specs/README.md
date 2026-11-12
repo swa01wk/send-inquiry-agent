@@ -23,6 +23,7 @@ These specs take the Send Inquiry agent from the v1 POC (solid L2, partial L3) t
 | [l4-outcome-assistance.md](l4-outcome-assistance.md) | L4 | The whole §7.1.1 b–c lifecycle runs end to end; reviewers keep every decision; no re-asking; grounded case briefs | `prompts/23`–`28` |
 | [l5-governed-proactivity.md](l5-governed-proactivity.md) | L5 | Triggers fire on time and once; every message passes the notification policy; no proactive status change; value measured | `prompts/29`–`31` |
 | [demo-feedback.md](demo-feedback.md) | L3 + L4 (change after the 3–4 Nov client demos) | No CR lookup on the public page; Lease Admin first-level review; per-document approval with expiry; per-contact approval; document review service; type or upload; signed-in new brand; D1–D15 | `prompts/feedback/` (days R1–R5, before the 10 Nov re-demo) |
+| [flow-v2-alignment.md](flow-v2-alignment.md) | L3 + L4 (change after the 10 Nov re-demo) | The agent follows Cenomi's v2 business flowchart step for step: Company Registration with Verify or Skip; the app's section order with verification in Basic Info and a pending inquiry; Store and Office; Approve Lead? → contacts → Approve Lead; chart steps recorded in code; S1–S24, CC1–CC3 on every layer; FV1–FV22 | `prompts/flow-v2/` (days F1–F5, 13–18 Nov) |
 
 Done before M0 (kept for reference): [ui-bugs.md](ui-bugs.md) (demo-run fixes) and [e2e-playwright.md](e2e-playwright.md) (Playwright `@scripted` and `@live` suites, `make e2e` / `make e2e-live`), from `prompts/11b-ui-bugs-and-e2e.md`.
 

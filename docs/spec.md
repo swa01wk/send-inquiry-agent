@@ -2,6 +2,8 @@
 
 Everything Cursor builds must match this file. If a contract here is missing or wrong, update this file in the same change.
 
+> **Flow v2 (13–18 Nov 2026).** [`specs/flow-v2-alignment.md`](specs/flow-v2-alignment.md) changes the intake order, the CR check on the public page, the second level and the status names. Its §7 lists the contract changes by build day (F1–F5); each day's PR folds its row into this file. Until a row lands, this file describes `main`.
+
 ## 1. Flow summary
 
 1. User opens the chat from "Send us an inquiry" on the sign-in page. A session is created and the agent greets them.
