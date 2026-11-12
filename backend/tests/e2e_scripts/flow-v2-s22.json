@@ -1,0 +1,16 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "get_case_status",
+        "args": {},
+        "id": "fv2s22-1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Your inquiry is closed as Lead Rejected — the team said there isn't a suitable unit this year. You can raise a new inquiry at any time."
+  }
+]

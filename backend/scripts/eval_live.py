@@ -318,9 +318,9 @@ def _is_status_track_link(link: str) -> bool:
     return "/inquiry/status/" in link or "/track" in link
 
 
-def _applicant_case_link(app: AppState, reference: str) -> str:
+def _applicant_case_link(app: AppState, reference: str, *, to: str = _APPLICANT) -> str:
     """Case chat link preferred; submission tracking (/inquiry/status/…?t=) also works."""
-    messages = app.state.services.notifications.messages(to=_APPLICANT)
+    messages = app.state.services.notifications.messages(to=to)
     case_link: str | None = None
     status_link: str | None = None
     for msg in messages:
@@ -337,7 +337,7 @@ def _applicant_case_link(app: AppState, reference: str) -> str:
         return case_link
     if status_link:
         return status_link
-    raise RuntimeError(f"no case/track link for {reference} in applicant outbox")
+    raise RuntimeError(f"no case/track link for {reference} in outbox for {to}")
 
 
 async def _reviewer_for_reference(client: AsyncClient, reference: str) -> str:
@@ -383,6 +383,24 @@ LEAD_APPROVED: list[dict[str, Any]] = [
     {"action": "approve_first"},
     {"action": "assign_unit", "mall_id": "$first_mall", "unit_ref": "G-014", "area_sqm": 95},
     {"action": "approve_lead"},
+]
+
+FLOW_V2_UNIT: list[dict[str, Any]] = [
+    {"action": "assign_unit", "mall_id": "$first_mall", "unit_ref": "G-014", "area_sqm": 95},
+]
+
+FLOW_V2_SALES_DATA: list[dict[str, Any]] = [
+    *FLOW_V2_UNIT,
+    {"action": "request_sales_data", "remarks": "Monthly, first year."},
+]
+
+FLOW_V2_REJECT_LEAD: list[dict[str, Any]] = [
+    *FLOW_V2_UNIT,
+    {
+        "action": "reject",
+        "remarks": "No suitable unit this year.",
+        "reason_category": "no_space",
+    },
 ]
 
 
@@ -455,6 +473,106 @@ def _case_setup(then: list[dict[str, Any]]) -> SetupFn:
         return await _open_case(_client, app, then=then)
 
     return setup
+
+
+async def _flow_v2_open_case(
+    client: AsyncClient,
+    app: AppState,
+    *,
+    stage: str,
+    then: list[dict[str, Any]],
+) -> str:
+    """Seed a flow-v2 case and open the applicant's case chat."""
+    app.state.services.notifications.clear()
+    body: dict[str, Any] = {"stage": stage}
+    if stage == "qualified":
+        body["unit_type"] = "store"
+    seed = await client.post("/api/dev/flow/seed", json=body)
+    seed.raise_for_status()
+    reference = str(seed.json()["reference"])
+    for step in then:
+        action = step["action"]
+        payload = {k: v for k, v in step.items() if k != "action"}
+        reviewer_id = await _reviewer_who_can(client, reference, action)
+        if payload.get("mall_id") == "$first_mall":
+            payload["mall_id"] = await _first_mall(client, reference, reviewer_id)
+        response = await client.post(
+            f"/api/review/cases/{reference}/actions",
+            json={"action": action, "payload": payload},
+            headers={"X-Reviewer-Id": reviewer_id},
+        )
+        response.raise_for_status()
+    seed_body = seed.json()
+    applicant_email = str(seed_body["applicant_email"])
+    link = _applicant_case_link_for_stage(app, reference, applicant_email)
+    opened = await client.post("/api/cases/open", json={"token": _token_from(link)})
+    opened.raise_for_status()
+    session_id = str(opened.json()["session_id"])
+    session = await app.state.session_store.get(session_id)
+    if session.case_id != reference:
+        raise RuntimeError("opened case session does not match seeded reference")
+    return session_id
+
+
+def _applicant_case_link_for_stage(app: AppState, reference: str, applicant_email: str) -> str:
+    """Prefer the sales-data / contacts / rejection emails, then any case link for the reference."""
+    templates_order = (
+        "sales_data_request",
+        "contacts_request",
+        "inquiry_rejected",
+        "lead_approved",
+        "first_level_approved",
+    )
+    messages = app.state.services.notifications.messages(to=applicant_email)
+    by_template: dict[str, str] = {}
+    for msg in messages:
+        body = msg.get("body") or ""
+        subject = msg.get("subject") or ""
+        if reference not in body and reference not in subject:
+            continue
+        template = str(msg.get("template") or "")
+        for link in msg.get("links") or []:
+            if _is_case_chat_link(link) and template and template not in by_template:
+                by_template[template] = link
+    for template in templates_order:
+        if template in by_template:
+            return by_template[template]
+    return _applicant_case_link(app, reference, to=applicant_email)
+
+
+def _flow_v2_setup(then: list[dict[str, Any]], *, stage: str = "qualified") -> SetupFn:
+    async def setup(client: AsyncClient, _session_id: str, app: AppState) -> str:
+        return await _flow_v2_open_case(client, app, stage=stage, then=then)
+
+    return setup
+
+
+async def _after_sales_data_turn(
+    client: AsyncClient,
+    session_id: str,
+    _app: AppState,
+) -> list[TurnResult]:
+    xlsx = b"PK\x03\x04"
+    response = await client.post(
+        f"/api/sessions/{session_id}/documents",
+        data={"doc_type": "sales_data"},
+        files={
+            "file": (
+                "forecast.xlsx",
+                xlsx,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+    response.raise_for_status()
+    events = await _action(client, session_id, "submit_sales_data")
+    return [
+        TurnResult(
+            user="[submit_forecasted_sales_data]",
+            assistant=_tokens(events),
+            events=events,
+        )
+    ]
 
 
 def _contact_entry(contacts_draft: list[dict[str, Any]], role: str) -> dict[str, Any] | None:
@@ -694,6 +812,111 @@ def _check_flow_v2_s19(
         ("offers_new_inquiry", _offers_new_inquiry(turns)),
         ("does_not_offer_reopen", _does_not_offer_reopen(turns)),
         *_check_case_tone(turns),
+    ]
+
+
+def _no_per_contact_approval_wording(turns: list[TurnResult]) -> bool:
+    text = _reply_text(turns).lower()
+    banned = (
+        "approve each contact",
+        "waiting for cenomi to approve",
+        "cenomi to approve this contact",
+        "verify your contact",
+        "contact verification",
+        "approving your contacts",
+        "approve this contact",
+    )
+    return not any(phrase in text for phrase in banned)
+
+
+def _check_flow_v2_s21(
+    _session: Session, turns: list[TurnResult], app: AppState | None = None
+) -> list[tuple[str, bool]]:
+    text = _reply_text(turns).lower()
+    after_send = turns[-1].assistant.lower() if len(turns) > 1 else ""
+    case = _case_for(app, _session) if app is not None else None
+    return [
+        ("says_forecasted", "forecasted" in text),
+        ("no estimated wording", "estimated" not in text),
+        (
+            "e2_suggestion_has_reason",
+            any(word in text for word in ("because", "monthly", "first year", "review")),
+        ),
+        (
+            "e2_never_sends_request",
+            case is not None and case.status == CaseStatus.SECOND_REVIEW,
+        ),
+        # §3.7: after sending, the RSM reviews it; nothing is approved yet.
+        ("after_send_no_approval_claim", "approved" not in after_send),
+        *_check_case_tone(turns),
+    ]
+
+
+def _check_flow_v2_s22(
+    _session: Session, turns: list[TurnResult], _app: AppState | None = None
+) -> list[tuple[str, bool]]:
+    text = _reply_text(turns).lower()
+    decision = ""
+    if _app is not None:
+        case = _case_for(_app, _session)
+        if case and case.decisions:
+            decision = (case.decisions[-1].remarks or "").lower()
+    invented = ("fraud", "credit", "bankrupt", "lawsuit", "criminal")
+    no_invented = not any(word in text and word not in decision for word in invented)
+    return [
+        ("says_lead_rejected", "lead rejected" in text),
+        ("no_reason_invented", no_invented),
+        ("offers_new_inquiry", _offers_new_inquiry(turns)),
+        ("does_not_offer_reopen", _does_not_offer_reopen(turns)),
+        (
+            "explains_outcome_no_reviewer_names_no_promises",
+            _no_reviewer_names(turns) and _no_timeline_promise(turns),
+        ),
+        *_check_case_tone(turns),
+    ]
+
+
+def _check_flow_v2_s23(
+    session: Session, turns: list[TurnResult], app: AppState | None = None
+) -> list[tuple[str, bool]]:
+    first_reply = turns[0].assistant.lower() if turns else ""
+    signatory_first = _mentioned_signatory_role([turns[0]]) if turns else False
+    billing_in_first = any(
+        phrase in first_reply
+        for phrase in (
+            "who handles billing",
+            "billing contact's",
+            "billing details",
+            "share the billing",
+            "give me the billing",
+            "name, email and mobile",
+        )
+    )
+    text = _reply_text(turns).lower()
+    missing_named = any(
+        phrase in text
+        for phrase in (
+            "still needed",
+            "authorized signatory",
+            "billing contact",
+            "before the final approve lead",
+        )
+    )
+    return [
+        ("signatory_question_first", signatory_first and not billing_in_first),
+        ("e3_lists_whats_missing", missing_named),
+        ("no_per_contact_approval_mentioned", _no_per_contact_approval_wording(turns)),
+        *_check_case_tone(turns),
+    ]
+
+
+def _check_flow_v2_s24(
+    session: Session, turns: list[TurnResult], _app: AppState | None = None
+) -> list[tuple[str, bool]]:
+    return [
+        *_check_signatory_yes(session, turns),
+        ("handles_yes_no_unsure", _mentioned_signatory_role(turns)),
+        ("no_per_contact_approval_mentioned", _no_per_contact_approval_wording(turns)),
     ]
 
 
@@ -1983,6 +2206,39 @@ SCENARIOS: list[LiveScenario] = [
         _check_flow_v2_s20,
         group="flow_v2",
         setup=_case_setup([{"action": "approve_first"}]),
+    ),
+    LiveScenario(
+        "S21 Forecasted Sales Data",
+        ["here it is"],
+        _check_flow_v2_s21,
+        auto_otp=False,
+        group="flow_v2",
+        setup=_flow_v2_setup(FLOW_V2_SALES_DATA),
+        after_turns=_after_sales_data_turn,
+    ),
+    LiveScenario(
+        "S22 Lead Rejected",
+        ["what happened?"],
+        _check_flow_v2_s22,
+        auto_otp=False,
+        group="flow_v2",
+        setup=_flow_v2_setup(FLOW_V2_REJECT_LEAD),
+    ),
+    LiveScenario(
+        "S23 Lead approved contacts",
+        ["What do you need from me now?"],
+        _check_flow_v2_s23,
+        auto_otp=False,
+        group="flow_v2",
+        setup=_case_setup(LEAD_APPROVED),
+    ),
+    LiveScenario(
+        "S24 Signatory yes",
+        ["Yes, that's me", "Billing is Nora Ali, nora@beanstreet.example, 0509998877."],
+        _check_flow_v2_s24,
+        auto_otp=False,
+        group="flow_v2",
+        setup=_flow_v2_setup([], stage="lead_approved"),
     ),
     LiveScenario(
         "channels: dictated caller",

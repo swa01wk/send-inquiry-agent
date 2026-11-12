@@ -239,6 +239,21 @@ export class InquiryPage {
     await this.waitForTurnDone(doneBefore)
   }
 
+  async uploadForecastedSalesData(fileName: string) {
+    const card = this.page.getByTestId('sales-data-upload-card').last()
+    await card.getByRole('button', { name: /upload/i }).click()
+    const input = card.locator('input[type="file"]')
+    await input.setInputFiles(path.join(fixtures, fileName))
+    await expect(card.getByText(/^Uploaded ·/i)).toBeVisible({ timeout: 30_000 })
+  }
+
+  async submitForecastedSalesData() {
+    const card = this.page.getByTestId('sales-data-upload-card').last()
+    const doneBefore = await readDoneEventCount(this.page)
+    await card.getByRole('button', { name: /^send$/i }).click()
+    await this.waitForTurnDone(doneBefore)
+  }
+
   async answerSignatoryQuestion(isSignatory: boolean) {
     const card = this.cards('signatory_question')
     const label = isSignatory

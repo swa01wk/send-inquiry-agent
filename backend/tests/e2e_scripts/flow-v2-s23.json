@@ -1,0 +1,47 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "record_signatory_answer",
+        "args": { "is_signatory": true },
+        "id": "fv2s23-1",
+        "type": "tool_call"
+      },
+      {
+        "name": "update_contacts",
+        "args": {
+          "entries": [
+            { "role": "authorized_signatory", "same_as_primary": true },
+            {
+              "role": "billing_contact",
+              "first_name": "Omar",
+              "last_name": "Saleh",
+              "email": "omar@beanstreet.example",
+              "contact_number": "+966551234567"
+            }
+          ]
+        },
+        "id": "fv2s23-2",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "show_contacts_review",
+        "args": {},
+        "id": "fv2s23-3",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "I've put you down as Authorized Signatory and Omar Saleh as Billing Contact — press Send contacts when ready."
+  },
+  {
+    "content": "Thanks — the leasing team will give the final approval once they have what they need."
+  }
+]
