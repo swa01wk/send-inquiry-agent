@@ -23,7 +23,7 @@ No model is called: only action handlers run, never an agent turn.
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Literal
 
 from app.agent.actions import handle_ui_action
@@ -31,6 +31,7 @@ from app.agent.runtime import AgentRuntime
 from app.domain import draft_ops
 from app.domain.master import MasterData
 from app.domain.models import DocType, FieldKey, InquiryDraft, Source
+from app.policy.config import get_policy
 from app.sessions import Session, SessionStore
 from app.workflow.contacts import write_contacts
 from app.workflow.machine import IllegalTransition
@@ -117,7 +118,7 @@ _PERSONAS: dict[str, _Persona] = {
 
 _TITLES = {
     "A": "First review: expired profile, profile mismatch",
-    "B": "Second review: billing contact waiting for approval",
+    "B": "Lead Approved: contacts in, ready for the final Approve Lead",
     "C": "Approved and sent to Yardi",
 }
 
@@ -177,6 +178,11 @@ def _attach_documents(
         review = services.document_review.review(ref, PDF)
         draft.documents[doc_type] = ref.model_copy(update={"review": review})
     return draft
+
+
+def reviewer_for(runtime: AgentRuntime, case: Case, level: Level) -> str | None:
+    """The first reviewer in the case's queue for `level` (dev seed endpoints)."""
+    return _reviewer(runtime, case, level)
 
 
 def _reviewer(runtime: AgentRuntime, case: Case, level: Level) -> str | None:
@@ -275,6 +281,63 @@ async def _approve_contacts(runtime: AgentRuntime, case: Case) -> Case:
     return case
 
 
+async def _lead_approve(runtime: AgentRuntime, case: Case) -> Case:
+    """Flow v2 (§3.7): the final reviewer assigns the unit, then "Approve Lead?" = Yes."""
+    malls = case.draft.fields[FieldKey.MALLS].value
+    mall = str(malls[0]) if isinstance(malls, list) and malls else ""
+    case = await _act(
+        runtime,
+        case,
+        "final",
+        "unit_assigned",
+        {"mall_id": mall, "unit_ref": "G-014", "area_sqm": 45},
+    )
+    return await _act(runtime, case, "final", "lead_approved", {})
+
+
+FlowSeedStage = Literal["submitted", "qualified", "lead_approved"]
+
+
+async def seed_flow_case(
+    runtime: AgentRuntime,
+    store: SessionStore,
+    stage: FlowSeedStage,
+    *,
+    unit_type: str | None = None,
+    malls: list[str] | None = None,
+) -> tuple[Case, str]:
+    """A case at `stage`, built by applying the real events in order (flow v2 §3.1), so its
+    chart path is the real one. For the after-submit Playwright scenarios (S18–S24).
+    Returns the case and the applicant's email."""
+    persona = _PERSONAS["B"]
+    if unit_type or malls:
+        persona = replace(
+            persona,
+            unit_type=unit_type or persona.unit_type,
+            mall=(malls or [persona.mall])[0],
+        )
+    session = await store.create()
+    draft = _draft(persona, runtime.master)
+    if malls and len(malls) > 1:
+        draft, _written, errors = draft_ops.write_fields(
+            draft, [(FieldKey.MALLS.value, malls, Source.USER)], master=runtime.master
+        )
+        if errors:
+            raise ValueError(f"flow seed malls: {errors}")
+    session.draft = _attach_documents(runtime, session.id, draft, _FILES["B"])
+    result = await handle_ui_action("accept_and_submit", {"terms_accepted": True}, session, runtime)
+    await store.save(session)
+    case = runtime.services.cases.get(session.draft.reference or "")
+    if case is None:
+        raise RuntimeError(f"flow seed: submit failed ({result.note.content})")
+    if stage in ("qualified", "lead_approved"):
+        case = await _approve_documents(runtime, case)
+        case = await _act(runtime, case, "first", "approved_first", {})
+    if stage == "lead_approved":
+        case = await _lead_approve(runtime, case)
+    return case, persona.email
+
+
 async def seed_demo(runtime: AgentRuntime, store: SessionStore) -> list[DemoCase]:
     """Seed cases A, B and C. A case that fails to seed is logged and skipped."""
     seeded: list[DemoCase] = []
@@ -284,9 +347,12 @@ async def seed_demo(runtime: AgentRuntime, store: SessionStore) -> list[DemoCase
             if key in ("B", "C"):
                 case = await _approve_documents(runtime, case)
                 case = await _act(runtime, case, "first", "approved_first", {})
+                if get_policy().lead_approval.enabled:
+                    case = await _lead_approve(runtime, case)
                 case = await _send_contacts(runtime, store, case)
             if key == "C":
-                case = await _approve_contacts(runtime, case)
+                if get_policy().contacts.approval_required:
+                    case = await _approve_contacts(runtime, case)
                 case = await _act(runtime, case, "final", "approved", {})
         except (IllegalTransition, RuntimeError, ValueError):
             logger.exception("demo seed: case %s failed", key)

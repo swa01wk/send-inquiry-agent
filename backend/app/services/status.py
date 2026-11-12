@@ -112,7 +112,9 @@ def _from_case(case: Case) -> InquiryStatus:
         stage = "submitted"
     elif case.status in (CaseStatus.FIRST_REVIEW, CaseStatus.REUPLOAD_REQUESTED):
         stage = "first_review"
-    elif case.status == CaseStatus.SECOND_REVIEW:
+    elif case.status in (CaseStatus.SECOND_REVIEW, CaseStatus.LEAD_APPROVED):
+        # Lead Approved stays under "Tenant Qualified" on the tracking page; what's needed
+        # from the tenant (the contacts) shows in `waiting_on_you` (flow v2 §3.5).
         stage = "second_review"
     else:
         stage = "outcome"

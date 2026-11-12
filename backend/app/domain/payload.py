@@ -56,5 +56,16 @@ def lead_payload(case: Case, master: MasterData) -> dict[str, Any]:
             for c in case.tenant_contacts
         ],
         "sales_data": case.sales_data.file_id if case.sales_data else None,
+        # Flow v2 §3.7 (V11): the unit the final reviewer assigned.
+        "assigned_unit": (
+            {
+                "mall": master.label_for("malls", case.assigned_unit.mall_id)
+                or case.assigned_unit.mall_id,
+                "unit_ref": case.assigned_unit.unit_ref,
+                "area_sqm": case.assigned_unit.area_sqm,
+            }
+            if case.assigned_unit
+            else None
+        ),
         "documents": {d.value: ref.file_id for d, ref in case.draft.documents.items()},
     }

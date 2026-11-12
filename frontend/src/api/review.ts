@@ -177,6 +177,8 @@ export type ReviewAction =
   | 'reject_document'
   | 'approve_contact'
   | 'reject_contact'
+  | 'assign_unit'
+  | 'approve_lead'
 
 export interface CaseDetail {
   brief: CaseBrief
@@ -185,6 +187,16 @@ export interface CaseDetail {
   approval_blockers: string[]
   /** What stops "Approve first level" (demo feedback §3.4). */
   first_approval_blockers?: string[]
+  /** Flow v2 §3.7: what stops "Approve Lead?" = Yes, the assigned unit, the inquiry's malls. */
+  lead_approval_blockers?: string[]
+  assigned_unit?: {
+    mall_id: string
+    unit_ref: string
+    area_sqm: number | null
+    by: string
+    at: string
+  } | null
+  inquiry_malls?: { id: string; label: string }[]
   rejection_categories: string[]
   reupload_doc_types: { doc_type: string; label: string }[]
 }

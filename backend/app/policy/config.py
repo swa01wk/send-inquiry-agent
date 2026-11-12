@@ -175,6 +175,16 @@ class ContactsPolicy(_Strict):
     applicant_signatory_needs_approval: bool = False
 
 
+class LeadApprovalPolicy(_Strict):
+    """The second level as on the v2 chart (flow v2 §3.7, V6): "Approve Lead?" first, then
+    the contacts, then the final "Approve Lead". Off: one final approval after the contacts
+    (the R1–R5 flow)."""
+
+    enabled: bool = True
+    # "Approve Lead?" waits until the final reviewer has assigned a unit (V11).
+    require_unit_assigned: bool = True
+
+
 class IdentityPolicy(_Strict):
     """Azure AD accounts the lifecycle creates (flow v2 §3.6, V9)."""
 
@@ -278,6 +288,7 @@ class PolicyConfig(_Strict):
     document_expiry: DocumentExpiryPolicy = DocumentExpiryPolicy()
     contacts: ContactsPolicy = ContactsPolicy()
     identity: IdentityPolicy = IdentityPolicy()
+    lead_approval: LeadApprovalPolicy = LeadApprovalPolicy()
     # ---- Proactive work (L5) -----------------------------------------------------------
     proactive: ProactivePolicy = ProactivePolicy()
 

@@ -22,13 +22,14 @@ from pydantic import BaseModel, Field
 
 from app import clock
 from app.domain.fields import document_label
-from app.domain.models import NON_INTAKE_DOC_TYPES, DocType, DocumentRef
+from app.domain.models import NON_INTAKE_DOC_TYPES, DocType, DocumentRef, FieldKey
 from app.policy.config import get_policy
 from app.workflow.documents import current_decisions, document_blockers
 from app.workflow.expiry import expiry_status, expiry_tracked
 from app.workflow.models import (
     CONTACT_ROLE_LABELS,
     FIRST_LEVEL_STATES,
+    AssignedUnit,
     Case,
     CaseEvent,
     CaseRequest,
@@ -110,6 +111,17 @@ TABLE: dict[tuple[CaseStatus, str], tuple[CaseStatus, frozenset[ActorKind]]] = {
     (S.SECOND_REVIEW, "brand_relinked"): (S.SECOND_REVIEW, frozenset({"reviewer"})),
     (S.SECOND_REVIEW, "rejected"): (S.REJECTED, frozenset({"reviewer"})),
     (S.SECOND_REVIEW, "approved"): (S.APPROVED, frozenset({"reviewer"})),
+    # Flow v2 (§3.7, V6, V11): the final reviewer assigns the unit and decides "Approve
+    # Lead?"; Yes → the contacts → the final "Approve Lead". No reject after Yes: the chart's
+    # final box has no No branch (M26). Gated by `lead_approval.enabled` (`_row_enabled`).
+    (S.SECOND_REVIEW, "unit_assigned"): (S.SECOND_REVIEW, frozenset({"reviewer"})),
+    (S.SECOND_REVIEW, "lead_approved"): (S.LEAD_APPROVED, frozenset({"reviewer"})),
+    (S.LEAD_APPROVED, "contacts_requested"): (S.LEAD_APPROVED, frozenset({"reviewer", "system"})),
+    (S.LEAD_APPROVED, "contacts_provided"): (S.LEAD_APPROVED, frozenset({"user"})),
+    (S.LEAD_APPROVED, "request_withdrawn"): (S.LEAD_APPROVED, frozenset({"reviewer"})),
+    (S.LEAD_APPROVED, "company_relinked"): (S.LEAD_APPROVED, frozenset({"reviewer"})),
+    (S.LEAD_APPROVED, "brand_relinked"): (S.LEAD_APPROVED, frozenset({"reviewer"})),
+    (S.LEAD_APPROVED, "approved"): (S.APPROVED, frozenset({"reviewer"})),
     (S.APPROVED, "sent_to_yardi"): (S.SENT_TO_YARDI, frozenset({"system"})),
     (S.APPROVED, "yardi_failed"): (S.APPROVED, frozenset({"system"})),
 }
@@ -133,6 +145,51 @@ REVIEW_LEVEL: dict[tuple[CaseStatus, str], ReviewLevel] = {
     for (from_status, event), (_to, who) in TABLE.items()
     if "reviewer" in who
 }
+
+
+# Flow v2 (§3.7): with `lead_approval.enabled`, contacts and the final approval move from
+# `second_review` to `lead_approved`. A case that already had a contacts request at second
+# review (opened at first approval before flow v2) keeps the old rows, so it can finish.
+_NEW_SECOND_LEVEL_EVENTS = frozenset({"unit_assigned", "lead_approved"})
+_OLD_SECOND_LEVEL_EVENTS = frozenset(
+    {
+        "approved",
+        "contacts_requested",
+        "contacts_provided",
+        "contact_approved",
+        "contact_rejected",
+        "contact_removed",
+    }
+)
+
+
+def _legacy_second_level(case: Case) -> bool:
+    return any(r.kind == "contacts" for r in case.requests)
+
+
+def _row_enabled(case: Case, event: str) -> bool:
+    """Whether a TABLE row applies under the current policy (flow v2 §3.7)."""
+    if case.status != S.SECOND_REVIEW:
+        return True
+    if not get_policy().lead_approval.enabled:
+        return event not in _NEW_SECOND_LEVEL_EVENTS
+    if event in _OLD_SECOND_LEVEL_EVENTS:
+        return _legacy_second_level(case)
+    return True
+
+
+def lead_approval_blockers(case: Case) -> list[str]:
+    """What stops "Approve Lead?" = Yes (`lead_approved`, flow v2 §3.7)."""
+    blockers: list[str] = []
+    if get_policy().lead_approval.require_unit_assigned and case.assigned_unit is None:
+        blockers.append("unit_not_assigned")
+    for request in case.requests:
+        if request.status != "open":
+            continue
+        blockers.append(
+            "sales_data_pending" if request.kind == "sales_data" else f"open_request:{request.kind}"
+        )
+    return blockers
 
 
 def _invalid(message: str) -> IllegalTransition:
@@ -163,7 +220,7 @@ def legal_events(case: Case, actor: Actor) -> list[str]:
     """Events this actor could fire now (guards on payloads aside): the console's actions."""
     events: list[str] = []
     for (from_status, event), (_to, who) in TABLE.items():
-        if from_status != case.status:
+        if from_status != case.status or not _row_enabled(case, event):
             continue
         try:
             _check_actor(case, event, who, actor)
@@ -176,6 +233,8 @@ def legal_events(case: Case, actor: Actor) -> list[str]:
         if event == "request_withdrawn" and not any(r.status == "open" for r in case.requests):
             continue
         if event == "approved" and _approval_blockers(case):
+            continue
+        if event == "lead_approved" and lead_approval_blockers(case):
             continue
         if event == "contact_removed" and not case.tenant_contacts:
             continue
@@ -612,6 +671,46 @@ def _approved(case: Case, event: WorkflowEvent, actor: Actor, now: datetime) -> 
     )
 
 
+def _unit_assigned(case: Case, event: WorkflowEvent, actor: Actor, now: datetime) -> None:
+    """The final reviewer assigns the unit while verifying (flow v2 §3.7, V11). The mall
+    must be one of the inquiry's; assigning again replaces the unit."""
+    mall_id = str(event.payload.get("mall_id") or "").strip()
+    malls = case.draft.fields[FieldKey.MALLS].value
+    if not mall_id or not isinstance(malls, list) or mall_id not in malls:
+        raise _invalid("Pick one of the inquiry's malls.")
+    unit_ref = str(event.payload.get("unit_ref") or "").strip()
+    if not unit_ref:
+        raise _invalid("A unit reference is required.")
+    raw_area = event.payload.get("area_sqm")
+    area: float | None = None
+    if raw_area not in (None, ""):
+        try:
+            area = float(cast(Any, raw_area))
+        except (TypeError, ValueError) as exc:
+            raise _invalid("The area must be a number of square metres.") from exc
+        if area <= 0:
+            raise _invalid("The area must be more than zero.")
+    case.assigned_unit = AssignedUnit(
+        mall_id=mall_id, unit_ref=unit_ref, area_sqm=area, by=actor.id or actor.kind, at=now
+    )
+
+
+def _lead_approved(case: Case, event: WorkflowEvent, actor: Actor, now: datetime) -> None:
+    """ "Approve Lead?" = Yes (flow v2 §3.7): the contacts request opens next (an effect)."""
+    blockers = lead_approval_blockers(case)
+    if blockers:
+        raise _invalid(f"Can't approve the lead yet: {', '.join(blockers)}.")
+    case.decisions.append(
+        Decision(
+            level="second",
+            outcome="lead_approved",
+            remarks=_remarks(event.payload, required=False) or None,
+            by=actor.id or actor.kind,
+            at=now,
+        )
+    )
+
+
 def _sent_to_yardi(case: Case, event: WorkflowEvent, actor: Actor, now: datetime) -> None:
     lead_ref = str(event.payload.get("lead_ref") or "")
     if not lead_ref:
@@ -649,6 +748,8 @@ APPLY: dict[str, Callable[[Case, WorkflowEvent, Actor, datetime], None]] = {
     "company_relinked": _company_relinked,
     "brand_relinked": _brand_relinked,
     "approved": _approved,
+    "unit_assigned": _unit_assigned,
+    "lead_approved": _lead_approved,
     "sent_to_yardi": _sent_to_yardi,
     "yardi_failed": _yardi_failed,
 }
@@ -662,6 +763,10 @@ def transition(case: Case, event: WorkflowEvent, *, actor: Actor, now: datetime)
             "illegal_transition", f"{event.name} isn't possible while the case is {case.status}."
         )
     to_status, who = row
+    if not _row_enabled(case, event.name):
+        raise IllegalTransition(
+            "illegal_transition", f"{event.name} isn't possible while the case is {case.status}."
+        )
     _check_actor(case, event.name, who, actor)
     updated: Case = case.model_copy(deep=True)
     APPLY.get(event.name, _noop)(updated, event, actor, now)

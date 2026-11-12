@@ -56,6 +56,8 @@ ALLOWED_KEYS: dict[str, frozenset[str]] = {
     "effect_run": frozenset({"effect", "event", "outcome"}),
     # Flow v2 §3.6 (V9): Reject Lead revoked the first-approval invitation.
     "identity_revoked": frozenset({"invitation_id", "role"}),
+    # Flow v2 §3.1 (ADR-V2): a chart step the case reached, recorded by code.
+    "flow_step": frozenset({"node", "outcome"}),
     "routing_decision": frozenset({"intent", "via", "confidence"}),
     "assistant_suggestion": frozenset({"kind", "action", "used"}),
     # Intake channels (spec §15)

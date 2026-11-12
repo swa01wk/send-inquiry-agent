@@ -171,6 +171,7 @@ def _case_outcome_allowed(ctx: TurnContext, *, need_sent_to_yardi: bool = False)
     status = ctx.case_status_after
     return status in (
         CaseStatus.SECOND_REVIEW.value,
+        CaseStatus.LEAD_APPROVED.value,
         CaseStatus.APPROVED.value,
         CaseStatus.SENT_TO_YARDI.value,
     )

@@ -19,6 +19,7 @@ from app.domain.models import FieldKey, FieldValue, Source
 from app.domain.payload import lead_payload
 from app.gateway import GatewayError
 from app.policy.config import get_policy
+from app.workflow.flow import FlowNode, record_flow_step
 from app.workflow.labels import rejection_label
 from app.workflow.machine import SYSTEM
 from app.workflow.models import (
@@ -166,6 +167,17 @@ async def _invite(
     fresh = runtime.services.cases.get(case.id) or case
     fresh.onboarding.invitations.append(invitation)
     runtime.services.cases.save(fresh)
+    # Flow v2 §3.1: an account created at first approval (az1) or for the contacts (az3).
+    if role == "primary_contact":
+        record_flow_step(runtime, inquiry_id=case.id, node=FlowNode.AZ1)
+        record_flow_step(runtime, inquiry_id=case.id, node=FlowNode.REG_LINK1)
+    elif not any(
+        e.get("payload", {}).get("node") == FlowNode.AZ3.value
+        for e in runtime.services.audit.events(case.id)
+        if e.get("type") == "flow_step"
+    ):
+        record_flow_step(runtime, inquiry_id=case.id, node=FlowNode.AZ3)
+        record_flow_step(runtime, inquiry_id=case.id, node=FlowNode.REG_LINK2)
     return fresh
 
 
@@ -210,7 +222,13 @@ async def _revoke_primary(runtime: AgentRuntime, case: Case, event: WorkflowEven
             actor="system",
             payload={"invitation_id": invitation.id, "role": invitation.role},
         )
+        record_flow_step(runtime, inquiry_id=case.id, node=FlowNode.AZ2)
         case = fresh
+    return case
+
+
+async def _lead_approved_email(runtime: AgentRuntime, case: Case, event: WorkflowEvent) -> Case:
+    await _to_applicant(runtime, case, "lead_approved", case_url=case_url(runtime, case))
     return case
 
 
@@ -256,8 +274,13 @@ async def _prefill_tenant_contacts(runtime: AgentRuntime, case: Case, event: Wor
 
 
 async def _auto_contacts_request(runtime: AgentRuntime, case: Case, event: WorkflowEvent) -> Case:
-    """Requirements §7.1.1 b: "on contact creation", a request for more tenant contacts."""
-    if not get_policy().auto_request_contacts_after_first_approval:
+    """Requirements §7.1.1 b: "on contact creation", a request for more tenant contacts.
+    Flow v2 (§3.7): opened on "Approve Lead?" = Yes; at first approval only with
+    `auto_request_contacts_after_first_approval`."""
+    if (
+        event.name == "approved_first"
+        and not get_policy().auto_request_contacts_after_first_approval
+    ):
         return case
     if case.open_request("contacts") is not None:
         return case
@@ -370,6 +393,12 @@ EFFECTS: dict[str, list[tuple[str, Effect]]] = {
         ("prefill_tenant_contacts", _prefill_tenant_contacts),
         ("auto_contacts_request", _auto_contacts_request),
         ("review_assigned_final", _final_review_assigned),
+    ],
+    # Flow v2 (§3.7): "Approve Lead?" = Yes opens the contacts request.
+    "lead_approved": [
+        ("lead_approved", _lead_approved_email),
+        ("prefill_tenant_contacts", _prefill_tenant_contacts),
+        ("auto_contacts_request", _auto_contacts_request),
     ],
     "contacts_requested": [("contacts_request", _request_email("contacts_request", "contacts"))],
     "contacts_provided": [("contacts_received", _contacts_received)],

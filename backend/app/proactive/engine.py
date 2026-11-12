@@ -39,7 +39,7 @@ from app.workflow.models import (
 )
 from app.workflow.service import case_url, console_url
 
-REVIEW_STAGES = (CaseStatus.FIRST_REVIEW, CaseStatus.SECOND_REVIEW)
+REVIEW_STAGES = (CaseStatus.FIRST_REVIEW, CaseStatus.SECOND_REVIEW, CaseStatus.LEAD_APPROVED)
 
 
 class ProactiveError(Exception):
@@ -63,6 +63,12 @@ def stage_since(case: Case) -> datetime:
         if event.to_status == case.status:
             return event.at
     return case.submitted_at
+
+
+def _tenant_owes_contacts(case: Case) -> bool:
+    """Flow v2 E4: after "Approve Lead?" = Yes the next step is the tenant's (the contacts),
+    so the review isn't stalled; the applicant reminder covers it."""
+    return case.status == CaseStatus.LEAD_APPROVED and case.open_request("contacts") is not None
 
 
 def hours_between(start: datetime, end: datetime) -> float:
@@ -262,7 +268,7 @@ async def tick(runtime: AgentRuntime, *, now: datetime | None = None) -> TickRes
     for case in cases.values():
         if case.review_queue is None:
             continue
-        if case.status in REVIEW_STAGES:
+        if case.status in REVIEW_STAGES and not _tenant_owes_contacts(case):
             since = stage_since(case)
             age = hours_between(since, current)
             stage_triggers: tuple[tuple[Trigger, int], ...] = (
