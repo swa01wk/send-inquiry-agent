@@ -2,7 +2,7 @@
 
 Everything Cursor builds must match this file. If a contract here is missing or wrong, update this file in the same change.
 
-> **Flow v2 (13–18 Nov 2026).** [`specs/flow-v2-alignment.md`](specs/flow-v2-alignment.md) changes the intake order, the CR check on the public page, the second level and the status names. Its §7 lists the contract changes by build day (F1–F5); each day's PR folds its row into this file. Until a row lands, this file describes `main`.
+> **Flow v2 (13–18 Nov 2026).** [`specs/flow-v2-alignment.md`](specs/flow-v2-alignment.md) changes the intake order, the CR check on the public page, the second level and the status names. Its §7 lists the contract changes by build day (F1–F5); each day's PR folds its row into this file. Until a row lands, this file describes `main`. **F3 (public intake) has landed behind `flow_v2_intake.enabled`: see §16.**
 
 ## 1. Flow summary
 
@@ -58,7 +58,7 @@ The **inquiry** is the durable case; a **session handle** (`session_id` in the A
 
 `Inquiry` carries `InquiryDraft`, card bookkeeping (`cards_shown`, `confirm_card_keys`, `card_counter`), workflow `InquiryStatus`, optimistic `version`, `submit_key`, `reference`, and a `session_state` jsonb blob (transcript, cards, turn counters, form mode, and similar). Postgres columns match [m0-modular-core.md §5.3](specs/m0-modular-core.md); `inquiry_events.inquiry_id` is nullable for case-scoped events (step 15).
 
-`InquiryRepository` (`memory` | `postgres`): `create(*, channel=…)`, `get`, `save` (bumps `version`; raises `VersionConflict`), `touch` (only `last_seen_at` / `expires_at`, no version bump), `acquire_turn` / `renew_turn` / `release_turn`, `purge_expired`. `SessionStore` adapts the repository; `begin_turn` returns a lease id and `end_turn(session_id, lease_id)` releases it. A failed save after one reload raises `turn_conflict` (409 or SSE `error` with code `turn_conflict`).
+`InquiryRepository` (`memory` | `postgres`): `create(*, channel=…)`, `get`, `save` (bumps `version`; raises `VersionConflict`), `touch` (only `last_seen_at` / `expires_at`, no version bump), `acquire_turn` / `renew_turn` / `release_turn`, `purge_expired`, `pending_by_email(email)` and `expire_pending(now, ttl)` (flow v2 pending inquiry, §16). `save` settles the status (`store.models.settle_status`): a reference → `submitted`; a verified v2 inquiry without one → `pending` (§16). `SessionStore` adapts the repository; `begin_turn` returns a lease id and `end_turn(session_id, lease_id)` releases it. A failed save after one reload raises `turn_conflict` (409 or SSE `error` with code `turn_conflict`).
 
 **Arabic digits.** Every numeric rule (CR, phone numbers, VAT, National ID, area, rent, the OTP code) runs on `validation.normalise_digits(text)`, which maps Arabic-Indic (`٠–٩`) and Eastern Arabic-Indic (`۰–۹`) digits to ASCII. Contact detection (`contact_infer`), the guard's checks and the tools see normalised text too (L3 §3.10).
 
@@ -175,6 +175,8 @@ There is no submit tool and no verify tool: both happen through UI actions, so t
 | `cr_check` | `{cr_number}` | The CR check from a card (form mode): same rules as `verify_cr` (existing account, `allow_inquiry`, or new with the company name and address prefilled on a confirm card). Note: `cr_checked existing\|existing_allowed\|new`, `cr_invalid <code>`, `cr_already_done` or `service_error cr <kind>` |
 | `cr_skip` | `{}` | Skip the CR (form mode). Note: `cr_skipped` or `cr_already_done` |
 | `cr_answer` | `{has_cr: bool}` | Demo feedback §3.1: the `cr_question` card's buttons (self-service, `public_cr_check: ask_then_sign_in`). Same as `record_cr_answer`; Yes also sets `Session.closed = "redirected_to_sign_in"`. Note: `cr_answer yes\|no`, `cr_already_done`, `cr_answer_invalid` (not a boolean) or `cr_answer_off`. Under `ask_then_sign_in`, `cr_check` on the public page answers `cr_lookup_off` |
+| `accept_terms` | `{terms_accepted: true}` | Flow v2 (§16): the `terms` card's checkbox. Sets `terms_accepted`, audit `terms_accepted`, re-sends the `terms` card (`accepted: true`) and the review card if shown. Note: `terms_accepted` or `terms_not_accepted` |
+| `resume_pending` | `{email}` | Flow v2 (§16): "Continue my inquiry". The email never reaches the model or the transcript. A pending inquiry for it gets a `resume_link` email (within the resend limits). **No agent turn:** the reply is always `RESUME_PENDING_REPLY`, found or not; audit `pending_resume_requested {found}` |
 | `request_handoff` | `{reason?: "user_asked" \| "model_unavailable"}` | Human handoff (L3 §3.6): `CallCentreService.create_case` with the inquiry, the reason and a summary built from the draft and the last three user messages (no model call); emit the `handoff` card. One open case per inquiry: asking again shows the same case. Needs no model, so form mode uses it. The router's `human_help` intent calls the same handler. Note: `handoff_created <reason>`, `handoff_created <reason> (repeat)`, or `handoff_created <reason> service_error call_centre <kind>` (the card still shows the phone number and hours) |
 
 **Form mode (L3 §3.14).** When the model fails twice in one turn (provider timeout or outage, or an `llm` fault), or always with `FORM_MODE=true`, the session enters form mode (`Session.form_mode`, audit `form_mode_entered`): the turn ends with a fixed bubble ("Our assistant isn't available right now…"), the `form_mode` card and the card for the next step. In form mode a UI action applies its change and emits its cards, then the phase decides the next card — no agent turn runs: CR (`cr_check` / `cr_skip`), details (missing values typed into the form-mode card and saved with `edit_field`; a `confirm-form` card for derived or prefilled values still unconfirmed; a mall picker listing every mall), verification (sent without the model, then the `verification` card), documents, review. Values the tools saved before the failure are kept. The next typed message tries the model again with a `[ui_event] form_mode_resume` note; if it answers, the session leaves form mode (audit `form_mode_left`) and the `form_mode` card is re-sent with `active: false`. A bug in our own code is still an `error` event, never form mode.
@@ -264,7 +266,9 @@ At the start of each turn the frontend clears the previous `quick_replies` chips
 | `document_upload` | `{docs:[{doc_type,label,required,uploaded,file_name,size_bytes}], numbers:[{key,label,value,editable,error}], required_uploaded, required_total, allowed_extensions (dotted, e.g. `.pdf`), max_mb}` |
 | `review` | `{groups:[{title, rows:[{key,label,display,source,confirmed,required}]}], documents:[...], checks:Checks, can_submit, terms_accepted, blockers:[str]}` |
 | `success` | `{reference, tracking_url, steps:[{label, detail, state}]}` (`tracking_url` = `<PUBLIC_BASE_URL>/inquiry/status/<reference>?t=<track token>`, the private tracking page) |
-| `quick_replies` | `{options:[{label, text, action?: "send" \| "focus_input", placeholder?: string}]}` — default `action` is `send` |
+| `quick_replies` | `{options:[{label, text, action?: "send" \| "focus_input" \| "resume_pending", placeholder?: string}]}` — default `action` is `send`; `resume_pending` (flow v2, §16): ask for the email in place and post the `resume_pending` action, not a chat message |
+| `company_registration` | Flow v2 (§16), card id `company_registration`, updated in place: `{prompt, input_placeholder, verify_label, skip_label, skip_confirm:{prompt, yes_label, no_label}, state: "open"\|"confirm_skip"\|"skipped"\|"not_registered"\|"registered", cr_masked, error}`. Verify sends `cr_check {cr_number}`; Skip sends `cr_skip {}`, then `cr_skip {confirmed: true}` from the inline confirm. The CR is never in the payload in full (`cr_masked` = `•••••• 1234`) |
+| `terms` | Flow v2 (§16), card id `terms`: `{text, privacy_url, accepted}`; the checkbox sends `accept_terms {terms_accepted: true}` |
 | `form_mode` | `{active, message, next_step: "existing_account"\|"cr"\|"details"\|"verification"\|"documents"\|"review"\|"submitted", fields:[{key, label, kind: "text"\|"select", master_kind}], can_skip_cr, cr_question}` (card id `form_mode`; `cr_question: true` when the CR step is the `cr_question` card; `fields` are the required values still empty, saved with `edit_field`, `contact_number` saved as mobile or landline; `active: false` once the assistant is back) |
 | `cr_question` | `{prompt, yes_label, no_label, answered: "yes"\|"no"\|null}` (card id `cr_question`; demo feedback §3.1). Under `public_cr_check: ask_then_sign_in`, `POST /api/sessions` returns it on the self-service channel in place of the welcome quick replies, with the welcome text asking whether the company has a CR; the buttons send `cr_answer`. In form mode it is the CR step, and the `form_mode` payload carries `cr_question: true` with no CR input |
 | `sign_in_prompt` | `{message, sign_in_url, button_label}` — `sign_in_url` is `<PUBLIC_BASE_URL>/tenant` (sign in, then Leasing Opportunities). The message depends on why it's shown: an existing CR found by a lookup, or a Yes to "Do you have a CR?" |
@@ -350,6 +354,7 @@ Business rules, validated at start-up into `PolicyConfig` (`app/policy/config.py
 | `contacts` | `{approval_required: true, ask_signatory: true, applicant_signatory_needs_approval: false}` (demo feedback §3.5) | `contacts_provided`, `approval_blockers`, `legal_events`, contacts and signatory cards, `contacts_received` effect |
 | `identity.revoke_on_lead_rejection` | `true`: Reject Lead revokes the first-approval invitation (flow v2 §3.6) | effect `revoke_primary` |
 | `max_malls_per_inquiry` | `1` | `validate_malls`, `update_draft`, mall auto-fill, `mall_picker.max_select` |
+| `flow_v2_intake` | `{enabled: false, product_lines: [store, office], max_malls: 5, pending_inquiry_ttl_minutes: 120, terms_before_documents: true}` (§16) | Session creation (`cr_question.flow_v2_intake_for`); the v2 policy view (`get_policy()` on a v2 inquiry); pending expiry |
 | `phone.allowed_countries` | `any` (or calling codes, e.g. `["971"]`; +966 always allowed) | Phone normalisers, `classify_contact_number` |
 | `verification` | `{email: link, mobile: otp}` (the only supported values) | Prompt block |
 | `resend` | `{cooldown_seconds: 60, max_per_hour: 5}` | Step 19 |
@@ -677,3 +682,41 @@ Then the self-service flow continues: mobile OTP, documents, review, submit.
 - `/dev`: links to the call centre, Guest Service and each tenant;
 - the console: channel labels.
 The chat cards above, the `/callcentre` page and the assisted and existing-tenant prompts are Day 5 part B.
+
+## 16. Flow v2 public intake (day F3)
+
+[`specs/flow-v2-alignment.md`](specs/flow-v2-alignment.md) §3.2–§3.3, FV9–FV15, ADR-V4. Behind policy `flow_v2_intake.enabled` (off on `main` until the F3 Cursor PR flips it with the prompt and cards).
+
+**Which inquiries.** `InquiryDraft.intake_flow: "v1" | "v2"` is set when the session is created and never changes: `v2` for a new self-service inquiry when the switch is on, or for a scripted scenario named `flow-v2-s…` (except S18–S24, which run after submit). Staff, call-centre and tenant-portal channels stay `v1`. The session store binds the inquiry's flow for the request (`policy.config.bind_intake_flow`), and `get_policy()` then returns the **v2 view**: `product_lines`, `max_malls_per_inquiry` from `flow_v2_intake`, and `public_cr_check: verify_or_skip`. Everything else is the shipped policy.
+
+**Master data and routing.** Unit type `office` (`OFF`, «مكتب»); `review_routing.office: rlm_store` (Regional Sales Manager); references `GEO-OFF-NNNNNN`. Office is valid only on a v2 inquiry.
+
+**Company Registration (Check for Existing Customer).** A deterministic handler, not a model tool (`agent/cr_check.check_existing_customer`, `skip_customer_check`). The welcome is the `company_registration` card plus quick replies "Continue my inquiry" (`resume_pending`) and "What do I need to get started?". A CR typed in the chat is scrubbed from the text (as under `ask_then_sign_in`) and, while `cr_status` is `unknown`, checked like Verify; the model gets only the note.
+
+| Outcome | Draft and session | Card | Note |
+| --- | --- | --- | --- |
+| Invalid format | unchanged | `open` + `error` (quiet, no agent turn) | `cr_invalid <code>` |
+| Registry error | unchanged | `open` + `error` (quiet) | `service_error cr <kind>` |
+| Registered | `cr_status="existing"`, `cr_number` (user); `Session.closed="redirected_to_sign_in"`; audit `inquiry_redirected {reason: registered_cr}` | `registered` + `sign_in_prompt` ("Customer already registered. Please login") | `cr_checked registered` |
+| Not registered | `cr_status="new"`, `cr_number` (user). The registry's company name and address are **not** written: Basic Info asks for them | `not_registered` | `cr_checked not_registered` |
+| Skip | — | `confirm_skip` (quiet) | `cr_skip_confirm_shown` |
+| Skip confirmed | `cr_status="skipped"` | `skipped` | `cr_skipped` |
+
+`verify_cr` on a v2 inquiry checks nothing ("checked on the card"); `skip_cr(confirmed)` follows the same two steps.
+
+**Sections** (`domain/sections.py`). In the app's order: `company_registration`, `unit_and_category` (unit type, sales category), `basic_info` (names, company, brand EN/AR, email, a mobile or landline), `verification`, `property_details` (malls; lease, area and rent when given), `terms`, `documents`, `review`. A value given early is saved and never asked again; the agent asks one section at a time.
+- `can_submit` sorts blockers by section; `remaining_steps` lists `cr`, `unit_and_category`, `basic_info`, `verify_email`, `verify_mobile`, `property_details`, `terms`, `documents`.
+- `compute_phase`: verification → `verifying`; terms and documents → `documents`; review → `review`; else `collecting`.
+- `DraftSummary.section` (current section key) and `checks.sections: [{key, label, done}]` for the step tabs; both empty or null on `v1`.
+- The bundle hint and `still_needed_line` name the current section only; the guard adds a note when the reply asks about a later section (rule 8) and nudges verification once Basic Info is done.
+- `update_draft` refuses a derived `sales_category` whose evidence is empty or only the brand name: `category_needs_what_you_sell`.
+
+**Terms before documents** (`terms_before_documents`). Once Property Details and verification are done, the guard shows the `terms` card before the documents card; `accept_terms` sets `terms_accepted`. The review card carries `terms_on_own_card: true` and shows "Terms accepted" instead of the checkbox; `accept_and_submit` accepts the draft's `terms_accepted`.
+
+**Pending inquiry** (FV12–FV13). `InquiryStatus.PENDING`: set by the repository on save when a v2 inquiry has `verified_at`, no reference, no case and `cr_status != "existing"`. A reference moves `pending` → `submitted`; a failed submit leaves it `pending`. `expire_pending` moves it to `abandoned` once `pending_inquiry_ttl_minutes` have passed since the later of `verified_at` and the last activity; it runs in the hourly purge loop and before each `resume_pending` lookup. Audit `inquiry_pending {channel}` when verification first succeeds, `flow_step` `emv` per send and `succ1 yes|no` per result.
+
+**Resume.** `resume_pending {email}` (§4) looks up the newest pending inquiry for the verified email (`pending_by_email`, case-insensitive) and sends `EmailVerificationService.send_link(..., template="resume_link")`: the same signed link as email verification (`resume_url` = the verify link), so following it re-verifies the email and resumes that chat through `/inquiry/verify`. The reply is the same either way.
+
+**Flow steps recorded:** `start`, `raise_tp` (session), `chk_tp`, `db`, `exist yes|no|skipped`, `display`, `redirect` (registered), `emv`, `succ1`.
+
+**Invariants.** I8 applies to the v2 public chat (no CR repeated in replies or cards). **I9:** before submit, a v2 reply never names a unit or unit number (`unit|shop|kiosk <id>`, `OPP-n`).
