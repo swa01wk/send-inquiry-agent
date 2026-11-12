@@ -40,9 +40,12 @@ test.describe('S19 Not qualified @flow-v2 @scripted', () => {
     }
 
     const mail = await fetchDevOutbox(request, APPLICANT_EMAIL)
-    const rejection = latestByTemplate(mail, 'inquiry_rejected')
+    // Sara's inbox is shared by every s1-happy-path story; the case's own messages carry its
+    // reference (the submission email carries the session id).
+    const caseMail = mail.filter((m) => m.inquiry_id === reference)
+    const rejection = latestByTemplate(caseMail, 'inquiry_rejected')
     expect(rejection?.body).toContain('Outcome: Tenant Not Qualified')
-    expect(mail.filter((m) => m.template === 'azure_ad_invitation')).toHaveLength(0)
+    expect(caseMail.filter((m) => m.template === 'azure_ad_invitation')).toHaveLength(0)
 
     const casePath = rejection?.links.find((l) => l.includes('/inquiry/case'))
     expect(casePath).toBeTruthy()
