@@ -104,15 +104,18 @@ export async function attachLiveTranscripts(testInfo: TestInfo): Promise<void> {
   const chats = openChats.splice(0)
   if (testInfo.status === testInfo.expectedStatus) return
   for (const chat of chats) {
-    if (chat.page.isClosed()) continue
-    const replies = await chat.inquiry.allReplies().catch(() => [] as string[])
-    const draft = await draftOrEmpty(chat.page.request, chat.inquiry.sessionId)
-    type Field = { key: string; display: string | null; source: string | null; confirmed: boolean }
-    const fields = ((draft.fields ?? []) as Field[])
-      .filter((f) => f.display)
-      .map((f) => `${f.key} = ${f.display} (${f.source}${f.confirmed ? ', confirmed' : ''})`)
-    await testInfo.attach(`${chat.name} transcript.txt`, {
-      body: `${replies.map((r, i) => `[${i + 1}] ${r}`).join('\n\n')}\n\n--- draft ---\n${fields.join('\n')}`,
+    // The turn log survives the page: case chats and reviewer contexts close before this runs.
+    let draftText = '(page closed)'
+    if (!chat.page.isClosed()) {
+      const draft = await draftOrEmpty(chat.page.request, chat.inquiry.sessionId)
+      type Field = { key: string; display: string | null; source: string | null; confirmed: boolean }
+      draftText = ((draft.fields ?? []) as Field[])
+        .filter((f) => f.display)
+        .map((f) => `${f.key} = ${f.display} (${f.source}${f.confirmed ? ', confirmed' : ''})`)
+        .join('\n')
+    }
+    await testInfo.attach(`${chat.name} turns.txt`, {
+      body: `${chat.log.join('\n\n')}\n\n--- draft ---\n${draftText}`,
       contentType: 'text/plain',
     })
   }
@@ -142,6 +145,26 @@ export class LiveChat {
     openChats.push(this)
   }
 
+  /** One entry per turn: what was done, the tools the agent called, and its reply. */
+  readonly log: string[] = []
+  private auditSeen = new Map<string, number>()
+
+  /** Tools the agent called since the last look (audit `tool_called`), for the turn log. */
+  private async toolsSinceLastTurn(): Promise<string[]> {
+    const sessionId = this.inquiry.sessionId
+    if (!sessionId) return []
+    const res = await this.page.request.get(`${API}/api/dev/audit/${sessionId}`).catch(() => null)
+    if (!res?.ok()) return []
+    const events = ((await res.json()) as {
+      events: { seq: number; type: string; payload: Record<string, unknown> }[]
+    }).events
+    const seen = this.auditSeen.get(sessionId) ?? 0
+    this.auditSeen.set(sessionId, Math.max(seen, ...events.map((e) => e.seq)))
+    return events
+      .filter((e) => e.seq > seen && e.type === 'tool_called' && e.payload.layer === 'agent')
+      .map((e) => `${e.payload.name}${e.payload.outcome && e.payload.outcome !== 'ok' ? ` (${e.payload.outcome})` : ''}`)
+  }
+
   get page(): Page {
     return this.inquiry.page
   }
@@ -159,6 +182,11 @@ export class LiveChat {
     )
     const replies = await this.inquiry.allReplies().catch(() => [] as string[])
     const reply = replies[replies.length - 1] ?? ''
+    const tools = await this.toolsSinceLastTurn()
+    const retracted = events.filter((e) => e.event === 'message_remove').length
+    this.log.push(
+      `> ${label}\n  tools: ${tools.join(', ') || '—'}${retracted ? `\n  retracted replies: ${retracted}` : ''}\n  reply: ${reply}`,
+    )
     await softly(`${where}: reply has no internal wording`, () =>
       expect(replyLeaks(reply), reply).toEqual([]),
     )

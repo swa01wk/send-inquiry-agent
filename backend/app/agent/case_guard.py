@@ -137,6 +137,31 @@ def _contacts_card_missing_note(
     )
 
 
+# An email address or a phone number in the applicant's own words.
+_CONTACT_DETAIL_RE = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+|\+?\d[\d\s-]{7,}\d")
+
+
+def _contacts_not_saved_note(
+    user_text: str, turn: list[BaseMessage], case: Case | None
+) -> str | None:
+    """The applicant typed an email or number for an open contacts request and the turn saved
+    nothing. Live run 10 Nov, flow 1 (twice): after the billing contact was rejected, "The
+    billing email is finance@beanstreet.example" left the card with the old email."""
+    if case is None or case.open_request("contacts") is None:
+        return None
+    if user_text.startswith("[ui_event]") or not _CONTACT_DETAIL_RE.search(user_text):
+        return None
+    for message in turn:
+        if isinstance(message, AIMessage):
+            if any(call["name"] == "update_contacts" for call in message.tool_calls or []):
+                return None
+    return (
+        f"{GUARD_PREFIX} The applicant gave contact details for the open contacts request, but "
+        "nothing was saved. Call `update_contacts` with them (for the role they're about), then "
+        "`show_contacts_review`, then say in one line what changed and point to **Send contacts**."
+    )
+
+
 def case_guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
     guard_retries = int(state.get("guard_retries", 0))
     if guard_retries >= 1:
@@ -155,6 +180,8 @@ def case_guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, An
     note = _false_outcome_note(ai_text, turn, case) if ai_text else None
     if note is None:
         note = _contacts_card_missing_note(turn, case, list(state.get("contacts_draft") or []))
+    if note is None:
+        note = _contacts_not_saved_note(user_text, turn, case)
     if note is not None and not user_text.startswith("[ui_event] guard:"):
         from langgraph.config import get_stream_writer
 
