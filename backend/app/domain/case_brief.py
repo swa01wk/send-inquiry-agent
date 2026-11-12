@@ -23,7 +23,11 @@ from app.workflow.documents import current_decisions
 from app.workflow.expiry import EXPIRY_LABELS, expired_remarks, expiry_status, expiry_tracked
 from app.workflow.labels import FORECASTED_SALES_DATA, status_label
 from app.workflow.labels import STAGE_LABELS as _CHART_STAGE_LABELS
-from app.workflow.machine import approval_blockers, first_approval_blockers
+from app.workflow.machine import (
+    approval_blockers,
+    first_approval_blockers,
+    lead_approval_blockers,
+)
 from app.workflow.models import (
     CONTACT_ROLE_LABELS,
     ROLE_LABELS,
@@ -148,12 +152,21 @@ class CaseBrief(BaseModel):
 STAGE_LABELS = _CHART_STAGE_LABELS
 
 
+def _lead_flow(case: Case) -> bool:
+    """Flow v2's second level applies (not a case that started on the R1–R5 flow)."""
+    return get_policy().lead_approval.enabled and not any(
+        r.kind == "contacts" for r in case.requests
+    )
+
+
 def waiting_on(case: Case) -> Literal["reviewer", "applicant", "system", "nobody"]:
     if case.status == CaseStatus.REUPLOAD_REQUESTED:
         return "applicant"
-    if case.status == CaseStatus.SECOND_REVIEW and any(r.status == "open" for r in case.requests):
+    if case.status in (CaseStatus.SECOND_REVIEW, CaseStatus.LEAD_APPROVED) and any(
+        r.status == "open" for r in case.requests
+    ):
         return "applicant"
-    if case.status in (CaseStatus.FIRST_REVIEW, CaseStatus.SECOND_REVIEW):
+    if case.status in (CaseStatus.FIRST_REVIEW, CaseStatus.SECOND_REVIEW, CaseStatus.LEAD_APPROVED):
         return "reviewer"
     if case.status in (CaseStatus.SUBMITTED, CaseStatus.APPROVED):
         return "system"
@@ -208,7 +221,18 @@ def _checklist(
             )
         elif not document_items:
             items.append("Every document is approved: approve the first level, or reject.")
-    if case.status == CaseStatus.SECOND_REVIEW:
+    if case.status == CaseStatus.SECOND_REVIEW and _lead_flow(case):
+        # Flow v2 (§3.7): verify, assign the unit, then "Approve Lead?".
+        blockers = lead_approval_blockers(case)
+        if "unit_not_assigned" in blockers:
+            items.append('Assign the unit before deciding "Approve Lead?".')
+        if "sales_data_pending" in blockers:
+            items.append(f"Waiting for the tenant's {FORECASTED_SALES_DATA}.")
+        if not blockers:
+            items.append('Ready to decide "Approve Lead?": approve the lead or reject it.')
+    if case.status == CaseStatus.LEAD_APPROVED or (
+        case.status == CaseStatus.SECOND_REVIEW and not _lead_flow(case)
+    ):
         for blocker in approval_blockers(case):
             kind, _, detail = blocker.partition(":")
             if kind == "open_request":
@@ -222,7 +246,7 @@ def _checklist(
                 label = CONTACT_ROLE_LABELS.get(detail, detail)
                 items.append(f"{label} waiting for the Leasing Admin's approval.")
         if not approval_blockers(case):
-            items.append("Everything needed for final approval is in.")
+            items.append('Everything needed for the final "Approve Lead" is in.')
     if case.status == CaseStatus.APPROVED and case.yardi.needs_operations:
         items.append("Yardi didn't acknowledge the lead: operations need to follow up.")
     return items

@@ -4,15 +4,18 @@ import { clearDevOutbox, fetchDevOutbox, latestByTemplate } from '../support/out
 import { openCaseAs } from '../support/stories'
 import {
   APPLICANT_EMAIL,
-  approveContactsViaApi,
   approveDocumentsViaApi,
+  approveLeadViaApi,
   reviewerFor,
   submitScriptedInquiry,
 } from '../support/submit'
 
 const OMAR_EMAIL = 'omar@beanstreet.example'
 
-/** Day 5 story T1: first approval → contacts → final approval → Yardi and tracking. */
+/**
+ * Day 5 story T1, on the flow v2 second level (spec §3.7): first approval → unit and
+ * "Approve Lead?" = Yes → contacts → the final Approve Lead → Yardi and tracking.
+ */
 test.describe('Story T1 @scripted', () => {
   test('lifecycle through contacts to Yardi and the tracking page', async ({
     page,
@@ -54,6 +57,11 @@ test.describe('Story T1 @scripted', () => {
         .getByRole('button', { name: 'Approve first level' })
         .click()
       await expect(reviewerPage.getByTestId('case-stage')).toHaveText('Tenant Qualified')
+      // Flow v2 (§3.7): no contacts request until "Approve Lead?" = Yes.
+      expect(
+        latestByTemplate(await fetchDevOutbox(request, APPLICANT_EMAIL), 'contacts_request'),
+      ).toBeFalsy()
+      await approveLeadViaApi(request, reference)
 
       await expect
         .poll(async () =>
@@ -98,18 +106,13 @@ test.describe('Story T1 @scripted', () => {
         'Thanks, your contacts are with the leasing team.',
       )
 
-      // Day R2: the Lease Admin approves the billing contact (§3.5); the applicant as
-      // signatory was approved on entry.
-      await approveContactsViaApi(request, reference)
-      // Final review: the RLM takes over from the Lease Admin (demo feedback §3.2).
+      // Flow v2: contacts aren't approved one by one; the Regional Sales Manager gives the
+      // final Approve Lead (demo feedback §3.2: the RSM takes over from the Leasing Admin).
       const finalReviewer = await reviewerFor(request, reference, 'final')
       await openCaseAs(reviewerPage, finalReviewer, reference)
+      await expect(reviewerPage.getByTestId('case-stage')).toHaveText('Lead Approved')
       await expect(reviewerPage.getByTestId('approval-blockers')).toHaveCount(0)
-      await expect(reviewerPage.getByTestId('action-approve')).toBeVisible()
-      await reviewerPage
-        .getByTestId('action-approve')
-        .getByRole('button', { name: 'Approve' })
-        .click()
+      await reviewerPage.getByTestId('approve-lead-final').click()
       await expect(reviewerPage.getByTestId('case-stage')).toHaveText('Approved and sent to Yardi')
       await expect(reviewerPage.getByTestId('timeline')).toContainText(/lead/i)
 

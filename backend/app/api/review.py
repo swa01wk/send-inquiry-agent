@@ -46,9 +46,10 @@ from app.workflow.machine import (
     IllegalTransition,
     approval_blockers,
     first_approval_blockers,
+    lead_approval_blockers,
     legal_events,
 )
-from app.workflow.models import Case, WorkflowEvent
+from app.workflow.models import AssignedUnit, Case, WorkflowEvent
 from app.workflow.service import apply_event
 
 router = APIRouter(prefix="/api/review", tags=["review"])
@@ -65,6 +66,9 @@ ACTIONS: dict[str, str] = {
     "relink_brand": "brand_relinked",
     "remove_contact": "contact_removed",
     "approve": "approved",
+    # Flow v2 (§3.7): verify and assign the unit, then "Approve Lead?" = Yes.
+    "assign_unit": "unit_assigned",
+    "approve_lead": "lead_approved",
     # Per-document and per-contact decisions (demo feedback §3.4, §3.5): first level.
     "confirm_document_expiry": "document_expiry_confirmed",
     "approve_document": "document_approved",
@@ -147,6 +151,11 @@ class CaseDetail(BaseModel):
     approval_blockers: list[str]
     # What stops "Approve first level" (demo feedback §3.4): document decisions and expiry.
     first_approval_blockers: list[str] = Field(default_factory=list)
+    # Flow v2 (§3.7): what stops "Approve Lead?" = Yes, the unit the final reviewer assigned,
+    # and the inquiry's malls to assign it in.
+    lead_approval_blockers: list[str] = Field(default_factory=list)
+    assigned_unit: AssignedUnit | None = None
+    inquiry_malls: list[dict[str, str]] = Field(default_factory=list)
     rejection_categories: list[str]
     reupload_doc_types: list[dict[str, str]]
 
@@ -288,9 +297,19 @@ def _detail(
         ],
         approval_blockers=approval_blockers(case),
         first_approval_blockers=first_approval_blockers(case),
+        lead_approval_blockers=lead_approval_blockers(case),
+        assigned_unit=case.assigned_unit,
+        inquiry_malls=_inquiry_malls(case, master),
         rejection_categories=list(get_policy().rejection_categories),
         reupload_doc_types=[{"doc_type": d.value, "label": label} for d, label in DOCUMENT_LABELS],
     )
+
+
+def _inquiry_malls(case: Case, master: MasterData) -> list[dict[str, str]]:
+    raw = case.draft.fields[FieldKey.MALLS].value
+    ids = [str(m) for m in raw] if isinstance(raw, list) else []
+    names = {m.id: m.name for m in master.malls}
+    return [{"id": i, "label": names.get(i, i)} for i in ids]
 
 
 @router.get("/reviewers", response_model=list[ReviewerOut])

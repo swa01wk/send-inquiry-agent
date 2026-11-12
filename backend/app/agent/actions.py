@@ -59,6 +59,7 @@ from app.gateway import GatewayError
 from app.security import tokens
 from app.sessions import Session
 from app.workflow.contacts import apply_signatory_answer, confirm_contacts, contacts_blockers
+from app.workflow.flow import FlowNode, record_flow_step
 from app.workflow.machine import USER, IllegalTransition
 from app.workflow.models import Case, TenantContact, WorkflowEvent
 from app.workflow.service import apply_event, create_case
@@ -724,6 +725,11 @@ async def _accept_and_submit(
     )
     link = tracking_url(runtime, session.id, reference)
     await _send_submission_notices(runtime, session, draft, reference, link)
+    # Flow v2 §3.1: "Complete form and submit" → "Reference No." on the chart, recorded on
+    # the case id (the reference) before the case's own steps.
+    submitter: Literal["staff", "user"] = "staff" if session.created_by else "user"
+    record_flow_step(runtime, inquiry_id=reference, node=FlowNode.COMPLETE1, actor=submitter)
+    record_flow_step(runtime, inquiry_id=reference, node=FlowNode.REF1)
     # The review lifecycle starts (L4): the case is created and routed to its queue.
     try:
         await create_case(

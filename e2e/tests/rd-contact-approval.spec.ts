@@ -16,6 +16,11 @@ import {
  * Lease Admin rejects billing, tenant fixes it, Lease Admin approves, RLM **Approve** enabled.
  */
 test.describe('Story rd-contact-approval @scripted', () => {
+  // Flow v2 (spec §3.7, day F2): contacts aren't approved one by one any more
+  // (`contacts.approval_required: false`), and they open at "Approve Lead?" = Yes. The
+  // signatory card is covered by S24. Kept, skipped, for a policy that turns approval back on;
+  // the backend still tests it (tests/lifecycle/test_contact_approval.py).
+  test.skip(true, 'Per-contact approval is off in flow v2 (contacts.approval_required: false)')
   test('signatory Yes, billing rejection, fix, and final approval', async ({
     page,
     browser,

@@ -35,6 +35,7 @@ TEMPLATE_NAMES = (
     "inquiry_rejected",
     "azure_ad_invitation",
     "first_level_approved",
+    "lead_approved",
     "contacts_request",
     "contacts_received",
     "sales_data_request",

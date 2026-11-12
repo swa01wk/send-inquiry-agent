@@ -82,6 +82,15 @@ def _restore_policy(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPa
             "ask_signatory": False,
             "applicant_signatory_needs_approval": False,
         }
+    if request.node.get_closest_marker("lead_approval") is None:
+        # Flow v2 §3.7 (day F2): tests written for one final approval after the contacts
+        # (contacts opening at first approval, per-contact approval under `approvals`) keep
+        # that flow; tests marked `lead_approval` run with the shipped second level.
+        overrides["lead_approval"] = {"enabled": False, "require_unit_assigned": False}
+        overrides["auto_request_contacts_after_first_approval"] = True
+        if request.node.get_closest_marker("approvals") is not None:
+            contacts = get_policy().contacts.model_dump(mode="json")
+            overrides["contacts"] = {**contacts, "approval_required": True}
     policy = get_policy()
     if overrides:
         policy = policy.with_changes(**overrides)

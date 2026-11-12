@@ -22,6 +22,9 @@ class CaseStatus(StrEnum):
     FIRST_REVIEW = "first_review"
     REUPLOAD_REQUESTED = "reupload_requested"
     SECOND_REVIEW = "second_review"
+    # "Approve Lead?" = Yes: waiting for the contacts before the final "Approve Lead"
+    # (flow v2 §3.7, V6).
+    LEAD_APPROVED = "lead_approved"
     APPROVED = "approved"
     SENT_TO_YARDI = "sent_to_yardi"
     REJECTED = "rejected"
@@ -104,7 +107,9 @@ class CaseRequest(BaseModel):
 
 class Decision(BaseModel):
     level: Literal["first", "second"]
-    outcome: Literal["approved", "rejected"]
+    # `lead_approved`: "Approve Lead?" = Yes (flow v2 §3.7); `approved` at the second level is
+    # the final "Approve Lead".
+    outcome: Literal["approved", "rejected", "lead_approved"]
     remarks: str | None = None
     reason_category: str | None = None
     by: str
@@ -192,6 +197,17 @@ class Onboarding(BaseModel):
     invitations: list[Invitation] = Field(default_factory=list)
 
 
+class AssignedUnit(BaseModel):
+    """The unit the final reviewer assigns while verifying (flow v2 §3.7, V11); the tenant
+    never picks one."""
+
+    mall_id: str
+    unit_ref: str
+    area_sqm: float | None = None
+    by: str
+    at: datetime
+
+
 class YardiLink(BaseModel):
     company_id: str | None = None
     brand_id: str | None = None
@@ -230,6 +246,7 @@ class Case(BaseModel):
     document_history: list[DocumentRef] = Field(default_factory=list)
     onboarding: Onboarding = Field(default_factory=Onboarding)
     yardi: YardiLink = Field(default_factory=YardiLink)
+    assigned_unit: AssignedUnit | None = None
     events: list[CaseEvent] = Field(default_factory=list)
     effects_done: list[str] = Field(default_factory=list)
     case_session_id: str | None = None  # the chat that answers requests (case mode)
