@@ -46,6 +46,15 @@ def _display_str(draft: InquiryDraft, key: FieldKey) -> str | None:
     return str(val)
 
 
+def _cr_display(draft: InquiryDraft) -> str | None:
+    """Flow v2 public intake (I8): the applicant's CR is shown back masked until submit;
+    staff see it in full once the inquiry has a reference."""
+    value = _display_str(draft, FieldKey.CR_NUMBER)
+    if value and draft.intake_flow == "v2" and not draft.reference:
+        return f"•••••• {value[-4:]}" if len(value) >= 4 else "••••"
+    return value
+
+
 def _make_master_validator(kind: str, code: str, label: str) -> Callable[[Any, MasterData], Any]:
     def _validate(raw: Any, master: MasterData) -> str | v.ValidationError:
         if kind in ("lease_periods", "rent_periods") and isinstance(raw, int):
@@ -64,7 +73,7 @@ FIELD_DEFINITIONS: list[FieldDefinition] = [
         FieldGroup.COMPANY,
         False,
         lambda raw, _m: v.validate_cr_number(str(raw)),
-        lambda d, _m: _display_str(d, FieldKey.CR_NUMBER),
+        lambda d, _m: _cr_display(d),
     ),
     FieldDefinition(
         FieldKey.COMPANY_NAME,

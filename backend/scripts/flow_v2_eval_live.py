@@ -211,25 +211,28 @@ async def _run_stream(
 
 
 async def _confirm_section(ctx: _StepCtx, section: str) -> list[list[tuple[str, dict[str, Any]]]]:
+    """Confirm what is still unconfirmed in a section, the way a person would.
+
+    Values the user typed are saved confirmed, so there is often nothing to confirm: then
+    this step does nothing. Otherwise tap Confirm on the card that shows them, or say yes
+    in chat when no card covers them (the model then calls `confirm_fields`).
+    """
     el = _el()
 
     session = await ctx.app.state.session_store.get(ctx.session_id)
     if session is None:
         raise RuntimeError("no session for confirm_card")
-    wanted = {k.value for k in _SECTION_KEYS[section]}
-    card_id: str | None = None
-    for cid, keys in session.confirm_card_keys.items():
-        if wanted.intersection(keys):
-            card_id = cid
-    if card_id is None:
-        for cid in reversed(sorted(session.cards_shown)):
-            if cid.startswith("confirm-"):
-                card_id = cid
-                break
-    if card_id is None:
-        raise RuntimeError(f"no confirm card for section {section}")
-    events = await el._action(ctx.client, ctx.session_id, "confirm_card", {"card_id": card_id})
-    return [events]
+    open_keys: set[str] = set()
+    for key in _SECTION_KEYS[section]:
+        field_value = session.draft.fields[key]
+        if field_value.value not in (None, "", []) and not field_value.confirmed:
+            open_keys.add(key.value)
+    if not open_keys:
+        return []
+    for cid, keys in reversed(list(session.confirm_card_keys.items())):
+        if open_keys.intersection(keys):
+            return [await el._action(ctx.client, ctx.session_id, "confirm_card", {"card_id": cid})]
+    return [await el._message(ctx.client, ctx.session_id, "Yes, that's all correct.")]
 
 
 async def _execute_step(
@@ -309,6 +312,8 @@ async def _execute_step(
     if "confirm_card" in step:
         section = str(step["confirm_card"])
         batches = await _confirm_section(ctx, section)
+        if not batches:
+            return None
         await _run_stream(
             ctx,
             label=f"[confirm {section}]",
@@ -321,24 +326,35 @@ async def _execute_step(
         return "confirm_card"
     if step.get("verify_email") is True:
         session = await ctx.app.state.session_store.get(ctx.session_id)
+        if session is None:
+            raise RuntimeError("verify_email: no session")
+        if session.draft.email_verified:
+            return None
         token: str | None = None
-        for msg in ctx.app.state.services.notifications.messages():
-            for link in msg.get("links") or []:
-                if "verifications/email" in link or "verify" in link.lower():
+        # This session's newest verification card first, then its email in the outbox.
+        for _evt, data in reversed(_all_events(ctx.turns)):
+            if data.get("card_type") != "verification":
+                continue
+            email = (data.get("payload") or {}).get("email") or {}
+            token = email.get("demo_token")
+            if token:
+                break
+        address = str(session.draft.fields[FieldKey.EMAIL].value or "")
+        if token is None and address:
+            for msg in reversed(ctx.app.state.services.notifications.messages(to=address)):
+                if msg.get("template") != "email_verification_link":
+                    continue
+                for link in msg.get("links") or []:
                     qs = parse_qs(urlparse(link).query)
                     if qs.get("t"):
                         token = qs["t"][0]
                         break
-        if token is None and session:
-            for _evt, data in reversed(_all_events(ctx.turns)):
-                if data.get("card_type") != "verification":
-                    continue
-                email = (data.get("payload") or {}).get("email") or {}
-                token = email.get("demo_token")
                 if token:
                     break
         if not token:
-            raise RuntimeError("verify_email: no token")
+            raise RuntimeError(
+                "verify_email: no verification link; the agent never called send_verification"
+            )
         events = await el._action(ctx.client, ctx.session_id, "verify_email", {"token": token})
         batches = [events]
         batches.extend(
@@ -358,6 +374,9 @@ async def _execute_step(
         return "verify_email"
     if "enter_code" in step:
         code = str(step["enter_code"])
+        session = await ctx.app.state.session_store.get(ctx.session_id)
+        if session is not None and session.draft.mobile_verified:
+            return None
         events = await el._action(ctx.client, ctx.session_id, "submit_otp", {"code": code})
         batches = [events]
         batches.extend(
@@ -443,7 +462,7 @@ async def _execute_step(
         return "resend_otp"
     if step.get("dev_clock_advance_minutes"):
         minutes = int(step["dev_clock_advance_minutes"])
-        await ctx.client.post("/api/dev/clock/advance", json={"minutes": minutes})
+        await ctx.client.post("/api/dev/clock/advance", json={"hours": minutes / 60})
         return None
     if step.get("new_session") is True:
         created = await ctx.client.post("/api/sessions")
@@ -521,9 +540,79 @@ async def _execute_step(
                 violations_out=violations,
             )
         return "tap_chip"
+    if "pick_malls" in step:
+        master = load_master_data()
+        names = [str(n).strip().lower() for n in step["pick_malls"]]
+        mall_ids = [m.id for m in master.malls if m.name.strip().lower() in names]
+        if len(mall_ids) != len(names):
+            raise RuntimeError(f"pick_malls: unknown mall in {step['pick_malls']!r}")
+        events = await el._action(
+            ctx.client, ctx.session_id, "select_malls", {"mall_ids": mall_ids}
+        )
+        await _run_stream(
+            ctx,
+            label=f"[pick_malls {', '.join(mall_ids)}]",
+            stream_batches=[events],
+            scenario=scenario,
+            outbox_messages=outbox,
+            turn_index=turn_index,
+            violations_out=violations,
+        )
+        return "pick_malls"
+    if step.get("reviewer") == "approve_documents_and_first_level":
+        session = await ctx.app.state.session_store.get(ctx.session_id)
+        reference = session.draft.reference if session else None
+        if not reference:
+            raise RuntimeError("reviewer: the inquiry was never submitted")
+        await el._approve_intake_documents(ctx.client, reference)
+        reviewer_id = await el._reviewer_who_can(ctx.client, reference, "approve_first")
+        response = await ctx.client.post(
+            f"/api/review/cases/{reference}/actions",
+            json={"action": "approve_first", "payload": {}},
+            headers={"X-Reviewer-Id": reviewer_id},
+        )
+        response.raise_for_status()
+        return "reviewer"
+    if "seed_open_inquiry" in step:
+        await _seed_open_inquiry(ctx, dict(step["seed_open_inquiry"]))
+        return None
     if step.get("leave"):
         return None
     raise RuntimeError(f"unsupported catalogue step: {step!r}")
+
+
+async def _seed_open_inquiry(ctx: _StepCtx, spec: dict[str, Any]) -> str:
+    """An inquiry already submitted for this CR and mall (S15), in its own session."""
+    el = _el()
+    from app.domain.draft_ops import write_fields
+    from app.domain.models import Source
+
+    master = load_master_data()
+    created = await ctx.client.post("/api/sessions")
+    created.raise_for_status()
+    seed_id = created.json()["session_id"]
+    seeded = await ctx.app.state.session_store.get(seed_id)
+    draft = el._ready_to_submit_draft(ctx.app)
+    draft, _, errors = write_fields(
+        draft,
+        [
+            (FieldKey.CR_NUMBER.value, str(spec["cr_number"]), Source.USER),
+            (FieldKey.MALLS.value, [str(spec["mall"])], Source.USER),
+        ],
+        master=master,
+    )
+    if errors:
+        raise RuntimeError(f"seed_open_inquiry: {errors}")
+    draft.cr_status = "new"
+    draft.intake_flow = seeded.draft.intake_flow
+    draft.terms_accepted = True
+    seeded.draft = draft
+    await ctx.app.state.session_store.save(seeded)
+    events = await el._action(ctx.client, seed_id, "accept_and_submit", {"terms_accepted": True})
+    success = _cards([el.TurnResult(user="", assistant="", events=events)], "success")
+    if not success:
+        raise RuntimeError("seed_open_inquiry: submit failed")
+    return str(success[0]["payload"]["reference"])
 
 
 async def run_flow_v2_catalogue(
@@ -551,9 +640,14 @@ async def run_flow_v2_catalogue(
     )
     violations: list[tuple[Any, int]] = []
     turn_index = 0
-    for step in entry.get("steps") or []:
+    for number, step in enumerate(entry.get("steps") or [], start=1):
         turn_index += 1
-        await _execute_step(ctx, step, scenario, outbox_messages, turn_index, violations)
+        try:
+            await _execute_step(ctx, step, scenario, outbox_messages, turn_index, violations)
+        except Exception as exc:
+            raise RuntimeError(
+                f"step {number} {json.dumps(step, ensure_ascii=False)}: {exc}"
+            ) from exc
         outbox_messages = await el._fetch_outbox_messages(client)
 
     session = await app.state.session_store.get(ctx.session_id)
@@ -729,10 +823,23 @@ def _moves_to_unit_type(
     return [("first reply after CR asks unit type", False)]
 
 
+def _reply_after(turns: list[TurnResult], prefix: str) -> str:
+    """The first non-empty reply from the turn starting with `prefix` onwards."""
+    started = False
+    for turn in turns:
+        if turn.user.startswith(prefix):
+            started = True
+        if started and turn.assistant.strip():
+            return turn.assistant
+    return ""
+
+
 def _one_line_sign_in(
     _s: Any, turns: list[TurnResult], _a: AppState, _e: dict
 ) -> list[tuple[str, bool]]:
-    assistant = _reply_text(turns)
+    # The reply to the registered CR only; later turns ("ok what now?") are judged by
+    # asks_nothing_else.
+    assistant = _reply_after(turns, "[cr_check")
     sentences = [s for s in re.split(r"[.!?]", assistant) if s.strip()]
     return [
         ("sign_in card", bool(_cards(turns, "sign_in_prompt"))),
@@ -764,32 +871,45 @@ def _no_access_promise(
     return [("no access creation promise", not any(b in text for b in banned))]
 
 
+def _until_second_cr_check(turns: list[TurnResult]) -> list[TurnResult]:
+    """Turns from the first CR check up to (not including) the second one."""
+    out: list[TurnResult] = []
+    checks = 0
+    for turn in turns:
+        if turn.user.startswith("[cr_check"):
+            checks += 1
+            if checks == 2:
+                break
+        if checks:
+            out.append(turn)
+    return out
+
+
 def _asks_again_bad_cr(
-    session: Any, turns: list[TurnResult], _a: AppState, _e: dict
+    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict
 ) -> list[tuple[str, bool]]:
-    text = _reply_text(turns).lower()
-    section = current_section(session.draft) if session else None
-    ok = "cr" in text or "skip" in text or "company registration" in text
+    window = _until_second_cr_check(turns)
+    first_card = _cr_cards(window[:1])
+    payload = (first_card[-1].get("payload") or {}) if first_card else {}
+    text = _reply_text(window).lower()
     return [
-        ("asks for CR or offers skip", ok),
         (
-            "still company_registration",
-            section is not None and section.value == "company_registration",
+            "bad CR shown on the card",
+            payload.get("state") == "open" and bool(payload.get("error")),
+        ),
+        (
+            "asks for CR or offers skip",
+            "cr" in text or "skip" in text or "company registration" in text,
         ),
     ]
 
 
 def _never_moves_bad_cr(
-    session: Any, _t: list[TurnResult], _a: AppState, _e: dict
+    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict
 ) -> list[tuple[str, bool]]:
-    return [
-        (
-            "cr_status not new after bad cr only",
-            session.draft.cr_status in (None, "skipped", "existing")
-            or session.draft.cr_status != "new"
-            or bool(session.draft.fields[FieldKey.UNIT_TYPE].value) is False,
-        ),
-    ]
+    text = _reply_text(_until_second_cr_check(turns)).lower()
+    moved = any(w in text for w in ("store or office", "store or an office", "unit type"))
+    return [("doesn't move on before a good CR", not moved)]
 
 
 def _never_repeats_code(
@@ -812,7 +932,8 @@ def _asks_what_you_sell(
     _s: Any, turns: list[TurnResult], _a: AppState, _e: dict
 ) -> list[tuple[str, bool]]:
     text = _reply_text(turns).lower()
-    return [("asks what you sell", "what do you sell" in text or "what will you sell" in text)]
+    asked = re.search(r"\bwhat\b[^.?!]{0,40}\b(sell|offer)", text) is not None
+    return [("asks what you sell", asked)]
 
 
 def _never_infer_brand(
@@ -889,11 +1010,19 @@ def _on_return_next_section(
 
 
 def _submit_fail_wording(
-    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict
+    session: Any, turns: list[TurnResult], _a: AppState, _e: dict
 ) -> list[tuple[str, bool]]:
+    # The reference that was really issued may be shared; any other GEO id is invented.
+    issued = session.draft.reference if session else None
     text = _reply_text(turns)
+    invented = [ref for ref in _GEO_REF_RE.findall(text) if ref != issued]
+    first_submit = _reply_after(turns, "[submit]").lower()
     return [
-        ("no GEO reference invented", not _GEO_REF_RE.search(text)),
+        ("no GEO reference invented", not invented),
+        (
+            "first submit not claimed as sent",
+            not claims_submission(first_submit),
+        ),
         (
             "offers retry",
             "try" in text.lower() or "again" in text.lower() or "submit" in text.lower(),
@@ -969,8 +1098,8 @@ _CHECKS: dict[str, Callable[..., list[tuple[str, bool]]]] = {
     "asks_what_you_sell": _asks_what_you_sell,
     "never_infers_category_from_brand_alone": _never_infer_brand,
     "offers_only_enabled_unit_types": _office_store_options,
-    "says_not_sent_invents_no_reference": lambda s, t, a, e: _submit_fail_wording(s, t, a, e)[:1],
-    "offers_retry": lambda s, t, a, e: _submit_fail_wording(s, t, a, e)[1:],
+    "says_not_sent_invents_no_reference": lambda s, t, a, e: _submit_fail_wording(s, t, a, e)[:2],
+    "offers_retry": lambda s, t, a, e: _submit_fail_wording(s, t, a, e)[2:],
     "answers_then_offers_to_continue": _answers_continue,
     "arabic_in_arabic": _arabic_in_arabic,
     "no_promises": _no_promises,
@@ -1012,7 +1141,8 @@ def flow_v2_intake_scenarios() -> list[LiveScenario]:
                 group="flow_v2",
                 intake="v2",
                 catalogue=entry,
-                auto_otp=True,
+                # The catalogue drives verification itself (verify_email / enter_code).
+                auto_otp=False,
             ),
         )
     return scenarios

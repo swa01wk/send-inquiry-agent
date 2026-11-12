@@ -665,8 +665,7 @@
           "start",
           "raise_tp",
           "chk_tp",
-          "exist",
-          "emv"
+          "exist"
         ]
       ],
       "not_path": [
@@ -925,6 +924,9 @@
         },
         {
           "submit": true
+        },
+        {
+          "reviewer": "approve_documents_and_first_level"
         }
       ],
       "expect": {

@@ -85,3 +85,42 @@ def test_i9_allows_asking_for_the_unit_type() -> None:
 def test_i9_is_off_outside_the_v2_intake() -> None:
     hits = check_turn(TurnContext(assistant_text="Unit SPC-12 in Mall A is free."))
     assert "I9" not in [h.invariant for h in hits]
+
+
+def test_category_with_no_evidence_uses_the_user_message() -> None:
+    draft = new_inquiry_draft()
+    item = _category(None)
+    assert not _category_from_brand_only(item, [item], draft, "we sell clothes for the family")
+    brand = DraftFieldUpdate(key=FieldKey.BRAND_NAME_EN.value, value="Max", source="user")
+    assert _category_from_brand_only(item, [brand, item], draft, "Max")
+
+
+def test_cr_is_masked_on_v2_cards_until_submit() -> None:
+    from app.domain.fields import FIELD_BY_KEY
+
+    master = load_master_data()
+    draft = new_inquiry_draft()
+    draft.fields[FieldKey.CR_NUMBER].value = "1010123456"
+    display = FIELD_BY_KEY[FieldKey.CR_NUMBER].display
+    assert display(draft, master) == "1010123456"
+    draft.intake_flow = "v2"
+    assert display(draft, master) == "•••••• 3456"
+    draft.reference = "GEO-STR-000001"
+    assert display(draft, master) == "1010123456"
+
+
+def test_rules_in_force_carry_the_v2_intake_rules() -> None:
+    from app.agent.prompts import build_system_message, rules_in_force
+
+    master = load_master_data()
+    with intake_scope("v2"):
+        rules = rules_in_force(get_policy(), master)
+        draft = new_inquiry_draft()
+        draft.intake_flow = "v2"
+        content = str(build_system_message(draft, master).content)
+    assert "up to 5 malls per inquiry" in rules
+    assert "saved as pending for 2 hours" in rules
+    assert "Company Registration on the public page" in rules
+    assert "## Sections, in the app's order" in content
+    v1 = str(build_system_message(new_inquiry_draft(), master).content)
+    assert "## Sections, in the app's order" not in v1

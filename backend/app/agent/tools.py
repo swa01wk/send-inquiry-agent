@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Annotated, Any, Literal
 
 from langchain_core.messages import HumanMessage, ToolMessage
@@ -124,11 +125,18 @@ def _user_words(state: AgentState) -> str:
 
 
 def _category_from_brand_only(
-    item: DraftFieldUpdate, fields: list[DraftFieldUpdate], draft: InquiryDraft
+    item: DraftFieldUpdate,
+    fields: list[DraftFieldUpdate],
+    draft: InquiryDraft,
+    user_text: str = "",
 ) -> bool:
-    """A derived Sales Category with no evidence, or only the brand name as evidence."""
-    evidence = " ".join((item.evidence or "").split()).strip(_QUOTE_STRIP).lower()
-    if not evidence:
+    """A derived Sales Category based on nothing but the brand name (V12).
+
+    The basis is the model's evidence or, when it gave none, the user's last message. It
+    counts as brand-only when nothing is left once the brand names are taken out.
+    """
+    basis = " ".join((item.evidence or user_text or "").split()).strip(_QUOTE_STRIP).lower()
+    if not basis:
         return True
     brands = {
         str(f.value).strip().lower()
@@ -139,7 +147,10 @@ def _category_from_brand_only(
         value = draft.fields[key].value
         if value:
             brands.add(str(value).strip().lower())
-    return evidence in brands
+    rest = basis
+    for brand in sorted(brands, key=len, reverse=True):
+        rest = rest.replace(brand, " ")
+    return not re.search(r"\w{3,}", rest)
 
 
 def _evidence_for(
@@ -594,7 +605,7 @@ def update_draft(
             item.key == FieldKey.SALES_CATEGORY.value
             and draft.intake_flow == "v2"
             and item.source == "derived"
-            and _category_from_brand_only(item, fields, draft)
+            and _category_from_brand_only(item, fields, draft, user_text)
         ):
             # Flow v2 (V12, FV11): the category comes from what the business sells.
             rejected.append(

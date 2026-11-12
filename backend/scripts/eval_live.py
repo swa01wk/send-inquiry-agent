@@ -18,6 +18,7 @@ import json
 import os
 import re
 import sys
+import traceback
 from collections.abc import Awaitable, Callable
 from contextlib import nullcontext
 from dataclasses import dataclass, field
@@ -2699,11 +2700,14 @@ async def main() -> int:
                     outbox_messages = await _fetch_outbox_messages(client)
                 except Exception as exc:  # noqa: BLE001 — CLI summary
                     print(f"  ERROR: {exc}")
+                    traceback.print_exc()
+                    # Keep the reason in the JSON: "run completed" alone hides it.
+                    reason = f"{type(exc).__name__}: {exc}"[:300]
                     runs.append(
                         RunAttempt(
                             run=run_index,
                             passed=False,
-                            checks=[("run completed", False)],
+                            checks=[(f"run completed ({reason})", False)],
                             turns=[],
                             invariant_violations=[],
                         ),

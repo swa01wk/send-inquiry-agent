@@ -94,6 +94,12 @@ def rules_in_force(policy: PolicyConfig, master: MasterData, *, assisted: bool =
     lines.append(docs_line)
 
     if policy.public_cr_check == "verify_or_skip":
+        ttl = policy.flow_v2_intake.pending_inquiry_ttl_minutes
+        ttl_text = f"{ttl // 60} hours" if ttl % 60 == 0 and ttl >= 120 else f"{ttl} minutes"
+        lines.append(
+            "- Saving: nothing is kept until the email (and a mobile, when given) is verified; "
+            f"after that the inquiry is saved as pending for {ttl_text}."
+        )
         lines.append(
             "- Company Registration on the public page: the card takes the CR (Verify) or "
             "Skip with confirmation. Never repeat a CR number in chat. Never say whether a "

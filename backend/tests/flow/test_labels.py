@@ -38,6 +38,7 @@ RETIRED = (
 READ_BY_PEOPLE = [
     *sorted((REPO / "backend/app/notifications/templates").glob("*.txt")),
     REPO / "backend/app/agent/system_prompt.md",
+    REPO / "backend/app/agent/system_prompt_v2.md",
     REPO / "backend/app/agent/case_prompt.md",
     REPO / "backend/app/agent/reviewer_prompt.md",
     REPO / "backend/app/workflow/labels.py",

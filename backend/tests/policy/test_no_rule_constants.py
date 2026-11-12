@@ -12,6 +12,7 @@ import pytest
 APP = Path(__file__).resolve().parents[2] / "app"
 PROMPT_FILES = [
     APP / "agent" / "system_prompt.md",
+    APP / "agent" / "system_prompt_v2.md",
     Path(__file__).resolve().parents[3] / "docs" / "agent-system-prompt.md",
 ]
 
