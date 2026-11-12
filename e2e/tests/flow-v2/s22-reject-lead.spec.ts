@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { InquiryPage } from '../../pages/inquiry'
 import { expectFlowPath, seedFlowCase, mailForCase } from '../../support/flowV2'
 import { latestByTemplate } from '../../support/outbox'
 import { openCaseAs } from '../../support/stories'
@@ -10,6 +11,7 @@ import { openCaseAs } from '../../support/stories'
 test.describe('S22 Reject Lead @flow-v2 @scripted', () => {
   test('No, reject lead revokes the invitation and says Lead Rejected', async ({
     page,
+    browser,
     request,
   }) => {
     test.setTimeout(180_000)
@@ -34,6 +36,24 @@ test.describe('S22 Reject Lead @flow-v2 @scripted', () => {
     expect(rejected?.body).toContain('Lead Rejected')
     expect(latestByTemplate(mail, 'contacts_request')).toBeFalsy()
     expect(latestByTemplate(mail, 'lead_approved')).toBeFalsy()
+
+    const casePath = rejected?.links.find((l) => l.includes('/inquiry/case'))
+    expect(casePath).toBeTruthy()
+    const caseUrl = new URL(casePath!)
+    caseUrl.searchParams.set('e2eCaseScenario', 'flow-v2-s22')
+    const applicantContext = await browser.newContext()
+    try {
+      const applicantPage = await applicantContext.newPage()
+      const applicant = new InquiryPage(applicantPage)
+      await applicantPage.goto(caseUrl.toString())
+      await applicant.waitForChatReady()
+      await applicant.say('what happened?')
+      const reply = await applicant.lastReply()
+      expect(reply).toMatch(/Lead Rejected/i)
+      expect(reply).toMatch(/new inquiry/i)
+    } finally {
+      await applicantContext.close()
+    }
 
     await expectFlowPath(
       request,

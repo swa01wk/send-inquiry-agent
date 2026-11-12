@@ -33,7 +33,7 @@ test.describe('S23 Approve Lead to Yardi @flow-v2 @scripted', () => {
     )
     expect(link).toBeTruthy()
     const caseUrl = new URL(link!)
-    caseUrl.searchParams.set('e2eCaseScenario', 't1-contacts')
+    caseUrl.searchParams.set('e2eCaseScenario', 'flow-v2-s23')
 
     const applicantContext = await browser.newContext()
     try {

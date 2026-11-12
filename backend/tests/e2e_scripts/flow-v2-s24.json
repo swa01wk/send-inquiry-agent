@@ -1,0 +1,40 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_contacts",
+        "args": {
+          "entries": [
+            {
+              "role": "billing_contact",
+              "first_name": "Omar",
+              "last_name": "Saleh",
+              "email": "omar@beanstreet.example",
+              "contact_number": "+966551234567"
+            }
+          ]
+        },
+        "id": "fv2s24-1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "show_contacts_review",
+        "args": {},
+        "id": "fv2s24-2",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "I've put Omar Saleh down as your Billing Contact — press Send contacts when you're ready."
+  },
+  {
+    "content": "Thanks — the leasing team will give the final approval once they have what they need."
+  }
+]

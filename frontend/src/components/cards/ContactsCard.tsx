@@ -31,6 +31,7 @@ function visibleRows(payload: ContactsPayload): ContactRow[] {
 export function ContactsCard({ payload, onSubmit }: ContactsCardProps) {
   const labelByRole = Object.fromEntries(payload.rows.map((r) => [r.role, r.label]))
   const rows = visibleRows(payload)
+  const stillNeeded = rows.filter((row) => row.required && !row.email).map((row) => row.label)
 
   return (
     <div className={`${shared.shell} ${styles.shell}`} data-testid="contacts-card">
@@ -62,6 +63,11 @@ export function ContactsCard({ payload, onSubmit }: ContactsCardProps) {
           ) : null}
         </div>
       ))}
+      {stillNeeded.length > 0 ? (
+        <p className={styles.stillNeeded} data-testid="contacts-still-needed">
+          Still needed: {stillNeeded.join(', ')}
+        </p>
+      ) : null}
       {payload.blockers.length > 0 ? (
         <div className={styles.blockers} data-testid="contacts-blockers">
           <p className={styles.blockersTitle}>Before you can send</p>

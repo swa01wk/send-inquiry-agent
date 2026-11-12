@@ -27,7 +27,7 @@ test.describe('S24 Signatory is the primary contact @flow-v2 @scripted', () => {
     const link = mail?.links.find((l) => l.includes('/inquiry/case'))
     expect(link).toBeTruthy()
     const caseUrl = new URL(link!)
-    caseUrl.searchParams.set('e2eCaseScenario', 'rd-contact-approval')
+    caseUrl.searchParams.set('e2eCaseScenario', 'flow-v2-s24')
 
     const applicantContext = await browser.newContext()
     try {

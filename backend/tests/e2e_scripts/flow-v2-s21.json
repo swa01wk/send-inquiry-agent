@@ -1,0 +1,30 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "get_case_status",
+        "args": {},
+        "id": "fv2s21-1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "request_sales_data_upload",
+        "args": {},
+        "id": "fv2s21-2",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "The team has asked for Forecasted Sales Data — upload your file on the card and press Send when you're ready. Once it's with them, the Regional Sales Manager will review it."
+  },
+  {
+    "content": "Thanks — your Forecasted Sales Data is with the leasing team for the Regional Sales Manager to review."
+  }
+]

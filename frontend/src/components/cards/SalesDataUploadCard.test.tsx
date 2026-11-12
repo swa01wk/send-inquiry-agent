@@ -29,6 +29,7 @@ describe('SalesDataUploadCard', () => {
       />,
     )
 
+    expect(screen.getByText('Forecasted Sales Data')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^send$/i })).toBeDisabled()
     await user.click(screen.getByRole('button', { name: /upload/i }))
     const input = document.querySelector('input[type="file"]') as HTMLInputElement

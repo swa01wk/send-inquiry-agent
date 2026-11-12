@@ -1,22 +1,14 @@
-import { readFileSync } from 'node:fs'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { expect, test } from '@playwright/test'
 import {
   advanceClock,
   attentionFor,
   expectFlowPath,
   seedFlowCase,
-  tenantSendsSalesData,
   mailForCase,
 } from '../../support/flowV2'
 import { latestByTemplate } from '../../support/outbox'
+import { InquiryPage } from '../../pages/inquiry'
 import { openCaseAs } from '../../support/stories'
-
-const FILE = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
-  '../../fixtures/files/company_profile.pdf',
-)
 
 /**
  * S21 Forecasted Sales Data, then Approve Lead (flow v2 §3.7, V6, V11, E4;
@@ -27,6 +19,7 @@ const FILE = path.join(
 test.describe('S21 Forecasted Sales Data @flow-v2 @scripted', () => {
   test('unit, Forecasted Sales Data, reminder, then Yes, approve lead', async ({
     page,
+    browser,
     request,
   }) => {
     test.setTimeout(180_000)
@@ -64,10 +57,23 @@ test.describe('S21 Forecasted Sales Data @flow-v2 @scripted', () => {
     )
     const link = mail?.links.find((l) => l.includes('/inquiry/case'))
     expect(link).toBeTruthy()
-    await tenantSendsSalesData(request, link!, {
-      name: 'forecast.pdf',
-      buffer: readFileSync(FILE),
-    })
+    const caseUrl = new URL(link!)
+    caseUrl.searchParams.set('e2eCaseScenario', 'flow-v2-s21')
+    const applicantContext = await browser.newContext()
+    try {
+      const applicantPage = await applicantContext.newPage()
+      const applicant = new InquiryPage(applicantPage)
+      await applicantPage.goto(caseUrl.toString())
+      await applicant.waitForChatReady()
+      await applicant.say('here it is')
+      await expect(applicant.page.getByTestId('sales-data-upload-card')).toBeVisible({
+        timeout: 60_000,
+      })
+      await applicant.uploadForecastedSalesData('company_profile.pdf')
+      await applicant.submitForecastedSalesData()
+    } finally {
+      await applicantContext.close()
+    }
 
     await page.reload()
     await expect(page.getByTestId('lead-approval-blockers')).toHaveCount(0)
