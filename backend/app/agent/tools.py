@@ -849,8 +849,19 @@ def show_mall_picker(
 ) -> Command[Any]:
     """Show mall picker card for a city."""
     rt = runtime_from_config(runtime.config)
-    if city not in rt.master.ids_for_kind("cities"):
+    # The model often passes the city's name ("Jeddah") rather than its id ("jeddah").
+    wanted = city.strip().lower()
+    match = next(
+        (
+            c.id
+            for c in rt.master.cities
+            if wanted in {c.id.lower(), c.label.lower(), (c.label_ar or "").strip()}
+        ),
+        None,
+    )
+    if match is None:
         return _tool_result(runtime, draft=state["draft"], content=f"Unknown city: {city}.")
+    city = match
     card = build_mall_picker_card(state["draft"], rt.master, city)
     cards_shown = list(state["cards_shown"])
     if "malls" not in cards_shown:

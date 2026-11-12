@@ -39,7 +39,9 @@ def note_verification(
     if draft.intake_flow != "v2" or draft.reference:
         return
     if not succeeded:
+        # Chart: Success? no → back to Email/Mobile Verification.
         record_flow_step_audit(audit, inquiry_id=inquiry_id, node=FlowNode.SUCC1, outcome="no")
+        record_flow_step_audit(audit, inquiry_id=inquiry_id, node=FlowNode.EMV)
         return
     if verified_before or not contact_verified(draft):
         return

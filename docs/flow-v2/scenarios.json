@@ -570,11 +570,12 @@
           "ref1"
         ],
         [
-          "ptc_create",
-          "az1"
+          "ptc_create"
         ]
       ],
-      "not_path": [],
+      "not_path": [
+        "az1"
+      ],
       "decisions": [
         "M19",
         "A1"
@@ -1211,6 +1212,9 @@
           "say": "Sara Ali, sara@beanstreet.example, 0501234567"
         },
         {
+          "confirm_card": "basic_info"
+        },
+        {
           "verify_email": true
         },
         {
@@ -1263,8 +1267,7 @@
           "chk_tp",
           "exist",
           "emv",
-          "succ1",
-          "complete1"
+          "succ1"
         ]
       ],
       "not_path": [],

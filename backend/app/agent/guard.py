@@ -27,13 +27,18 @@ from app.agent.contact_infer import (
     parse_contact_from_message,
 )
 from app.agent.cr_question import CR_NUMBER_IN_REPLY, contains_cr_number, cr_question_active
-from app.agent.mall_match import fill_mentioned_malls, unknown_mall_phrases
+from app.agent.mall_match import (
+    fill_mentioned_malls,
+    mentioned_seed_mall_ids,
+    unknown_mall_phrases,
+)
 from app.agent.runtime import AgentRuntime
 from app.agent.state import AgentState
 from app.api.cards import (
     TERMS_CARD_ID,
     VERIFICATION_CARD_ID,
     build_document_upload_card,
+    build_mall_picker_card,
     build_quick_replies_card,
     build_review_card,
     build_terms_card,
@@ -314,6 +319,33 @@ def _terms_card_due(draft: InquiryDraft, cards_shown: list[str]) -> bool:
         and section_done(draft, IntakeSection.PROPERTY_DETAILS)
         and section_done(draft, IntakeSection.VERIFICATION)
     )
+
+
+def _v2_mall_picker_city(
+    draft: InquiryDraft,
+    cards_shown: list[str],
+    user_text: str,
+    turn_messages: list[BaseMessage],
+    master: Any,
+) -> str | None:
+    """Flow v2 (S11): they named a city or "any mall in <city>" but no mall, and the model
+    didn't open the picker. The city to open it for, or None."""
+    if draft.intake_flow != "v2" or "malls" in cards_shown:
+        return None
+    if current_section(draft) is not IntakeSection.PROPERTY_DETAILS:
+        return None
+    if _field_has_value(draft, FieldKey.MALLS) or "show_mall_picker" in _tools_called(
+        turn_messages
+    ):
+        return None
+    if mentioned_seed_mall_ids(user_text, master):
+        return None
+    lowered = user_text.lower()
+    for city in master.cities:
+        names = {city.id.lower(), city.label.lower(), (city.label_ar or "").strip()}
+        if any(n and re.search(rf"(?<!\w){re.escape(n)}(?!\w)", lowered) for n in names):
+            return str(city.id)
+    return None
 
 
 # Rule 8 (flow v2 §3.3): words that show a reply asks about a section.
@@ -811,6 +843,11 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
     if _terms_card_due(draft, cards_shown):
         _emit_card(build_terms_card(draft), writer)
         cards_shown.append(TERMS_CARD_ID)
+
+    picker_city = _v2_mall_picker_city(draft, cards_shown, user_text, turn_messages, runtime.master)
+    if picker_city is not None:
+        _emit_card(build_mall_picker_card(draft, runtime.master, picker_city), writer)
+        cards_shown.append("malls")
 
     documents_due = (
         _v2_documents_card_due(state, draft)

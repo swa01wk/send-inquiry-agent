@@ -230,10 +230,17 @@ async def _confirm_section(ctx: _StepCtx, section: str) -> list[list[tuple[str, 
             open_keys.add(key.value)
     if not open_keys:
         return []
+    batches: list[list[tuple[str, dict[str, Any]]]] = []
+    # Every card that still shows an open value (a profile upload makes one per document).
     for cid, keys in reversed(list(session.confirm_card_keys.items())):
         if open_keys.intersection(keys):
-            return [await el._action(ctx.client, ctx.session_id, "confirm_card", {"card_id": cid})]
-    return [await el._message(ctx.client, ctx.session_id, "Yes, that's all correct.")]
+            batches.append(
+                await el._action(ctx.client, ctx.session_id, "confirm_card", {"card_id": cid})
+            )
+            open_keys -= set(keys)
+    if open_keys:
+        batches.append(await el._message(ctx.client, ctx.session_id, "Yes, that's all correct."))
+    return batches
 
 
 async def _execute_step(
@@ -494,12 +501,6 @@ async def _execute_step(
                 link = links[0]
                 break
         if link is None:
-            for msg in msgs:
-                for candidate in msg.get("links") or []:
-                    if "verifications/email" in candidate:
-                        link = candidate
-                        break
-        if link is None:
             raise RuntimeError("open_resume_link: no link in outbox")
         token = parse_qs(urlparse(link).query)["t"][0]
         verified = await ctx.client.post("/api/verifications/email", json={"token": token})
@@ -641,18 +642,20 @@ async def run_flow_v2_catalogue(
     )
     violations: list[tuple[Any, int]] = []
     turn_index = 0
+    step_failure: str | None = None
     for number, step in enumerate(entry.get("steps") or [], start=1):
         turn_index += 1
         try:
             await _execute_step(ctx, step, scenario, outbox_messages, turn_index, violations)
-        except Exception as exc:
-            raise RuntimeError(
-                f"step {number} {json.dumps(step, ensure_ascii=False)}: {exc}"
-            ) from exc
+        except Exception as exc:  # noqa: BLE001 — keep the transcript, report the step
+            step_failure = f"step {number} {json.dumps(step, ensure_ascii=False)}: {exc}"[:300]
+            break
         outbox_messages = await el._fetch_outbox_messages(client)
 
     session = await app.state.session_store.get(ctx.session_id)
     checks = scenario.evaluate(session, ctx.turns, app)
+    if step_failure is not None:
+        checks = [(f"all steps ran ({step_failure})", False), *checks]
     return (
         el.ScenarioResult(
             name=scenario.name,
@@ -1061,6 +1064,22 @@ def _answers_continue(
     return [("answers then offers continue", off_topic_offers_continue(_reply_text(turns)))]
 
 
+def _wrong_code_on_card(
+    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
+) -> list[tuple[str, bool]]:
+    """Wrong codes are handled on the card (the agent isn't called): it stays unverified and
+    shows fewer attempts left, and no reply scolds them."""
+    wrong = [t for t in turns if t.user.startswith("[otp") and not t.user.endswith("1234]")]
+    mobiles = [(c.get("payload") or {}).get("mobile") or {} for c in _cards(wrong, "verification")]
+    attempts = [m.get("attempts_left") for m in mobiles if m.get("attempts_left") is not None]
+    shown = bool(mobiles) and all(not m.get("verified") for m in mobiles)
+    fewer = len(set(attempts)) > 1 or (bool(attempts) and min(attempts) < 3)
+    return [
+        ("wrong code shown on the card", shown and fewer),
+        ("no reply to a wrong code", all(not t.assistant.strip() for t in wrong)),
+    ]
+
+
 def _mall_in_master(
     session: Any, _t: list[TurnResult], _a: AppState, _e: dict[str, Any]
 ) -> list[tuple[str, bool]]:
@@ -1092,7 +1111,7 @@ _CHECKS: dict[str, Callable[..., list[tuple[str, bool]]]] = {
     "never_says_email_already_registered": _never_email_registered,
     "never_asks_for_login": lambda s, t, a, e: [("never asks for login", True)],
     "says_nothing_kept_until_verified": lambda s, t, a, e: [
-        ("says not kept until verified", "verified" in _reply_text(t).lower()),
+        ("says not kept until verified", "verif" in _reply_after(t, "I'll come back").lower()),
     ],
     "on_return_says_whats_done_and_next_section": _on_return_next_section,
     "resume_reply_neutral": _resume_reply_neutral,
@@ -1121,7 +1140,7 @@ _CHECKS: dict[str, Callable[..., list[tuple[str, bool]]]] = {
     "gives_refusal_reason_plainly": lambda s, t, a, e: [("refusal plain", True)],
     "names_the_right_document": lambda s, t, a, e: [("names document", True)],
     "warns_once_neutrally": lambda s, t, a, e: [("warns once", True)],
-    "friendly_retry": lambda s, t, a, e: [("friendly retry", "try" in _reply_text(t).lower())],
+    "friendly_retry": _wrong_code_on_card,
     "offers_person_past_limit": lambda s, t, a, e: [("handoff after limit", True)],
 }
 

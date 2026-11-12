@@ -137,3 +137,22 @@ def test_cr_is_masked_on_the_documents_card_on_v2() -> None:
     rows = {row.key: row for row in card.payload.numbers}  # type: ignore[union-attr]
     assert rows["cr_number"].value == "•••••• 3456"
     assert "1010123456" not in card.model_dump_json()
+
+
+def test_mall_picker_opens_for_a_named_city_on_v2() -> None:
+    from app.agent.guard import _v2_mall_picker_city
+
+    master = load_master_data()
+    draft = fill_minimal_collectible(new_inquiry_draft(), master)
+    draft.intake_flow = "v2"
+    draft.email_verified = True
+    draft.mobile_verified = True
+    draft.fields[FieldKey.MALLS].value = None
+    with intake_scope("v2"):
+        assert _v2_mall_picker_city(draft, [], "any mall in Jeddah is fine", [], master) == (
+            "jeddah"
+        )
+        assert _v2_mall_picker_city(draft, ["malls"], "any mall in Jeddah", [], master) is None
+        assert _v2_mall_picker_city(draft, [], "Jeddah Mall A please", [], master) is None
+        draft.intake_flow = "v1"
+        assert _v2_mall_picker_city(draft, [], "any mall in Jeddah", [], master) is None

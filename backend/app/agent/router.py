@@ -107,6 +107,10 @@ def _rule_intent(text: str, session: Session) -> Intent | None:
 
 
 def _mid_intake(session: Session) -> bool:
+    # Flow v2 (§3.3): the public chat opens on the Company Registration card, so the
+    # intake has started; "oops" after a wrong CR goes to the agent, not the off-topic reply.
+    if session.draft.intake_flow == "v2" and not session.draft.reference:
+        return True
     return compute_phase(session.draft) != Phase.GATE
 
 
