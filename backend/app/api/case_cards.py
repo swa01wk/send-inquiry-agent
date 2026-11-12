@@ -195,6 +195,7 @@ def build_contacts_card(
     signatory_answer: Literal["yes", "no"] | None = None,
 ) -> UiCard:
     policy = get_policy().second_level_contacts
+    approval_on = get_policy().contacts.approval_required
     by_role = {c.role: c for c in contacts}
     rows: list[ContactRow] = []
     for role in [*policy.required, *policy.optional]:
@@ -220,8 +221,9 @@ def build_contacts_card(
                 source=filled[0].source.value if filled and filled[0].source else None,
                 confirmed=bool(filled) and all(f.confirmed for f in filled),
                 same_as_primary=contact.same_as_primary if contact else False,
-                approval=sent.approval if sent else None,
-                approval_remarks=sent.approval_remarks if sent else None,
+                # Flow v2 (V7): no approval chip when per-contact approval is off.
+                approval=sent.approval if sent and approval_on else None,
+                approval_remarks=sent.approval_remarks if sent and approval_on else None,
             )
         )
     blockers = contacts_blockers(contacts)

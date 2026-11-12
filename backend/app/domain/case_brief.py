@@ -102,9 +102,9 @@ class BriefContact(BaseModel):
     email: str | None
     phone: str | None
     same_as_primary: bool
-    # Contact approval (demo feedback §3.5).
+    # Contact approval (demo feedback §3.5); None when it's off (flow v2, V7).
     contact_id: str | None = None
-    approval: Literal["pending", "approved", "rejected"] = "pending"
+    approval: Literal["pending", "approved", "rejected"] | None = "pending"
     approval_remarks: str | None = None
     approved_by: str | None = None
     added_by: str = "tenant"
@@ -326,8 +326,8 @@ def format_case_brief_text(brief: CaseBrief) -> str:
         lines.extend(["", "Tenant contacts:"])
         for contact in brief.contacts:
             flag = " (same as primary)" if contact.same_as_primary else ""
-            approval = f" [{contact.approval}]"
-            if contact.approval_remarks:
+            approval = f" [{contact.approval}]" if contact.approval else ""
+            if contact.approval and contact.approval_remarks:
                 approval = f" [{contact.approval}: {contact.approval_remarks}]"
             lines.append(
                 f"  - {contact.label}{flag}: {contact.name or '—'}, "
@@ -369,6 +369,7 @@ def build_case_brief(
 ) -> CaseBrief:
     draft = case.draft
     now = now or clock.now()
+    contact_approval = get_policy().contacts.approval_required
     fields: list[BriefField] = []
     for d in FIELD_BY_KEY.values():
         value = draft.fields[d.key]
@@ -465,9 +466,10 @@ def build_case_brief(
                 phone=phone(c),
                 same_as_primary=c.same_as_primary,
                 contact_id=c.contact_id,
-                approval=c.approval,
-                approval_remarks=c.approval_remarks,
-                approved_by=c.approved_by,
+                # Flow v2 (V7): no per-contact approval to show when it's off.
+                approval=c.approval if contact_approval else None,
+                approval_remarks=c.approval_remarks if contact_approval else None,
+                approved_by=c.approved_by if contact_approval else None,
                 added_by=c.added_by,
             )
             for c in case.tenant_contacts

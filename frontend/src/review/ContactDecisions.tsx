@@ -16,6 +16,8 @@ function ApprovalTag({ contact }: { contact: BriefContact }) {
         Rejected{contact.approval_remarks ? `: ${contact.approval_remarks}` : ''}
       </span>
     )
+  // Flow v2 (V7): with per-contact approval off the brief sends no approval.
+  if (!contact.approval) return null
   return (
     <span className={styles.tag} data-testid={testId}>
       Waiting for approval
