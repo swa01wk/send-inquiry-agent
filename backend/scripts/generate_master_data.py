@@ -86,6 +86,8 @@ UNIT_TYPES: list[tuple[str, str, str, str]] = [
     ("store", "Store", "متجر", "STR"),
     ("media", "Media", "مساحة إعلانية", "MED"),
     ("specialty", "Specialty", "وحدة متخصصة", "SPC"),
+    # Flow v2 (M21, G3): the app's Unit Type has Office; routed like Store.
+    ("office", "Office", "مكتب", "OFF"),
 ]
 
 SALES_CATEGORIES: list[tuple[str, str, str]] = [

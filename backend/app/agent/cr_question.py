@@ -13,10 +13,11 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from typing import Any
 
 from app.domain.models import InquiryDraft
 from app.domain.validation import normalise_digits
-from app.policy.config import get_policy
+from app.policy.config import get_policy, intake_flow
 
 SELF_SERVICE = "self_service"
 CR_REMOVED = "[CR number removed]"
@@ -54,11 +55,32 @@ CR_QUESTION_SCRIPTS: frozenset[str] = frozenset(
 )
 
 
+# Scripted e2e scenarios that run the flow v2 public intake (day F3), whatever the policy:
+# `flow-v2-s01` … `flow-v2-s17` (S18–S24 start after submit).
+FLOW_V2_INTAKE_SCRIPT_PREFIX = "flow-v2-s"
+_FLOW_V2_AFTER_SUBMIT = frozenset(f"flow-v2-s{n}" for n in range(18, 25))
+
+
+def flow_v2_intake_for(session: Any) -> bool:
+    """A new self-service inquiry runs the flow v2 intake: the policy switch, or a scripted
+    `flow-v2-s…` intake scenario. Staff and tenant-portal channels keep the v1 intake."""
+    if session.assisted or (session.channel or SELF_SERVICE) != SELF_SERVICE:
+        return False
+    scenario = session.test_scenario
+    if scenario:
+        return scenario.startswith(FLOW_V2_INTAKE_SCRIPT_PREFIX) and (
+            scenario not in _FLOW_V2_AFTER_SUBMIT
+        )
+    return get_policy().flow_v2_intake.enabled
+
+
 def cr_question_active(
     *, assisted: bool, channel: str | None, test_scenario: str | None = None
 ) -> bool:
     """The public page asks the CR question instead of looking a CR up."""
     if assisted or (channel or SELF_SERVICE) != SELF_SERVICE:
+        return False
+    if intake_flow() == "v2":
         return False
     if test_scenario:
         return test_scenario in CR_QUESTION_SCRIPTS
@@ -80,6 +102,12 @@ def scrub_cr_numbers(text: str) -> tuple[str, bool]:
         last = end
     out.append(text[last:])
     return "".join(out), True
+
+
+def first_cr_number(text: str) -> str | None:
+    """The first CR-format number in the text, digits normalised (flow v2 §3.2)."""
+    match = _CR_RE.search(normalise_digits(text))
+    return match.group(0) if match else None
 
 
 def contains_cr_number(text: str) -> bool:

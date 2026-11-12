@@ -34,7 +34,12 @@ class EmailLinkCheck:
 
 class EmailVerificationService(Protocol):
     async def send_link(
-        self, session_id: str, email: str, context: dict[str, Any] | None = None
+        self,
+        session_id: str,
+        email: str,
+        context: dict[str, Any] | None = None,
+        *,
+        template: str = "email_verification_link",
     ) -> None: ...
 
     async def verify(self, session_id: str, token: str) -> EmailLinkCheck: ...
@@ -71,7 +76,12 @@ class MockEmailVerificationService:
         return self._send_count.get(session_id, 0)
 
     async def send_link(
-        self, session_id: str, email: str, context: dict[str, Any] | None = None
+        self,
+        session_id: str,
+        email: str,
+        context: dict[str, Any] | None = None,
+        *,
+        template: str = "email_verification_link",
     ) -> None:
         token, claims = tokens.issue(
             self._secret,
@@ -84,13 +94,17 @@ class MockEmailVerificationService:
         self._send_count[session_id] = self._send_count.get(session_id, 0) + 1
         self._save()
         if self._notifications is not None:
+            url = f"{self._base}/inquiry/verify?t={token}"
             await self._notifications.send(
-                "email_verification_link",
+                template,
                 email,
                 {
                     **(context or {}),
-                    "verify_url": f"{self._base}/inquiry/verify?t={token}",
+                    "verify_url": url,
+                    # `resume_link` (flow v2 pending inquiry): the same link resumes the chat.
+                    "resume_url": url,
                     "ttl_hours": self._ttl_hours,
+                    "ttl_days": max(1, self._ttl_hours // 24),
                 },
                 inquiry_id=session_id,
             )

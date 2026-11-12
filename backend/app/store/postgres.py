@@ -7,14 +7,20 @@ from datetime import UTC, datetime, timedelta
 from typing import Any, cast
 from uuid import UUID
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.domain.draft_ops import new_inquiry_draft
 from app.store.errors import InquiryNotFound, TurnInProgress, VersionConflict
 from app.store.mapping import inquiry_from_row, row_values_from_inquiry
-from app.store.models import Inquiry, InquiryStatus, SessionState, owned_reference
+from app.store.models import (
+    Inquiry,
+    InquiryStatus,
+    SessionState,
+    owned_reference,
+    settle_status,
+)
 from app.store.tables import InquiryRow
 
 
@@ -80,8 +86,7 @@ class PostgresInquiryRepository:
     async def save(self, inquiry: Inquiry) -> Inquiry:
         to_save = inquiry.model_copy(deep=True)
         to_save.reference = owned_reference(to_save)
-        if to_save.status == InquiryStatus.DRAFT and to_save.draft.reference:
-            to_save.status = InquiryStatus.SUBMITTED
+        settle_status(to_save)
         values = row_values_from_inquiry(to_save)
         expected = inquiry.version
         async with self._sessions() as session:
@@ -165,6 +170,48 @@ class PostgresInquiryRepository:
             )
             await session.execute(stmt)
             await session.commit()
+
+    async def pending_by_email(self, email: str) -> Inquiry | None:
+        """The newest pending inquiry (flow v2) whose verified email is this one."""
+        async with self._sessions() as session:
+            stmt = (
+                select(InquiryRow)
+                .where(
+                    InquiryRow.status == InquiryStatus.PENDING.value,
+                    func.lower(InquiryRow.draft["fields"]["email"]["value"].astext) == email,
+                    InquiryRow.draft["email_verified"].astext == "true",
+                )
+                .order_by(InquiryRow.updated_at.desc())
+                .limit(1)
+            )
+            row = (await session.execute(stmt)).scalar_one_or_none()
+            return inquiry_from_row(row) if row is not None else None
+
+    async def expire_pending(self, now: datetime, ttl: timedelta) -> list[UUID]:
+        """Pending inquiries past their TTL since verification → abandoned (FV12)."""
+        ts = self._now(now)
+        async with self._sessions() as session:
+            stmt = select(InquiryRow).where(InquiryRow.status == InquiryStatus.PENDING.value)
+            rows = (await session.execute(stmt)).scalars().all()
+            ids = [
+                row.id
+                for row in rows
+                if (verified := inquiry_from_row(row).draft.verified_at) is not None
+                and ts - max(verified, row.last_seen_at) > ttl
+            ]
+            if not ids:
+                return []
+            await session.execute(
+                update(InquiryRow)
+                .where(InquiryRow.id.in_(ids))
+                .values(
+                    status=InquiryStatus.ABANDONED.value,
+                    turn_lease_id=None,
+                    turn_lease_until=None,
+                )
+            )
+            await session.commit()
+            return ids
 
     async def purge_expired(self, now: datetime) -> list[UUID]:
         ts = self._now(now)

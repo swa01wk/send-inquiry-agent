@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Protocol
 from uuid import UUID
 
@@ -34,3 +34,7 @@ class InquiryRepository(Protocol):
     async def release_turn(self, inquiry_id: UUID, lease_id: str) -> None: ...
 
     async def purge_expired(self, now: datetime) -> list[UUID]: ...
+
+    async def pending_by_email(self, email: str) -> Inquiry | None: ...
+
+    async def expire_pending(self, now: datetime, ttl: timedelta) -> list[UUID]: ...

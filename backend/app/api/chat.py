@@ -12,8 +12,14 @@ from fastapi import APIRouter, Body, Depends, Request
 from langchain_core.messages import HumanMessage
 from sse_starlette.sse import EventSourceResponse
 
-from app.agent.actions import cr_answer_result, handle_ui_action
-from app.agent.cr_question import CR_TYPED_NOTE, cr_question_active, scrub_cr_numbers
+from app.agent.actions import cr_answer_result, customer_check_result, handle_ui_action
+from app.agent.cr_check import check_existing_customer
+from app.agent.cr_question import (
+    CR_TYPED_NOTE,
+    cr_question_active,
+    first_cr_number,
+    scrub_cr_numbers,
+)
 from app.agent.events import SseEvent, run_turn
 from app.agent.form_mode import form_mode_cards
 from app.agent.redirect import stream_redirect_reply
@@ -86,12 +92,14 @@ async def chat_stream(
         services=services,
         master=load_master_data(),
         settings=settings,
+        repo=store.inquiry_repo,
     )
 
     audit = services.audit
     before_draft = session.draft.model_copy(deep=True)
     action_events: list[SseEvent] = []
     action_quiet = False
+    action_reply: str | None = None
     route_decision = None
     user_text: str | None = None
     turn_user_message = HumanMessage(content="")
@@ -109,6 +117,17 @@ async def chat_stream(
             # reaches the transcript, the audit trail or the model, and counts as "Yes".
             user_text, cr_typed = scrub_cr_numbers(body.text)
             turn_user_message = HumanMessage(content=user_text)
+        elif session.mode != "case" and session.draft.intake_flow == "v2" and not session.assisted:
+            # Flow v2 (§3.2, ADR-V4): a CR typed in the public chat is removed before the
+            # transcript, the audit trail and the model, and checked like the card's Verify
+            # while the Company Registration step is open; the model gets only the outcome.
+            user_text, typed = scrub_cr_numbers(body.text)
+            turn_user_message = HumanMessage(content=user_text)
+            number = first_cr_number(body.text) if typed else None
+            if number and session.draft.cr_status == "unknown":
+                check = check_existing_customer(session, runtime, number)
+                action_events = customer_check_result(session, runtime, check).events
+                turn_user_message = HumanMessage(content=f"{user_text}\n\n{check.note}")
         audit.record(
             session.id,
             "user_message",
@@ -137,6 +156,7 @@ async def chat_stream(
             raise
         action_events = result.events
         action_quiet = result.quiet
+        action_reply = result.reply
         turn_user_message = result.note
         note = str(result.note.content).removeprefix("[ui_event]").strip()
         audit.record(
@@ -185,6 +205,15 @@ async def chat_stream(
             item = _scoped(item, session)
             observe(item)
             yield item
+        if action_reply is not None:
+            # A fixed reply (flow v2 `resume_pending`): no agent turn, the same words
+            # whatever the outcome.
+            reply_id = f"m_{uuid.uuid4().hex[:10]}"
+            item = SseEvent(event="token", data={"message_id": reply_id, "text": action_reply})
+            observe(item)
+            yield item
+            yield SseEvent(event="done", data={"phase": compute_phase(session.draft).value})
+            return
         if action_quiet:
             # The card already shows the outcome (wrong code, resend, one channel of two
             # verified): no agent turn, so no extra reply (spec §6, quiet card actions).

@@ -14,46 +14,26 @@ The public chat follows the chart and the app:
 
 The agent helps fill each section conversationally and still takes answers given early, but asks one section at a time.
 
-## Backend PR (Claude): lands first; use it, don't rebuild it
+## Backend PR (Claude): merged first; use it, don't rebuild it
+Contracts are in @docs/spec.md §16 (and §4, §7, §9 rows marked flow v2). Everything sits behind **`flow_v2_intake.enabled: false`** in `policy.yaml`; scripted scenarios named `flow-v2-s…` (not S18–S24) already run v2.
 - **Policy and master data:**
-  - `public_cr_check: verify_or_skip`;
-  - `product_lines: [store, office]`, `review_routing.office: rlm_store`;
-  - `max_malls_per_inquiry: 5`, `pending_inquiry_ttl_minutes: 120`, `terms_before_documents: true`;
-  - master unit `office` (`OFF`, via `scripts/generate_master_data.py`);
-  - reference and router regex with `OFF`.
-- **Company Registration** (`app/agent/cr_check.py`):
-  - `check_existing_customer`;
-  - `cr_check` and `cr_skip {confirmed}` on self-service;
-  - a typed CR is scrubbed and checked before the graph;
-  - notes `cr_checked registered|not_registered`, `cr_invalid`, `cr_skip_confirm_shown`, `cr_skipped`;
-  - `company_registration` card (deterministic), I8 updated.
-- **Sections:**
-  - `bundles.IntakeSection`, `SECTION_OF`;
-  - `DraftSummary.section`, `checks.sections`;
-  - `remaining_steps` and `can_submit` order;
-  - `still_needed_line` names one section;
-  - guard rule 8 `_later_section_ask`;
-  - `_missing_send_verification_note` fires once Basic Info is done.
-- **Sales Category:** `update_draft` error `category_needs_what_you_sell`.
-- **Terms:** `terms` card and `accept_terms` action; the review card shows "Terms accepted".
-- **Pending inquiry:**
-  - `InquiryStatus.PENDING`, `CaseStatus.PENDING`, `verification_succeeded`, `expired` from `pending`;
-  - `submit_failed` back to `pending`;
-  - proactive expiry;
-  - `resume_pending {email}` with a neutral reply and the `resume_link` email;
-  - welcome quick reply "Continue my inquiry".
-- **Space bundle:** unit cards removed; mall picker `max_select: 5`.
-- **Flow steps:** `start`, `raise_tp`, `chk_tp`, `db`, `exist`, `display`, `redirect`, `emv`, `succ1`, `complete1`, `ref1`.
-- **Tests:**
-  - `tests/agent/test_company_registration.py`, `test_section_order.py`, `test_unit_category.py`;
-  - `tests/lifecycle/test_pending_inquiry.py`;
-  - `tests/api/test_pending_resume.py`, `test_terms_before_documents.py`;
-  - validation and routing;
-  - catalogue runner S1–S17;
-  - Playwright `tests/flow-v2/s01`…`s15`, `s17` and the regression scripts in spec §5.3, re-scripted for the order.
-- `docs/spec.md`: F3 row of spec §7; §1 flow summary, §2 field keys (`malls`), §3 tools, §4 actions, §7 cards, §9 policy.
+  - `flow_v2_intake: {enabled, product_lines: [store, office], max_malls: 5, pending_inquiry_ttl_minutes: 120, terms_before_documents: true}`;
+  - on a v2 inquiry `get_policy()` returns the v2 view (`product_lines`, `max_malls_per_inquiry: 5`, `public_cr_check: verify_or_skip`);
+  - `review_routing.office: rlm_store`; master unit `office` (`OFF`); `GEO-OFF-…` references.
+- **`InquiryDraft.intake_flow`** (`v1`/`v2`), set at session creation (`cr_question.flow_v2_intake_for`).
+- **Company Registration** (`app/agent/cr_check.py`): `check_existing_customer`, `skip_customer_check`; `cr_check {cr_number}`, `cr_skip {}` then `cr_skip {confirmed: true}`; a typed CR is scrubbed and checked before the graph. Notes: `cr_checked registered|not_registered`, `cr_invalid <code>` (quiet), `service_error cr <kind>` (quiet), `cr_skip_confirm_shown` (quiet), `cr_skipped`. Registered → `sign_in_prompt` and `Session.closed`. Not registered → `cr_status: new`, nothing prefilled.
+- **Welcome (v2):** `company_registration` card + quick replies "Continue my inquiry" (`action: resume_pending`, placeholder "Your email address") and "What do I need to get started?".
+- **Sections** (`app/domain/sections.py`): `IntakeSection`, `SECTION_OF`, `current_section`; `DraftSummary.section`, `checks.sections`; `can_submit` and `remaining_steps` in section order; `next_bundle_hint` / `still_needed_line` name the current section only; guard rule 8 (`_later_section_ask_note`) and the verification nudge (`_v2_missing_verification_note`).
+- **Sales Category:** `update_draft` refuses a derived category from the brand alone: `category_needs_what_you_sell`.
+- **Terms:** `terms` card (guard shows it before documents) and `accept_terms`; `ReviewPayload.terms_on_own_card`.
+- **Pending inquiry:** `InquiryStatus.PENDING` (repository sets it on save; no `CaseStatus.PENDING`: there is no case before submit); `pending_by_email`, `expire_pending` (purge loop + lazily on resume); `resume_pending {email}` → fixed reply `RESUME_PENDING_REPLY`, **no agent turn**, `resume_link` email whose link is the verify link.
+- **Flow steps:** `start`, `raise_tp`, `chk_tp`, `db`, `exist`, `display`, `redirect`, `emv`, `succ1`.
+- **Invariants:** I8 on the v2 public chat; I9 (no unit named before submit). `eval_live` passes `flow_v2_intake`.
+- **Tests:** `tests/api/test_flow_v2_intake.py`, `tests/api/test_pending_resume.py`, `tests/store/test_pending_inquiry.py`, `tests/domain/test_section_order.py`, `tests/agent/test_flow_v2_intake_rules.py` (pytest marker `intake_v2` switches it on).
+- **Not in the backend PR (after yours):** the catalogue runner for S1–S17 and Playwright `tests/flow-v2/s01`…`s17`; they need your cards and scripts. Claude adds them once your PR is up.
 
 ## Your track (Cursor): the agent and the chat
+0. **Flip the switch:** `flow_v2_intake.enabled: true` in `backend/app/policy/policy.yaml`, in the same PR as the prompt, cards and scripts. Then fix tests that assumed the v1 welcome on self-service (mark them for v1 or update them).
 1. **System prompt** (`system_prompt.md`, the "Rules in force" and "Ask next" blocks):
    - Sections in the app's order, one section per turn, conversational: offer to take several values in one message, never a field-by-field interrogation.
    - Company Registration:
@@ -68,7 +48,8 @@ The agent helps fill each section conversationally and still takes answers given
    - Terms, then documents, then the review card.
    - "Continue my inquiry": ask for the email, point to the button; the reply is the same either way.
 2. **Cards:**
-   - `CompanyRegistrationCard`: input, Verify, Skip, inline confirm, masked CR, error.
+   - `CompanyRegistrationCard` (payload in spec §7): input, Verify, Skip, inline confirm (`skip_confirm`), `state`, masked CR, error. Updates in place (card id `company_registration`).
+   - Quick reply `action: "resume_pending"`: show an email field in place; on send, post the `resume_pending {email}` action (never a chat message).
    - `TermsCard`: checkbox → `accept_terms`.
    - `ReviewCard`: shows "Terms accepted" when `terms_before_documents`.
    - Step tabs: read `checks.sections`.

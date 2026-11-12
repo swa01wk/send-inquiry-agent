@@ -4,13 +4,24 @@ from __future__ import annotations
 
 import logging
 import shutil
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from app.config import Settings
 from app.store.repository import InquiryRepository
 
 logger = logging.getLogger(__name__)
+
+
+async def expire_pending_inquiries(repo: InquiryRepository, *, now: datetime | None = None) -> int:
+    """Flow v2 pending inquiries past the TTL since last activity → abandoned (FV12)."""
+    from app.policy.config import get_policy
+
+    ttl = timedelta(minutes=get_policy().flow_v2_intake.pending_inquiry_ttl_minutes)
+    expired = await repo.expire_pending(now or datetime.now(tz=UTC), ttl)
+    if expired:
+        logger.info("expired %d pending inquiry(ies)", len(expired))
+    return len(expired)
 
 
 async def purge_expired_inquiries(
@@ -21,6 +32,7 @@ async def purge_expired_inquiries(
     now: datetime | None = None,
 ) -> int:
     ts = now or datetime.now(tz=UTC)
+    await expire_pending_inquiries(repo, now=ts)
     purged = await repo.purge_expired(ts)
     for inquiry_id in purged:
         thread_id = str(inquiry_id)

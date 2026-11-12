@@ -193,6 +193,10 @@ class InquiryDraft(BaseModel):
     verified_at: datetime | None = None
     # The submitted inquiry this one follows on from (same chat, another mall).
     follow_on_of: str | None = None
+    # Flow v2 public intake (spec flow-v2-alignment §3.2, §3.3): set when the inquiry is
+    # created and kept for its life. "v2": Company Registration, the app's section order,
+    # terms before documents, the pending inquiry.
+    intake_flow: Literal["v1", "v2"] = "v1"
 
 
 def new_inquiry_draft() -> InquiryDraft:

@@ -4,23 +4,25 @@ from pathlib import Path
 from app.domain.master import load_master_data
 
 
-def test_no_office_unit_type_in_seed_data() -> None:
+def test_office_unit_type_is_in_master_data_for_flow_v2() -> None:
+    """Flow v2 (M21, G3): Office is a unit type (code OFF), routed like Store; the v1 intake
+    doesn't offer it (top-level `product_lines`), the v2 intake does."""
+    from app.policy.config import get_policy, intake_scope
+
     master = load_master_data()
-    ids = master.ids_for_kind("unit_types")
-    assert "office" not in ids
-    labels = [master.label_for("unit_types", uid) or "" for uid in ids]
-    assert not any("office" in label.lower() for label in labels)
+    assert "office" in master.ids_for_kind("unit_types")
+    office = next(u for u in master.unit_types if u.id == "office")
+    assert (office.label, office.code) == ("Office", "OFF")
+    assert "office" not in get_policy().product_lines
+    with intake_scope("v2"):
+        assert get_policy().product_lines == ["store", "office"]
+    assert get_policy().review_routing["office"] == "rlm_store"
 
 
-def test_faq_and_json_contain_no_office_product_line() -> None:
+def test_faq_mentions_no_office_space() -> None:
     root = Path(__file__).resolve().parents[2] / "app" / "data"
-    master_raw = json.loads((root / "master_data.json").read_text())
     faq_raw = json.loads((root / "faq.json").read_text())
-    blob = json.dumps(master_raw).lower()
-    assert '"office"' not in blob
-    assert "off" not in {u.get("code", "").lower() for u in master_raw["unit_types"]}
-    faq_blob = json.dumps(faq_raw).lower()
-    assert "office space" not in faq_blob
+    assert "office space" not in json.dumps(faq_raw).lower()
 
 
 # ---- Generated master data (L3 §3.8) -------------------------------------------------

@@ -21,7 +21,7 @@ from app.domain.validation import normalise_digits
 from app.policy.config import get_policy
 from app.sessions import Session
 
-REFERENCE_RE = re.compile(r"\bGEO-(?:STR|MED|SPC)-\d{6}\b", re.IGNORECASE)
+REFERENCE_RE = re.compile(r"\bGEO-(?:STR|MED|SPC|OFF)-\d{6}\b", re.IGNORECASE)
 
 _HUMAN_HELP_RE = re.compile(
     r"\b("

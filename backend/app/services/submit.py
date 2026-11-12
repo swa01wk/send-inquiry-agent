@@ -19,7 +19,7 @@ from app.persistence import JsonFile, data_path
 
 logger = logging.getLogger(__name__)
 
-_UNIT_CODES = ("STR", "MED", "SPC")
+_UNIT_CODES = ("STR", "MED", "SPC", "OFF")
 _DEFAULT_CODE = "STR"
 
 

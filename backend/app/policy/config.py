@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from contextlib import contextmanager
+from contextvars import ContextVar
 from pathlib import Path
 from typing import Any, Literal
 
@@ -121,7 +122,29 @@ def _optional_contacts() -> list[ContactRoleName]:
 
 
 def _review_routing() -> dict[str, ReviewRoleName]:
-    return {"store": "rlm_store", "media": "rplm_media", "specialty": "rplm_specialty"}
+    return {
+        "store": "rlm_store",
+        "media": "rplm_media",
+        "specialty": "rplm_specialty",
+        "office": "rlm_store",
+    }
+
+
+class FlowV2IntakePolicy(_Strict):
+    """Flow v2 public intake (spec flow-v2-alignment §3.2, §3.3; day F3).
+
+    A self-service inquiry created while `enabled` is on runs the v2 intake for its whole
+    life (`InquiryDraft.intake_flow`), whatever the switch says later. Its session reads
+    `product_lines`, `max_malls` and `public_cr_check: verify_or_skip` in place of the
+    top-level values (`get_policy` inside `intake_scope("v2")`)."""
+
+    enabled: bool = False
+    product_lines: list[str] = Field(default_factory=lambda: ["store", "office"], min_length=1)
+    max_malls: int = Field(default=5, ge=1, le=10)
+    # A pending inquiry (verified, not submitted) is abandoned after this long (A2).
+    pending_inquiry_ttl_minutes: int = Field(default=120, ge=1, le=60 * 24 * 30)
+    # The terms card comes before documents; the review card then shows "Terms accepted".
+    terms_before_documents: bool = True
 
 
 class SecondLevelContacts(_Strict):
@@ -256,7 +279,8 @@ class PolicyConfig(_Strict):
     # Public page (demo feedback §3.1): `lookup` checks a typed CR number in the registry
     # (until 4 Nov 2026); `ask_then_sign_in` asks "Do you have a CR?" and never looks one
     # up. Applies to the self-service channel only; staff channels keep the lookup.
-    public_cr_check: Literal["lookup", "ask_then_sign_in"] = "lookup"
+    # Flow v2 (§3.2): `verify_or_skip`, the Company Registration card (Verify or Skip).
+    public_cr_check: Literal["lookup", "ask_then_sign_in", "verify_or_skip"] = "lookup"
     # A tenant signed in to Tenant Central is verified by Azure AD: no email link or OTP.
     signed_in_skips_verification: bool = True
     max_malls_per_inquiry: int = Field(default=1, ge=1, le=10)
@@ -289,6 +313,7 @@ class PolicyConfig(_Strict):
     contacts: ContactsPolicy = ContactsPolicy()
     identity: IdentityPolicy = IdentityPolicy()
     lead_approval: LeadApprovalPolicy = LeadApprovalPolicy()
+    flow_v2_intake: FlowV2IntakePolicy = FlowV2IntakePolicy()
     # ---- Proactive work (L5) -----------------------------------------------------------
     proactive: ProactivePolicy = ProactivePolicy()
 
@@ -344,6 +369,44 @@ def load_policy(path: str | Path | None = None) -> PolicyConfig:
 
 
 _active: PolicyConfig | None = None
+# Flow v2 intake (day F3): the active inquiry's intake flow, bound per request by the
+# session store (`bind_intake_flow`). Inside "v2", `get_policy` returns the v2 view.
+_intake_flow: ContextVar[str] = ContextVar("intake_flow", default="v1")
+_v2_views: dict[int, PolicyConfig] = {}
+
+
+def _v2_view(policy: PolicyConfig) -> PolicyConfig:
+    view = _v2_views.get(id(policy))
+    if view is None or view.flow_v2_intake != policy.flow_v2_intake:
+        v2 = policy.flow_v2_intake
+        view = policy.with_changes(
+            product_lines=list(v2.product_lines),
+            max_malls_per_inquiry=v2.max_malls,
+            public_cr_check="verify_or_skip",
+        )
+        _v2_views.clear()
+        _v2_views[id(policy)] = view
+    return view
+
+
+def bind_intake_flow(flow: str) -> None:
+    """Set the intake flow for the rest of this request (task) — the session store calls it
+    whenever it hands out a session."""
+    _intake_flow.set(flow)
+
+
+def intake_flow() -> str:
+    return _intake_flow.get()
+
+
+@contextmanager
+def intake_scope(flow: str) -> Iterator[None]:
+    """Run a block under one intake flow (tests and tooling)."""
+    token = _intake_flow.set(flow)
+    try:
+        yield
+    finally:
+        _intake_flow.reset(token)
 
 
 def install_policy(policy: PolicyConfig) -> None:
@@ -357,6 +420,8 @@ def get_policy() -> PolicyConfig:
     global _active
     if _active is None:
         _active = load_policy()
+    if _intake_flow.get() == "v2":
+        return _v2_view(_active)
     return _active
 
 

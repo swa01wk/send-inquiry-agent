@@ -23,6 +23,7 @@ from typing import Any
 
 from app.domain.models import InquiryDraft
 from app.persistence import JsonFile, data_path
+from app.policy.config import bind_intake_flow
 
 logger = logging.getLogger(__name__)
 
@@ -413,6 +414,7 @@ class SessionStore:
             if self._is_expired(session):
                 self._forget(session_id)
                 raise SessionNotFound(session_id)
+            bind_intake_flow(session.draft.intake_flow)
             return session
 
     def _is_expired_at(self, last_seen: datetime) -> bool:
@@ -473,6 +475,7 @@ class SessionStore:
                         raise
         session.last_seen = datetime.now(tz=UTC)
         await self.touch(session_id)
+        bind_intake_flow(session.draft.intake_flow)
         return session
 
     async def begin_turn(self, session_id: str) -> str:

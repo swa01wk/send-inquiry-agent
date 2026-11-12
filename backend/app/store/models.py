@@ -14,6 +14,8 @@ from app.domain.models import InquiryDraft
 
 class InquiryStatus(StrEnum):
     DRAFT = "draft"
+    # Flow v2 (§3.3, FV12): verified, not submitted; abandoned after the pending TTL.
+    PENDING = "pending"
     SUBMITTING = "submitting"
     SUBMITTED = "submitted"
     ABANDONED = "abandoned"
@@ -73,6 +75,22 @@ class Inquiry(BaseModel):
 
     def set_cards_shown(self, value: set[str] | list[str]) -> None:
         self.cards_shown = sorted(value)
+
+
+def settle_status(inquiry: Inquiry) -> None:
+    """The status a save implies: submitted once the draft has a reference; `pending` once a
+    flow v2 public inquiry is verified (FV12)."""
+    draft = inquiry.draft
+    if inquiry.status in (InquiryStatus.DRAFT, InquiryStatus.PENDING) and draft.reference:
+        inquiry.status = InquiryStatus.SUBMITTED
+    elif (
+        inquiry.status == InquiryStatus.DRAFT
+        and inquiry.case_id is None
+        and draft.intake_flow == "v2"
+        and draft.verified_at is not None
+        and draft.cr_status != "existing"
+    ):
+        inquiry.status = InquiryStatus.PENDING
 
 
 def owned_reference(inquiry: Inquiry) -> str | None:

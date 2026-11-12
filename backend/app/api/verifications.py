@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, Request
 
 from app.agent.channels import started_by_label
 from app.agent.e2e_scripts import resolve_e2e_scenario
+from app.agent.pending import note_verification
 from app.agent.runtime import AgentRuntime
 from app.api.cards import (
     VERIFICATION_CARD_ID,
@@ -29,6 +30,7 @@ from app.config import Settings, get_settings
 from app.domain import draft_ops
 from app.domain.master import load_master_data
 from app.domain.models import FieldKey
+from app.domain.rules import contact_verified
 from app.gateway import GatewayError
 from app.security import tokens
 from app.services.container import ServiceContainer
@@ -104,9 +106,18 @@ async def verify_email_link(
         raise ApiError(400, "email_changed", _MESSAGES["email_changed"])
 
     draft = session.draft.model_copy(deep=True)
+    verified_before = contact_verified(draft)
     draft.email_verified = True
     draft_ops.stamp_verified(draft)
     session.draft = draft
+    note_verification(
+        services.audit,
+        inquiry_id=session.id,
+        draft=draft,
+        verified_before=verified_before,
+        succeeded=True,
+        channel=session.channel,
+    )
     # Refresh the saved card so a resumed chat shows the email as verified.
     card_key = scoped_card_id(VERIFICATION_CARD_ID, session.inquiry_seq)
     previous = session.cards.get(card_key)

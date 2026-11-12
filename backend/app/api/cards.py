@@ -22,6 +22,7 @@ from app.api.schemas import (
     ReviewPayload,
     SuccessPayload,
     SuccessStep,
+    TermsPayload,
     UiCard,
     VerificationEmail,
     VerificationMobile,
@@ -49,6 +50,18 @@ WELCOME_MESSAGE_2_CR_QUESTION = (
     "I'll help you send a leasing inquiry in a few minutes, no long form. "
     "To start, does your company have a CR?"
 )
+
+# Flow v2 (§3.2, §3.3): the Company Registration card sits under the second bubble; the
+# quick replies offer "Continue my inquiry" (a pending inquiry, V13).
+WELCOME_MESSAGE_2_FLOW_V2 = (
+    "I'll help you send a leasing inquiry in a few minutes, no long form. "
+    "First, your Company Registration: enter your CR number below to check whether your "
+    "company is already registered with us, or skip it."
+)
+WELCOME_QUICK_REPLIES_FLOW_V2: list[tuple[str, str, str | None, str | None]] = [
+    ("Continue my inquiry", "Continue my inquiry", "resume_pending", "Your email address"),
+    ("What do I need to get started?", "What do I need to get started?", None, None),
+]
 
 WELCOME_QUICK_REPLIES: list[tuple[str, str, str | None, str | None]] = [
     (
@@ -173,9 +186,11 @@ def build_document_upload_card(
     )
 
 
-def _chip_action(action: str | None) -> Literal["send", "focus_input"]:
+def _chip_action(action: str | None) -> Literal["send", "focus_input", "resume_pending"]:
     if action == "focus_input":
         return "focus_input"
+    if action == "resume_pending":
+        return "resume_pending"
     return "send"
 
 
@@ -474,10 +489,33 @@ def build_review_card(
         can_submit=summary.can_submit,
         terms_accepted=draft.terms_accepted,
         blockers=blockers,
+        terms_on_own_card=(
+            draft.intake_flow == "v2" and get_policy().flow_v2_intake.terms_before_documents
+        ),
     )
     return UiCard(
         card_id="review",
         card_type="review",
+        message_id=message_id,
+        payload=payload.model_dump(),
+    )
+
+
+TERMS_CARD_ID = "terms"
+TERMS_TEXT = (
+    "I agree to Cenomi's terms & conditions and privacy policy, and consent to Cenomi "
+    "contacting me about this inquiry."
+)
+PRIVACY_PATH = "/privacy"
+
+
+def build_terms_card(draft: InquiryDraft, *, message_id: str | None = None) -> UiCard:
+    """Flow v2 terms before documents (§3.3, FV15): ticking it sends
+    `accept_terms {terms_accepted: true}`."""
+    payload = TermsPayload(text=TERMS_TEXT, privacy_url=PRIVACY_PATH, accepted=draft.terms_accepted)
+    return UiCard(
+        card_id=TERMS_CARD_ID,
+        card_type="terms",
         message_id=message_id,
         payload=payload.model_dump(),
     )

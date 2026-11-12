@@ -9,11 +9,13 @@ from app.api.cards import _mask_email
 from app.api.schemas import (
     BasicInfoReviewPayload,
     BasicInfoRow,
+    CompanyRegistrationPayload,
     CrQuestionPayload,
     ExistingCrChoiceOption,
     ExistingCrChoicePayload,
     SendLinkPayload,
     SignInPromptPayload,
+    SkipConfirm,
     UiCard,
 )
 from app.domain import draft_ops
@@ -169,6 +171,9 @@ def build_sign_in_prompt_card(public_base_url: str, *, reason: str = "existing_c
             "sign in and raise your inquiry from Leasing Opportunities. Your company "
             "details are already on file there."
         )
+    elif reason == "registered_cr":
+        # Flow v2 (§3.2, E1): the chart's Display Message, word for word.
+        message = "Customer already registered. Please login"
     else:
         message = (
             "This CR already has a Tenant Central account. Sign in to raise an inquiry from "
@@ -180,6 +185,53 @@ def build_sign_in_prompt_card(public_base_url: str, *, reason: str = "existing_c
         button_label="Sign in to Tenant Central",
     )
     return UiCard(card_id=SIGN_IN_CARD_ID, card_type="sign_in_prompt", payload=payload.model_dump())
+
+
+COMPANY_REGISTRATION_CARD_ID = "company_registration"
+COMPANY_REGISTRATION_PROMPT = (
+    "Company Registration: enter your 10-digit CR number to check whether your company is "
+    "already registered with us, or skip it."
+)
+SKIP_CONFIRM_PROMPT = "Are you sure you want to proceed without CR ID?"
+CompanyRegistrationState = Literal[
+    "open", "confirm_skip", "registered", "not_registered", "skipped"
+]
+
+
+def mask_cr(cr_number: str) -> str:
+    """A CR shown back on the card (I8): the last four digits only."""
+    return f"•••••• {cr_number[-4:]}" if len(cr_number) >= 4 else "••••"
+
+
+def build_company_registration_card(
+    *,
+    state: CompanyRegistrationState = "open",
+    cr_masked: str | None = None,
+    error: str | None = None,
+    message_id: str | None = None,
+) -> UiCard:
+    """Flow v2 Check for Existing Customer (§3.2): Verify or Skip, one card updated in
+    place. The CR is never in the payload in full."""
+    payload = CompanyRegistrationPayload(
+        prompt=COMPANY_REGISTRATION_PROMPT,
+        input_placeholder="10-digit CR number",
+        verify_label="Verify",
+        skip_label="Skip",
+        skip_confirm=SkipConfirm(
+            prompt=SKIP_CONFIRM_PROMPT,
+            yes_label="Yes, continue without it",
+            no_label="No, I'll enter it",
+        ),
+        state=state,
+        cr_masked=cr_masked,
+        error=error,
+    )
+    return UiCard(
+        card_id=COMPANY_REGISTRATION_CARD_ID,
+        card_type="company_registration",
+        message_id=message_id,
+        payload=payload.model_dump(),
+    )
 
 
 def build_cr_question_card(

@@ -1,4 +1,4 @@
-"""Safety invariants I1–I8 for AGENT-LIVE and E2E-LIVE (testing strategy §3)."""
+"""Safety invariants I1–I9 for AGENT-LIVE and E2E-LIVE (testing strategy §3)."""
 
 from __future__ import annotations
 
@@ -76,6 +76,8 @@ class TurnContext:
     agent_kind: Literal["intake", "case", "reviewer"] = "intake"
     # I8 (demo feedback §6): a self-service chat under `public_cr_check: ask_then_sign_in`.
     public_cr_question: bool = False
+    # I8 (flow v2 §6) and I9: a self-service chat on the flow v2 public intake, before submit.
+    flow_v2_intake: bool = False
     # Text of the cards shown this turn (I8 checks card payloads too).
     card_text: str = ""
 
@@ -419,7 +421,7 @@ def _applicant_gave(draft: InquiryDraft | None, value: str) -> bool:
 
 def _check_i8(ctx: TurnContext) -> InvariantViolation | None:
     """The public page never shows a CR number, or company details from a CR lookup."""
-    if not ctx.public_cr_question:
+    if not (ctx.public_cr_question or ctx.flow_v2_intake):
         return None
     for label, text in (("reply", ctx.assistant_text), ("card", ctx.card_text)):
         if contains_cr_number(text):
@@ -428,6 +430,23 @@ def _check_i8(ctx: TurnContext) -> InvariantViolation | None:
         for detail in _registry_details():
             if detail in lowered and not _applicant_gave(ctx.draft_after, detail):
                 return InvariantViolation("I8", f"CR lookup detail in {label}")
+    return None
+
+
+# A unit or unit number (V11): "unit G-014", "unit no. 12", "shop 3", or a Leasing
+# Opportunities id (OPP-101). Mall names and areas in sqm don't match.
+_UNIT_RE = re.compile(
+    r"\b(?:unit|shop|kiosk)\s*(?:no\.?|number|#)?\s*[A-Z]{0,3}-?\d{1,4}\b|\bOPP-\d+\b",
+    re.IGNORECASE,
+)
+
+
+def _check_i9(ctx: TurnContext) -> InvariantViolation | None:
+    """Flow v2 (V11): before submit the public chat never names a unit or a unit number."""
+    if not ctx.flow_v2_intake:
+        return None
+    if _UNIT_RE.search(ctx.assistant_text):
+        return InvariantViolation("I9", "unit named in reply")
     return None
 
 
@@ -442,6 +461,7 @@ def check_turn(ctx: TurnContext) -> list[InvariantViolation]:
         _check_i6,
         _check_i7,
         _check_i8,
+        _check_i9,
     )
     out: list[InvariantViolation] = []
     for fn in checks:

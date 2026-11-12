@@ -58,6 +58,11 @@ ALLOWED_KEYS: dict[str, frozenset[str]] = {
     "identity_revoked": frozenset({"invitation_id", "role"}),
     # Flow v2 §3.1 (ADR-V2): a chart step the case reached, recorded by code.
     "flow_step": frozenset({"node", "outcome"}),
+    # Flow v2 intake (§3.3, day F3).
+    "terms_accepted": frozenset({"channel"}),
+    "inquiry_pending": frozenset({"channel"}),
+    "pending_resume_requested": frozenset({"found"}),
+    "inquiry_expired": frozenset({"reason"}),
     "routing_decision": frozenset({"intent", "via", "confidence"}),
     "assistant_suggestion": frozenset({"kind", "action", "used"}),
     # Intake channels (spec §15)
