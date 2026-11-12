@@ -1,0 +1,2486 @@
+{
+  "version": 1,
+  "source": "Prospective Tenant Journey v2: self-service scenarios (https://claude.ai/artifact/Kkt57H5ZLgu2mBbG7nZRi6), paths copied verbatim; docs/specs/flow-v2-alignment.md",
+  "path_rule": "Each chart path, minus ignored_nodes, must appear in order (as a subsequence) in GET /api/dev/flow/{id}.path; not_path nodes must not appear.",
+  "ignored_nodes": [
+    "A1",
+    "A2",
+    "A3",
+    "B1",
+    "B2",
+    "reg1",
+    "reg2"
+  ],
+  "personas": {
+    "sara": {
+      "first_name": "Sara",
+      "last_name": "Ali",
+      "email": "sara@beanstreet.example",
+      "mobile": "0501234567"
+    }
+  },
+  "fixtures": {
+    "registered_cr": "1010000000",
+    "new_cr_with_registry_details": "1010123456",
+    "duplicate_cr": "1010222222",
+    "existing_ad_account": "layla.hassan@oasiscoffee.example",
+    "otp": "1234"
+  },
+  "scenarios": [
+    {
+      "id": "S1",
+      "title": "New prospect, no CR (skips)",
+      "group": "before_submit",
+      "day": "F3",
+      "chart_paths": [
+        [
+          "start",
+          "raise_tp",
+          "chk_tp",
+          "exist",
+          "emv",
+          "succ1",
+          "complete1",
+          "ref1"
+        ]
+      ],
+      "not_path": [],
+      "decisions": [
+        "M13",
+        "M22"
+      ],
+      "changes": [
+        "V1",
+        "V2",
+        "V13"
+      ],
+      "contexts": [
+        "applicant"
+      ],
+      "seed": null,
+      "steps": [
+        {
+          "cr_skip": true
+        },
+        {
+          "cr_skip_confirm": true
+        },
+        {
+          "say": "a store"
+        },
+        {
+          "say": "we sell specialty coffee and pastries"
+        },
+        {
+          "confirm_card": "unit_and_category"
+        },
+        {
+          "say": "Sara Ali, Bean Street Trading Co., King Fahd Road Al Olaya Riyadh, brand Bean Street / بين ستريت, sara@beanstreet.example, 0501234567"
+        },
+        {
+          "confirm_card": "basic_info"
+        },
+        {
+          "verify_email": true
+        },
+        {
+          "enter_code": "1234"
+        },
+        {
+          "say": "Riyadh Mall A, 30 to 50 sqm, up to 250k a year, 3 years"
+        },
+        {
+          "confirm_card": "property_details"
+        },
+        {
+          "accept_terms": true
+        },
+        {
+          "upload": {
+            "company_profile": "company_profile.pdf",
+            "brand_profile": "brand_profile.pdf"
+          }
+        },
+        {
+          "submit": true
+        }
+      ],
+      "expect": {
+        "inquiry_status": "first_review",
+        "section_order": [
+          "company_registration",
+          "unit_and_category",
+          "basic_info",
+          "verification",
+          "property_details",
+          "terms",
+          "documents",
+          "review"
+        ],
+        "draft": {
+          "cr_status": "skipped",
+          "unit_type": "store",
+          "sales_category": "fnb_cafe",
+          "malls": [
+            "riyadh-mall-a"
+          ]
+        },
+        "statuses_seen": [
+          "draft",
+          "pending",
+          "submitted"
+        ],
+        "reference_pattern": "^GEO-(STR|OFF)-\\d{6}$",
+        "outbox": [
+          "email_verification_link",
+          "sms_otp",
+          "submission_email",
+          "submission_sms",
+          "review_assigned"
+        ],
+        "cards": [
+          "company_registration",
+          "verification",
+          "terms",
+          "document_upload",
+          "review",
+          "success"
+        ]
+      },
+      "layers": {
+        "agent_det": true,
+        "int": true,
+        "e2e_live": true,
+        "eval": true
+      },
+      "eval": {
+        "checks": [
+          "asks_sections_in_order",
+          "one_section_per_turn",
+          "no_field_asked_twice",
+          "skip_confirm_shown",
+          "never_claims_submitted_before_reference"
+        ]
+      }
+    },
+    {
+      "id": "S2",
+      "title": "New prospect, CR not in Tenant Central",
+      "group": "before_submit",
+      "day": "F3",
+      "chart_paths": [
+        [
+          "start",
+          "raise_tp",
+          "chk_tp",
+          "db",
+          "exist",
+          "emv",
+          "succ1",
+          "complete1",
+          "ref1"
+        ],
+        [
+          "chk_tp",
+          "exist"
+        ]
+      ],
+      "not_path": [],
+      "decisions": [
+        "M13",
+        "M23"
+      ],
+      "changes": [
+        "V1"
+      ],
+      "contexts": [
+        "applicant"
+      ],
+      "seed": null,
+      "steps": [
+        {
+          "cr_verify": "1010123456"
+        },
+        {
+          "say": "a store"
+        },
+        {
+          "say": "we sell specialty coffee and pastries"
+        },
+        {
+          "confirm_card": "unit_and_category"
+        },
+        {
+          "say": "Sara Ali, Bean Street Trading Co., King Fahd Road Al Olaya Riyadh, brand Bean Street / بين ستريت, sara@beanstreet.example, 0501234567"
+        },
+        {
+          "confirm_card": "basic_info"
+        },
+        {
+          "verify_email": true
+        },
+        {
+          "enter_code": "1234"
+        },
+        {
+          "say": "Riyadh Mall A, 30 to 50 sqm, up to 250k a year, 3 years"
+        },
+        {
+          "confirm_card": "property_details"
+        },
+        {
+          "accept_terms": true
+        },
+        {
+          "upload": {
+            "company_profile": "company_profile.pdf",
+            "brand_profile": "brand_profile.pdf"
+          }
+        },
+        {
+          "submit": true
+        }
+      ],
+      "expect": {
+        "inquiry_status": "first_review",
+        "draft": {
+          "cr_status": "new",
+          "cr_number": "1010123456",
+          "cr_number_source": "user"
+        },
+        "company_name_from": "user",
+        "cards": [
+          "company_registration"
+        ],
+        "card_state": {
+          "company_registration": "not_registered"
+        }
+      },
+      "layers": {
+        "agent_det": true,
+        "int": true,
+        "e2e_live": true,
+        "eval": true
+      },
+      "eval": {
+        "checks": [
+          "no_cr_in_reply",
+          "no_lookup_company_details",
+          "asks_company_name_and_address",
+          "moves_to_unit_type"
+        ]
+      }
+    },
+    {
+      "id": "S3",
+      "title": "Registered customer (CR in Tenant Central)",
+      "group": "before_submit",
+      "day": "F3",
+      "chart_paths": [
+        [
+          "start",
+          "raise_tp",
+          "chk_tp",
+          "db",
+          "exist",
+          "display",
+          "redirect",
+          "A1"
+        ],
+        [
+          "chk_tp",
+          "exist"
+        ]
+      ],
+      "not_path": [
+        "emv",
+        "complete1"
+      ],
+      "decisions": [
+        "M13",
+        "M18"
+      ],
+      "changes": [
+        "V1",
+        "E1"
+      ],
+      "contexts": [
+        "applicant"
+      ],
+      "seed": null,
+      "steps": [
+        {
+          "cr_verify": "1010000000"
+        },
+        {
+          "say": "ok what now?"
+        }
+      ],
+      "expect": {
+        "inquiry_status": "redirected",
+        "draft": {
+          "cr_status": "existing"
+        },
+        "cards": [
+          "sign_in_prompt"
+        ],
+        "sign_in_message": "Customer already registered. Please login",
+        "no_cards_after": [
+          "verification",
+          "document_upload",
+          "review"
+        ],
+        "submit_possible": false
+      },
+      "layers": {
+        "agent_det": true,
+        "int": true,
+        "e2e_live": true,
+        "eval": true
+      },
+      "eval": {
+        "checks": [
+          "one_line_then_sign_in",
+          "asks_nothing_else",
+          "no_cr_in_reply"
+        ]
+      }
+    },
+    {
+      "id": "S4",
+      "title": "Registered company, person has no login",
+      "group": "before_submit",
+      "day": "F3",
+      "chart_paths": [
+        [
+          "start",
+          "raise_tp",
+          "chk_tp",
+          "db",
+          "exist",
+          "display",
+          "redirect",
+          "A1"
+        ],
+        [
+          "chk_tp",
+          "exist"
+        ]
+      ],
+      "not_path": [
+        "emv",
+        "complete1"
+      ],
+      "decisions": [
+        "M18"
+      ],
+      "changes": [
+        "V1",
+        "E1"
+      ],
+      "contexts": [
+        "applicant"
+      ],
+      "seed": null,
+      "steps": [
+        {
+          "cr_verify": "1010000000"
+        },
+        {
+          "say": "I don't have a login though, can you create one for me?"
+        }
+      ],
+      "expect": {
+        "inquiry_status": "redirected",
+        "cards": [
+          "sign_in_prompt"
+        ],
+        "no_card_types": [
+          "request_access"
+        ]
+      },
+      "layers": {
+        "agent_det": true,
+        "int": true,
+        "e2e_live": true,
+        "eval": true
+      },
+      "eval": {
+        "checks": [
+          "sign_in_is_the_way_in",
+          "no_access_promise",
+          "asks_nothing_else"
+        ]
+      }
+    },
+    {
+      "id": "S5",
+      "title": "CR typed wrong",
+      "group": "before_submit",
+      "day": "F3",
+      "chart_paths": [
+        [
+          "start",
+          "raise_tp",
+          "chk_tp"
+        ]
+      ],
+      "not_path": [],
+      "decisions": [
+        "M13"
+      ],
+      "changes": [
+        "V1"
+      ],
+      "contexts": [
+        "applicant"
+      ],
+      "seed": null,
+      "steps": [
+        {
+          "cr_verify": "101012345"
+        },
+        {
+          "say": "oops"
+        },
+        {
+          "cr_verify": "1010123456"
+        }
+      ],
+      "expect": {
+        "first_error": "invalid_cr_number",
+        "stays_at": "chk_tp",
+        "then": {
+          "cr_status": "new"
+        }
+      },
+      "layers": {
+        "agent_det": true,
+        "int": true,
+        "e2e_live": true,
+        "eval": true
+      },
+      "eval": {
+        "checks": [
+          "asks_again_plainly_or_offers_skip",
+          "never_moves_on_with_bad_cr"
+        ]
+      }
+    },
+    {
+      "id": "S6",
+      "title": "Verification fails",
+      "group": "before_submit",
+      "day": "F3",
+      "chart_paths": [
+        [
+          "start",
+          "raise_tp",
+          "chk_tp",
+          "exist",
+          "emv",
+          "succ1",
+          "emv"
+        ]
+      ],
+      "not_path": [],
+      "decisions": [
+        "M22"
+      ],
+      "changes": [
+        "V2"
+      ],
+      "contexts": [
+        "applicant"
+      ],
+      "seed": null,
+      "steps": [
+        {
+          "cr_skip": true
+        },
+        {
+          "cr_skip_confirm": true
+        },
+        {
+          "say": "a store"
+        },
+        {
+          "say": "we sell specialty coffee and pastries"
+        },
+        {
+          "confirm_card": "unit_and_category"
+        },
+        {
+          "say": "Sara Ali, Bean Street Trading Co., King Fahd Road Al Olaya Riyadh, brand Bean Street / بين ستريت, sara@beanstreet.example, 0501234567"
+        },
+        {
+          "confirm_card": "basic_info"
+        },
+        {
+          "enter_code": "0000"
+        },
+        {
+          "enter_code": "0000"
+        },
+        {
+          "enter_code": "1234"
+        },
+        {
+          "verify_email": true
+        },
+        {
+          "resend_otp_times": 6
+        }
+      ],
+      "expect": {
+        "verified": true,
+        "code_never_in_chat": true,
+        "resend_cooldown_seconds": 60,
+        "resend_max_per_hour": 5,
+        "sixth_resend": "resend_throttled"
+      },
+      "layers": {
+        "agent_det": true,
+        "int": true,
+        "e2e_live": false,
+        "eval": true
+      },
+      "eval": {
+        "checks": [
+          "friendly_retry",
+          "offers_person_past_limit",
+          "never_repeats_code"
+        ]
+      }
+    },
+    {
+      "id": "S7",
+      "title": "Email already has an Azure AD account, no CR",
+      "group": "before_submit",
+      "day": "F3",
+      "chart_paths": [
+        [
+          "start",
+          "raise_tp",
+          "chk_tp",
+          "exist",
+          "emv",
+          "succ1",
+          "complete1",
+          "ref1"
+        ],
+        [
+          "ptc_create",
+          "az1"
+        ]
+      ],
+      "not_path": [],
+      "decisions": [
+        "M19",
+        "A1"
+      ],
+      "changes": [
+        "V1"
+      ],
+      "contexts": [
+        "applicant",
+        "leasing_admin"
+      ],
+      "seed": null,
+      "steps": [
+        {
+          "cr_skip": true
+        },
+        {
+          "cr_skip_confirm": true
+        },
+        {
+          "say": "a store"
+        },
+        {
+          "say": "we sell specialty coffee and pastries"
+        },
+        {
+          "confirm_card": "unit_and_category"
+        },
+        {
+          "say": "Layla Hassan, Oasis Coffee Co., Tahlia Street Jeddah, brand Oasis Coffee / واحة القهوة, layla.hassan@oasiscoffee.example, 0505550101"
+        },
+        {
+          "confirm_card": "basic_info"
+        },
+        {
+          "verify_email": true
+        },
+        {
+          "enter_code": "1234"
+        },
+        {
+          "say": "Riyadh Mall A, 30 to 50 sqm, up to 250k a year, 3 years"
+        },
+        {
+          "confirm_card": "property_details"
+        },
+        {
+          "accept_terms": true
+        },
+        {
+          "upload": {
+            "company_profile": "company_profile.pdf",
+            "brand_profile": "brand_profile.pdf"
+          }
+        },
+        {
+          "submit": true
+        },
+        {
+          "reviewer": "approve_documents_and_first_level"
+        }
+      ],
+      "expect": {
+        "inquiry_status": "second_review",
+        "invitations_sent_to": [],
+        "existing_account_untouched": true
+      },
+      "layers": {
+        "agent_det": true,
+        "int": true,
+        "e2e_live": false,
+        "eval": true
+      },
+      "eval": {
+        "checks": [
+          "never_says_email_already_registered",
+          "never_asks_for_login"
+        ]
+      }
+    },
+    {
+      "id": "S8",
+      "title": "Leaves before verification",
+      "group": "before_submit",
+      "day": "F3",
+      "chart_paths": [
+        [
+          "start",
+          "raise_tp",
+          "chk_tp",
+          "exist",
+          "emv"
+        ]
+      ],
+      "not_path": [
+        "succ1"
+      ],
+      "decisions": [
+        "M24"
+      ],
+      "changes": [
+        "V13"
+      ],
+      "contexts": [
+        "applicant"
+      ],
+      "seed": null,
+      "steps": [
+        {
+          "cr_skip": true
+        },
+        {
+          "cr_skip_confirm": true
+        },
+        {
+          "say": "a store"
+        },
+        {
+          "say": "we sell specialty coffee and pastries"
+        },
+        {
+          "confirm_card": "unit_and_category"
+        },
+        {
+          "say": "I'll come back later"
+        },
+        {
+          "leave": true
+        },
+        {
+          "dev_clock_advance_minutes": 121
+        }
+      ],
+      "expect": {
+        "inquiry_status": "abandoned_or_expired",
+        "pending_saved": false
+      },
+      "layers": {
+        "agent_det": true,
+        "int": true,
+        "e2e_live": false,
+        "eval": true
+      },
+      "eval": {
+        "checks": [
+          "says_nothing_kept_until_verified"
+        ]
+      }
+    },
+    {
+      "id": "S9",
+      "title": "Leaves after verification, returns later",
+      "group": "before_submit",
+      "day": "F3",
+      "chart_paths": [
+        [
+          "start",
+          "raise_tp",
+          "chk_tp",
+          "exist",
+          "emv",
+          "succ1"
+        ]
+      ],
+      "not_path": [],
+      "decisions": [
+        "M24",
+        "A2",
+        "G2"
+      ],
+      "changes": [
+        "V13"
+      ],
+      "contexts": [
+        "applicant"
+      ],
+      "seed": null,
+      "steps": [
+        {
+          "cr_skip": true
+        },
+        {
+          "cr_skip_confirm": true
+        },
+        {
+          "say": "a store"
+        },
+        {
+          "say": "we sell specialty coffee and pastries"
+        },
+        {
+          "confirm_card": "unit_and_category"
+        },
+        {
+          "say": "Sara Ali, Bean Street Trading Co., King Fahd Road Al Olaya Riyadh, brand Bean Street / بين ستريت, sara@beanstreet.example, 0501234567"
+        },
+        {
+          "confirm_card": "basic_info"
+        },
+        {
+          "verify_email": true
+        },
+        {
+          "enter_code": "1234"
+        },
+        {
+          "leave": true
+        },
+        {
+          "dev_clock_advance_minutes": 60
+        },
+        {
+          "new_session": true
+        },
+        {
+          "tap_chip": "Continue my inquiry"
+        },
+        {
+          "resume_pending": "sara@beanstreet.example"
+        },
+        {
+          "open_resume_link": true
+        },
+        {
+          "say": "Riyadh Mall A, 30 to 50 sqm, up to 250k a year, 3 years"
+        },
+        {
+          "confirm_card": "property_details"
+        },
+        {
+          "accept_terms": true
+        },
+        {
+          "upload": {
+            "company_profile": "company_profile.pdf",
+            "brand_profile": "brand_profile.pdf"
+          }
+        },
+        {
+          "submit": true
+        }
+      ],
+      "expect": {
+        "inquiry_status": "first_review",
+        "pending_visible_via": "GET /api/dev/flow/{id}",
+        "statuses_seen": [
+          "draft",
+          "pending",
+          "submitted"
+        ],
+        "resume_reply_same_either_way": true,
+        "after_ttl": {
+          "dev_clock_advance_minutes": 121,
+          "status": "abandoned"
+        }
+      },
+      "layers": {
+        "agent_det": true,
+        "int": true,
+        "e2e_live": true,
+        "eval": true
+      },
+      "eval": {
+        "checks": [
+          "on_return_says_whats_done_and_next_section",
+          "resume_reply_neutral"
+        ]
+      }
+    },
+    {
+      "id": "S10",
+      "title": "Unit type and what the business sells",
+      "group": "before_submit",
+      "day": "F3",
+      "chart_paths": [
+        [
+          "start",
+          "raise_tp",
+          "chk_tp",
+          "exist",
+          "emv",
+          "succ1",
+          "complete1",
+          "ref1"
+        ],
+        [
+          "prod2"
+        ]
+      ],
+      "not_path": [],
+      "decisions": [
+        "M21",
+        "A3"
+      ],
+      "changes": [
+        "V10",
+        "V12"
+      ],
+      "contexts": [
+        "applicant"
+      ],
+      "seed": null,
+      "steps": [
+        {
+          "cr_skip": true
+        },
+        {
+          "cr_skip_confirm": true
+        },
+        {
+          "say": "an office"
+        },
+        {
+          "say": "Max"
+        },
+        {
+          "say": "we sell clothes for the whole family"
+        },
+        {
+          "confirm_card": "unit_and_category"
+        },
+        {
+          "say": "Sara Ali, Bean Street Trading Co., King Fahd Road Al Olaya Riyadh, brand Bean Street / بين ستريت, sara@beanstreet.example, 0501234567"
+        },
+        {
+          "confirm_card": "basic_info"
+        },
+        {
+          "verify_email": true
+        },
+        {
+          "enter_code": "1234"
+        },
+        {
+          "say": "Riyadh Mall A, 30 to 50 sqm, up to 250k a year, 3 years"
+        },
+        {
+          "confirm_card": "property_details"
+        },
+        {
+          "accept_terms": true
+        },
+        {
+          "upload": {
+            "company_profile": "company_profile.pdf",
+            "brand_profile": "brand_profile.pdf"
+          }
+        },
+        {
+          "submit": true
+        }
+      ],
+      "expect": {
+        "unit_type_options": [
+          "Store",
+          "Office"
+        ],
+        "draft": {
+          "unit_type": "office",
+          "sales_category": "fashion"
+        },
+        "review_role": "rlm_store",
+        "role_label": "Regional Sales Manager",
+        "reference_pattern": "^GEO-OFF-\\d{6}$"
+      },
+      "layers": {
+        "agent_det": true,
+        "int": true,
+        "e2e_live": true,
+        "eval": true
+      },
+      "eval": {
+        "checks": [
+          "asks_what_you_sell",
+          "never_infers_category_from_brand_alone",
+          "offers_only_enabled_unit_types"
+        ]
+      }
+    },
+    {
+      "id": "S11",
+      "title": "Names only a city, or \"any mall\"",
+      "group": "before_submit",
+      "day": "F3",
+      "chart_paths": [
+        [
+          "start",
+          "raise_tp",
+          "chk_tp",
+          "exist",
+          "emv",
+          "succ1",
+          "complete1",
+          "vla"
+        ]
+      ],
+      "not_path": [],
+      "decisions": [
+        "M25"
+      ],
+      "changes": [
+        "V11"
+      ],
+      "contexts": [
+        "applicant"
+      ],
+      "seed": null,
+      "steps": [
+        {
+          "cr_skip": true
+        },
+        {
+          "cr_skip_confirm": true
+        },
+        {
+          "say": "a store"
+        },
+        {
+          "say": "we sell specialty coffee and pastries"
+        },
+        {
+          "confirm_card": "unit_and_category"
+        },
+        {
+          "say": "Sara Ali, Bean Street Trading Co., King Fahd Road Al Olaya Riyadh, brand Bean Street / بين ستريت, sara@beanstreet.example, 0501234567"
+        },
+        {
+          "confirm_card": "basic_info"
+        },
+        {
+          "verify_email": true
+        },
+        {
+          "enter_code": "1234"
+        },
+        {
+          "say": "any mall in Jeddah is fine"
+        },
+        {
+          "pick_malls": [
+            "Jeddah Mall A"
+          ]
+        },
+        {
+          "accept_terms": true
+        },
+        {
+          "upload": {
+            "company_profile": "company_profile.pdf",
+            "brand_profile": "brand_profile.pdf"
+          }
+        },
+        {
+          "submit": true
+        }
+      ],
+      "expect": {
+        "cards": [
+          "mall_picker"
+        ],
+        "mall_picker_city": "jeddah",
+        "malls_empty_until_picked": true,
+        "first_level_region": "western"
+      },
+      "layers": {
+        "agent_det": true,
+        "int": true,
+        "e2e_live": true,
+        "eval": true
+      },
+      "eval": {
+        "checks": [
+          "asks_for_at_least_one_mall",
+          "no_invented_mall"
+        ]
+      }
+    },
+    {
+      "id": "S12",
+      "title": "Malls in two regions",
+      "group": "before_submit",
+      "day": "F3",
+      "chart_paths": [
+        [
+          "start",
+          "raise_tp",
+          "chk_tp",
+          "exist",
+          "emv",
+          "succ1",
+          "complete1",
+          "vla"
+        ]
+      ],
+      "not_path": [],
+      "decisions": [
+        "M25",
+        "G5"
+      ],
+      "changes": [
+        "V11"
+      ],
+      "contexts": [
+        "applicant"
+      ],
+      "seed": null,
+      "steps": [
+        {
+          "cr_skip": true
+        },
+        {
+          "cr_skip_confirm": true
+        },
+        {
+          "say": "a store"
+        },
+        {
+          "say": "we sell specialty coffee and pastries"
+        },
+        {
+          "confirm_card": "unit_and_category"
+        },
+        {
+          "say": "Sara Ali, Bean Street Trading Co., King Fahd Road Al Olaya Riyadh, brand Bean Street / بين ستريت, sara@beanstreet.example, 0501234567"
+        },
+        {
+          "confirm_card": "basic_info"
+        },
+        {
+          "verify_email": true
+        },
+        {
+          "enter_code": "1234"
+        },
+        {
+          "say": "Riyadh Mall A and Jeddah Mall A, around 40 sqm"
+        },
+        {
+          "confirm_card": "property_details"
+        },
+        {
+          "accept_terms": true
+        },
+        {
+          "upload": {
+            "company_profile": "company_profile.pdf",
+            "brand_profile": "brand_profile.pdf"
+          }
+        },
+        {
+          "submit": true
+        }
+      ],
+      "expect": {
+        "draft": {
+          "malls": [
+            "riyadh-mall-a",
+            "jeddah-mall-a"
+          ]
+        },
+        "first_level_region": "central",
+        "max_malls": 5
+      },
+      "layers": {
+        "agent_det": true,
+        "int": true,
+        "e2e_live": true,
+        "eval": true
+      },
+      "eval": {
+        "checks": [
+          "accepts_several_malls",
+          "no_pushback_on_two_regions"
+        ]
+      }
+    },
+    {
+      "id": "S13",
+      "title": "Uploads the profiles instead of typing",
+      "group": "before_submit",
+      "day": "F3",
+      "chart_paths": [
+        [
+          "start",
+          "raise_tp",
+          "chk_tp",
+          "exist",
+          "emv",
+          "succ1",
+          "complete1",
+          "ref1"
+        ]
+      ],
+      "not_path": [],
+      "decisions": [],
+      "changes": [
+        "V2"
+      ],
+      "contexts": [
+        "applicant"
+      ],
+      "seed": null,
+      "steps": [
+        {
+          "cr_skip": true
+        },
+        {
+          "cr_skip_confirm": true
+        },
+        {
+          "say": "a store"
+        },
+        {
+          "say": "we sell specialty coffee and pastries"
+        },
+        {
+          "confirm_card": "unit_and_category"
+        },
+        {
+          "say": "can I just upload our profiles?"
+        },
+        {
+          "upload": {
+            "company_profile": "company_profile_mismatch.pdf",
+            "brand_profile": "brand_profile_match.pdf"
+          }
+        },
+        {
+          "confirm_card": "basic_info"
+        },
+        {
+          "say": "Sara Ali, sara@beanstreet.example, 0501234567"
+        },
+        {
+          "verify_email": true
+        },
+        {
+          "enter_code": "1234"
+        },
+        {
+          "say": "Riyadh Mall A, 30 to 50 sqm, up to 250k a year, 3 years"
+        },
+        {
+          "confirm_card": "property_details"
+        },
+        {
+          "accept_terms": true
+        },
+        {
+          "submit": true
+        }
+      ],
+      "expect": {
+        "derived_fields_confirmed": [
+          "company_name",
+          "company_address",
+          "brand_name_en"
+        ],
+        "mismatch_flagged": true,
+        "submit_blocked_by_mismatch": false
+      },
+      "layers": {
+        "agent_det": true,
+        "int": true,
+        "e2e_live": true,
+        "eval": true
+      },
+      "eval": {
+        "checks": [
+          "confirms_derived_values_before_moving_on",
+          "never_reasks_value_from_document"
+        ]
+      }
+    },
+    {
+      "id": "S14",
+      "title": "Wrong file type or too large",
+      "group": "before_submit",
+      "day": "F3",
+      "chart_paths": [
+        [
+          "start",
+          "raise_tp",
+          "chk_tp",
+          "exist",
+          "emv",
+          "succ1",
+          "complete1"
+        ]
+      ],
+      "not_path": [],
+      "decisions": [],
+      "changes": [],
+      "contexts": [
+        "applicant"
+      ],
+      "seed": null,
+      "steps": [
+        {
+          "cr_skip": true
+        },
+        {
+          "cr_skip_confirm": true
+        },
+        {
+          "say": "a store"
+        },
+        {
+          "say": "we sell specialty coffee and pastries"
+        },
+        {
+          "confirm_card": "unit_and_category"
+        },
+        {
+          "say": "Sara Ali, Bean Street Trading Co., King Fahd Road Al Olaya Riyadh, brand Bean Street / بين ستريت, sara@beanstreet.example, 0501234567"
+        },
+        {
+          "confirm_card": "basic_info"
+        },
+        {
+          "verify_email": true
+        },
+        {
+          "enter_code": "1234"
+        },
+        {
+          "say": "Riyadh Mall A, 30 to 50 sqm, up to 250k a year, 3 years"
+        },
+        {
+          "confirm_card": "property_details"
+        },
+        {
+          "accept_terms": true
+        },
+        {
+          "upload": {
+            "company_profile": "notes.txt"
+          }
+        },
+        {
+          "upload": {
+            "company_profile": "too_big.pdf"
+          }
+        },
+        {
+          "upload": {
+            "company_profile": "company_profile.pdf",
+            "brand_profile": "brand_profile.pdf"
+          }
+        }
+      ],
+      "expect": {
+        "upload_errors": [
+          "invalid_extension",
+          "too_large"
+        ],
+        "then_uploaded": [
+          "company_profile",
+          "brand_profile"
+        ]
+      },
+      "layers": {
+        "agent_det": true,
+        "int": true,
+        "e2e_live": false,
+        "eval": true
+      },
+      "eval": {
+        "checks": [
+          "gives_refusal_reason_plainly",
+          "names_the_right_document"
+        ]
+      }
+    },
+    {
+      "id": "S15",
+      "title": "Same CR and mall as an open inquiry",
+      "group": "before_submit",
+      "day": "F3",
+      "chart_paths": [
+        [
+          "start",
+          "raise_tp",
+          "chk_tp",
+          "db",
+          "exist",
+          "emv",
+          "succ1",
+          "complete1",
+          "ref1"
+        ],
+        [
+          "chk_tp",
+          "exist"
+        ]
+      ],
+      "not_path": [],
+      "decisions": [],
+      "changes": [],
+      "contexts": [
+        "applicant"
+      ],
+      "seed": null,
+      "steps": [
+        {
+          "seed_open_inquiry": {
+            "cr_number": "1010222222",
+            "mall": "riyadh-mall-a"
+          }
+        },
+        {
+          "cr_verify": "1010222222"
+        },
+        {
+          "say": "a store"
+        },
+        {
+          "say": "we sell specialty coffee and pastries"
+        },
+        {
+          "confirm_card": "unit_and_category"
+        },
+        {
+          "say": "Sara Ali, Bean Street Trading Co., King Fahd Road Al Olaya Riyadh, brand Bean Street / بين ستريت, sara@beanstreet.example, 0501234567"
+        },
+        {
+          "confirm_card": "basic_info"
+        },
+        {
+          "verify_email": true
+        },
+        {
+          "enter_code": "1234"
+        },
+        {
+          "say": "Riyadh Mall A, 30 to 50 sqm, up to 250k a year, 3 years"
+        },
+        {
+          "confirm_card": "property_details"
+        },
+        {
+          "accept_terms": true
+        },
+        {
+          "upload": {
+            "company_profile": "company_profile.pdf",
+            "brand_profile": "brand_profile.pdf"
+          }
+        },
+        {
+          "submit": true
+        }
+      ],
+      "expect": {
+        "duplicate_warning": true,
+        "submit_allowed": true,
+        "inquiry_status": "first_review"
+      },
+      "layers": {
+        "agent_det": true,
+        "int": true,
+        "e2e_live": true,
+        "eval": true
+      },
+      "eval": {
+        "checks": [
+          "warns_once_neutrally"
+        ]
+      }
+    },
+    {
+      "id": "S16",
+      "title": "Asks something else mid-flow",
+      "group": "before_submit",
+      "day": "F4",
+      "chart_paths": [
+        [
+          "start",
+          "raise_tp"
+        ]
+      ],
+      "not_path": [],
+      "decisions": [],
+      "changes": [],
+      "contexts": [
+        "applicant"
+      ],
+      "seed": null,
+      "steps": [
+        {
+          "cr_skip": true
+        },
+        {
+          "cr_skip_confirm": true
+        },
+        {
+          "say": "a store"
+        },
+        {
+          "say": "we sell specialty coffee and pastries"
+        },
+        {
+          "confirm_card": "unit_and_category"
+        },
+        {
+          "say": "how long does the review take?"
+        },
+        {
+          "say": "GEO-STR-000123 status?"
+        },
+        {
+          "say": "can I talk to a person?"
+        },
+        {
+          "say": "السلام عليكم، نكمل؟"
+        }
+      ],
+      "expect": {
+        "draft_unchanged_by_side_questions": true,
+        "returns_to_section": "basic_info",
+        "cards": [
+          "handoff"
+        ],
+        "arabic_reply": true
+      },
+      "layers": {
+        "agent_det": true,
+        "int": true,
+        "e2e_live": true,
+        "eval": true
+      },
+      "eval": {
+        "checks": [
+          "answers_then_offers_to_continue",
+          "arabic_in_arabic",
+          "no_promises"
+        ]
+      }
+    },
+    {
+      "id": "S17",
+      "title": "Submit fails",
+      "group": "before_submit",
+      "day": "F3",
+      "chart_paths": [
+        [
+          "start",
+          "raise_tp",
+          "chk_tp",
+          "exist",
+          "emv",
+          "succ1",
+          "complete1"
+        ]
+      ],
+      "not_path": [],
+      "decisions": [],
+      "changes": [
+        "V13"
+      ],
+      "contexts": [
+        "applicant"
+      ],
+      "seed": null,
+      "steps": [
+        {
+          "mock_faults": "submit:unavailable:1"
+        },
+        {
+          "cr_skip": true
+        },
+        {
+          "cr_skip_confirm": true
+        },
+        {
+          "say": "a store"
+        },
+        {
+          "say": "we sell specialty coffee and pastries"
+        },
+        {
+          "confirm_card": "unit_and_category"
+        },
+        {
+          "say": "Sara Ali, Bean Street Trading Co., King Fahd Road Al Olaya Riyadh, brand Bean Street / بين ستريت, sara@beanstreet.example, 0501234567"
+        },
+        {
+          "confirm_card": "basic_info"
+        },
+        {
+          "verify_email": true
+        },
+        {
+          "enter_code": "1234"
+        },
+        {
+          "say": "Riyadh Mall A, 30 to 50 sqm, up to 250k a year, 3 years"
+        },
+        {
+          "confirm_card": "property_details"
+        },
+        {
+          "accept_terms": true
+        },
+        {
+          "upload": {
+            "company_profile": "company_profile.pdf",
+            "brand_profile": "brand_profile.pdf"
+          }
+        },
+        {
+          "submit": true
+        },
+        {
+          "submit": true
+        }
+      ],
+      "expect": {
+        "first_submit": "submit_pending",
+        "status_after_failure": "pending",
+        "references_issued": 1
+      },
+      "layers": {
+        "agent_det": true,
+        "int": true,
+        "e2e_live": false,
+        "eval": true
+      },
+      "eval": {
+        "checks": [
+          "says_not_sent_invents_no_reference",
+          "offers_retry"
+        ]
+      }
+    },
+    {
+      "id": "S18",
+      "title": "A document is rejected",
+      "group": "after_submit",
+      "day": "F4",
+      "chart_paths": [
+        [
+          "complete1",
+          "vla",
+          "docsok",
+          "reup_req",
+          "reup_mail",
+          "reup_submit",
+          "docsok"
+        ]
+      ],
+      "not_path": [],
+      "decisions": [],
+      "changes": [
+        "V14"
+      ],
+      "contexts": [
+        "applicant",
+        "leasing_admin"
+      ],
+      "seed": {
+        "stage": "submitted",
+        "unit_type": "store",
+        "malls": [
+          "riyadh-mall-a"
+        ]
+      },
+      "steps": [
+        {
+          "reviewer": {
+            "as": "leasing_admin",
+            "do": [
+              [
+                "document_rejected",
+                "brand_profile",
+                "Logo page missing"
+              ],
+              [
+                "reupload_requested"
+              ]
+            ]
+          }
+        },
+        {
+          "open_case_chat_from_email": "reupload_request"
+        },
+        {
+          "say": "what do you need from me?"
+        },
+        {
+          "upload": {
+            "brand_profile": "brand_profile.pdf"
+          }
+        },
+        {
+          "reviewer": {
+            "as": "leasing_admin",
+            "do": [
+              [
+                "document_approved",
+                "brand_profile"
+              ],
+              [
+                "document_approved",
+                "company_profile"
+              ]
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "case_status": "first_review",
+        "doc_decisions": {
+          "brand_profile": "approved"
+        },
+        "outbox": [
+          "reupload_request",
+          "reupload_received"
+        ]
+      },
+      "layers": {
+        "agent_det": true,
+        "int": true,
+        "e2e_live": true,
+        "eval": true
+      },
+      "eval": {
+        "checks": [
+          "names_only_rejected_document_and_remark"
+        ]
+      }
+    },
+    {
+      "id": "S19",
+      "title": "Not qualified",
+      "group": "after_submit",
+      "day": "F1",
+      "chart_paths": [
+        [
+          "complete1",
+          "vla",
+          "docsok",
+          "approve_pt",
+          "not_q",
+          "rej_mail",
+          "A2"
+        ]
+      ],
+      "not_path": [],
+      "decisions": [],
+      "changes": [
+        "V4"
+      ],
+      "contexts": [
+        "applicant",
+        "leasing_admin"
+      ],
+      "seed": {
+        "stage": "submitted"
+      },
+      "steps": [
+        {
+          "reviewer": {
+            "as": "leasing_admin",
+            "do": [
+              [
+                "approve_documents"
+              ],
+              [
+                "rejected",
+                "Not a fit for this mall",
+                "not_a_fit"
+              ]
+            ]
+          }
+        },
+        {
+          "open_case_chat_from_email": "inquiry_rejected"
+        },
+        {
+          "say": "why was it rejected?"
+        }
+      ],
+      "expect": {
+        "case_status": "rejected",
+        "status_label": "Tenant Not Qualified",
+        "outbox": [
+          "inquiry_rejected"
+        ],
+        "no_outbox": [
+          "azure_ad_invitation"
+        ]
+      },
+      "layers": {
+        "agent_det": true,
+        "int": true,
+        "e2e_live": true,
+        "eval": true
+      },
+      "eval": {
+        "checks": [
+          "explains_outcome_no_reviewer_names_no_promises",
+          "offers_new_inquiry"
+        ]
+      }
+    },
+    {
+      "id": "S20",
+      "title": "Qualified",
+      "group": "after_submit",
+      "day": "F1",
+      "chart_paths": [
+        [
+          "complete1",
+          "vla",
+          "docsok",
+          "approve_pt",
+          "ptc_create",
+          "qualified"
+        ],
+        [
+          "ptc_create",
+          "az1"
+        ],
+        [
+          "ptc_create",
+          "reg_link1",
+          "reg1"
+        ]
+      ],
+      "not_path": [],
+      "decisions": [],
+      "changes": [
+        "V4",
+        "V6"
+      ],
+      "contexts": [
+        "applicant",
+        "leasing_admin"
+      ],
+      "seed": {
+        "stage": "submitted"
+      },
+      "steps": [
+        {
+          "reviewer": {
+            "as": "leasing_admin",
+            "do": [
+              [
+                "approve_documents"
+              ],
+              [
+                "approved_first"
+              ]
+            ]
+          }
+        },
+        {
+          "open_case_chat_from_email": "first_level_approved"
+        },
+        {
+          "say": "where is my inquiry?"
+        }
+      ],
+      "expect": {
+        "case_status": "second_review",
+        "status_label": "Tenant Qualified",
+        "outbox": [
+          "azure_ad_invitation",
+          "first_level_approved"
+        ],
+        "no_open_requests": [
+          "contacts"
+        ]
+      },
+      "layers": {
+        "agent_det": true,
+        "int": true,
+        "e2e_live": true,
+        "eval": true
+      },
+      "eval": {
+        "checks": [
+          "where_is_it_gives_right_stage"
+        ]
+      }
+    },
+    {
+      "id": "S21",
+      "title": "Forecasted sales data asked for",
+      "group": "after_submit",
+      "day": "F2",
+      "chart_paths": [
+        [
+          "qualified",
+          "prod2",
+          "rsm",
+          "fsd_q",
+          "fsd_notify",
+          "fsd_provide",
+          "approve_lead"
+        ]
+      ],
+      "not_path": [],
+      "decisions": [
+        "M17",
+        "M20"
+      ],
+      "changes": [
+        "V8",
+        "V11",
+        "E2",
+        "E4"
+      ],
+      "contexts": [
+        "applicant",
+        "rsm"
+      ],
+      "seed": {
+        "stage": "qualified",
+        "unit_type": "store"
+      },
+      "steps": [
+        {
+          "reviewer": {
+            "as": "rsm",
+            "do": [
+              [
+                "ask_assistant",
+                "should I ask for forecasted sales?"
+              ],
+              [
+                "unit_assigned",
+                "riyadh-mall-a",
+                "RMA-G-014",
+                45
+              ],
+              [
+                "sales_data_requested",
+                "Please share 12-month forecasted sales"
+              ]
+            ]
+          }
+        },
+        {
+          "dev_clock_advance_hours": 73
+        },
+        {
+          "open_case_chat_from_email": "sales_data_request"
+        },
+        {
+          "say": "here it is"
+        },
+        {
+          "upload": {
+            "sales_data": "forecasted_sales.xlsx"
+          }
+        },
+        {
+          "reviewer": {
+            "as": "rsm",
+            "do": [
+              [
+                "lead_approved"
+              ]
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "case_status": "lead_approved",
+        "wording": "Forecasted Sales Data",
+        "no_wording": [
+          "estimated sales"
+        ],
+        "reminder_drafted": true,
+        "assistant_suggestion_has_reason": true
+      },
+      "layers": {
+        "agent_det": true,
+        "int": true,
+        "e2e_live": true,
+        "eval": true
+      },
+      "eval": {
+        "checks": [
+          "says_forecasted",
+          "e2_suggestion_has_reason",
+          "e2_never_sends_request"
+        ]
+      }
+    },
+    {
+      "id": "S22",
+      "title": "Lead rejected",
+      "group": "after_submit",
+      "day": "F2",
+      "chart_paths": [
+        [
+          "qualified",
+          "prod2",
+          "rsm",
+          "fsd_q",
+          "approve_lead",
+          "reject_lead",
+          "B2"
+        ],
+        [
+          "reject_lead",
+          "az2"
+        ],
+        [
+          "B1",
+          "rej_mail"
+        ]
+      ],
+      "not_path": [],
+      "decisions": [],
+      "changes": [
+        "V6",
+        "V9"
+      ],
+      "contexts": [
+        "applicant",
+        "rsm"
+      ],
+      "seed": {
+        "stage": "qualified"
+      },
+      "steps": [
+        {
+          "reviewer": {
+            "as": "rsm",
+            "do": [
+              [
+                "unit_assigned",
+                "riyadh-mall-a",
+                "RMA-G-014",
+                45
+              ],
+              [
+                "rejected",
+                "No space in the requested size",
+                "no_space"
+              ]
+            ]
+          }
+        },
+        {
+          "open_case_chat_from_email": "inquiry_rejected"
+        },
+        {
+          "say": "what happened?"
+        }
+      ],
+      "expect": {
+        "case_status": "rejected",
+        "status_label": "Lead Rejected",
+        "invitation_revoked": true,
+        "existing_accounts_untouched": true,
+        "outbox": [
+          "inquiry_rejected"
+        ]
+      },
+      "layers": {
+        "agent_det": true,
+        "int": true,
+        "e2e_live": true,
+        "eval": true
+      },
+      "eval": {
+        "checks": [
+          "explains_outcome_offers_new_inquiry"
+        ]
+      }
+    },
+    {
+      "id": "S23",
+      "title": "Lead approved, contacts, final approval",
+      "group": "after_submit",
+      "day": "F2",
+      "chart_paths": [
+        [
+          "qualified",
+          "prod2",
+          "rsm",
+          "fsd_q",
+          "approve_lead",
+          "req_contacts",
+          "contacts_notify",
+          "contacts_provide",
+          "approve_lead2",
+          "create_all",
+          "yardi_box",
+          "end"
+        ],
+        [
+          "create_all",
+          "az3",
+          "reg_link2",
+          "reg2"
+        ]
+      ],
+      "not_path": [],
+      "decisions": [
+        "M14",
+        "M15",
+        "M26"
+      ],
+      "changes": [
+        "V6",
+        "V7",
+        "V11",
+        "E3"
+      ],
+      "contexts": [
+        "applicant",
+        "rsm"
+      ],
+      "seed": {
+        "stage": "qualified"
+      },
+      "steps": [
+        {
+          "reviewer": {
+            "as": "rsm",
+            "do": [
+              [
+                "unit_assigned",
+                "riyadh-mall-a",
+                "RMA-G-014",
+                45
+              ],
+              [
+                "lead_approved"
+              ]
+            ]
+          }
+        },
+        {
+          "open_case_chat_from_email": "contacts_request"
+        },
+        {
+          "signatory_answer": false
+        },
+        {
+          "say": "Ahmed Saleh signs, ahmed@beanstreet.example, 0507654321"
+        },
+        {
+          "reviewer": {
+            "as": "rsm",
+            "expect_disabled": "approved",
+            "blockers": [
+              "missing_contact:billing_contact"
+            ]
+          }
+        },
+        {
+          "say": "billing is Nora Ali, nora@beanstreet.example, 0509998877"
+        },
+        {
+          "reviewer": {
+            "as": "rsm",
+            "do": [
+              [
+                "approved"
+              ]
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "case_status": "sent_to_yardi",
+        "status_label": "Approved",
+        "no_per_contact_approval": true,
+        "yardi_payload_has": [
+          "assigned_unit",
+          "contacts",
+          "documents"
+        ],
+        "outbox": [
+          "contacts_request",
+          "azure_ad_invitation",
+          "inquiry_accepted"
+        ]
+      },
+      "layers": {
+        "agent_det": true,
+        "int": true,
+        "e2e_live": true,
+        "eval": true
+      },
+      "eval": {
+        "checks": [
+          "e3_lists_whats_missing",
+          "signatory_question_first",
+          "no_per_contact_approval_mentioned"
+        ]
+      }
+    },
+    {
+      "id": "S24",
+      "title": "Applicant is the signatory",
+      "group": "after_submit",
+      "day": "F2",
+      "chart_paths": [
+        [
+          "approve_lead",
+          "req_contacts",
+          "contacts_notify",
+          "contacts_provide",
+          "approve_lead2"
+        ]
+      ],
+      "not_path": [],
+      "decisions": [
+        "M15"
+      ],
+      "changes": [
+        "E3"
+      ],
+      "contexts": [
+        "applicant",
+        "rsm"
+      ],
+      "seed": {
+        "stage": "lead_approved"
+      },
+      "steps": [
+        {
+          "open_case_chat_from_email": "contacts_request"
+        },
+        {
+          "say": "yes that's me"
+        },
+        {
+          "say": "billing is Nora Ali, nora@beanstreet.example, 0509998877"
+        },
+        {
+          "reviewer": {
+            "as": "rsm",
+            "do": [
+              [
+                "approved"
+              ]
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "contacts": {
+          "authorized_signatory": "same_as_primary",
+          "billing_contact": "Nora Ali"
+        },
+        "case_status": "sent_to_yardi"
+      },
+      "layers": {
+        "agent_det": true,
+        "int": true,
+        "e2e_live": true,
+        "eval": true
+      },
+      "eval": {
+        "checks": [
+          "handles_yes_no_unsure",
+          "signatory_question_first"
+        ]
+      }
+    },
+    {
+      "id": "CC1",
+      "title": "Existing CR, existing contact (Inform)",
+      "group": "call_centre",
+      "day": "F4",
+      "chart_paths": [
+        [
+          "raise_cc",
+          "chk_cc",
+          "db",
+          "crx",
+          "pcx",
+          "inform"
+        ]
+      ],
+      "not_path": [
+        "exec",
+        "email_link"
+      ],
+      "decisions": [
+        "M16"
+      ],
+      "changes": [
+        "V3",
+        "E5"
+      ],
+      "contexts": [
+        "call_centre"
+      ],
+      "seed": null,
+      "steps": [
+        {
+          "cc_cr": "1010000000"
+        },
+        {
+          "cc_contact_check": "existing.tenant@zarahome.example"
+        },
+        {
+          "cc_send_sign_in_link": true
+        }
+      ],
+      "expect": {
+        "inquiry_status": "redirected",
+        "outbox": [
+          "sign_in_link"
+        ],
+        "no_inquiry": true
+      },
+      "layers": {
+        "agent_det": true,
+        "int": true,
+        "e2e_live": true,
+        "eval": true
+      },
+      "eval": {
+        "checks": [
+          "e5_gives_words_to_say",
+          "no_inquiry_created"
+        ]
+      }
+    },
+    {
+      "id": "CC2",
+      "title": "Existing CR, new contact (fresh capture)",
+      "group": "call_centre",
+      "day": "F4",
+      "chart_paths": [
+        [
+          "raise_cc",
+          "chk_cc",
+          "db",
+          "crx",
+          "pcx",
+          "exec",
+          "email_link",
+          "open_form",
+          "bic",
+          "mob",
+          "succ2",
+          "upload_submit",
+          "ref2"
+        ]
+      ],
+      "not_path": [
+        "inform"
+      ],
+      "decisions": [
+        "M16"
+      ],
+      "changes": [
+        "V3"
+      ],
+      "contexts": [
+        "call_centre",
+        "applicant"
+      ],
+      "seed": null,
+      "steps": [
+        {
+          "cc_cr": "1010000000"
+        },
+        {
+          "cc_contact_check": "new.person@zarahome.example"
+        },
+        {
+          "cc_capture": "unit_and_category,basic_info,property_details"
+        },
+        {
+          "cc_submit": true
+        },
+        {
+          "open_application_link": true
+        },
+        {
+          "enter_code": "1234"
+        },
+        {
+          "accept_terms": true
+        },
+        {
+          "upload": {
+            "company_profile": "company_profile.pdf",
+            "brand_profile": "brand_profile.pdf"
+          }
+        },
+        {
+          "submit": true
+        }
+      ],
+      "expect": {
+        "no_yardi_prefill": true,
+        "inquiry_status": "first_review"
+      },
+      "layers": {
+        "agent_det": true,
+        "int": true,
+        "e2e_live": true,
+        "eval": true
+      },
+      "eval": {
+        "checks": [
+          "asks_same_sections_without_documents",
+          "no_prefill_claims"
+        ]
+      }
+    },
+    {
+      "id": "CC3",
+      "title": "New CR through to submit",
+      "group": "call_centre",
+      "day": "F4",
+      "chart_paths": [
+        [
+          "raise_cc",
+          "chk_cc",
+          "db",
+          "crx",
+          "exec",
+          "email_link",
+          "open_form",
+          "bic",
+          "update_bi",
+          "mob",
+          "succ2",
+          "upload_submit",
+          "ref2"
+        ]
+      ],
+      "not_path": [
+        "pcx",
+        "inform"
+      ],
+      "decisions": [
+        "M16",
+        "M22"
+      ],
+      "changes": [
+        "V3"
+      ],
+      "contexts": [
+        "call_centre",
+        "applicant"
+      ],
+      "seed": null,
+      "steps": [
+        {
+          "cc_cr": "1010123456"
+        },
+        {
+          "cc_capture": "unit_and_category,basic_info,property_details"
+        },
+        {
+          "cc_submit": true
+        },
+        {
+          "open_application_link": true
+        },
+        {
+          "edit_field": [
+            "last_name",
+            "Al-Ali"
+          ]
+        },
+        {
+          "enter_code": "1234"
+        },
+        {
+          "accept_terms": true
+        },
+        {
+          "upload": {
+            "company_profile": "company_profile.pdf",
+            "brand_profile": "brand_profile.pdf"
+          }
+        },
+        {
+          "submit": true
+        }
+      ],
+      "expect": {
+        "inquiry_status": "first_review",
+        "basic_info_changed": [
+          "last_name"
+        ]
+      },
+      "layers": {
+        "agent_det": true,
+        "int": true,
+        "e2e_live": true,
+        "eval": true
+      },
+      "eval": {
+        "checks": [
+          "assisted_words_for_executive",
+          "no_documents_asked_from_executive"
+        ]
+      }
+    }
+  ]
+}
