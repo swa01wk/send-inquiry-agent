@@ -1,0 +1,167 @@
+{
+  "timestamp": "20261112T155741Z",
+  "provider": "azure",
+  "model": "gpt-5.4-mini",
+  "group": "case",
+  "eval_repeats": 3,
+  "eval_tolerance": 5.0,
+  "baseline": null,
+  "baseline_check": "skipped (group filter); every scenario must pass",
+  "score_percent": 100.0,
+  "passed": true,
+  "invariant_failures": [],
+  "scenarios": [
+    {
+      "name": "Case: re-upload explained",
+      "group": "case",
+      "passed": true,
+      "passes": 3,
+      "runs": [
+        {
+          "run": 1,
+          "passed": true,
+          "checks": [
+            [
+              "mentions Brand Profile",
+              true
+            ],
+            [
+              "paraphrases logo remark",
+              true
+            ],
+            [
+              "tells user to upload and Resubmit",
+              true
+            ],
+            [
+              "no reviewer name",
+              true
+            ],
+            [
+              "case status unchanged",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Why do you need my documents again?",
+              "assistant": "Your case is currently with the Leasing Admin, and the Brand Profile has been sent back because the logo page is missing. The leasing team needs a current file with that page included, then you can upload the new file and press Resubmit on the card.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "checks": [
+            [
+              "mentions Brand Profile",
+              true
+            ],
+            [
+              "paraphrases logo remark",
+              true
+            ],
+            [
+              "tells user to upload and Resubmit",
+              true
+            ],
+            [
+              "no reviewer name",
+              true
+            ],
+            [
+              "case status unchanged",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Why do you need my documents again?",
+              "assistant": "Your case is still with the Leasing Admin, and the open request is for the Brand Profile because the logo page is missing. The leasing team needs a complete current version of that document so they can continue the review. Please upload the new file and press Resubmit on the card.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 3,
+          "passed": true,
+          "checks": [
+            [
+              "mentions Brand Profile",
+              true
+            ],
+            [
+              "paraphrases logo remark",
+              true
+            ],
+            [
+              "tells user to upload and Resubmit",
+              true
+            ],
+            [
+              "no reviewer name",
+              true
+            ],
+            [
+              "case status unchanged",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Why do you need my documents again?",
+              "assistant": "Your case is still with the Leasing Admin, and the open request is a re-upload for the Brand Profile because the logo page is missing. The leasing team acts next on the updated file, and you can upload the current Brand Profile with the missing page and press Resubmit on the card.",
+              "retractions": 0
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "scenarios_passed": 1,
+    "scenarios_total": 1,
+    "retractions": 0,
+    "unnecessary_questions": 0
+  }
+}

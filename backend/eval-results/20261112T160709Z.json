@@ -1,0 +1,593 @@
+{
+  "timestamp": "20261112T160709Z",
+  "provider": "azure",
+  "model": "gpt-5.4-mini",
+  "group": "case",
+  "eval_repeats": 3,
+  "eval_tolerance": 5.0,
+  "baseline": null,
+  "baseline_check": "skipped (group filter); every scenario must pass",
+  "score_percent": 100.0,
+  "passed": true,
+  "invariant_failures": [],
+  "scenarios": [
+    {
+      "name": "Case: re-upload explained",
+      "group": "case",
+      "passed": true,
+      "passes": 3,
+      "runs": [
+        {
+          "run": 1,
+          "passed": true,
+          "checks": [
+            [
+              "mentions Brand Profile",
+              true
+            ],
+            [
+              "paraphrases logo remark",
+              true
+            ],
+            [
+              "tells user to upload and Resubmit",
+              true
+            ],
+            [
+              "no reviewer name",
+              true
+            ],
+            [
+              "case status unchanged",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Why do you need my documents again?",
+              "assistant": "Your case is still with the Leasing Admin, and the open request is for the Brand Profile because the logo page is missing. You can upload a complete current file and press Resubmit on the card; if you want, I can show the upload card again.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "checks": [
+            [
+              "mentions Brand Profile",
+              true
+            ],
+            [
+              "paraphrases logo remark",
+              true
+            ],
+            [
+              "tells user to upload and Resubmit",
+              true
+            ],
+            [
+              "no reviewer name",
+              true
+            ],
+            [
+              "case status unchanged",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Why do you need my documents again?",
+              "assistant": "Your case is still with the Leasing Admin, and the Brand Profile has been sent back because the logo page is missing. You can upload the updated file now and press Resubmit on the card; nothing else is needed from you for this request.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 3,
+          "passed": true,
+          "checks": [
+            [
+              "mentions Brand Profile",
+              true
+            ],
+            [
+              "paraphrases logo remark",
+              true
+            ],
+            [
+              "tells user to upload and Resubmit",
+              true
+            ],
+            [
+              "no reviewer name",
+              true
+            ],
+            [
+              "case status unchanged",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Why do you need my documents again?",
+              "assistant": "Your case is with the Leasing Admin now, and the open request is for a current Brand Profile because the logo page is missing. Please upload the corrected file and press Resubmit on the card so the leasing team can continue.",
+              "retractions": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Case: where is it",
+      "group": "case",
+      "passed": true,
+      "passes": 3,
+      "runs": [
+        {
+          "run": 1,
+          "passed": true,
+          "checks": [
+            [
+              "mentions first review or leasing team role",
+              true
+            ],
+            [
+              "no timeline promise",
+              true
+            ],
+            [
+              "no reviewer name",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Where is my inquiry now?",
+              "assistant": "Your inquiry is currently with the Leasing Admin, and the outcome on the case is still under review. The leasing team is the next role to act, and there\u2019s nothing you need to send right now. If they need anything later, you\u2019ll see it on the relevant card.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "checks": [
+            [
+              "mentions first review or leasing team role",
+              true
+            ],
+            [
+              "no timeline promise",
+              true
+            ],
+            [
+              "no reviewer name",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Where is my inquiry now?",
+              "assistant": "Your inquiry is with the Leasing Admin right now, and there are no open requests on the case. The chart outcome is still under review, so the next step is with the leasing team; you don\u2019t need to send anything at this moment unless a new request appears.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 3,
+          "passed": true,
+          "checks": [
+            [
+              "mentions first review or leasing team role",
+              true
+            ],
+            [
+              "no timeline promise",
+              true
+            ],
+            [
+              "no reviewer name",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Where is my inquiry now?",
+              "assistant": "Your inquiry is under review and the Leasing Admin is handling it now. There\u2019s nothing needed from you at the moment, so you can just wait for the next update. The outcome chart label for this case is currently not shown as a final approval or rejection yet.",
+              "retractions": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Case: contacts bundle",
+      "group": "case",
+      "passed": true,
+      "passes": 2,
+      "runs": [
+        {
+          "run": 1,
+          "passed": true,
+          "checks": [
+            [
+              "signatory_answer recorded",
+              true
+            ],
+            [
+              "authorized_signatory same_as_primary",
+              true
+            ],
+            [
+              "billing_contact Omar Saleh",
+              true
+            ],
+            [
+              "billing phone +966551234567",
+              true
+            ],
+            [
+              "contacts card shown",
+              true
+            ],
+            [
+              "contacts request still open",
+              true
+            ],
+            [
+              "no claim contacts were sent",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "I'm the authorized signatory. Billing is Omar Saleh, omar@beanstreet.example, +966551234567.",
+              "assistant": "I\u2019ve captured you as the authorised signatory and Omar Saleh as the billing contact, and the contacts review card is now open for you to check. If everything looks right, press Send contacts on the card.",
+              "retractions": 1
+            }
+          ]
+        },
+        {
+          "run": 2,
+          "passed": false,
+          "checks": [
+            [
+              "signatory_answer recorded",
+              false
+            ],
+            [
+              "authorized_signatory same_as_primary",
+              true
+            ],
+            [
+              "billing_contact Omar Saleh",
+              true
+            ],
+            [
+              "billing phone +966551234567",
+              true
+            ],
+            [
+              "contacts card shown",
+              true
+            ],
+            [
+              "contacts request still open",
+              true
+            ],
+            [
+              "no claim contacts were sent",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "I'm the authorized signatory. Billing is Omar Saleh, omar@beanstreet.example, +966551234567.",
+              "assistant": "I\u2019ve captured you as the authorised signatory and Omar Saleh as the billing contact with the email and mobile you shared. Please check the contacts card and press Send contacts when you\u2019re ready.",
+              "retractions": 1
+            }
+          ]
+        },
+        {
+          "run": 3,
+          "passed": true,
+          "checks": [
+            [
+              "signatory_answer recorded",
+              true
+            ],
+            [
+              "authorized_signatory same_as_primary",
+              true
+            ],
+            [
+              "billing_contact Omar Saleh",
+              true
+            ],
+            [
+              "billing phone +966551234567",
+              true
+            ],
+            [
+              "contacts card shown",
+              true
+            ],
+            [
+              "contacts request still open",
+              true
+            ],
+            [
+              "no claim contacts were sent",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "I'm the authorized signatory. Billing is Omar Saleh, omar@beanstreet.example, +966551234567.",
+              "assistant": "I\u2019ve captured you as the authorised signatory and Omar Saleh as the billing contact. Please check the contacts review card and use Send contacts when you\u2019re ready.",
+              "retractions": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Case: rejection explained",
+      "group": "case",
+      "passed": true,
+      "passes": 3,
+      "runs": [
+        {
+          "run": 1,
+          "passed": true,
+          "checks": [
+            [
+              "mentions space reason",
+              true
+            ],
+            [
+              "offers after_rejection guidance",
+              true
+            ],
+            [
+              "does not offer to reopen or change decision",
+              true
+            ],
+            [
+              "no reviewer name",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Why was it rejected?",
+              "assistant": "It was marked Tenant Not Qualified because there\u2019s no kiosk space at this mall this year. You can submit a new inquiry at any time, for example with updated documents or for another mall.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "checks": [
+            [
+              "mentions space reason",
+              true
+            ],
+            [
+              "offers after_rejection guidance",
+              true
+            ],
+            [
+              "does not offer to reopen or change decision",
+              true
+            ],
+            [
+              "no reviewer name",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Why was it rejected?",
+              "assistant": "It was marked **Tenant Not Qualified** because there\u2019s no kiosk space at this mall this year. You can start a new inquiry anytime, for example with updated documents or for another mall.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 3,
+          "passed": true,
+          "checks": [
+            [
+              "mentions space reason",
+              true
+            ],
+            [
+              "offers after_rejection guidance",
+              true
+            ],
+            [
+              "does not offer to reopen or change decision",
+              true
+            ],
+            [
+              "no reviewer name",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Why was it rejected?",
+              "assistant": "It was marked Tenant Not Qualified because there isn\u2019t any kiosk space at this mall this year. You can still raise a new inquiry at any time, for example with updated documents or for another mall.",
+              "retractions": 0
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "scenarios_passed": 4,
+    "scenarios_total": 4,
+    "retractions": 3,
+    "unnecessary_questions": 0
+  }
+}

@@ -1,0 +1,301 @@
+{
+  "timestamp": "20261112T155912Z",
+  "provider": "azure",
+  "model": "gpt-5.4-mini",
+  "group": "flow_v2",
+  "eval_repeats": 3,
+  "eval_tolerance": 5.0,
+  "baseline": null,
+  "baseline_check": "skipped (group filter); every scenario must pass",
+  "score_percent": 100.0,
+  "passed": true,
+  "invariant_failures": [],
+  "scenarios": [
+    {
+      "name": "S19 Not qualified",
+      "group": "flow_v2",
+      "passed": true,
+      "passes": 3,
+      "runs": [
+        {
+          "run": 1,
+          "passed": true,
+          "checks": [
+            [
+              "says_tenant_not_qualified",
+              true
+            ],
+            [
+              "explains_outcome_no_reviewer_names_no_promises",
+              true
+            ],
+            [
+              "offers_new_inquiry",
+              true
+            ],
+            [
+              "does_not_offer_reopen",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Why was it rejected?",
+              "assistant": "It was marked as Tenant Not Qualified because the mall wasn\u2019t considered a fit for this case. You can start a new inquiry at any time, for example with updated documents or for another mall, and I can help you with that when you\u2019re ready.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "checks": [
+            [
+              "says_tenant_not_qualified",
+              true
+            ],
+            [
+              "explains_outcome_no_reviewer_names_no_promises",
+              true
+            ],
+            [
+              "offers_new_inquiry",
+              true
+            ],
+            [
+              "does_not_offer_reopen",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Why was it rejected?",
+              "assistant": "It was marked Tenant Not Qualified because the leasing team found it wasn\u2019t a fit for this mall. You can start a new inquiry at any time, for example with updated documents or for another mall.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 3,
+          "passed": true,
+          "checks": [
+            [
+              "says_tenant_not_qualified",
+              true
+            ],
+            [
+              "explains_outcome_no_reviewer_names_no_promises",
+              true
+            ],
+            [
+              "offers_new_inquiry",
+              true
+            ],
+            [
+              "does_not_offer_reopen",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Why was it rejected?",
+              "assistant": "It was marked Tenant Not Qualified because the leasing team said it wasn\u2019t a fit for this mall. You can start a new inquiry at any time, for example with updated documents or for another mall.",
+              "retractions": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "S20 Qualified",
+      "group": "flow_v2",
+      "passed": true,
+      "passes": 3,
+      "runs": [
+        {
+          "run": 1,
+          "passed": true,
+          "checks": [
+            [
+              "where_is_it_gives_right_stage",
+              true
+            ],
+            [
+              "names_regional_sales_manager_or_leasing_team",
+              true
+            ],
+            [
+              "no_contacts_request_mentioned",
+              true
+            ],
+            [
+              "no timeline promise",
+              true
+            ],
+            [
+              "no reviewer name",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Where is my inquiry?",
+              "assistant": "Your inquiry is at Tenant Qualified, and the leasing team\u2019s next step is with the Regional Sales Manager reviewing it. There\u2019s nothing needed from you right now, so you can just wait for the next contact; they may still ask for more contacts or Forecasted Sales Data later.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "checks": [
+            [
+              "where_is_it_gives_right_stage",
+              true
+            ],
+            [
+              "names_regional_sales_manager_or_leasing_team",
+              true
+            ],
+            [
+              "no_contacts_request_mentioned",
+              true
+            ],
+            [
+              "no timeline promise",
+              true
+            ],
+            [
+              "no reviewer name",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Where is my inquiry?",
+              "assistant": "Your inquiry is in Tenant Qualified and the leasing team is now handling it through the Regional Sales Manager role. Nothing is needed from you right now, so you can wait for the Azure AD invitation email, and they may still ask for more contacts or Forecasted Sales Data later.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 3,
+          "passed": true,
+          "checks": [
+            [
+              "where_is_it_gives_right_stage",
+              true
+            ],
+            [
+              "names_regional_sales_manager_or_leasing_team",
+              true
+            ],
+            [
+              "no_contacts_request_mentioned",
+              true
+            ],
+            [
+              "no timeline promise",
+              true
+            ],
+            [
+              "no reviewer name",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Where is my inquiry?",
+              "assistant": "Your inquiry is at Tenant Qualified, and there\u2019s nothing you need to send right now. The leasing team is the next role handling it, and they may reach out later if they need more contacts or Forecasted Sales Data.",
+              "retractions": 0
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "scenarios_passed": 2,
+    "scenarios_total": 2,
+    "retractions": 0,
+    "unnecessary_questions": 0
+  }
+}

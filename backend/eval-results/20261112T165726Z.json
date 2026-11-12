@@ -1,0 +1,450 @@
+{
+  "timestamp": "20261112T165726Z",
+  "provider": "azure",
+  "model": "gpt-5.4-mini",
+  "group": "signatory",
+  "eval_repeats": 3,
+  "eval_tolerance": 5.0,
+  "baseline": null,
+  "baseline_check": "skipped (group filter); every scenario must pass",
+  "score_percent": 100.0,
+  "passed": true,
+  "invariant_failures": [],
+  "scenarios": [
+    {
+      "name": "signatory: yes that's me",
+      "group": "signatory",
+      "passed": true,
+      "passes": 3,
+      "runs": [
+        {
+          "run": 1,
+          "passed": true,
+          "checks": [
+            [
+              "session signatory_answer yes",
+              true
+            ],
+            [
+              "authorized_signatory same_as_primary",
+              true
+            ],
+            [
+              "signatory card answered yes",
+              true
+            ],
+            [
+              "mentions billing or optional roles (wording)",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Yes, that's me",
+              "assistant": "You\u2019re in Lead Approved, and the leasing team is now handling the final contact step. Since you\u2019re the authorised signatory, the remaining thing to add is the billing contact, and you can also include optional roles like Leasing Manager, Financial Controller, or Company Admin if you want. Please use the contacts card to add that contact and then press Send contacts.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "checks": [
+            [
+              "session signatory_answer yes",
+              true
+            ],
+            [
+              "authorized_signatory same_as_primary",
+              true
+            ],
+            [
+              "signatory card answered yes",
+              true
+            ],
+            [
+              "mentions billing or optional roles (wording)",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Yes, that's me",
+              "assistant": "Thanks \u2014 that means you\u2019re the authorised signatory. This is in Lead Approved, and the leasing team is the next role handling it; still needed before the final Approve Lead are the Authorized Signatory and Billing Contact. Please add the billing contact on the contacts card, and you can also include the optional Leasing Manager, Financial Controller, and Company Admin if you\u2019d like.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 3,
+          "passed": true,
+          "checks": [
+            [
+              "session signatory_answer yes",
+              true
+            ],
+            [
+              "authorized_signatory same_as_primary",
+              true
+            ],
+            [
+              "signatory card answered yes",
+              true
+            ],
+            [
+              "mentions billing or optional roles (wording)",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Yes, that's me",
+              "assistant": "Thanks \u2014 I\u2019ve recorded that you are the authorised signatory. This is currently at Lead Approved, and the leasing team is now waiting for the company contacts needed before the final Approve Lead. Please add the Billing Contact on the contacts card, and you can also include the optional roles if you have them: Leasing Manager, Financial Controller, or Company Admin.",
+              "retractions": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "signatory: partner Ahmed signs",
+      "group": "signatory",
+      "passed": true,
+      "passes": 3,
+      "runs": [
+        {
+          "run": 1,
+          "passed": true,
+          "checks": [
+            [
+              "session signatory_answer no",
+              true
+            ],
+            [
+              "authorized_signatory Ahmed",
+              true
+            ],
+            [
+              "signatory email present",
+              true
+            ],
+            [
+              "signatory phone present",
+              true
+            ],
+            [
+              "asks for or mentions billing (wording)",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "No, my partner Ahmed signs",
+              "assistant": "Thanks \u2014 your case is in Lead Approved, and the leasing team is now handling the contacts step. Since Ahmed is the signatory, please send his name, email and mobile first, then the billing contact; you can also add the Leasing Manager, Financial Controller or Company Admin if you want. Use the contacts card and the Yes / No buttons there won\u2019t help now, since you\u2019ve already confirmed it\u2019s not you.",
+              "retractions": 0
+            },
+            {
+              "user": "Ahmed Saleh, ahmed@beanstreet.example, +966551234567",
+              "assistant": "I\u2019ve captured Ahmed Saleh as the authorised signatory with ahmed@beanstreet.example and +966551234567. Please use the contacts card to add the billing contact next, and you can include the optional roles if you want.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "checks": [
+            [
+              "session signatory_answer no",
+              true
+            ],
+            [
+              "authorized_signatory Ahmed",
+              true
+            ],
+            [
+              "signatory email present",
+              true
+            ],
+            [
+              "signatory phone present",
+              true
+            ],
+            [
+              "asks for or mentions billing (wording)",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "No, my partner Ahmed signs",
+              "assistant": "Thanks \u2014 the case is at Lead Approved, and the leasing team is handling the final step. I\u2019ve noted that you\u2019re not the authorised signatory; please use the signatory card to add Ahmed\u2019s name, email and mobile, then the billing contact, and you can include Leasing Manager, Financial Controller, and Company Admin if you want.",
+              "retractions": 0
+            },
+            {
+              "user": "Ahmed Saleh, ahmed@beanstreet.example, +966551234567",
+              "assistant": "I\u2019ve captured Ahmed Saleh with ahmed@beanstreet.example and +966551234567 for the authorised signatory. Please use the contacts card to add the billing contact next, and include any Leasing Manager, Financial Controller, or Company Admin if you\u2019d like.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 3,
+          "passed": true,
+          "checks": [
+            [
+              "session signatory_answer no",
+              true
+            ],
+            [
+              "authorized_signatory Ahmed",
+              true
+            ],
+            [
+              "signatory email present",
+              true
+            ],
+            [
+              "signatory phone present",
+              true
+            ],
+            [
+              "asks for or mentions billing (wording)",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "No, my partner Ahmed signs",
+              "assistant": "Thanks \u2014 that means Ahmed is the authorised signatory, and this case is at Lead Approved with the Regional Sales Manager handling it next. What\u2019s still needed before the final approve is the Authorized Signatory and Billing Contact details; please use the contacts card to add Ahmed\u2019s name, email and mobile, then the billing contact too, and include any optional roles if you have them.",
+              "retractions": 0
+            },
+            {
+              "user": "Ahmed Saleh, ahmed@beanstreet.example, +966551234567",
+              "assistant": "I\u2019ve captured Ahmed Saleh as the Authorized Signatory with ahmed@beanstreet.example and +966551234567. Please add the Billing Contact next on the contacts card, and include any optional roles if you have them, then press Send contacts.",
+              "retractions": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "signatory: not sure",
+      "group": "signatory",
+      "passed": true,
+      "passes": 3,
+      "runs": [
+        {
+          "run": 1,
+          "passed": true,
+          "checks": [
+            [
+              "explains signatory role (wording)",
+              true
+            ],
+            [
+              "signatory still unanswered",
+              true
+            ],
+            [
+              "no billing collected yet",
+              true
+            ],
+            [
+              "asks again or points to card",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "I'm not sure",
+              "assistant": "You\u2019re at Lead Approved, and the leasing team still needs the Authorized Signatory and Billing Contact before the final Approve Lead. If you\u2019re not sure, I can explain what the authorised signatory role means, and you can use the Yes / No buttons on the signatory card once it makes sense.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "checks": [
+            [
+              "explains signatory role (wording)",
+              true
+            ],
+            [
+              "signatory still unanswered",
+              true
+            ],
+            [
+              "no billing collected yet",
+              true
+            ],
+            [
+              "asks again or points to card",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "I'm not sure",
+              "assistant": "This is in the Lead Approved stage, and the leasing team still needs the company contacts before the final approval can move on. If you\u2019re not sure, first confirm whether you\u2019re the authorised signatory for your company \u2014 use the Yes / No buttons on the signatory card. If you want, I can then help you add the billing contact and the optional roles.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 3,
+          "passed": true,
+          "checks": [
+            [
+              "explains signatory role (wording)",
+              true
+            ],
+            [
+              "signatory still unanswered",
+              true
+            ],
+            [
+              "no billing collected yet",
+              true
+            ],
+            [
+              "asks again or points to card",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "I'm not sure",
+              "assistant": "You\u2019re at Lead Approved, and the leasing team is handling the next step. I still need one thing first: are you the authorised signatory \u2014 the person who can sign the lease for your company? Please use the Yes / No buttons on the signatory card; if you\u2019re unsure, tell me that and I\u2019ll explain it simply.",
+              "retractions": 0
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "scenarios_passed": 3,
+    "scenarios_total": 3,
+    "retractions": 0,
+    "unnecessary_questions": 0
+  }
+}

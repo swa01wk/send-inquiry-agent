@@ -1,0 +1,891 @@
+{
+  "timestamp": "20261112T165523Z",
+  "provider": "azure",
+  "model": "gpt-5.4-mini",
+  "group": "flow_v2",
+  "eval_repeats": 3,
+  "eval_tolerance": 5.0,
+  "baseline": null,
+  "baseline_check": "skipped (group filter); every scenario must pass",
+  "score_percent": 100.0,
+  "passed": true,
+  "invariant_failures": [],
+  "scenarios": [
+    {
+      "name": "S19 Not qualified",
+      "group": "flow_v2",
+      "passed": true,
+      "passes": 3,
+      "runs": [
+        {
+          "run": 1,
+          "passed": true,
+          "checks": [
+            [
+              "says_tenant_not_qualified",
+              true
+            ],
+            [
+              "explains_outcome_no_reviewer_names_no_promises",
+              true
+            ],
+            [
+              "offers_new_inquiry",
+              true
+            ],
+            [
+              "does_not_offer_reopen",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Why was it rejected?",
+              "assistant": "It was marked Tenant Not Qualified because the leasing team said it\u2019s not a fit for this mall. You can start a new inquiry any time, for example with updated documents or for another mall.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "checks": [
+            [
+              "says_tenant_not_qualified",
+              true
+            ],
+            [
+              "explains_outcome_no_reviewer_names_no_promises",
+              true
+            ],
+            [
+              "offers_new_inquiry",
+              true
+            ],
+            [
+              "does_not_offer_reopen",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Why was it rejected?",
+              "assistant": "Your inquiry was marked Tenant Not Qualified because it wasn\u2019t considered a fit for this mall. You can raise a new inquiry at any time, for example with updated documents or for another mall.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 3,
+          "passed": true,
+          "checks": [
+            [
+              "says_tenant_not_qualified",
+              true
+            ],
+            [
+              "explains_outcome_no_reviewer_names_no_promises",
+              true
+            ],
+            [
+              "offers_new_inquiry",
+              true
+            ],
+            [
+              "does_not_offer_reopen",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Why was it rejected?",
+              "assistant": "It was marked Tenant Not Qualified because the leasing review found it was not a fit for this mall. You can start a new inquiry any time, for example with updated documents or for another mall.",
+              "retractions": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "S20 Qualified",
+      "group": "flow_v2",
+      "passed": true,
+      "passes": 3,
+      "runs": [
+        {
+          "run": 1,
+          "passed": true,
+          "checks": [
+            [
+              "where_is_it_gives_right_stage",
+              true
+            ],
+            [
+              "names_regional_sales_manager_or_leasing_team",
+              true
+            ],
+            [
+              "no_contacts_request_mentioned",
+              true
+            ],
+            [
+              "no timeline promise",
+              true
+            ],
+            [
+              "no reviewer name",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Where is my inquiry?",
+              "assistant": "Your inquiry is at Tenant Qualified, and the Regional Sales Manager is the next role reviewing it. There\u2019s nothing you need to send right now, so you can just wait for the leasing team to come back if they need anything else.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "checks": [
+            [
+              "where_is_it_gives_right_stage",
+              true
+            ],
+            [
+              "names_regional_sales_manager_or_leasing_team",
+              true
+            ],
+            [
+              "no_contacts_request_mentioned",
+              true
+            ],
+            [
+              "no timeline promise",
+              true
+            ],
+            [
+              "no reviewer name",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Where is my inquiry?",
+              "assistant": "Your inquiry is at Tenant Qualified, and there are no open requests right now. The Regional Sales Manager is the next role handling it, and you don\u2019t need to send anything at this moment.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 3,
+          "passed": true,
+          "checks": [
+            [
+              "where_is_it_gives_right_stage",
+              true
+            ],
+            [
+              "names_regional_sales_manager_or_leasing_team",
+              true
+            ],
+            [
+              "no_contacts_request_mentioned",
+              true
+            ],
+            [
+              "no timeline promise",
+              true
+            ],
+            [
+              "no reviewer name",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Where is my inquiry?",
+              "assistant": "Your inquiry is at Tenant Qualified, and the Regional Sales Manager is the next team role handling it. There\u2019s nothing you need to send right now, so you can just wait for any next request or update.",
+              "retractions": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "S21 Forecasted Sales Data",
+      "group": "flow_v2",
+      "passed": true,
+      "passes": 3,
+      "runs": [
+        {
+          "run": 1,
+          "passed": true,
+          "checks": [
+            [
+              "says_forecasted",
+              true
+            ],
+            [
+              "no estimated wording",
+              true
+            ],
+            [
+              "e2_suggestion_has_reason",
+              true
+            ],
+            [
+              "e2_never_sends_request",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "here it is",
+              "assistant": "You\u2019re at Tenant Qualified, and the Regional Sales Manager is the next role reviewing it. What\u2019s still needed is your Forecasted Sales Data for monthly figures for the first year, so please upload that on the card and send it through; after you submit it, the Regional Sales Manager will review it.",
+              "retractions": 0
+            },
+            {
+              "user": "[submit_forecasted_sales_data]",
+              "assistant": "You\u2019re still at Tenant Qualified, and the Regional Sales Manager is the next role reviewing it. There\u2019s nothing else needed from you right now, so you can wait for the next update.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "checks": [
+            [
+              "says_forecasted",
+              true
+            ],
+            [
+              "no estimated wording",
+              true
+            ],
+            [
+              "e2_suggestion_has_reason",
+              true
+            ],
+            [
+              "e2_never_sends_request",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "here it is",
+              "assistant": "You\u2019re at Tenant Qualified, and the Regional Sales Manager is the next role reviewing it. What\u2019s still needed from you is the Forecasted Sales Data for your first year, monthly, so please upload that on the card. Once you\u2019ve done that, I\u2019ll help with the next step.",
+              "retractions": 0
+            },
+            {
+              "user": "[submit_forecasted_sales_data]",
+              "assistant": "You\u2019re still at Tenant Qualified, and the Regional Sales Manager is the next role looking at it. There\u2019s nothing more you need to send right now, so you can just wait for the next update.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 3,
+          "passed": true,
+          "checks": [
+            [
+              "says_forecasted",
+              true
+            ],
+            [
+              "no estimated wording",
+              true
+            ],
+            [
+              "e2_suggestion_has_reason",
+              true
+            ],
+            [
+              "e2_never_sends_request",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "here it is",
+              "assistant": "You\u2019re at Tenant Qualified, and the next step is with the Regional Sales Manager reviewing your Forecasted Sales Data for the first year, by month. Please upload that Forecasted Sales Data on the card so the leasing team can continue, and if there\u2019s anything else they need later, they\u2019ll ask for it there.",
+              "retractions": 0
+            },
+            {
+              "user": "[submit_forecasted_sales_data]",
+              "assistant": "Your Forecasted Sales Data has been sent, and the case is still at Tenant Qualified with the Regional Sales Manager next. Nothing else is needed from you right now, so you can just wait while the leasing team reviews it.",
+              "retractions": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "S22 Lead Rejected",
+      "group": "flow_v2",
+      "passed": true,
+      "passes": 3,
+      "runs": [
+        {
+          "run": 1,
+          "passed": true,
+          "checks": [
+            [
+              "says_lead_rejected",
+              true
+            ],
+            [
+              "no_reason_invented",
+              true
+            ],
+            [
+              "offers_new_inquiry",
+              true
+            ],
+            [
+              "does_not_offer_reopen",
+              true
+            ],
+            [
+              "explains_outcome_no_reviewer_names_no_promises",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "what happened?",
+              "assistant": "Your inquiry is at the Outcome stage and it was marked Lead Rejected because there isn\u2019t a suitable unit this year. You can start a new inquiry at any time, for example with updated documents or for another mall.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "checks": [
+            [
+              "says_lead_rejected",
+              true
+            ],
+            [
+              "no_reason_invented",
+              true
+            ],
+            [
+              "offers_new_inquiry",
+              true
+            ],
+            [
+              "does_not_offer_reopen",
+              true
+            ],
+            [
+              "explains_outcome_no_reviewer_names_no_promises",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "what happened?",
+              "assistant": "Your inquiry is at the outcome stage and it was marked Lead Rejected, because there isn\u2019t a suitable unit available this year. You can start a new inquiry at any time, for example with updated documents or for another mall.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 3,
+          "passed": true,
+          "checks": [
+            [
+              "says_lead_rejected",
+              true
+            ],
+            [
+              "no_reason_invented",
+              true
+            ],
+            [
+              "offers_new_inquiry",
+              true
+            ],
+            [
+              "does_not_offer_reopen",
+              true
+            ],
+            [
+              "explains_outcome_no_reviewer_names_no_promises",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "what happened?",
+              "assistant": "Your inquiry is at the outcome stage and it ended as Lead Rejected because there isn\u2019t a suitable unit available this year. You can start a new inquiry at any time with updated documents or for another mall.",
+              "retractions": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "S23 Lead approved contacts",
+      "group": "flow_v2",
+      "passed": true,
+      "passes": 2,
+      "runs": [
+        {
+          "run": 1,
+          "passed": true,
+          "checks": [
+            [
+              "signatory_question_first",
+              true
+            ],
+            [
+              "e3_lists_whats_missing",
+              true
+            ],
+            [
+              "no_per_contact_approval_mentioned",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "What do you need from me now?",
+              "assistant": "You\u2019re at Lead Approved, and the leasing team is the next role to act once the missing company contacts are in. What I need from you now is the authorised signatory first \u2014 please use the Yes / No buttons on the signatory card to confirm whether that\u2019s you. After that, I can take the billing contact and then the optional roles if needed.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 2,
+          "passed": false,
+          "checks": [
+            [
+              "signatory_question_first",
+              true
+            ],
+            [
+              "e3_lists_whats_missing",
+              false
+            ],
+            [
+              "no_per_contact_approval_mentioned",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "What do you need from me now?",
+              "assistant": "You\u2019re at Lead Approved, and the leasing team is now waiting on the company contacts before the final approval. I need one thing first: are you the authorised signatory for your company? Please use the Yes / No buttons on the signatory card.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 3,
+          "passed": true,
+          "checks": [
+            [
+              "signatory_question_first",
+              true
+            ],
+            [
+              "e3_lists_whats_missing",
+              true
+            ],
+            [
+              "no_per_contact_approval_mentioned",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "What do you need from me now?",
+              "assistant": "Your case is at Lead Approved, and the leasing team is still waiting on the company contacts needed before the final approve lead. What I need from you now is the authorised signatory first \u2014 are you the person who can sign the lease for your company? Please use the Yes / No buttons on the signatory card.",
+              "retractions": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "S24 Signatory yes",
+      "group": "flow_v2",
+      "passed": true,
+      "passes": 3,
+      "runs": [
+        {
+          "run": 1,
+          "passed": true,
+          "checks": [
+            [
+              "session signatory_answer yes",
+              true
+            ],
+            [
+              "authorized_signatory same_as_primary",
+              true
+            ],
+            [
+              "signatory card answered yes",
+              true
+            ],
+            [
+              "mentions billing or optional roles (wording)",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ],
+            [
+              "handles_yes_no_unsure",
+              true
+            ],
+            [
+              "no_per_contact_approval_mentioned",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Yes, that's me",
+              "assistant": "Thanks \u2014 you\u2019re the authorised signatory. This is in Lead Approved, and the Regional Sales Manager is the next role handling it; still needed before the final Approve Lead are the Authorized Signatory and Billing Contact. Please share the billing contact details now, and you can also add the optional Leasing Manager, Financial Controller, or Company Admin on the contacts card.",
+              "retractions": 0
+            },
+            {
+              "user": "Billing is Nora Ali, nora@beanstreet.example, 0509998877.",
+              "assistant": "I\u2019ve captured you as the authorised signatory and Nora Ali as the billing contact. Please review the card and press Send contacts when you\u2019re ready.",
+              "retractions": 1
+            }
+          ]
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "checks": [
+            [
+              "session signatory_answer yes",
+              true
+            ],
+            [
+              "authorized_signatory same_as_primary",
+              true
+            ],
+            [
+              "signatory card answered yes",
+              true
+            ],
+            [
+              "mentions billing or optional roles (wording)",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ],
+            [
+              "handles_yes_no_unsure",
+              true
+            ],
+            [
+              "no_per_contact_approval_mentioned",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Yes, that's me",
+              "assistant": "Thanks \u2014 you\u2019re the authorised signatory. This is at Lead Approved, and the leasing team is the next role handling it. You can now add the billing contact too, and the optional Leasing Manager, Financial Controller, and Company Admin if you want, then use the contacts card to send them on.",
+              "retractions": 0
+            },
+            {
+              "user": "Billing is Nora Ali, nora@beanstreet.example, 0509998877.",
+              "assistant": "I\u2019ve captured Khalid Al Harbi as the authorised signatory and Nora Ali as the billing contact. Please review them on the card and press Send contacts.",
+              "retractions": 1
+            }
+          ]
+        },
+        {
+          "run": 3,
+          "passed": true,
+          "checks": [
+            [
+              "session signatory_answer yes",
+              true
+            ],
+            [
+              "authorized_signatory same_as_primary",
+              true
+            ],
+            [
+              "signatory card answered yes",
+              true
+            ],
+            [
+              "mentions billing or optional roles (wording)",
+              true
+            ],
+            [
+              "no \"applicant\" in replies",
+              true
+            ],
+            [
+              "no \"Stage:\" label",
+              true
+            ],
+            [
+              "no \"Who acts next\" label",
+              true
+            ],
+            [
+              "handles_yes_no_unsure",
+              true
+            ],
+            [
+              "no_per_contact_approval_mentioned",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Yes, that's me",
+              "assistant": "Thanks \u2014 you\u2019re in the Lead Approved outcome, and the leasing team is handling the final step now. I\u2019ve recorded that you are the authorised signatory; please add the billing contact next, and you can also include the optional Leasing Manager, Financial Controller, or Company Admin if you want. Use the contacts card to enter them, then press Send contacts when you\u2019re ready.",
+              "retractions": 0
+            },
+            {
+              "user": "Billing is Nora Ali, nora@beanstreet.example, 0509998877.",
+              "assistant": "I\u2019ve captured Khalid Al Harbi as the authorised signatory and Nora Ali as the billing contact. Please review them on the card, then press Send contacts to send them on to the leasing team.",
+              "retractions": 1
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "scenarios_passed": 6,
+    "scenarios_total": 6,
+    "retractions": 3,
+    "unnecessary_questions": 0
+  }
+}
