@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from app.agent.context import message_context
+from app.agent.pending import note_verification_sent
 from app.audit import Actor
 from app.domain.master import MasterData
 from app.domain.models import FieldKey, InquiryDraft
@@ -137,4 +138,6 @@ async def send_contact_verification(
                     actor=actor,
                     payload={"channel": "sms", "result": "sent"},
                 )
+    if result.sent:
+        note_verification_sent(services.audit, inquiry_id=session_id, draft=updated)
     return result

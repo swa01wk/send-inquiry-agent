@@ -73,7 +73,7 @@ def review_level(status: CaseStatus) -> ReviewLevel:
 
 
 class ReviewQueue(BaseModel):
-    product_line: Literal["store", "media", "specialty"]
+    product_line: Literal["store", "office", "media", "specialty"]
     region: str
     role: ReviewRole  # the final reviewer for the product line (policy `review_routing`)
     # First-level reviewer (demo feedback §3.2, policy `first_level_review_role`). None:

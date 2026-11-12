@@ -32,6 +32,9 @@ CardType = Literal[
     "cr_question",
     # Demo feedback §3.5
     "signatory_question",
+    # Flow v2 (§3.2, §3.3)
+    "company_registration",
+    "terms",
 ]
 
 StepState = Literal["done", "current", "upcoming"]
@@ -140,6 +143,36 @@ class CrQuestionPayload(BaseModel):
     answered: Literal["yes", "no"] | None = None
 
 
+class SkipConfirm(BaseModel):
+    prompt: str
+    yes_label: str
+    no_label: str
+
+
+class CompanyRegistrationPayload(BaseModel):
+    """Flow v2 Company Registration (§3.2): Verify sends `cr_check {cr_number}`; Skip sends
+    `cr_skip {}` (shows the confirm), then `cr_skip {confirmed: true}`. The CR is never in
+    the payload in full (`cr_masked`, I8)."""
+
+    prompt: str
+    input_placeholder: str
+    verify_label: str
+    skip_label: str
+    skip_confirm: SkipConfirm
+    state: Literal["open", "confirm_skip", "registered", "not_registered", "skipped"]
+    cr_masked: str | None = None
+    error: str | None = None
+
+
+class TermsPayload(BaseModel):
+    """Flow v2 terms before documents (§3.3, FV15): the checkbox sends
+    `accept_terms {terms_accepted: true}`."""
+
+    text: str
+    privacy_url: str
+    accepted: bool = False
+
+
 class MallPickerCity(BaseModel):
     id: str
     label: str
@@ -228,6 +261,9 @@ class ReviewPayload(BaseModel):
     can_submit: bool
     terms_accepted: bool
     blockers: list[str]
+    # Flow v2 (§3.3): the terms were accepted on their own card before the documents; the
+    # review card shows "Terms accepted" and no checkbox.
+    terms_on_own_card: bool = False
 
 
 class SuccessStep(BaseModel):
@@ -362,7 +398,9 @@ class SalesDataPayload(BaseModel):
 class QuickReplyOption(BaseModel):
     label: str
     text: str
-    action: Literal["send", "focus_input"] = "send"
+    # `resume_pending` (flow v2, FV13): the client asks for the email in place and posts the
+    # `resume_pending` action with it; the email is not sent as a chat message.
+    action: Literal["send", "focus_input", "resume_pending"] = "send"
     placeholder: str | None = None
 
 

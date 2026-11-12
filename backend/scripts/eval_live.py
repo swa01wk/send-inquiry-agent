@@ -1280,6 +1280,12 @@ async def _invariants_after_stream(
                 test_scenario=session.test_scenario,
             )
         ),
+        flow_v2_intake=bool(
+            session
+            and session.mode != "case"
+            and session.draft.intake_flow == "v2"
+            and not session.draft.reference
+        ),
         card_text=json.dumps([data.get("payload", {}) for data in ui_cards], ensure_ascii=False),
     )
     return check_turn(ctx)

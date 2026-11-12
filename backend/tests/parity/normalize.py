@@ -11,7 +11,7 @@ _UUID_RE = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
     re.IGNORECASE,
 )
-_REFERENCE_RE = re.compile(r"^GEO-(STR|MED|SPC)-(\d{6})$")
+_REFERENCE_RE = re.compile(r"^GEO-(STR|MED|SPC|OFF)-(\d{6})$")
 _ISO_TS_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T")
 _FILE_ID_RE = re.compile(r"^[0-9a-f]{32}$")
 # Document evidence (domain/document_fill.document_evidence): "<label>: <file>, uploaded <time>".

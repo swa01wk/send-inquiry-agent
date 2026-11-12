@@ -16,6 +16,7 @@ from app.domain.fields import (
 from app.domain.master import MasterData
 from app.domain.models import NEEDS_CONFIRMATION, FieldKey, InquiryDraft
 from app.domain.rules import can_submit, compute_phase, contact_verified, remaining_steps
+from app.domain.sections import current_section, section_states
 
 
 class DraftFieldRow(BaseModel):
@@ -39,6 +40,12 @@ class DraftDocumentRow(BaseModel):
     on_file: bool = False
 
 
+class SectionCheck(BaseModel):
+    key: str
+    label: str
+    done: bool
+
+
 class DraftChecks(BaseModel):
     required_filled: int
     required_total: int = 11
@@ -54,6 +61,8 @@ class DraftChecks(BaseModel):
     # the user may do them in any order. `next_step` is the first, or None when done.
     remaining: list[str] = Field(default_factory=list)
     next_step: str | None = None
+    # Flow v2 (§3.3): the app's sections in order, for the step tabs. Empty on the v1 intake.
+    sections: list[SectionCheck] = Field(default_factory=list)
 
 
 class DraftSummary(BaseModel):
@@ -63,6 +72,8 @@ class DraftSummary(BaseModel):
     checks: DraftChecks
     can_submit: bool
     changed_keys: list[str] = Field(default_factory=list)
+    # Flow v2 (§3.3): the first section not done (None on the v1 intake).
+    section: str | None = None
     # Set on a follow-on inquiry: the reference it follows on from (L3 §3.11). The chat
     # shows a "New inquiry" divider when this changes.
     follow_on_of: str | None = None
@@ -274,6 +285,11 @@ def build_draft_summary(
         terms_accepted=draft.terms_accepted,
         remaining=list(remaining),
         next_step=remaining[0] if remaining else None,
+        sections=(
+            [SectionCheck(key=s.key, label=s.label, done=s.done) for s in section_states(draft)]
+            if draft.intake_flow == "v2"
+            else []
+        ),
     )
 
     return DraftSummary(
@@ -283,6 +299,7 @@ def build_draft_summary(
         checks=checks,
         can_submit=len(blockers) == 0,
         changed_keys=list(changed_keys or []),
+        section=current_section(draft).value if draft.intake_flow == "v2" else None,
         follow_on_of=draft.follow_on_of,
     )
 

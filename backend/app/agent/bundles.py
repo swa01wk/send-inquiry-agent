@@ -14,6 +14,15 @@ from app.api.channel_cards import basic_info_missing
 from app.domain.fields import FIELD_BY_KEY
 from app.domain.models import NEEDS_CONFIRMATION, DocType, FieldKey, InquiryDraft, Source
 from app.domain.rules import contact_verified, open_fields, remaining_steps
+from app.domain.sections import (
+    SECTION_LABELS,
+    SECTION_ORDER,
+    IntakeSection,
+    current_section,
+    missing_in,
+    section_done,
+    section_rank,
+)
 from app.policy.config import get_policy
 
 
@@ -123,6 +132,8 @@ def next_bundle_hint(
     del cards_shown  # verification progress now lives on the draft
     if draft.cr_status == "existing" or draft.reference:
         return "Next question: none (no more collection needed)."
+    if draft.intake_flow == "v2" and not assisted:
+        return _v2_hint(draft)
     if draft.cr_status == "unknown":
         if not assisted and get_policy().public_cr_check == "ask_then_sign_in":
             # Demo feedback §3.1. Self-service and existing-tenant chats reach here with
@@ -249,7 +260,10 @@ def _fields_left(draft: InquiryDraft) -> list[str]:
 
 
 def still_needed_line(draft: InquiryDraft) -> str:
-    """What's left before submit, from `can_submit`; the user may do it in any order."""
+    """What's left before submit, from `can_submit`; the user may do it in any order.
+    Flow v2 (§3.3): the current section only."""
+    if draft.intake_flow == "v2":
+        return _v2_still_needed(draft)
     steps = [
         step for step in remaining_steps(draft) if step in _STILL_NEEDED_LABELS or step == "fields"
     ]
@@ -268,4 +282,118 @@ def still_needed_line(draft: InquiryDraft) -> str:
         f"Still needed before submit (any order): {left}. Don't call anything the last step "
         "or point to Submit while more than the terms is left. If the user asks what's next "
         "or for the submit button, name what's left and point to that card."
+    )
+
+
+# ---- Flow v2 public intake (spec flow-v2-alignment §3.3; day F3) ------------------------
+
+
+def _v2_labels(keys: list[str]) -> str:
+    return ", ".join(
+        "a mobile or office landline" if key == "contact" else _label(FieldKey(key)) for key in keys
+    )
+
+
+def _v2_section_ask(draft: InquiryDraft, section: IntakeSection) -> str:
+    max_malls = get_policy().max_malls_per_inquiry
+    if section is IntakeSection.COMPANY_REGISTRATION:
+        return (
+            "Company Registration: ask them to enter the CR number on the Company "
+            "Registration card and press Verify, or press Skip. Never repeat a CR number."
+        )
+    if section is IntakeSection.UNIT_AND_CATEGORY:
+        asks: list[str] = []
+        if not _has_value(draft, FieldKey.UNIT_TYPE):
+            lines = get_policy().product_lines
+            asks.append(f"the Unit Type ({' or '.join(lines)}; offer them as quick replies)")
+        if not _has_value(draft, FieldKey.SALES_CATEGORY):
+            asks.append(
+                "what they sell (map it to a Sales Category and show it for confirmation; "
+                "never set it from the brand name alone)"
+            )
+        if not asks:
+            return "Unit Type and Sales Category: confirm the values shown on the card."
+        return f"Unit Type and Sales Category: ask for {' and '.join(asks)}."
+    if section is IntakeSection.BASIC_INFO:
+        missing = [
+            k for k in missing_in(draft, section) if k == "contact" or not _is_unconfirmed(draft, k)
+        ]
+        line = "Basic Info: "
+        line += (
+            f"ask for {_v2_labels(missing)} in one natural question"
+            if missing
+            else "confirm the values shown on the card"
+        )
+        if FieldKey.BRAND_NAME_AR.value in missing and _has_value(draft, FieldKey.BRAND_NAME_EN):
+            line += "; propose the Arabic brand name and ask them to confirm it"
+        return line + ". Then the verification card."
+    if section is IntakeSection.VERIFICATION:
+        if _verification_sent(draft):
+            return (
+                "Verification: already sent; wait for the email link and, with a mobile, the "
+                "SMS code on the card. Only resend if they ask."
+            )
+        return (
+            "Verification: call send_verification (email link, plus an SMS code with a "
+            "mobile) and point to the card."
+        )
+    if section is IntakeSection.PROPERTY_DETAILS:
+        malls = "a mall" if max_malls == 1 else f"one or more malls (up to {max_malls})"
+        return (
+            f"Property Details: ask for {malls}; the lease period, area and rent are "
+            "optional — mention once that they can add them. Never mention units or unit "
+            "numbers."
+        )
+    if section is IntakeSection.TERMS:
+        return "Terms: point to the terms card; they tick it to accept."
+    if section is IntakeSection.DOCUMENTS:
+        return (
+            "Documents: the Company Profile and Brand Profile on the documents card "
+            "(request_documents if it isn't showing)."
+        )
+    return "Review: call show_review if the review card isn't showing; they press Submit there."
+
+
+def _is_unconfirmed(draft: InquiryDraft, key: str) -> bool:
+    field = draft.fields[FieldKey(key)]
+    return (
+        _has_value(draft, FieldKey(key))
+        and field.source in NEEDS_CONFIRMATION
+        and not (field.confirmed)
+    )
+
+
+def _v2_hint(draft: InquiryDraft) -> str:
+    """One section at a time, in the app's order: the current section's ask, what's shown
+    but not yet accepted, and the sections still to come (not to be asked yet)."""
+    section = current_section(draft)
+    lines = [f"Next question — {_v2_section_ask(draft, section)}"]
+    pending = _unconfirmed(draft)
+    if pending:
+        lines.append(
+            "Shown but not yet accepted: "
+            + ", ".join(pending)
+            + ". If the user carries on without objecting, confirm them this turn. "
+            "If they express doubt about a specific value, do not confirm that field."
+        )
+    lines.append(still_needed_line(draft))
+    return "\n".join(lines)
+
+
+def _v2_still_needed(draft: InquiryDraft) -> str:
+    section = current_section(draft)
+    later = [
+        SECTION_LABELS[s]
+        for s in SECTION_ORDER
+        if section_rank(s) > section_rank(section)
+        and s is not IntakeSection.REVIEW
+        and not section_done(draft, s)
+    ]
+    now = SECTION_LABELS[section]
+    if section is IntakeSection.REVIEW:
+        return "Still needed before submit: only the review card's Submit."
+    tail = f" Later, in order: {', '.join(later)} — don't ask about those yet." if later else ""
+    return (
+        f"Current section: {now}. Ask only about this section; save anything the user "
+        f"gives early and never ask it again.{tail}"
     )

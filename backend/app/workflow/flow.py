@@ -99,10 +99,24 @@ def record_flow_step(
     outcome: str | None = None,
 ) -> None:
     """One `flow_step` audit entry. `outcome` is the branch taken at a decision box."""
+    record_flow_step_audit(
+        runtime.services.audit, inquiry_id=inquiry_id, node=node, actor=actor, outcome=outcome
+    )
+
+
+def record_flow_step_audit(
+    audit: Any,
+    *,
+    inquiry_id: str,
+    node: FlowNode,
+    actor: Literal["user", "agent", "system", "reviewer", "staff"] = "system",
+    outcome: str | None = None,
+) -> None:
+    """`record_flow_step` where only the audit trail is at hand (session creation)."""
     payload: dict[str, Any] = {"node": node.value}
     if outcome is not None:
         payload["outcome"] = outcome
-    runtime.services.audit.record(inquiry_id, "flow_step", actor=actor, payload=payload)
+    audit.record(inquiry_id, "flow_step", actor=actor, payload=payload)
 
 
 def flow_path(runtime: AgentRuntime, inquiry_id: str) -> list[dict[str, Any]]:

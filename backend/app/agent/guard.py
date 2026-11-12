@@ -31,18 +31,28 @@ from app.agent.mall_match import fill_mentioned_malls, unknown_mall_phrases
 from app.agent.runtime import AgentRuntime
 from app.agent.state import AgentState
 from app.api.cards import (
+    TERMS_CARD_ID,
     VERIFICATION_CARD_ID,
     build_document_upload_card,
     build_quick_replies_card,
     build_review_card,
+    build_terms_card,
 )
 from app.api.channel_cards import basic_info_missing, build_send_link_card
 from app.api.schemas import UiCard
 from app.domain.fields import document_label
 from app.domain.models import NEEDS_CONFIRMATION, DocType, FieldKey, InquiryDraft, Source
 from app.domain.rules import compute_phase, contact_verified, remaining_steps
+from app.domain.sections import (
+    SECTION_LABELS,
+    IntakeSection,
+    current_section,
+    section_done,
+    section_rank,
+)
 from app.domain.summary import build_draft_summary
 from app.domain.validation import normalise_digits
+from app.policy.config import get_policy
 
 GUARD_PREFIX = "[ui_event] guard:"
 
@@ -283,6 +293,102 @@ def _profiles_coming(state: AgentState) -> bool:
         if _PROFILES_COMING_RE.search(text):
             return True
     return False
+
+
+def _v2_documents_card_due(state: AgentState, draft: InquiryDraft) -> bool:
+    """Flow v2 (§3.3): the documents card after the terms, or as soon as they choose to
+    upload the profiles (they fill Basic Info, demo feedback §3.7)."""
+    section = current_section(draft)
+    if section is IntakeSection.DOCUMENTS:
+        return True
+    return section_rank(section) < section_rank(IntakeSection.TERMS) and _profiles_coming(state)
+
+
+def _terms_card_due(draft: InquiryDraft, cards_shown: list[str]) -> bool:
+    """Flow v2 (§3.3, FV15): the terms card once Property Details is done."""
+    return (
+        draft.intake_flow == "v2"
+        and get_policy().flow_v2_intake.terms_before_documents
+        and TERMS_CARD_ID not in cards_shown
+        and not draft.terms_accepted
+        and section_done(draft, IntakeSection.PROPERTY_DETAILS)
+        and section_done(draft, IntakeSection.VERIFICATION)
+    )
+
+
+# Rule 8 (flow v2 §3.3): words that show a reply asks about a section.
+_SECTION_ASK_RE: dict[IntakeSection, re.Pattern[str]] = {
+    IntakeSection.UNIT_AND_CATEGORY: re.compile(
+        r"\b(store or (?:an )?office|unit type|what (?:do|does) (?:you|your \w+) sell|"
+        r"sales category)\b",
+        re.IGNORECASE,
+    ),
+    IntakeSection.BASIC_INFO: re.compile(
+        r"\b(your (?:full )?name|first name|email|mobile|phone number|landline|company name|"
+        r"company(?:'s)? address|brand name)\b",
+        re.IGNORECASE,
+    ),
+    IntakeSection.PROPERTY_DETAILS: re.compile(
+        r"\b(which malls?|what malls?|mall(?:s)? (?:are you|do you)|lease period|"
+        r"how (?:much|big) (?:space|area)|budget|rent)\b",
+        re.IGNORECASE,
+    ),
+    IntakeSection.DOCUMENTS: re.compile(
+        r"\b(company profile|brand profile|upload (?:your|the) documents?)\b", re.IGNORECASE
+    ),
+}
+
+
+def _questions(text: str) -> list[str]:
+    return [q for q in re.split(r"(?<=[.!?])\s+", text) if q.strip().endswith("?")]
+
+
+def _later_section_ask_note(
+    state: AgentState, draft: InquiryDraft, user_text: str, ai_text: str
+) -> str | None:
+    """Rule 8 (§3.3, self-service flow v2): the reply asks about a later section while an
+    earlier one is open → back to the agent once. Not when the user raised that section."""
+    if draft.intake_flow != "v2" or state.get("assisted") or not ai_text:
+        return None
+    current = current_section(draft)
+    if current not in (
+        IntakeSection.COMPANY_REGISTRATION,
+        IntakeSection.UNIT_AND_CATEGORY,
+        IntakeSection.BASIC_INFO,
+        IntakeSection.VERIFICATION,
+        IntakeSection.PROPERTY_DETAILS,
+    ):
+        return None
+    questions = " ".join(_questions(ai_text))
+    for section, pattern in _SECTION_ASK_RE.items():
+        if section_rank(section) <= section_rank(current) or section_done(draft, section):
+            continue
+        if pattern.search(questions) and not pattern.search(user_text):
+            return (
+                f"{GUARD_PREFIX} later_section_ask: ask about {SECTION_LABELS[current]} first "
+                f"— it isn't done yet. Save anything they gave early, but don't ask about "
+                f"{SECTION_LABELS[section]} yet. Reply again."
+            )
+    return None
+
+
+def _v2_missing_verification_note(
+    draft: InquiryDraft, turn_messages: list[BaseMessage], cards_shown: list[str]
+) -> str | None:
+    """Flow v2 (§3.3): once Basic Info is done, verification follows it, before Property
+    Details: send_verification must have run."""
+    if draft.intake_flow != "v2":
+        return None
+    if not section_done(draft, IntakeSection.BASIC_INFO) or contact_verified(draft):
+        return None
+    if VERIFICATION_CARD_ID in cards_shown or draft.email_link_sent_to:
+        return None
+    if "send_verification" in _tools_called(turn_messages):
+        return None
+    return (
+        f"{GUARD_PREFIX} Basic Info is done: call send_verification before you reply, then "
+        "point them to the verification card."
+    )
 
 
 def _documents_card_due(state: AgentState, phase: str) -> bool:
@@ -664,10 +770,12 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
                     user_text,
                     phase,
                 )
+                or _later_section_ask_note(state, draft, user_text, ai_text)
                 or (
                     None
                     if state.get("assisted")  # no verification in assisted mode
-                    else _missing_send_verification_note(
+                    else _v2_missing_verification_note(draft, turn_messages, cards_shown)
+                    or _missing_send_verification_note(
                         state,
                         draft,
                         user_text,
@@ -700,7 +808,16 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
 
     _emit_draft({**state, "draft": draft}, runtime, draft_changed)
 
-    if "documents" not in cards_shown and _documents_card_due(state, phase):
+    if _terms_card_due(draft, cards_shown):
+        _emit_card(build_terms_card(draft), writer)
+        cards_shown.append(TERMS_CARD_ID)
+
+    documents_due = (
+        _v2_documents_card_due(state, draft)
+        if draft.intake_flow == "v2"
+        else _documents_card_due(state, phase)
+    )
+    if "documents" not in cards_shown and documents_due:
         card = build_document_upload_card(
             draft,
             runtime.master,

@@ -11,10 +11,16 @@ from langchain_core.messages import HumanMessage
 
 from app.agent.channels import attach_documents_on_file, started_by_label
 from app.agent.context import message_context
-from app.agent.cr_check import apply_cr_result
+from app.agent.cr_check import (
+    CustomerCheck,
+    apply_cr_result,
+    check_existing_customer,
+    skip_customer_check,
+)
 from app.agent.cr_question import apply_cr_answer, cr_question_active
 from app.agent.events import SseEvent
 from app.agent.handoff import start_handoff
+from app.agent.pending import RESUME_PENDING_REPLY, normalise_email, note_verification
 from app.agent.runtime import AgentRuntime
 from app.api.cards import (
     HANDOFF_CARD_ID,
@@ -23,6 +29,7 @@ from app.api.cards import (
     build_document_upload_card,
     build_review_card,
     build_success_card,
+    build_terms_card,
     parse_doc_type,
     remember_confirm_card_keys,
     split_card_id,
@@ -75,6 +82,9 @@ class ActionResult:
     # Quiet: the card already shows the outcome (a wrong code, a resend, one channel of
     # two verified), so no agent turn runs and no reply is added (spec §6, card actions).
     quiet: bool = False
+    # A fixed reply instead of an agent turn (flow v2 `resume_pending`: the same words
+    # whether or not an inquiry exists, and the email never reaches the model).
+    reply: str | None = None
 
 
 _SETTABLE_DOCUMENT_NUMBER_KEYS = frozenset(
@@ -128,6 +138,9 @@ async def handle_ui_action(
         "cr_check": _cr_check,
         "cr_skip": _cr_skip,
         "cr_answer": _cr_answer,
+        # Flow v2 (§3.3)
+        "accept_terms": _accept_terms,
+        "resume_pending": _resume_pending,
         "resubmit_documents": _resubmit_documents,
         "submit_contacts": _submit_contacts,
         "signatory_answer": _signatory_answer,
@@ -250,14 +263,30 @@ async def _verify_email(
     current = draft.fields[FieldKey.EMAIL].value
     if check.verified_email is None or check.verified_email != current:
         _audit(runtime, session, "verification_result", channel="email", result="invalid")
+        note_verification(
+            runtime.services.audit,
+            inquiry_id=session.id,
+            draft=draft,
+            verified_before=False,
+            succeeded=False,
+        )
         return ActionResult(
             note=HumanMessage(content="[ui_event] email_link_invalid"),
             events=_verification_events(session, draft, runtime, []),
         )
+    verified_before = contact_verified(draft)
     draft.email_verified = True
     draft_ops.stamp_verified(draft)
     session.draft = draft
     _audit(runtime, session, "verification_result", channel="email", result="verified")
+    note_verification(
+        runtime.services.audit,
+        inquiry_id=session.id,
+        draft=draft,
+        verified_before=verified_before,
+        succeeded=True,
+        channel=session.channel,
+    )
     return ActionResult(
         note=_verification_note("email_verified", draft),
         events=_verification_events(session, draft, runtime, ["email_verified"]),
@@ -333,10 +362,19 @@ async def _submit_otp(
         )
 
     if verified:
+        verified_before = contact_verified(draft)
         draft.mobile_verified = True
         draft_ops.stamp_verified(draft)
         session.draft = draft
         _audit(runtime, session, "verification_result", channel="sms", result="verified")
+        note_verification(
+            runtime.services.audit,
+            inquiry_id=session.id,
+            draft=draft,
+            verified_before=verified_before,
+            succeeded=True,
+            channel=session.channel,
+        )
         return ActionResult(
             note=_verification_note("mobile_verified", draft),
             events=_verification_events(session, draft, runtime, ["mobile_verified"]),
@@ -345,6 +383,13 @@ async def _submit_otp(
         )
 
     _audit(runtime, session, "verification_result", channel="sms", result="wrong_code")
+    note_verification(
+        runtime.services.audit,
+        inquiry_id=session.id,
+        draft=draft,
+        verified_before=False,
+        succeeded=False,
+    )
     draft.otp_attempts_left = max(0, draft.otp_attempts_left - 1)
     if draft.otp_attempts_left <= 0:
         session.draft = draft
@@ -648,7 +693,11 @@ async def _accept_and_submit(
     session: Session,
     runtime: AgentRuntime,
 ) -> ActionResult:
-    if payload.get("terms_accepted") is not True:
+    # Flow v2 (FV15): the terms were accepted on their own card; Submit still needs them.
+    accepted = payload.get("terms_accepted") is True or (
+        session.draft.intake_flow == "v2" and session.draft.terms_accepted
+    )
+    if not accepted:
         return ActionResult(
             note=HumanMessage(content="[ui_event] submit_blocked terms_not_accepted"),
         )
@@ -761,7 +810,14 @@ async def _cr_check(
     session: Session,
     runtime: AgentRuntime,
 ) -> ActionResult:
-    """The CR check from a card (form mode, L3 §3.14): same rules as the `verify_cr` tool."""
+    """The CR check from a card (form mode, L3 §3.14): same rules as the `verify_cr` tool.
+    Flow v2 (§3.2): the Company Registration card's Verify."""
+    if session.draft.intake_flow == "v2" and not session.assisted:
+        check = check_existing_customer(session, runtime, str(payload.get("cr_number", "")))
+        checked = customer_check_result(session, runtime, check)
+        # A wrong number or a service error: the card shows it; no agent turn (S5).
+        checked.quiet = check.note.startswith(("[ui_event] cr_invalid", "[ui_event] service_error"))
+        return checked
     if cr_question_active(
         assisted=session.assisted, channel=session.channel, test_scenario=session.test_scenario
     ):
@@ -806,7 +862,14 @@ async def _cr_skip(
     session: Session,
     runtime: AgentRuntime,
 ) -> ActionResult:
-    del payload
+    if session.draft.intake_flow == "v2" and not session.assisted:
+        # Flow v2 (§3.2): Skip asks "Are you sure…?" first; only the confirmed skip counts.
+        confirmed = payload.get("confirmed") is True
+        skipped = customer_check_result(
+            session, runtime, skip_customer_check(session, runtime, confirmed=confirmed)
+        )
+        skipped.quiet = not confirmed
+        return skipped
     if session.draft.cr_status != "unknown":
         return ActionResult(note=HumanMessage(content="[ui_event] cr_already_done"))
     draft = session.draft.model_copy(deep=True)
@@ -816,6 +879,86 @@ async def _cr_skip(
         note=HumanMessage(content="[ui_event] cr_skipped"),
         events=[_draft_event(draft, runtime, ["cr_status"])],
         changed_keys=["cr_status"],
+    )
+
+
+async def _resume_pending(
+    payload: dict[str, Any],
+    session: Session,
+    runtime: AgentRuntime,
+) -> ActionResult:
+    """Flow v2 "Continue my inquiry" (§3.3, FV13). The email comes from the card, never the
+    model. A pending inquiry for it (verified, not submitted, within the TTL) gets a
+    `resume_link` email that re-verifies the address and resumes that chat. The reply is the
+    same either way, so the answer says nothing about who has an inquiry."""
+    from app.store.purge import expire_pending_inquiries
+
+    email = normalise_email(payload.get("email"))
+    found = None
+    if email and runtime.repo is not None:
+        await expire_pending_inquiries(runtime.repo)
+        found = await runtime.repo.pending_by_email(email)
+    if found is not None:
+        pending_id = str(found.id)
+        resend = runtime.services.resend
+        if not resend.wait_seconds(pending_id, "email"):
+            try:
+                await runtime.services.gateway.call(
+                    "email",
+                    "send_link",
+                    runtime.services.email_verification.send_link,
+                    pending_id,
+                    # As saved: the link checks it against the inquiry's email.
+                    str(found.draft.fields[FieldKey.EMAIL].value),
+                    message_context(found.draft, runtime.master),
+                    inquiry_id=pending_id,
+                    template="resume_link",
+                )
+                resend.record(pending_id, "email")
+            except GatewayError:
+                logger.warning("resume link not sent for a pending inquiry")
+    _audit(runtime, session, "pending_resume_requested", found=found is not None)
+    return ActionResult(
+        note=HumanMessage(content="[ui_event] resume_pending_requested"),
+        reply=RESUME_PENDING_REPLY,
+    )
+
+
+async def _accept_terms(
+    payload: dict[str, Any],
+    session: Session,
+    runtime: AgentRuntime,
+) -> ActionResult:
+    """Flow v2 terms before documents (§3.3, FV15): the terms card's checkbox."""
+    if payload.get("terms_accepted") is not True:
+        return ActionResult(note=HumanMessage(content="[ui_event] terms_not_accepted"))
+    draft = session.draft.model_copy(deep=True)
+    draft.terms_accepted = True
+    session.draft = draft
+    _audit(runtime, session, "terms_accepted", channel=session.channel)
+    events = [
+        _card_event(session, build_terms_card(draft)),
+        _draft_event(draft, runtime, ["terms_accepted"]),
+        *_review_refresh(session, draft, runtime),
+    ]
+    return ActionResult(
+        note=HumanMessage(content="[ui_event] terms_accepted"),
+        events=events,
+        changed_keys=["terms_accepted"],
+    )
+
+
+def customer_check_result(
+    session: Session, runtime: AgentRuntime, check: CustomerCheck
+) -> ActionResult:
+    """A flow v2 Company Registration outcome as card events and the agent's note."""
+    events: list[SseEvent] = [_card_event(session, check.card)]
+    if check.sign_in is not None:
+        events.append(_card_event(session, check.sign_in))
+    if check.changed:
+        events.append(_draft_event(session.draft, runtime, check.changed))
+    return ActionResult(
+        note=HumanMessage(content=check.note), events=events, changed_keys=check.changed
     )
 
 

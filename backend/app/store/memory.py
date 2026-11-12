@@ -9,13 +9,20 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from app.domain.draft_ops import new_inquiry_draft
+from app.domain.models import FieldKey
 from app.store.errors import (
     DuplicateReference,
     InquiryNotFound,
     TurnInProgress,
     VersionConflict,
 )
-from app.store.models import Inquiry, InquiryStatus, SessionState, owned_reference
+from app.store.models import (
+    Inquiry,
+    InquiryStatus,
+    SessionState,
+    owned_reference,
+    settle_status,
+)
 
 
 @dataclass
@@ -91,8 +98,7 @@ class InMemoryInquiryRepository:
                 if other_id != inquiry.id
             ):
                 raise DuplicateReference(updated.reference)
-            if updated.status == InquiryStatus.DRAFT and updated.draft.reference:
-                updated.status = InquiryStatus.SUBMITTED
+            settle_status(updated)
             self._inquiries[inquiry.id] = updated
             return updated.model_copy(deep=True)
 
@@ -138,6 +144,38 @@ class InMemoryInquiryRepository:
     def bootstrap(self, inquiry: Inquiry) -> None:
         """Restore an inquiry from a JSON snapshot (memory backend only)."""
         self._inquiries[inquiry.id] = inquiry.model_copy(deep=True)
+
+    async def pending_by_email(self, email: str) -> Inquiry | None:
+        """The newest pending inquiry (flow v2) whose verified email is this one."""
+        async with self._lock:
+            found = [
+                inquiry
+                for inquiry in self._inquiries.values()
+                if inquiry.status == InquiryStatus.PENDING
+                and inquiry.draft.email_verified
+                and str(inquiry.draft.fields[FieldKey.EMAIL].value or "").strip().lower() == email
+            ]
+            if not found:
+                return None
+            return max(found, key=lambda i: i.updated_at).model_copy(deep=True)
+
+    async def expire_pending(self, now: datetime, ttl: timedelta) -> list[UUID]:
+        """Pending inquiries past their TTL since verification → abandoned (FV12)."""
+        async with self._lock:
+            ts = self._now(now)
+            expired: list[UUID] = []
+            for inquiry_id, inquiry in list(self._inquiries.items()):
+                verified_at = inquiry.draft.verified_at
+                if inquiry.status != InquiryStatus.PENDING or verified_at is None:
+                    continue
+                if ts - max(verified_at, inquiry.last_seen_at) <= ttl:
+                    continue
+                updated = inquiry.model_copy(deep=True)
+                updated.status = InquiryStatus.ABANDONED
+                self._inquiries[inquiry_id] = updated
+                self._leases.pop(inquiry_id, None)
+                expired.append(inquiry_id)
+            return expired
 
     async def purge_expired(self, now: datetime) -> list[UUID]:
         async with self._lock:

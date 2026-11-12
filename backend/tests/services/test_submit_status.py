@@ -8,7 +8,7 @@ from app.services.errors import ReferenceNotFoundError
 from app.services.status import MockStatusService
 from app.services.submit import MockSubmitService
 
-_REF_RE = re.compile(r"^GEO-(STR|MED|SPC)-\d{6}$")
+_REF_RE = re.compile(r"^GEO-(STR|MED|SPC|OFF)-\d{6}$")
 
 
 def test_submit_reference_format_for_each_unit_type():

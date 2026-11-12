@@ -83,10 +83,45 @@ def can_submit(draft: InquiryDraft) -> list[Blocker]:
     if not draft.terms_accepted:
         blockers.append(Blocker.terms_not_accepted())
 
+    if draft.intake_flow == "v2":
+        # Flow v2 (§3.3): blockers follow the app's section order.
+        return sorted(blockers, key=_v2_blocker_rank)
     return blockers
 
 
-RemainingStep = Literal["cr", "fields", "verify_email", "verify_mobile", "documents", "terms"]
+def _v2_blocker_rank(blocker: Blocker) -> int:
+    from app.domain.sections import SECTION_OF, IntakeSection, section_rank
+
+    kind, _sep, key = blocker.token.partition(":")
+    if kind in ("cr_pending", "cr_existing"):
+        section = IntakeSection.COMPANY_REGISTRATION
+    elif kind in ("missing_field", "unconfirmed_field"):
+        section = (
+            IntakeSection.BASIC_INFO
+            if key == "contact"
+            else SECTION_OF.get(FieldKey(key), IntakeSection.BASIC_INFO)
+        )
+    elif kind in ("email_not_verified", "mobile_not_verified"):
+        section = IntakeSection.VERIFICATION
+    elif kind == "terms_not_accepted":
+        section = IntakeSection.TERMS
+    else:
+        section = IntakeSection.DOCUMENTS
+    return section_rank(section)
+
+
+RemainingStep = Literal[
+    "cr",
+    "fields",
+    "verify_email",
+    "verify_mobile",
+    "documents",
+    "terms",
+    # Flow v2 (§3.3): the field steps by section.
+    "unit_and_category",
+    "basic_info",
+    "property_details",
+]
 
 
 def open_fields(draft: InquiryDraft) -> tuple[list[str], list[str]]:
@@ -112,6 +147,8 @@ def remaining_steps(draft: InquiryDraft) -> list[RemainingStep]:
     """
     if draft.reference or draft.cr_status == "existing":
         return []
+    if draft.intake_flow == "v2":
+        return _v2_remaining_steps(draft)
     tokens = [b.token for b in can_submit(draft)]
     steps: list[RemainingStep] = []
     if "cr_pending" in tokens:
@@ -129,6 +166,29 @@ def remaining_steps(draft: InquiryDraft) -> list[RemainingStep]:
     return steps
 
 
+def _v2_remaining_steps(draft: InquiryDraft) -> list[RemainingStep]:
+    """Flow v2 (§3.3): what's left in the app's section order: cr, unit_and_category,
+    basic_info, verify_email, verify_mobile, property_details, terms, documents."""
+    from app.domain.sections import IntakeSection, section_done
+
+    steps: list[RemainingStep] = []
+    if not section_done(draft, IntakeSection.COMPANY_REGISTRATION):
+        steps.append("cr")
+    if not section_done(draft, IntakeSection.UNIT_AND_CATEGORY):
+        steps.append("unit_and_category")
+    if not section_done(draft, IntakeSection.BASIC_INFO):
+        steps.append("basic_info")
+    for blocker in verification_blockers(draft):
+        steps.append("verify_email" if blocker.token == "email_not_verified" else "verify_mobile")
+    if not section_done(draft, IntakeSection.PROPERTY_DETAILS):
+        steps.append("property_details")
+    if not draft.terms_accepted:
+        steps.append("terms")
+    if not section_done(draft, IntakeSection.DOCUMENTS):
+        steps.append("documents")
+    return steps
+
+
 def compute_phase(draft: InquiryDraft) -> Phase:
     if draft.cr_status == "existing":
         return Phase.EXISTING_ACCOUNT
@@ -136,6 +196,8 @@ def compute_phase(draft: InquiryDraft) -> Phase:
         return Phase.SUBMITTED
     if draft.cr_status == "unknown":
         return Phase.GATE
+    if draft.intake_flow == "v2":
+        return _v2_phase(draft)
 
     blockers = can_submit(draft)
     collecting_tokens = {
@@ -154,3 +216,18 @@ def compute_phase(draft: InquiryDraft) -> Phase:
         return Phase.DOCUMENTS
 
     return Phase.REVIEW
+
+
+def _v2_phase(draft: InquiryDraft) -> Phase:
+    """Flow v2 (§3.3): `phase` keeps its values; `collecting` covers Unit Type and Sales
+    Category, Basic Info and Property Details; `documents` covers the terms and documents."""
+    from app.domain.sections import IntakeSection, current_section
+
+    section = current_section(draft)
+    if section is IntakeSection.VERIFICATION:
+        return Phase.VERIFYING
+    if section in (IntakeSection.TERMS, IntakeSection.DOCUMENTS):
+        return Phase.DOCUMENTS
+    if section is IntakeSection.REVIEW:
+        return Phase.REVIEW
+    return Phase.COLLECTING

@@ -20,6 +20,9 @@ class AgentRuntime:
     services: ServiceContainer
     master: MasterData
     settings: Settings
+    # The inquiry repository, for actions that look across inquiries (flow v2
+    # `resume_pending`); None where no store is wired (unit tests, evals).
+    repo: Any = None
 
     def email_demo_token(self, session_id: str) -> str | None:
         """The live email-link token, exposed only in demo mode (EMAIL_LINK_DEMO)."""

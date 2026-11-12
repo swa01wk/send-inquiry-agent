@@ -45,6 +45,7 @@ from app.api.channel_cards import (
     SEND_LINK_CARD_ID,
     SIGN_IN_CARD_ID,
     build_basic_info_card,
+    build_company_registration_card,
     build_cr_question_card,
     build_existing_cr_choice_card,
     build_send_link_card,
@@ -61,6 +62,7 @@ from app.domain.validation import validate_cr_number
 from app.gateway import GatewayError
 from app.policy.config import get_policy
 from app.services.errors import ReferenceNotFoundError
+from app.workflow.flow import FlowNode, record_flow_step
 
 PROTECTED_WRITE_KEYS = frozenset(
     {
@@ -119,6 +121,25 @@ def _user_words(state: AgentState) -> str:
         if not text.startswith("[ui_event]"):
             parts.append(text)
     return _normalise_quote(" \n ".join(parts))
+
+
+def _category_from_brand_only(
+    item: DraftFieldUpdate, fields: list[DraftFieldUpdate], draft: InquiryDraft
+) -> bool:
+    """A derived Sales Category with no evidence, or only the brand name as evidence."""
+    evidence = " ".join((item.evidence or "").split()).strip(_QUOTE_STRIP).lower()
+    if not evidence:
+        return True
+    brands = {
+        str(f.value).strip().lower()
+        for f in fields
+        if f.key in (FieldKey.BRAND_NAME_EN.value, FieldKey.BRAND_NAME_AR.value) and f.value
+    }
+    for key in (FieldKey.BRAND_NAME_EN, FieldKey.BRAND_NAME_AR):
+        value = draft.fields[key].value
+        if value:
+            brands.add(str(value).strip().lower())
+    return evidence in brands
 
 
 def _evidence_for(
@@ -211,6 +232,17 @@ def verify_cr(
     runtime: ToolRuntime,
 ) -> Command[Any]:
     """Validate a CR number and look up whether the company already has an account."""
+    if state["draft"].intake_flow == "v2" and not state.get("assisted"):
+        # Flow v2 (§3.2, ADR-V4): the CR is checked on the Company Registration card (or
+        # when typed in the chat), never by the model.
+        return _tool_result(
+            runtime,
+            draft=state["draft"],
+            content=(
+                "Not here: the CR is checked on the Company Registration card (Verify), or "
+                "they can Skip. Nothing was checked or saved; never repeat a number."
+            ),
+        )
     if cr_question_active(
         assisted=bool(state.get("assisted")),
         channel=state.get("channel"),
@@ -363,8 +395,11 @@ def verify_cr(
 def skip_cr(
     state: Annotated[AgentState, InjectedState],
     runtime: ToolRuntime,
+    confirmed: bool = False,
 ) -> Command[Any]:
-    """Skip CR verification after the user agreed."""
+    """Skip CR verification after the user agreed. On the Company Registration card the
+    first call shows "Are you sure you want to proceed without CR ID?"; call again with
+    confirmed=true only after the user said yes to that question."""
     draft = state["draft"]
     if draft.cr_status != "unknown":
         return _tool_result(
@@ -372,12 +407,42 @@ def skip_cr(
             draft=draft,
             content="CR step already completed; cannot skip again.",
         )
+    if draft.intake_flow == "v2" and not state.get("assisted"):
+        return _v2_skip_cr(state, runtime, confirmed=confirmed)
     updated = draft.model_copy(deep=True)
     updated.cr_status = "skipped"
     return _tool_result(
         runtime,
         draft=updated,
         content="CR verification skipped.",
+        changed_keys=["cr_status"],
+    )
+
+
+def _v2_skip_cr(state: AgentState, runtime: ToolRuntime, *, confirmed: bool) -> Command[Any]:
+    """Flow v2 (§3.2): Skip needs the confirmation, as on the card."""
+    draft = state["draft"]
+    if not confirmed:
+        _emit_card(build_company_registration_card(state="confirm_skip"), runtime)
+        return _tool_result(
+            runtime,
+            draft=draft,
+            content=(
+                'The card now asks "Are you sure you want to proceed without CR ID?". Call '
+                "skip_cr(confirmed=true) only after they say yes to that question."
+            ),
+        )
+    rt = runtime_from_config(runtime.config)
+    updated = draft.model_copy(deep=True)
+    updated.cr_status = "skipped"
+    session_id = state["session_id"]
+    record_flow_step(rt, inquiry_id=session_id, node=FlowNode.CHK_TP, actor="user")
+    record_flow_step(rt, inquiry_id=session_id, node=FlowNode.EXIST, outcome="skipped")
+    _emit_card(build_company_registration_card(state="skipped"), runtime)
+    return _tool_result(
+        runtime,
+        draft=updated,
+        content="Company Registration skipped.",
         changed_keys=["cr_status"],
     )
 
@@ -524,6 +589,18 @@ def update_draft(
             if not accepted:
                 continue
             entries.append((item.key, accepted, _write_source(item.source, state)))
+            continue
+        if (
+            item.key == FieldKey.SALES_CATEGORY.value
+            and draft.intake_flow == "v2"
+            and item.source == "derived"
+            and _category_from_brand_only(item, fields, draft)
+        ):
+            # Flow v2 (V12, FV11): the category comes from what the business sells.
+            rejected.append(
+                f"{item.key}: category_needs_what_you_sell; ask what they sell, then map it "
+                "and show it for confirmation"
+            )
             continue
         if item.key == FieldKey.BRAND_NAME_EN.value:
             val = item.value

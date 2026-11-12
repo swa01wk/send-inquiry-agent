@@ -34,6 +34,12 @@
       "label": "Specialty",
       "label_ar": "وحدة متخصصة",
       "code": "SPC"
+    },
+    {
+      "id": "office",
+      "label": "Office",
+      "label_ar": "مكتب",
+      "code": "OFF"
     }
   ],
   "sales_categories": [
