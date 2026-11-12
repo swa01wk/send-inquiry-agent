@@ -32,9 +32,11 @@ test.describe('S20 Qualified @flow-v2 @scripted', () => {
       const consolePage = await context.newPage()
       await openCaseAs(consolePage, finalReviewer, reference)
       await expect(consolePage.getByTestId('case-stage')).toHaveText('Tenant Qualified')
-      // The case summary's queue ("Regional Sales Manager · Central"); the reviewer picker
-      // also lists the name, in a hidden option.
-      await expect(consolePage.getByText(/Regional Sales Manager · /)).toBeVisible()
+      // The case summary's queue by its chart name: s1-happy-path is a Specialty unit, so the
+      // Regional Product Line Manager (a Store or Office unit: Regional Sales Manager).
+      await expect(
+        consolePage.getByText(/Regional (Sales Manager|Product Line Manager \(\w+\)) · /),
+      ).toBeVisible()
       await expect(consolePage.getByTestId('action-remove_contact')).toHaveCount(0)
     } finally {
       await context.close()
