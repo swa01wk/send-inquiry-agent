@@ -153,7 +153,7 @@ export function DevHomePage() {
                         className={styles.link}
                         to={`/review/cases/${encodeURIComponent(c.reference)}?as=${encodeURIComponent(c.first_reviewer)}`}
                       >
-                        as Lease Admin
+                        as Leasing Admin
                       </Link>
                     ) : null}
                     {c.first_reviewer && c.final_reviewer ? ' · ' : null}

@@ -21,7 +21,7 @@ test.describe('Reviewer console @scripted', () => {
     await page.getByTestId(`queue-row-${reference}`).getByRole('link', { name: reference }).click()
 
     // First review, Lease Admin: decide the first level, ask for a re-upload or reject.
-    await expect(page.getByTestId('case-stage')).toHaveText('First review')
+    await expect(page.getByTestId('case-stage')).toHaveText('With the Leasing Admin')
     await expect(page.getByTestId('action-approve_first')).toBeVisible()
     await expect(page.getByTestId('action-request_reupload')).toBeVisible()
     await expect(page.getByTestId('action-reject')).toBeVisible()
@@ -44,7 +44,7 @@ test.describe('Reviewer console @scripted', () => {
       .click()
 
     // Second review is the final level: the Lease Admin has no actions there.
-    await expect(page.getByTestId('case-stage')).toHaveText('Lead — second review')
+    await expect(page.getByTestId('case-stage')).toHaveText('Tenant Qualified')
     await expect(page.getByTestId('action-approve_first')).toHaveCount(0)
     await expect(page.getByTestId('action-yardi')).toHaveCount(0)
 
@@ -52,7 +52,7 @@ test.describe('Reviewer console @scripted', () => {
     // so final approval is blocked.
     const finalReviewer = await reviewerFor(request, reference, 'final')
     await openCaseAs(page, finalReviewer, reference)
-    await expect(page.getByTestId('case-stage')).toHaveText('Lead — second review')
+    await expect(page.getByTestId('case-stage')).toHaveText('Tenant Qualified')
     await expect(page.getByTestId('action-approve_first')).toHaveCount(0)
     await expect(page.getByTestId('action-approve')).toHaveCount(0)
     await expect(page.getByTestId('approval-blockers')).toContainText('Contacts request still open')

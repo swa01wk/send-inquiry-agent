@@ -73,7 +73,7 @@ test.describe('Story T2 @scripted', () => {
       await applicant.resubmitDocuments()
 
       await expect(applicant.cards('case_status').getByRole('heading', { level: 3 })).toHaveText(
-        'First review',
+        'With the Leasing Admin',
       )
       await expect(applicant.lastReply()).resolves.toContain(
         'Thanks, your documents are back with the leasing team for first review.',
@@ -81,7 +81,7 @@ test.describe('Story T2 @scripted', () => {
       await expect(applicant.cards('confirm_fields')).toHaveCount(0)
 
       await reviewerPage.reload()
-      await expect(reviewerPage.getByTestId('case-stage')).toHaveText('First review')
+      await expect(reviewerPage.getByTestId('case-stage')).toHaveText('With the Leasing Admin')
       await expect(reviewerPage.getByTestId('timeline')).toContainText('Documents resubmitted')
     } finally {
       await reviewerContext.close()

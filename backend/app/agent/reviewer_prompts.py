@@ -10,7 +10,8 @@ from langchain_core.runnables import RunnableConfig
 
 from app.agent.runtime import runtime_from_config
 from app.agent.state import AgentState
-from app.domain.case_brief import STAGE_LABELS, waiting_on
+from app.domain.case_brief import waiting_on
+from app.workflow.labels import status_label
 
 _PROMPT_PATH = Path(__file__).resolve().parent / "reviewer_prompt.md"
 
@@ -34,7 +35,7 @@ def build_reviewer_system_message(state: AgentState, config: RunnableConfig) -> 
         queue = case.review_queue
         header = (
             f"Reference {case.reference}\n"
-            f"Stage: {STAGE_LABELS.get(case.status.value, case.status.value)}\n"
+            f"Stage: {status_label(case)}\n"
             f"Waiting on: {waiting_on(case)}\n"
             f"Queue: {queue.role if queue else '—'} / {queue.region if queue else '—'}"
         )

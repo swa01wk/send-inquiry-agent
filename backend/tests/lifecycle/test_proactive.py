@@ -54,7 +54,7 @@ async def test_stalled_review_fires_at_the_threshold_once(life) -> None:
     items = _items(await attention(client, STORE_CENTRAL), "stalled_review")
     assert len(items) == 1
     assert items[0]["reference"] == reference
-    assert items[0]["stage_label"] == "First review"
+    assert items[0]["stage_label"] == "With the Leasing Admin"
     assert items[0]["age_hours"] >= 48
     stalled_mail = outbox(app, template="review_stalled")
     assert [m["to"] for m in stalled_mail] == [CENTRAL_REVIEWER_EMAIL]  # not the manager
@@ -97,7 +97,7 @@ async def test_acting_on_the_case_resolves_the_flag_and_starts_a_new_period(life
     await advance(client, 49)  # 49 h in second review: a new period
     stalled = _items(await attention(client, STORE_CENTRAL), "stalled_review")
     assert len(stalled) == 1
-    assert stalled[0]["stage_label"] == "Lead — second review"
+    assert stalled[0]["stage_label"] == "Tenant Qualified"
 
 
 async def test_unanswered_request_drafts_a_reminder_for_approval(life) -> None:

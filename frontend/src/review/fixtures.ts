@@ -99,7 +99,7 @@ export function caseDetail(overrides: Partial<CaseDetail> = {}): CaseDetail {
         at: '2026-10-28T09:00:00.000Z',
         actor: 'system',
         type: 'case_transition',
-        summary: 'Routed to Regional Leasing Manager (Store), Central',
+        summary: 'Routed to Regional Sales Manager, Central',
       },
     ],
     legal_actions: ['request_reupload', 'reject', 'approve_first'],
@@ -121,7 +121,7 @@ export function secondReviewDetail(overrides: Partial<CaseDetail> = {}): CaseDet
     brief: {
       ...base.brief,
       status: 'second_review',
-      stage_label: 'Lead — second review',
+      stage_label: 'Tenant Qualified',
       contacts: [
         {
           role: 'billing_contact',
@@ -177,7 +177,7 @@ export function reminderItem(overrides: Partial<AttentionItem> = {}): AttentionI
     trigger: 'applicant_reminder',
     label: 'Request unanswered — reminder drafted',
     recommended: 'Approve and send the reminder, edit it, or dismiss it.',
-    stage_label: 'Lead — second review',
+    stage_label: 'Tenant Qualified',
     status: 'awaiting_approval',
     tier: 2,
     age_hours: 73,

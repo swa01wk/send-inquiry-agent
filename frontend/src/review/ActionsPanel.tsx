@@ -38,7 +38,7 @@ const ORDER: ReviewAction[] = [
   'withdraw_request',
   'relink_company',
   'relink_brand',
-  'remove_contact',
+  // No 'remove_contact' in the console (flow v2 V14, 10 Nov demo).
   'approve',
   'reject',
 ]
@@ -47,18 +47,17 @@ const TITLES: Record<string, string> = {
   approve_first: 'Approve first level',
   request_reupload: 'Request re-upload',
   request_contacts: 'Request contacts',
-  request_sales_data: 'Request sales data',
+  request_sales_data: 'Request Forecasted Sales Data',
   withdraw_request: 'Withdraw a request',
   relink_company: 'Yardi company',
   relink_brand: 'Yardi brand',
-  remove_contact: 'Remove a contact',
   approve: 'Approve',
   reject: 'Reject',
 }
 
 const REQUEST_LABELS: Record<string, string> = {
   contacts: 'Contacts',
-  sales_data: 'Sales data',
+  sales_data: 'Forecasted Sales Data',
   reupload: 'Re-upload',
 }
 
@@ -257,7 +256,6 @@ export function ActionsPanel({
     .filter((r) => r.status === 'open' && r.kind !== 'reupload')
     .map((r) => r.kind)
   const [withdrawKind, setWithdrawKind] = useState('')
-  const [removeRole, setRemoveRole] = useState('')
 
   useEffect(() => {
     if (!prefill) return
@@ -461,39 +459,6 @@ export function ActionsPanel({
           onAct={onAct}
           prefill={prefill}
         />
-      ) : null}
-
-      {legal.includes('remove_contact') && detail.brief.contacts.length > 0 ? (
-        <div className={styles.action} data-testid="action-remove_contact">
-          <h3 className={styles.actionTitle}>{TITLES.remove_contact}</h3>
-          <label className={styles.label} htmlFor="remove-contact">
-            Contact
-          </label>
-          <select
-            id="remove-contact"
-            className={styles.select}
-            value={removeRole}
-            onChange={(e) => setRemoveRole(e.target.value)}
-          >
-            <option value="">Select…</option>
-            {detail.brief.contacts.map((c) => (
-              <option key={c.role} value={c.role}>
-                {c.label}: {c.name ?? '—'}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className={styles.secondaryBtn}
-            disabled={busy || !removeRole}
-            onClick={() => {
-              onAct('remove_contact', { role: removeRole })
-              setRemoveRole('')
-            }}
-          >
-            Remove
-          </button>
-        </div>
       ) : null}
 
       {legal.includes('approve') ? (

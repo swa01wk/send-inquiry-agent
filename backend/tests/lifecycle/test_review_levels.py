@@ -107,9 +107,9 @@ async def test_brief_and_status_name_the_level_that_is_waiting(life) -> None:
     first = await client.get(
         f"/api/review/cases/{reference}", headers={"X-Reviewer-Id": LEASE_ADMIN_CENTRAL}
     )
-    assert first.json()["brief"]["queue_role"] == "Lease Admin"
+    assert first.json()["brief"]["queue_role"] == "Leasing Admin"
     await act(client, LEASE_ADMIN_CENTRAL, reference, "approve_first")
     final = await client.get(
         f"/api/review/cases/{reference}", headers={"X-Reviewer-Id": STORE_CENTRAL}
     )
-    assert final.json()["brief"]["queue_role"] == "Regional Leasing Manager (Store)"
+    assert final.json()["brief"]["queue_role"] == "Regional Sales Manager"

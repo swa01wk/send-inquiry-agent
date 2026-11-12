@@ -207,7 +207,7 @@ async def test_submit_once_notifies_and_tracks(client, app) -> None:
         "outcome",
     ]
     assert [s["state"] for s in body["stages"]] == ["done", "current", "upcoming", "upcoming"]
-    assert body["owner_role"] == "Regional Leasing Manager (Store)"
+    assert body["owner_role"] == "Regional Sales Manager"
     assert body["waiting_on_you"] == []
 
     assert (await client.get(f"/api/inquiries/{reference}")).status_code == 404

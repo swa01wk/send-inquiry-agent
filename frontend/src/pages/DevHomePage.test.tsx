@@ -79,7 +79,7 @@ describe('DevHomePage', () => {
     renderPage()
     const row = await screen.findByTestId('dev-demo-case-B')
     expect(row).toHaveTextContent('GEO-STR-123456')
-    expect(screen.getByRole('link', { name: 'as Lease Admin' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'as Leasing Admin' })).toHaveAttribute(
       'href',
       '/review/cases/GEO-STR-123456?as=lease_admin-central',
     )

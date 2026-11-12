@@ -19,6 +19,7 @@ from app.domain.models import FieldKey, FieldValue, Source
 from app.domain.payload import lead_payload
 from app.gateway import GatewayError
 from app.policy.config import get_policy
+from app.workflow.labels import rejection_label
 from app.workflow.machine import SYSTEM
 from app.workflow.models import (
     CONTACT_ROLE_LABELS,
@@ -39,7 +40,7 @@ Effect = Callable[["AgentRuntime", Case, WorkflowEvent], Awaitable[Case]]
 REQUEST_LABELS = {
     "reupload": "documents",
     "contacts": "company contacts",
-    "sales_data": "sales data",
+    "sales_data": "Forecasted Sales Data",
 }
 
 
@@ -139,6 +140,7 @@ async def _rejection_email(runtime: AgentRuntime, case: Case, event: WorkflowEve
         case,
         "inquiry_rejected",
         remarks=decision.remarks if decision else "",
+        outcome_label=rejection_label(case) or "Not approved",
         case_url=case_url(runtime, case),
     )
     return case
@@ -173,6 +175,43 @@ async def _invite_primary(runtime: AgentRuntime, case: Case, event: WorkflowEven
     if not email:
         return case
     return await _invite(runtime, case, str(email), str(first or "there"), "primary_contact")
+
+
+async def _revoke_primary(runtime: AgentRuntime, case: Case, event: WorkflowEvent) -> Case:
+    """Reject Lead revokes the Azure AD invitation made at first approval (flow v2 §3.6, V9).
+
+    Only a final-level rejection, and only invitations this case created: an email that
+    already had an account was never invited (`_invite`), so it's never revoked (A1).
+    """
+    if not get_policy().identity.revoke_on_lead_rejection:
+        return case
+    decision = case.decisions[-1] if case.decisions else None
+    if decision is None or decision.outcome != "rejected" or decision.level != "second":
+        return case
+    pending = [
+        i for i in case.onboarding.invitations if i.role == "primary_contact" and not i.revoked_at
+    ]
+    for invitation in pending:
+        revoked = await runtime.services.gateway.call(
+            "identity",
+            "revoke",
+            runtime.services.identity.revoke,
+            invitation.id,
+            inquiry_id=case.id,
+        )
+        fresh = runtime.services.cases.get(case.id) or case
+        for stored in fresh.onboarding.invitations:
+            if stored.id == invitation.id:
+                stored.revoked_at = revoked.revoked_at if revoked else stored.revoked_at
+        runtime.services.cases.save(fresh)
+        runtime.services.audit.record(
+            case.id,
+            "identity_revoked",
+            actor="system",
+            payload={"invitation_id": invitation.id, "role": invitation.role},
+        )
+        case = fresh
+    return case
 
 
 async def _first_level_email(runtime: AgentRuntime, case: Case, event: WorkflowEvent) -> Case:
@@ -324,7 +363,7 @@ EFFECTS: dict[str, list[tuple[str, Effect]]] = {
     "documents_resubmitted": [
         ("reupload_received", _notify_reviewers("reupload_received", "first"))
     ],
-    "rejected": [("inquiry_rejected", _rejection_email)],
+    "rejected": [("inquiry_rejected", _rejection_email), ("revoke_primary", _revoke_primary)],
     "approved_first": [
         ("invite_primary", _invite_primary),
         ("first_level_approved", _first_level_email),

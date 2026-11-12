@@ -54,15 +54,15 @@ def test_a_decided_outcome_stage_is_done_and_named():
         )
         assert status_stages(inquiry) == [
             ("submitted", "Inquiry submitted", "done"),
-            ("first_review", "First review", "done"),
-            ("second_review", "Lead — second review", "done"),
+            ("first_review", "With the Leasing Admin", "done"),
+            ("second_review", "Tenant Qualified", "done"),
             ("outcome", label, "done"),
         ]
     reviewing = InquiryStatus(reference="GEO-STR-000004", status="under_review", submitted_at=T0)
     assert [s[1:] for s in status_stages(reviewing)] == [
         ("Inquiry submitted", "done"),
-        ("First review", "current"),
-        ("Lead — second review", "upcoming"),
+        ("With the Leasing Admin", "current"),
+        ("Tenant Qualified", "upcoming"),
         ("Outcome", "upcoming"),
     ]
 

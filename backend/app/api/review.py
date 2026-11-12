@@ -41,6 +41,7 @@ from app.proactive.models import RECOMMENDED, TRIGGER_LABELS, AttentionItem
 from app.services.container import ServiceContainer
 from app.services.reviewers import Reviewer
 from app.services.status import REQUEST_LABELS
+from app.workflow.labels import status_label
 from app.workflow.machine import (
     IllegalTransition,
     approval_blockers,
@@ -187,7 +188,7 @@ def _queue_item(
         product_line=fields[FieldKey.UNIT_TYPE].value,
         region=case.review_queue.region if case.review_queue else None,
         status=case.status.value,
-        stage_label=STAGE_LABELS.get(case.status.value, case.status.value),
+        stage_label=status_label(case),
         waiting_on=waiting_on(case),
         age_days=round((now - case.submitted_at).total_seconds() / 86400, 2),
         last_change=case.last_change,

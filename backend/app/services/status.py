@@ -14,6 +14,7 @@ from typing import Literal, Protocol
 from app import clock
 from app.services.errors import ReferenceNotFoundError
 from app.services.submit import MockSubmitService
+from app.workflow.labels import FORECASTED_SALES_DATA, STATUS_PAGE_STAGES, rejection_label
 from app.workflow.models import ROLE_LABELS, Case, CaseStatus, review_level
 from app.workflow.store import CaseStore
 
@@ -21,18 +22,16 @@ StatusValue = Literal["under_review", "approved", "sent_to_yardi", "rejected"]
 StageKey = Literal["submitted", "first_review", "second_review", "outcome"]
 StageState = Literal["done", "current", "upcoming"]
 
-STAGES: list[tuple[StageKey, str]] = [
-    ("submitted", "Inquiry submitted"),
-    ("first_review", "First review"),
-    ("second_review", "Lead — second review"),
-    ("outcome", "Outcome"),
-]
+# Stage names from the v2 flowchart (flow v2 §3.5, `workflow/labels.py`).
+_STAGE_KEYS: tuple[StageKey, ...] = ("submitted", "first_review", "second_review", "outcome")
+STAGES: list[tuple[StageKey, str]] = [(key, STATUS_PAGE_STAGES[key]) for key in _STAGE_KEYS]
 
-# Requirements §7.1.1 b: first-level reviewers by product line.
+# A submission with no case yet: owner by product line (requirements §7.1.1 b; flow v2 §3.5).
 OWNER_ROLES: dict[str, str] = {
-    "store": "Regional Leasing Manager (Store)",
-    "media": "Regional Property Leasing Manager (Media)",
-    "specialty": "Regional Property Leasing Manager (Specialty)",
+    "store": ROLE_LABELS["rlm_store"],
+    "office": ROLE_LABELS["rlm_store"],
+    "media": ROLE_LABELS["rplm_media"],
+    "specialty": ROLE_LABELS["rplm_specialty"],
 }
 DEFAULT_OWNER_ROLE = "Leasing team"
 
@@ -46,12 +45,14 @@ class InquiryStatus:
     owner_role: str = DEFAULT_OWNER_ROLE
     waiting_on_you: list[str] = field(default_factory=list)
     last_change: datetime | None = None
+    # "Tenant Not Qualified" or "Lead Rejected" (flow v2 §3.5); None unless rejected.
+    rejection_label: str | None = None
 
 
 REQUEST_LABELS: dict[str, str] = {
     "reupload": "Re-upload documents",
     "contacts": "Add company contacts",
-    "sales_data": "Upload estimated sales data",
+    "sales_data": f"Upload {FORECASTED_SALES_DATA.lower()}",
 }
 
 # Wording after final approval (L4 §3.8): only promise a proposal once Yardi has acknowledged.
@@ -77,7 +78,10 @@ def status_stages(inquiry: InquiryStatus) -> list[tuple[StageKey, str, StageStat
     stages: list[tuple[StageKey, str, StageState]] = []
     for i, (key, label) in enumerate(STAGES):
         if key == "outcome" and decided:
-            stages.append((key, OUTCOME_LABELS[inquiry.status], "done"))
+            outcome = OUTCOME_LABELS[inquiry.status]
+            if inquiry.status == "rejected" and inquiry.rejection_label:
+                outcome = f"Outcome — {inquiry.rejection_label}"
+            stages.append((key, outcome, "done"))
             continue
         state: StageState = "done" if i < current else "current" if i == current else "upcoming"
         stages.append((key, label, state))
@@ -94,6 +98,8 @@ def inquiry_status_summary(inquiry: InquiryStatus) -> str:
     if label := final_approval_label(inquiry.status):
         return label
     if inquiry.status == "rejected":
+        if inquiry.rejection_label:
+            return f"Your inquiry was not approved ({inquiry.rejection_label})."
         return "Your inquiry was not approved."
     owner = f" Current owner: {inquiry.owner_role}." if inquiry.owner_role else ""
     return f"Your inquiry was submitted and is waiting for review.{owner}"
@@ -131,6 +137,7 @@ def _from_case(case: Case) -> InquiryStatus:
         owner_role=owner,
         waiting_on_you=waiting,
         last_change=case.last_change,
+        rejection_label=rejection_label(case),
     )
 
 

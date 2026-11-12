@@ -48,11 +48,13 @@ CONTACT_ROLE_LABELS: dict[str, str] = {
     "financial_controller": "Financial Controller",
     "company_admin": "Company Admin",
 }
+# Display names from the v2 flowchart (flow v2 §3.5, M17): the ids don't change; RLM-Store
+# was renamed Regional Sales Manager (same queue and people).
 ROLE_LABELS: dict[str, str] = {
-    "lease_admin": "Lease Admin",
-    "rlm_store": "Regional Leasing Manager (Store)",
-    "rplm_media": "Regional Property Leasing Manager (Media)",
-    "rplm_specialty": "Regional Property Leasing Manager (Specialty)",
+    "lease_admin": "Leasing Admin",
+    "rlm_store": "Regional Sales Manager",
+    "rplm_media": "Regional Product Line Manager (Media)",
+    "rplm_specialty": "Regional Product Line Manager (Specialty)",
 }
 
 
@@ -182,6 +184,8 @@ class Invitation(BaseModel):
     role: str  # the tenant role the invitation assigns
     invited_at: datetime
     accepted_at: datetime | None = None
+    # Reject Lead revoked it (flow v2 §3.6, V9).
+    revoked_at: datetime | None = None
 
 
 class Onboarding(BaseModel):

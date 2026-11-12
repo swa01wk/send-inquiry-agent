@@ -1,10 +1,10 @@
 kind: action_required
 channel: email
-subject: Estimated sales data needed for $reference
+subject: Forecasted Sales Data needed for $reference
 ---
 Hello $first_name,
 
-The leasing team would like your estimated sales data for $brand at $mall.
+The leasing team would like your Forecasted Sales Data for $brand at $mall.
 $remarks
 
 Upload one file here:

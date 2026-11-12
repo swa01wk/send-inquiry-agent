@@ -34,6 +34,10 @@ class IdentityService(Protocol):
 
     def accept(self, invitation_id: str) -> Invitation | None: ...
 
+    async def revoke(self, invitation_id: str) -> Invitation | None:
+        """Withdraw an invitation (flow v2 §3.6, V9); None when it's unknown."""
+        ...
+
 
 class MockIdentityService:
     def __init__(
@@ -92,7 +96,7 @@ class MockIdentityService:
     def accept(self, invitation_id: str) -> Invitation | None:
         with self._lock:
             raw = self._invitations.get(invitation_id)
-            if raw is None:
+            if raw is None or raw.get("revoked_at") is not None:
                 return None
             if raw.get("accepted_at") is None:
                 raw["accepted_at"] = clock.now().isoformat()
@@ -100,3 +104,29 @@ class MockIdentityService:
             self._save()
             accepted: Invitation = Invitation.model_validate(raw)
             return accepted
+
+    async def revoke(self, invitation_id: str) -> Invitation | None:
+        """Withdraw the invitation; an account created by accepting it goes too (flow v2 §3.6).
+
+        Accounts that existed before (seeded, or from another invitation) aren't touched: only
+        the email this invitation added on acceptance is removed.
+        """
+        with self._lock:
+            raw = self._invitations.get(invitation_id)
+            if raw is None:
+                return None
+            if raw.get("revoked_at") is None:
+                raw["revoked_at"] = clock.now().isoformat()
+                email = str(raw["email"]).lower()
+                others = any(
+                    other.get("accepted_at") is not None
+                    and other.get("revoked_at") is None
+                    and str(other["email"]).lower() == email
+                    for key, other in self._invitations.items()
+                    if key != invitation_id
+                )
+                if raw.get("accepted_at") is not None and not others:
+                    self._accounts.discard(email)
+                self._save()
+            revoked: Invitation = Invitation.model_validate(raw)
+            return revoked

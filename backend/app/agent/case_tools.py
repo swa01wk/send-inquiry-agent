@@ -89,7 +89,7 @@ def _status_summary(case: Case) -> str:
         f"Owner role: {status.owner_role}.",
     ]
     if status.status == "rejected":
-        parts.append("Outcome: rejected.")
+        parts.append(f"Outcome: rejected ({status.rejection_label or 'not approved'}).")
         decision = case.decisions[-1] if case.decisions else None
         if decision and decision.remarks:
             parts.append(f"Outcome remarks: {decision.remarks}")
@@ -246,7 +246,7 @@ def request_sales_data_upload(
     state: Annotated[AgentState, InjectedState],
     runtime: ToolRuntime,
 ) -> Command[Any]:
-    """Show the estimated sales data upload card."""
+    """Show the Forecasted Sales Data upload card."""
     rt = runtime_from_config(runtime.config)
     case = _case(state, runtime)
     if case is None:

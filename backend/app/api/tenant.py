@@ -23,7 +23,6 @@ from app.api.errors import ApiError
 from app.api.schemas import AssistantMessage, CreateSessionResponse
 from app.config import Settings
 from app.domain import draft_ops
-from app.domain.case_brief import STAGE_LABELS
 from app.domain.master import MasterData
 from app.domain.models import FieldKey, Source
 from app.domain.summary import build_draft_summary
@@ -32,6 +31,7 @@ from app.policy.config import get_policy
 from app.services.container import ServiceContainer
 from app.services.tenants import Tenant
 from app.sessions import SessionStore
+from app.workflow.labels import status_label
 
 router = APIRouter(prefix="/api/tenant", tags=["tenant"])
 
@@ -267,7 +267,7 @@ async def my_inquiries(
                 brand=case.draft.fields[FieldKey.BRAND_NAME_EN].value,
                 mall=master.label_for("malls", malls[0]) if malls else None,
                 product_line=master.label_for("unit_types", unit_type) if unit_type else None,
-                stage_label=STAGE_LABELS.get(case.status.value, case.status.value),
+                stage_label=status_label(case),
                 submitted_at=case.submitted_at,
                 last_change=case.last_change,
                 tracking_url=tracking_url(runtime, case.session_id, case.reference),

@@ -54,6 +54,8 @@ ALLOWED_KEYS: dict[str, frozenset[str]] = {
     # `subject`: the document type or contact role a per-item decision is about (§3.4, §3.5).
     "case_transition": frozenset({"event", "from_status", "to_status", "by", "outcome", "subject"}),
     "effect_run": frozenset({"effect", "event", "outcome"}),
+    # Flow v2 §3.6 (V9): Reject Lead revoked the first-approval invitation.
+    "identity_revoked": frozenset({"invitation_id", "role"}),
     "routing_decision": frozenset({"intent", "via", "confidence"}),
     "assistant_suggestion": frozenset({"kind", "action", "used"}),
     # Intake channels (spec §15)

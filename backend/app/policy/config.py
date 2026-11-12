@@ -175,6 +175,15 @@ class ContactsPolicy(_Strict):
     applicant_signatory_needs_approval: bool = False
 
 
+class IdentityPolicy(_Strict):
+    """Azure AD accounts the lifecycle creates (flow v2 §3.6, V9)."""
+
+    # Reject Lead (final level) revokes the invitation made at first approval. An account
+    # that existed before the inquiry has no invitation on the case, so it's never touched
+    # (assumption A1).
+    revoke_on_lead_rejection: bool = True
+
+
 class QuietHours(_Strict):
     start: str = "22:00"
     end: str = "08:00"
@@ -268,6 +277,7 @@ class PolicyConfig(_Strict):
     document_approval: bool = True
     document_expiry: DocumentExpiryPolicy = DocumentExpiryPolicy()
     contacts: ContactsPolicy = ContactsPolicy()
+    identity: IdentityPolicy = IdentityPolicy()
     # ---- Proactive work (L5) -----------------------------------------------------------
     proactive: ProactivePolicy = ProactivePolicy()
 

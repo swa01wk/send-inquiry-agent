@@ -23,6 +23,7 @@ from app.domain.summary import DraftDocumentRow
 from app.policy.config import get_policy
 from app.services.status import REQUEST_LABELS, _from_case, final_approval_label
 from app.workflow.contacts import contacts_blockers
+from app.workflow.labels import STATUS_PAGE_STAGES
 from app.workflow.models import CONTACT_ROLE_LABELS, Case, CaseRequest, CaseStatus, TenantContact
 
 CASE_STATUS_CARD_ID = "case_status"
@@ -47,12 +48,8 @@ SIGNATORY_PROMPT = "Are you the authorised signatory for your company?"
 SIGNATORY_YES = "Yes, I'm the authorised signatory"
 SIGNATORY_NO = "No, someone else is"
 
-_STAGE_LABELS = {
-    "submitted": "Submitted",
-    "first_review": "First review",
-    "second_review": "Lead — second review",
-    "outcome": "Outcome",
-}
+# Status-page stages, named as on the v2 flowchart (flow v2 §3.5).
+_STAGE_LABELS = STATUS_PAGE_STAGES
 
 
 def _next_step(case: Case) -> str:

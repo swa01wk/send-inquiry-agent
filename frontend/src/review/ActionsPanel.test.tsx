@@ -142,14 +142,11 @@ describe('ActionsPanel', () => {
     expect(screen.queryByTestId('action-approve')).not.toBeInTheDocument()
   })
 
-  it('removes a contact by role', async () => {
-    const user = userEvent.setup()
+  it('has no Remove for contacts (flow v2 V14)', () => {
     vi.spyOn(review, 'listYardiBrands').mockResolvedValue([])
-    const onAct = renderPanel(secondReviewDetail())
-    const form = within(screen.getByTestId('action-remove_contact'))
-    await user.selectOptions(form.getByLabelText('Contact'), 'billing_contact')
-    await user.click(form.getByRole('button', { name: 'Remove' }))
-    expect(onAct).toHaveBeenCalledWith('remove_contact', { role: 'billing_contact' })
+    renderPanel(secondReviewDetail())
+    expect(screen.queryByTestId('action-remove_contact')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Remove' })).not.toBeInTheDocument()
   })
 
   it('searches Yardi and links a company', async () => {

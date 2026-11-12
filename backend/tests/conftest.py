@@ -17,6 +17,7 @@ _DIR_MARKERS: dict[str, list[str]] = {
     "case_brief": ["unit"],
     "contacts": ["unit"],
     "domain": ["unit"],
+    "flow": ["unit"],
     "gateway": ["contract"],
     "handoff": ["agent"],
     "lifecycle": ["api"],

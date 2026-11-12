@@ -26,7 +26,7 @@ test.describe('Story rd-document-approval @scripted', () => {
     try {
       const reviewerPage = await reviewerContext.newPage()
       await openCaseAs(reviewerPage, leaseAdmin, reference)
-      await expect(reviewerPage.getByTestId('case-stage')).toHaveText('First review')
+      await expect(reviewerPage.getByTestId('case-stage')).toHaveText('With the Leasing Admin')
       const approveFirst = reviewerPage
         .getByTestId('action-approve_first')
         .getByRole('button', { name: 'Approve first level' })
@@ -78,12 +78,12 @@ test.describe('Story rd-document-approval @scripted', () => {
       await applicant.upload('Brand Profile', 'brand_profile.pdf')
       await applicant.resubmitDocuments()
       await expect(applicant.cards('case_status').getByRole('heading', { level: 3 })).toHaveText(
-        'First review',
+        'With the Leasing Admin',
       )
 
       // The new file is decided again; the company profile keeps its approval.
       await reviewerPage.reload()
-      await expect(reviewerPage.getByTestId('case-stage')).toHaveText('First review')
+      await expect(reviewerPage.getByTestId('case-stage')).toHaveText('With the Leasing Admin')
       await expect(reviewerPage.getByTestId('doc-approval-brand_profile')).toHaveText(
         'Waiting for a decision',
       )
@@ -93,7 +93,7 @@ test.describe('Story rd-document-approval @scripted', () => {
       await expect(reviewerPage.getByTestId('first-approval-blockers')).toHaveCount(0)
       await expect(approveFirst).toBeEnabled()
       await approveFirst.click()
-      await expect(reviewerPage.getByTestId('case-stage')).toHaveText('Lead — second review')
+      await expect(reviewerPage.getByTestId('case-stage')).toHaveText('Tenant Qualified')
       await expect(reviewerPage.getByTestId('timeline')).toContainText(
         'Document rejected: brand profile',
       )

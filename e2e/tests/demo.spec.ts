@@ -249,7 +249,7 @@ test.describe('Demo script — 10 Nov @demo', () => {
           const consoleLink = assigned.links.find((l) => l.includes('/review/cases/'))!
           await leaseAdminPage.goto(relative(consoleLink))
           await caption(leaseAdminPage, '2. Lease Admin: "Inquiry for approval" email → the case')
-          await expect(leaseAdminPage.getByTestId('case-stage')).toHaveText('First review')
+          await expect(leaseAdminPage.getByTestId('case-stage')).toHaveText('With the Leasing Admin')
           await expect(
             leaseAdminPage.getByTestId('doc-expiry-status-company_profile'),
           ).toContainText('Valid until')
@@ -296,7 +296,7 @@ test.describe('Demo script — 10 Nov @demo', () => {
         await caseChat.upload('Brand Profile', 'brand_profile.pdf')
         await caseChat.resubmitDocuments()
         await expect(caseChat.cards('case_status').getByRole('heading', { level: 3 })).toHaveText(
-          'First review',
+          'With the Leasing Admin',
         )
         await beat(casePage)
       })
@@ -319,7 +319,7 @@ test.describe('Demo script — 10 Nov @demo', () => {
             .getByTestId('action-approve_first')
             .getByRole('button', { name: 'Approve first level' })
             .click()
-          await expect(leaseAdminPage.getByTestId('case-stage')).toHaveText('Lead — second review')
+          await expect(leaseAdminPage.getByTestId('case-stage')).toHaveText('Tenant Qualified')
           await expect(leaseAdminPage.getByTestId('timeline')).toContainText(
             'Document rejected: brand profile',
           )
@@ -601,9 +601,9 @@ test.describe('Demo script — 10 Nov @demo', () => {
         await page.goto('/dev')
         await page
           .getByTestId('dev-demo-case-B')
-          .getByRole('link', { name: 'as Lease Admin' })
+          .getByRole('link', { name: 'as Leasing Admin' })
           .click()
-        await expect(page.getByTestId('case-stage')).toHaveText('Lead — second review')
+        await expect(page.getByTestId('case-stage')).toHaveText('Tenant Qualified')
         await page.getByTestId('contact-approve-billing_contact').click()
         await expect(page.getByTestId('contact-approval-billing_contact')).toHaveText('Approved')
         await beat(page)
@@ -627,7 +627,7 @@ test.describe('Demo script — 10 Nov @demo', () => {
         await waitForHealth(request)
         expect(await demoCases(request)).toEqual(seeded)
         await page.reload()
-        await expect(page.getByTestId('case-stage')).toHaveText('Lead — second review')
+        await expect(page.getByTestId('case-stage')).toHaveText('Tenant Qualified')
         await expect(page.getByTestId('contact-approval-billing_contact')).toHaveText('Approved')
         await beat(page)
       })
