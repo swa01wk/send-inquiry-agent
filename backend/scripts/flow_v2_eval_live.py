@@ -1071,7 +1071,7 @@ def _wrong_code_on_card(
     shows fewer attempts left, and no reply scolds them."""
     wrong = [t for t in turns if t.user.startswith("[otp") and not t.user.endswith("1234]")]
     mobiles = [(c.get("payload") or {}).get("mobile") or {} for c in _cards(wrong, "verification")]
-    attempts = [m.get("attempts_left") for m in mobiles if m.get("attempts_left") is not None]
+    attempts = [int(m["attempts_left"]) for m in mobiles if m.get("attempts_left") is not None]
     shown = bool(mobiles) and all(not m.get("verified") for m in mobiles)
     fewer = len(set(attempts)) > 1 or (bool(attempts) and min(attempts) < 3)
     return [

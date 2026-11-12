@@ -134,8 +134,9 @@ def test_cr_is_masked_on_the_documents_card_on_v2() -> None:
     draft.fields[FieldKey.CR_NUMBER].value = "1010123456"
     draft.intake_flow = "v2"
     card = build_document_upload_card(draft, master, max_mb=5)
-    rows = {row.key: row for row in card.payload.numbers}  # type: ignore[union-attr]
-    assert rows["cr_number"].value == "•••••• 3456"
+    payload = card.model_dump(mode="json")["payload"]
+    rows = {row["key"]: row for row in payload["numbers"]}
+    assert rows["cr_number"]["value"] == "•••••• 3456"
     assert "1010123456" not in card.model_dump_json()
 
 
