@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+from app.agent.case_tools import _status_summary
 from app.workflow.models import CaseStatus
 from tests.lifecycle.conftest import APPLICANT, STORE_CENTRAL, act, outbox, submit_case
 from tests.lifecycle.test_contact_approval import OMAR, _card, _open, _send
@@ -150,6 +151,11 @@ async def test_approve_lead_opens_contacts_and_cannot_be_rejected(life) -> None:
     assert [r.kind for r in case.requests if r.status == "open"] == ["contacts"]
     assert len(outbox(app, APPLICANT, "lead_approved")) == 1
     assert len(outbox(app, APPLICANT, "contacts_request")) == 1
+    summary = _status_summary(case)
+    assert "Current stage: Lead Approved." in summary
+    assert "Still needed before the final Approve Lead: Authorized Signatory, Billing Contact." in (
+        summary
+    )
 
     data = await detail(client, STORE_CENTRAL, reference)
     assert "reject" not in data["legal_actions"]

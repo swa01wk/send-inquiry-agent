@@ -29,6 +29,7 @@ from app.policy.config import get_policy
 from app.services.status import REQUEST_LABELS, _from_case, final_approval_label
 from app.sessions import Session
 from app.workflow.contacts import write_contacts
+from app.workflow.labels import status_label
 from app.workflow.models import CONTACT_ROLE_LABELS, Case, CaseStatus, TenantContact
 
 # Re-export shared tools for the case allowlist.
@@ -84,6 +85,9 @@ def _tool_message(runtime: ToolRuntime, content: str, **update: Any) -> Command[
 def _status_summary(case: Case) -> str:
     status = _from_case(case)
     stage_label = _STAGE_LABELS.get(status.current_stage, status.current_stage)
+    if case.status == CaseStatus.LEAD_APPROVED:
+        # The status page shows it under "Tenant Qualified"; the agent names the outcome.
+        stage_label = status_label(case)
     parts = [
         f"Reference {case.reference}. Current stage: {stage_label}. "
         f"Owner role: {status.owner_role}.",

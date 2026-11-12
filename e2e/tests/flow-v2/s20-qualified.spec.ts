@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { InquiryPage } from '../../pages/inquiry'
 import { expectFlowPath, reviewerAct, trackingStages } from '../../support/flowV2'
 import { fetchDevOutbox, latestByTemplate } from '../../support/outbox'
 import { openCaseAs } from '../../support/stories'
@@ -43,8 +44,30 @@ test.describe('S20 Qualified @flow-v2 @scripted', () => {
     }
 
     const mail = await fetchDevOutbox(request, APPLICANT_EMAIL)
-    expect(latestByTemplate(mail, 'azure_ad_invitation')).toBeTruthy()
-    expect(latestByTemplate(mail, 'first_level_approved')?.subject).toContain('Tenant Qualified')
+    // Sara's inbox is shared by every s1-happy-path story; the case's own messages carry its
+    // reference (the submission email carries the session id).
+    const caseMail = mail.filter((m) => m.inquiry_id === reference)
+    expect(latestByTemplate(caseMail, 'azure_ad_invitation')).toBeTruthy()
+    expect(latestByTemplate(caseMail, 'first_level_approved')?.subject).toContain('Tenant Qualified')
+
+    const approvedMail = latestByTemplate(caseMail, 'first_level_approved')
+    const casePath = approvedMail?.links.find((l) => l.includes('/inquiry/case'))
+    expect(casePath).toBeTruthy()
+    const caseUrl = new URL(casePath!)
+    caseUrl.searchParams.set('e2eCaseScenario', 'flow-v2-s20')
+    const applicantContext = await browser.newContext()
+    try {
+      const applicantPage = await applicantContext.newPage()
+      const applicant = new InquiryPage(applicantPage)
+      await applicantPage.goto(caseUrl.toString())
+      await applicant.waitForChatReady()
+      await applicant.say('Where is my inquiry?')
+      const reply = await applicant.lastReply()
+      expect(reply).toMatch(/Tenant Qualified/i)
+      expect(reply).toMatch(/Regional (Sales Manager|Product Line Manager)/i)
+    } finally {
+      await applicantContext.close()
+    }
 
     const tracking = latestByTemplate(mail, 'submission_email')?.links.find((l) =>
       l.includes('/inquiry/status/'),
@@ -59,7 +82,7 @@ test.describe('S20 Qualified @flow-v2 @scripted', () => {
     expect(stages.find((s) => s.key === 'second_review')?.state).toBe('current')
 
     // F2 (§3.7): the contacts wait for "Approve Lead?" = Yes.
-    expect(latestByTemplate(mail, 'contacts_request')).toBeFalsy()
+    expect(latestByTemplate(caseMail, 'contacts_request')).toBeFalsy()
     await expectFlowPath(request, reference, [
       ['complete1', 'vla', 'docsok', 'approve_pt', 'ptc_create', 'qualified'],
       ['ptc_create', 'az1'],
