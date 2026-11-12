@@ -44,12 +44,7 @@ describe('TermsCard', () => {
   })
 
   it('shows accepted state from the payload', () => {
-    render(
-      <TermsCard
-        payload={{ ...basePayload, accepted: true }}
-        onAccept={() => undefined}
-      />,
-    )
+    render(<TermsCard payload={{ ...basePayload, accepted: true }} onAccept={() => undefined} />)
     expect(screen.getByTestId('terms-accepted')).toHaveTextContent(/terms accepted/i)
     expect(screen.getByRole('checkbox')).toBeChecked()
     expect(screen.getByRole('checkbox')).toBeDisabled()

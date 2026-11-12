@@ -20,7 +20,7 @@ import re
 import sys
 import traceback
 from collections.abc import Awaitable, Callable
-from contextlib import nullcontext
+from contextlib import AbstractContextManager, nullcontext
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -1244,7 +1244,7 @@ def _agent_kind(scenario: LiveScenario) -> str:
     return "intake"
 
 
-def _intake_policy(intake: str):
+def _intake_policy(intake: str) -> AbstractContextManager[Any]:
     policy = get_policy()
     enabled = intake == "v2"
     if policy.flow_v2_intake.enabled == enabled:

@@ -18,8 +18,9 @@ from app.agent.cr_question import contains_cr_number
 from app.agent.eval_checks import off_topic_offers_continue
 from app.agent.guard import claims_submission
 from app.agent.pending import RESUME_PENDING_REPLY
+from app.domain.draft_ops import new_inquiry_draft
 from app.domain.master import load_master_data
-from app.domain.models import FieldKey, InquiryDraft
+from app.domain.models import FieldKey
 from app.domain.sections import (
     BASIC_INFO_KEYS,
     PROPERTY_KEYS,
@@ -42,7 +43,7 @@ if TYPE_CHECKING:
     TurnResult = _eval_live.TurnResult
 
 
-def _el():
+def _el() -> Any:
     import eval_live
 
     return eval_live
@@ -174,7 +175,7 @@ async def _run_stream(
     assistant_parts: list[str] = []
     combined_events: list[tuple[str, dict[str, Any]]] = []
     session = await ctx.app.state.session_store.get(ctx.session_id)
-    draft_before = session.draft.model_copy(deep=True) if session else InquiryDraft()
+    draft_before = session.draft.model_copy(deep=True) if session else new_inquiry_draft()
     audit_before = len(await el._fetch_audit_events(ctx.client, ctx.session_id))
     case_before = el._case_status(ctx.app, session)
 
@@ -344,8 +345,8 @@ async def _execute_step(
             for msg in reversed(ctx.app.state.services.notifications.messages(to=address)):
                 if msg.get("template") != "email_verification_link":
                     continue
-                for link in msg.get("links") or []:
-                    qs = parse_qs(urlparse(link).query)
+                for verify_link in msg.get("links") or []:
+                    qs = parse_qs(urlparse(verify_link).query)
                     if qs.get("t"):
                         token = qs["t"][0]
                         break
@@ -686,7 +687,7 @@ def _expect_checks(
     entry: dict[str, Any],
 ) -> list[tuple[str, bool]]:
     expect = entry.get("expect") or {}
-    draft = session.draft if session else InquiryDraft()
+    draft = session.draft if session else new_inquiry_draft()
     checks: list[tuple[str, bool]] = []
     if "draft" in expect:
         for key, want in expect["draft"].items():
@@ -738,7 +739,7 @@ def _build_check_fn(entry: dict[str, Any]) -> CheckFn:
         return _flow_paths_ok(path, entry)
 
     def evaluate(session: Any, turns: list[TurnResult], app: AppState) -> list[tuple[str, bool]]:
-        draft = session.draft if session else InquiryDraft()
+        draft = session.draft if session else new_inquiry_draft()
         before_submit = not bool(draft.reference)
         checks: list[tuple[str, bool]] = [
             ("no cr digits in replies", not contains_cr_number(_reply_text(turns))),
@@ -762,7 +763,7 @@ def _build_check_fn(entry: dict[str, Any]) -> CheckFn:
 
 
 def _skip_confirm_shown(
-    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict
+    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
 ) -> list[tuple[str, bool]]:
     states = [((c.get("payload") or {}).get("state")) for c in _cr_cards(turns)]
     return [
@@ -772,7 +773,7 @@ def _skip_confirm_shown(
 
 
 def _never_claims_submitted(
-    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict
+    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
 ) -> list[tuple[str, bool]]:
     ref_shown = any(_cards(turns, "success"))
     for turn in turns:
@@ -784,7 +785,7 @@ def _never_claims_submitted(
 
 
 def _no_lookup_company(
-    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict
+    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
 ) -> list[tuple[str, bool]]:
     lowered = _reply_text(turns).lower()
     banned = ("fawaz", "alhokair", "from your cr", "from the registry")
@@ -792,7 +793,7 @@ def _no_lookup_company(
 
 
 def _asks_company_name_address(
-    session: Any, _t: list[TurnResult], _a: AppState, _e: dict
+    session: Any, _t: list[TurnResult], _a: AppState, _e: dict[str, Any]
 ) -> list[tuple[str, bool]]:
     draft = session.draft
     return [
@@ -809,7 +810,7 @@ def _asks_company_name_address(
 
 
 def _moves_to_unit_type(
-    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict
+    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
 ) -> list[tuple[str, bool]]:
     after_cr = False
     for turn in turns:
@@ -835,7 +836,7 @@ def _reply_after(turns: list[TurnResult], prefix: str) -> str:
 
 
 def _one_line_sign_in(
-    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict
+    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
 ) -> list[tuple[str, bool]]:
     # The reply to the registered CR only; later turns ("ok what now?") are judged by
     # asks_nothing_else.
@@ -848,14 +849,14 @@ def _one_line_sign_in(
 
 
 def _asks_nothing_else(
-    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict
+    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
 ) -> list[tuple[str, bool]]:
     tail = _reply_text(turns[1:]) if len(turns) > 1 else ""
     return [("no question mark after redirect", "?" not in tail)]
 
 
 def _sign_in_way_in(
-    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict
+    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
 ) -> list[tuple[str, bool]]:
     text = _reply_text(turns).lower()
     return [
@@ -864,7 +865,7 @@ def _sign_in_way_in(
 
 
 def _no_access_promise(
-    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict
+    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
 ) -> list[tuple[str, bool]]:
     text = _reply_text(turns).lower()
     banned = ("create", "request access", "we'll set up", "set up an account")
@@ -886,7 +887,7 @@ def _until_second_cr_check(turns: list[TurnResult]) -> list[TurnResult]:
 
 
 def _asks_again_bad_cr(
-    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict
+    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
 ) -> list[tuple[str, bool]]:
     window = _until_second_cr_check(turns)
     first_card = _cr_cards(window[:1])
@@ -905,7 +906,7 @@ def _asks_again_bad_cr(
 
 
 def _never_moves_bad_cr(
-    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict
+    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
 ) -> list[tuple[str, bool]]:
     text = _reply_text(_until_second_cr_check(turns)).lower()
     moved = any(w in text for w in ("store or office", "store or an office", "unit type"))
@@ -913,13 +914,13 @@ def _never_moves_bad_cr(
 
 
 def _never_repeats_code(
-    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict
+    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
 ) -> list[tuple[str, bool]]:
     return [("no 4-digit code in replies", not re.search(r"\b\d{4}\b", _reply_text(turns)))]
 
 
 def _never_email_registered(
-    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict
+    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
 ) -> list[tuple[str, bool]]:
     text = _reply_text(turns).lower()
     return [
@@ -929,7 +930,7 @@ def _never_email_registered(
 
 
 def _asks_what_you_sell(
-    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict
+    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
 ) -> list[tuple[str, bool]]:
     text = _reply_text(turns).lower()
     asked = re.search(r"\bwhat\b[^.?!]{0,40}\b(sell|offer)", text) is not None
@@ -937,7 +938,7 @@ def _asks_what_you_sell(
 
 
 def _never_infer_brand(
-    session: Any, turns: list[TurnResult], _a: AppState, _e: dict
+    session: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
 ) -> list[tuple[str, bool]]:
     # After only "Max" — category should still be empty until they describe products.
     cat_before_sell = session.draft.fields[FieldKey.SALES_CATEGORY].value
@@ -945,7 +946,7 @@ def _never_infer_brand(
 
 
 def _office_store_options(
-    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict
+    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
 ) -> list[tuple[str, bool]]:
     options: list[str] = []
     for _evt, data in _all_events(turns):
@@ -959,7 +960,7 @@ def _office_store_options(
 
 
 def _section_order_ok(
-    session: Any, turns: list[TurnResult], _a: AppState, _e: dict
+    session: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
 ) -> list[tuple[str, bool]]:
     ranks: list[int] = []
     for turn in turns:
@@ -972,7 +973,7 @@ def _section_order_ok(
 
 
 def _unnecessary_zero(
-    session: Any, turns: list[TurnResult], _a: AppState, _e: dict
+    session: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
 ) -> list[tuple[str, bool]]:
     el = _el()
 
@@ -980,7 +981,7 @@ def _unnecessary_zero(
 
 
 def _resume_reply_neutral(
-    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict
+    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
 ) -> list[tuple[str, bool]]:
     for turn in turns:
         if turn.user.startswith("[resume_pending"):
@@ -991,7 +992,7 @@ def _resume_reply_neutral(
 
 
 def _on_return_next_section(
-    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict
+    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
 ) -> list[tuple[str, bool]]:
     after_resume = False
     for turn in turns:
@@ -1010,7 +1011,7 @@ def _on_return_next_section(
 
 
 def _submit_fail_wording(
-    session: Any, turns: list[TurnResult], _a: AppState, _e: dict
+    session: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
 ) -> list[tuple[str, bool]]:
     # The reference that was really issued may be shared; any other GEO id is invented.
     issued = session.draft.reference if session else None
@@ -1031,7 +1032,7 @@ def _submit_fail_wording(
 
 
 def _arabic_in_arabic(
-    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict
+    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
 ) -> list[tuple[str, bool]]:
     el = _el()
 
@@ -1047,7 +1048,7 @@ def _arabic_in_arabic(
 
 
 def _no_promises(
-    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict
+    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
 ) -> list[tuple[str, bool]]:
     el = _el()
 
@@ -1055,13 +1056,13 @@ def _no_promises(
 
 
 def _answers_continue(
-    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict
+    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
 ) -> list[tuple[str, bool]]:
     return [("answers then offers continue", off_topic_offers_continue(_reply_text(turns)))]
 
 
 def _mall_in_master(
-    session: Any, _t: list[TurnResult], _a: AppState, _e: dict
+    session: Any, _t: list[TurnResult], _a: AppState, _e: dict[str, Any]
 ) -> list[tuple[str, bool]]:
     master = load_master_data()
     malls = session.draft.fields[FieldKey.MALLS].value or []

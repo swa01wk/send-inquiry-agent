@@ -22,9 +22,7 @@
         "payload": {
           "request_id": "req-contacts",
           "remarks": "Billing contact: Use the finance mailbox",
-          "roles": [
-            "billing_contact"
-          ],
+          "roles": ["billing_contact"],
           "signatory_answer": "yes",
           "rows": [
             {
@@ -261,14 +259,7 @@
         "required_docs_uploaded": 0,
         "required_docs_total": 2,
         "terms_accepted": false,
-        "remaining": [
-          "cr",
-          "fields",
-          "verify_email",
-          "verify_mobile",
-          "documents",
-          "terms"
-        ],
+        "remaining": ["cr", "fields", "verify_email", "verify_mobile", "documents", "terms"],
         "next_step": "cr",
         "sections": []
       },

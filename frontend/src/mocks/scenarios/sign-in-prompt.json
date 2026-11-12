@@ -240,14 +240,7 @@
         "required_docs_uploaded": 0,
         "required_docs_total": 2,
         "terms_accepted": false,
-        "remaining": [
-          "cr",
-          "fields",
-          "verify_email",
-          "verify_mobile",
-          "documents",
-          "terms"
-        ],
+        "remaining": ["cr", "fields", "verify_email", "verify_mobile", "documents", "terms"],
         "next_step": "cr",
         "sections": []
       },
