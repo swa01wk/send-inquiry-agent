@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { expectFlowPath, seedFlowCase } from '../../support/flowV2'
+import { expectFlowPath, seedFlowCase, mailForCase } from '../../support/flowV2'
 import { fetchDevOutbox, latestByTemplate } from '../../support/outbox'
 import { InquiryPage } from '../../pages/inquiry'
 import { openCaseAs } from '../../support/stories'
@@ -26,7 +26,7 @@ test.describe('S23 Approve Lead to Yardi @flow-v2 @scripted', () => {
     await expect(page.getByTestId('approval-blockers')).toContainText('Contacts request still open')
     await expect(page.getByTestId('action-reject')).toHaveCount(0)
 
-    const outbox = await fetchDevOutbox(request, seeded.applicant_email)
+    const outbox = await mailForCase(request, seeded.applicant_email, reference)
     expect(latestByTemplate(outbox, 'lead_approved')?.subject).toContain('Lead Approved')
     const link = latestByTemplate(outbox, 'contacts_request')?.links.find((l) =>
       l.includes('/inquiry/case'),

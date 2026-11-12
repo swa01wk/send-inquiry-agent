@@ -8,8 +8,9 @@ import {
   expectFlowPath,
   seedFlowCase,
   tenantSendsSalesData,
+  mailForCase,
 } from '../../support/flowV2'
-import { fetchDevOutbox, latestByTemplate } from '../../support/outbox'
+import { latestByTemplate } from '../../support/outbox'
 import { openCaseAs } from '../../support/stories'
 
 const FILE = path.join(
@@ -58,7 +59,7 @@ test.describe('S21 Forecasted Sales Data @flow-v2 @scripted', () => {
     expect(reminders[0].text).toContain('Forecasted Sales Data')
 
     const mail = latestByTemplate(
-      await fetchDevOutbox(request, seeded.applicant_email),
+      await mailForCase(request, seeded.applicant_email, reference),
       'sales_data_request',
     )
     const link = mail?.links.find((l) => l.includes('/inquiry/case'))

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
-import { expectFlowPath, seedFlowCase } from '../../support/flowV2'
-import { fetchDevOutbox, latestByTemplate } from '../../support/outbox'
+import { expectFlowPath, seedFlowCase, mailForCase } from '../../support/flowV2'
+import { latestByTemplate } from '../../support/outbox'
 import { openCaseAs } from '../../support/stories'
 
 /**
@@ -29,7 +29,7 @@ test.describe('S22 Reject Lead @flow-v2 @scripted', () => {
     await reject.getByRole('button', { name: 'Reject' }).click()
     await expect(page.getByTestId('case-stage')).toHaveText('Lead Rejected')
 
-    const mail = await fetchDevOutbox(request, seeded.applicant_email)
+    const mail = await mailForCase(request, seeded.applicant_email, reference)
     const rejected = latestByTemplate(mail, 'inquiry_rejected')
     expect(rejected?.body).toContain('Lead Rejected')
     expect(latestByTemplate(mail, 'contacts_request')).toBeFalsy()

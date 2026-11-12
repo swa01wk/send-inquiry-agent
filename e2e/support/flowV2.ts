@@ -1,4 +1,5 @@
 import { expect, type APIRequestContext } from '@playwright/test'
+import { fetchDevOutbox, type OutboxRow } from './outbox'
 
 const API = 'http://127.0.0.1:8000'
 
@@ -143,4 +144,13 @@ export async function attentionFor(
 export async function advanceClock(request: APIRequestContext, hours: number): Promise<void> {
   const res = await request.post(`${API}/api/dev/clock/advance`, { data: { hours } })
   expect(res.ok(), await res.text()).toBeTruthy()
+}
+
+/** The messages to `to` about one case, newest first (seeded personas share an inbox). */
+export async function mailForCase(
+  request: APIRequestContext,
+  to: string,
+  reference: string,
+): Promise<OutboxRow[]> {
+  return (await fetchDevOutbox(request, to)).filter((m) => m.inquiry_id === reference)
 }

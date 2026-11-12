@@ -32,7 +32,9 @@ test.describe('S20 Qualified @flow-v2 @scripted', () => {
       const consolePage = await context.newPage()
       await openCaseAs(consolePage, finalReviewer, reference)
       await expect(consolePage.getByTestId('case-stage')).toHaveText('Tenant Qualified')
-      await expect(consolePage.getByText(/Regional Sales Manager/).first()).toBeVisible()
+      // The case summary's queue ("Regional Sales Manager · Central"); the reviewer picker
+      // also lists the name, in a hidden option.
+      await expect(consolePage.getByText(/Regional Sales Manager · /)).toBeVisible()
       await expect(consolePage.getByTestId('action-remove_contact')).toHaveCount(0)
     } finally {
       await context.close()

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
-import { expectFlowPath, seedFlowCase } from '../../support/flowV2'
-import { fetchDevOutbox, latestByTemplate } from '../../support/outbox'
+import { expectFlowPath, seedFlowCase, mailForCase } from '../../support/flowV2'
+import { latestByTemplate } from '../../support/outbox'
 import { InquiryPage } from '../../pages/inquiry'
 import { openCaseAs } from '../../support/stories'
 
@@ -21,7 +21,7 @@ test.describe('S24 Signatory is the primary contact @flow-v2 @scripted', () => {
     const reference = seeded.reference
 
     const mail = latestByTemplate(
-      await fetchDevOutbox(request, seeded.applicant_email),
+      await mailForCase(request, seeded.applicant_email, reference),
       'contacts_request',
     )
     const link = mail?.links.find((l) => l.includes('/inquiry/case'))
