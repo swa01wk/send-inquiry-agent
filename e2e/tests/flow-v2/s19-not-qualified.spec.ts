@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { InquiryPage } from '../../pages/inquiry'
 import { reviewerAct, trackingStages } from '../../support/flowV2'
 import { fetchDevOutbox, latestByTemplate } from '../../support/outbox'
 import { openCaseAs } from '../../support/stories'
@@ -42,6 +43,24 @@ test.describe('S19 Not qualified @flow-v2 @scripted', () => {
     const rejection = latestByTemplate(mail, 'inquiry_rejected')
     expect(rejection?.body).toContain('Outcome: Tenant Not Qualified')
     expect(mail.filter((m) => m.template === 'azure_ad_invitation')).toHaveLength(0)
+
+    const casePath = rejection?.links.find((l) => l.includes('/inquiry/case'))
+    expect(casePath).toBeTruthy()
+    const caseUrl = new URL(casePath!)
+    caseUrl.searchParams.set('e2eCaseScenario', 'flow-v2-s19')
+    const applicantContext = await browser.newContext()
+    try {
+      const applicantPage = await applicantContext.newPage()
+      const applicant = new InquiryPage(applicantPage)
+      await applicantPage.goto(caseUrl.toString())
+      await applicant.waitForChatReady()
+      await applicant.say('Why was it rejected?')
+      const reply = await applicant.lastReply()
+      expect(reply).toMatch(/Tenant Not Qualified/i)
+      expect(reply).toMatch(/new inquiry/i)
+    } finally {
+      await applicantContext.close()
+    }
 
     const tracking = latestByTemplate(mail, 'submission_email')?.links.find((l) =>
       l.includes('/inquiry/status/'),

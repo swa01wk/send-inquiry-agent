@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { InquiryPage } from '../../pages/inquiry'
 import { expectFlowPath, reviewerAct, trackingStages } from '../../support/flowV2'
 import { fetchDevOutbox, latestByTemplate } from '../../support/outbox'
 import { openCaseAs } from '../../support/stories'
@@ -45,6 +46,25 @@ test.describe('S20 Qualified @flow-v2 @scripted', () => {
     const mail = await fetchDevOutbox(request, APPLICANT_EMAIL)
     expect(latestByTemplate(mail, 'azure_ad_invitation')).toBeTruthy()
     expect(latestByTemplate(mail, 'first_level_approved')?.subject).toContain('Tenant Qualified')
+
+    const approvedMail = latestByTemplate(mail, 'first_level_approved')
+    const casePath = approvedMail?.links.find((l) => l.includes('/inquiry/case'))
+    expect(casePath).toBeTruthy()
+    const caseUrl = new URL(casePath!)
+    caseUrl.searchParams.set('e2eCaseScenario', 'flow-v2-s20')
+    const applicantContext = await browser.newContext()
+    try {
+      const applicantPage = await applicantContext.newPage()
+      const applicant = new InquiryPage(applicantPage)
+      await applicantPage.goto(caseUrl.toString())
+      await applicant.waitForChatReady()
+      await applicant.say('Where is my inquiry?')
+      const reply = await applicant.lastReply()
+      expect(reply).toMatch(/Tenant Qualified/i)
+      expect(reply).toMatch(/Regional (Sales Manager|Product Line Manager)/i)
+    } finally {
+      await applicantContext.close()
+    }
 
     const tracking = latestByTemplate(mail, 'submission_email')?.links.find((l) =>
       l.includes('/inquiry/status/'),

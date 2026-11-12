@@ -7,7 +7,8 @@ Usage:
 Requires an LLM provider: OpenAI or Azure. Drives scripted user turns for intake and case
 scenarios and prints pass/fail checks plus transcripts.
 
-Optional: GROUP=intake|case|channels filters scenarios (see docs/specs/testing-strategy.md).
+Optional: GROUP=intake|case|signatory|flow_v2|channels filters scenarios
+(see docs/specs/testing-strategy.md and docs/testing/flow-v2-test-plan.md).
 """
 
 from __future__ import annotations
@@ -666,6 +667,62 @@ def _check_case_rejection(
     ]
 
 
+def _offers_new_inquiry(turns: list[TurnResult]) -> bool:
+    text = _reply_text(turns).lower()
+    after = get_policy().after_rejection.lower()
+    return "new inquiry" in text or any(
+        chunk.strip() and chunk.strip() in text for chunk in after.split(",")
+    )
+
+
+def _does_not_offer_reopen(turns: list[TurnResult]) -> bool:
+    text = _reply_text(turns).lower()
+    reopen_phrases = ("reopen", "reverse the decision", "change the decision", "overturn", "appeal")
+    return not any(phrase in text for phrase in reopen_phrases)
+
+
+def _check_flow_v2_s19(
+    _session: Session, turns: list[TurnResult], _app: AppState | None = None
+) -> list[tuple[str, bool]]:
+    text = _reply_text(turns).lower()
+    return [
+        ("says_tenant_not_qualified", "tenant not qualified" in text),
+        (
+            "explains_outcome_no_reviewer_names_no_promises",
+            _no_reviewer_names(turns) and _no_timeline_promise(turns),
+        ),
+        ("offers_new_inquiry", _offers_new_inquiry(turns)),
+        ("does_not_offer_reopen", _does_not_offer_reopen(turns)),
+        *_check_case_tone(turns),
+    ]
+
+
+def _check_flow_v2_s20(
+    _session: Session, turns: list[TurnResult], _app: AppState | None = None
+) -> list[tuple[str, bool]]:
+    text = _reply_text(turns).lower()
+    stage_ok = "tenant qualified" in text
+    next_reviewer = "regional sales manager" in text or "regional product line manager" in text
+    contacts_ask = any(
+        phrase in text
+        for phrase in (
+            "contacts request",
+            "send contacts",
+            "company contacts",
+            "billing contact",
+            "authorized signatory",
+        )
+    )
+    return [
+        ("where_is_it_gives_right_stage", stage_ok),
+        ("names_regional_sales_manager_or_leasing_team", next_reviewer or "leasing team" in text),
+        ("no_contacts_request_mentioned", not contacts_ask),
+        ("no timeline promise", _no_timeline_promise(turns)),
+        ("no reviewer name", _no_reviewer_names(turns)),
+        *_check_case_tone(turns),
+    ]
+
+
 def _check_cr_happy(
     session: Session, turns: list[TurnResult], _app: AppState | None = None
 ) -> list[tuple[str, bool]]:
@@ -951,7 +1008,9 @@ def _case_status(app: AppState, session: Session | None) -> str | None:
 
 
 def _agent_kind(group: str) -> str:
-    return "case" if group == "case" else "intake"
+    if group in ("case", "signatory", "flow_v2"):
+        return "case"
+    return "intake"
 
 
 async def _invariants_after_stream(
@@ -1904,6 +1963,28 @@ SCENARIOS: list[LiveScenario] = [
         ),
     ),
     LiveScenario(
+        "S19 Not qualified",
+        ["Why was it rejected?"],
+        _check_flow_v2_s19,
+        group="flow_v2",
+        setup=_case_setup(
+            [
+                {
+                    "action": "reject",
+                    "remarks": "Not a fit for this mall",
+                    "reason_category": "not_a_fit",
+                },
+            ],
+        ),
+    ),
+    LiveScenario(
+        "S20 Qualified",
+        ["Where is my inquiry?"],
+        _check_flow_v2_s20,
+        group="flow_v2",
+        setup=_case_setup([{"action": "approve_first"}]),
+    ),
+    LiveScenario(
         "channels: dictated caller",
         [
             "The caller doesn't have their CR to hand — skip it for now.",
@@ -2333,7 +2414,7 @@ async def main() -> int:
                 if not run_passed and result.session_id:
                     if scenario.group == "channels":
                         graph = application.state.assisted_graph
-                    elif scenario.group in ("case", "signatory"):
+                    elif scenario.group in ("case", "signatory", "flow_v2"):
                         graph = application.state.case_graph
                     else:
                         graph = application.state.graph

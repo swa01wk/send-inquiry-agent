@@ -1,0 +1,16 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "get_case_status",
+        "args": {},
+        "id": "fv2s19-1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Your inquiry is closed as Tenant Not Qualified — the team felt it wasn't a fit for this mall. You can raise a new inquiry at any time, for example with updated documents or for another mall."
+  }
+]

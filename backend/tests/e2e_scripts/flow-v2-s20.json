@@ -1,0 +1,16 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "get_case_status",
+        "args": {},
+        "id": "fv2s20-1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "You're at Tenant Qualified — the Leasing Admin approved your inquiry and you should have an Azure AD invitation email. A Regional Product Line Manager will review next; you don't need to add company contacts until they approve the lead."
+  }
+]
