@@ -16,6 +16,8 @@ _ISO_TS_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T")
 _FILE_ID_RE = re.compile(r"^[0-9a-f]{32}$")
 # Document evidence (domain/document_fill.document_evidence): "<label>: <file>, uploaded <time>".
 _UPLOADED_AT_RE = re.compile(r"uploaded \d{2} [A-Z][a-z]{2} \d{4} \d{2}:\d{2}")
+# Flow v2 keys (day F3) at their v1 values: left out, so goldens recorded before them match.
+_V1_DEFAULTS: dict[str, Any] = {"sections": [], "section": None, "terms_on_own_card": False}
 
 
 def _is_uuid(value: str) -> bool:
@@ -41,6 +43,8 @@ def _walk(node: Any, message_ids: dict[str, str]) -> Any:
     if isinstance(node, dict):
         out: dict[str, Any] = {}
         for key, value in node.items():
+            if key in _V1_DEFAULTS and value == _V1_DEFAULTS[key]:
+                continue
             if key == "message_id" and isinstance(value, str):
                 if value not in message_ids:
                     message_ids[value] = f"m{len(message_ids) + 1}"

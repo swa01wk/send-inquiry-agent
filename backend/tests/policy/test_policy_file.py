@@ -83,7 +83,7 @@ def test_product_line_missing_from_master_data_stops_the_app(tmp_path: Path) -> 
 
     path = _write(
         tmp_path,
-        _DEFAULT_TEXT.replace("[store, media, specialty]", "[store, media, specialty, office]"),
+        _DEFAULT_TEXT.replace("[store, media, specialty]", "[store, media, specialty, kiosk]"),
     )
-    with pytest.raises(PolicyError, match="office"):
+    with pytest.raises(PolicyError, match="kiosk"):
         create_app(settings=Settings(policy_path=str(path), upload_dir=str(tmp_path / "u")))
