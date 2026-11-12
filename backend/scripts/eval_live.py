@@ -19,10 +19,11 @@ import os
 import re
 import sys
 from collections.abc import Awaitable, Callable
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import parse_qs, urlparse
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -52,7 +53,7 @@ from app.domain.draft_ops import add_document, new_inquiry_draft, write_fields
 from app.domain.master import load_master_data
 from app.domain.models import DocType, FieldKey, InquiryDraft, Source
 from app.main import create_app
-from app.policy.config import get_policy
+from app.policy.config import get_policy, use_policy
 from app.services.container import build_services
 from app.sessions import Session, SessionStore
 from app.workflow.models import CaseStatus
@@ -207,8 +208,10 @@ class LiveScenario:
     evaluate: CheckFn
     auto_otp: bool = True
     group: str = "intake"
+    intake: Literal["v1", "v2"] = "v1"
     setup: SetupFn | None = None
     after_turns: AfterTurnsFn | None = None
+    catalogue: dict[str, Any] | None = None
 
 
 def _reviewer_names() -> list[str]:
@@ -1230,10 +1233,23 @@ def _case_status(app: AppState, session: Session | None) -> str | None:
     return case.status.value if case else None
 
 
-def _agent_kind(group: str) -> str:
-    if group in ("case", "signatory", "flow_v2"):
+def _agent_kind(scenario: LiveScenario) -> str:
+    if scenario.intake == "v2":
+        return "intake"
+    if scenario.group in ("case", "signatory") or (
+        scenario.group == "flow_v2" and scenario.catalogue is None
+    ):
         return "case"
     return "intake"
+
+
+def _intake_policy(intake: str):
+    policy = get_policy()
+    enabled = intake == "v2"
+    if policy.flow_v2_intake.enabled == enabled:
+        return nullcontext()
+    flags = policy.flow_v2_intake.model_dump(mode="json")
+    return use_policy(policy.with_changes(flow_v2_intake={**flags, "enabled": enabled}))
 
 
 async def _invariants_after_stream(
@@ -1270,7 +1286,7 @@ async def _invariants_after_stream(
         case_status_before=case_status_before,
         case_status_after=_case_status(app, session),
         has_success_card=has_success,
-        agent_kind=_agent_kind(scenario.group),  # type: ignore[arg-type]
+        agent_kind=_agent_kind(scenario),  # type: ignore[arg-type]
         public_cr_question=bool(
             session
             and session.mode != "case"
@@ -2359,6 +2375,15 @@ SCENARIOS: list[LiveScenario] = [
 ]
 
 
+def all_scenarios() -> list[LiveScenario]:
+    scripts_dir = Path(__file__).resolve().parent
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    from flow_v2_eval_live import flow_v2_intake_scenarios
+
+    return [*SCENARIOS, *flow_v2_intake_scenarios()]
+
+
 async def run_scenario(
     client: AsyncClient,
     app: AppState,
@@ -2366,6 +2391,32 @@ async def run_scenario(
     *,
     outbox_messages: list[dict[str, Any]],
 ) -> tuple[ScenarioResult, list[tuple[InvariantViolation, int]]]:
+    if scenario.catalogue is not None:
+        scripts_dir = Path(__file__).resolve().parent
+        if str(scripts_dir) not in sys.path:
+            sys.path.insert(0, str(scripts_dir))
+        from flow_v2_eval_live import attach_flow_path_checks, run_flow_v2_catalogue
+
+        result, violations = await run_flow_v2_catalogue(
+            client,
+            app,
+            scenario,
+            outbox_messages=outbox_messages,
+        )
+        path_checks = await attach_flow_path_checks(
+            app,
+            client,
+            result,
+            entry=scenario.catalogue,
+        )
+        result = ScenarioResult(
+            name=result.name,
+            checks=[*result.checks, *path_checks],
+            turns=result.turns,
+            session_id=result.session_id,
+        )
+        return result, violations
+
     created = await client.post("/api/sessions")
     session_id = created.json()["session_id"]
     turns: list[TurnResult] = []
@@ -2596,9 +2647,9 @@ async def main() -> int:
     application.state.assisted_graph = build_assisted_graph(model_factory=factory)
 
     group_filter = os.environ.get("GROUP", "").strip().lower()
-    scenarios = SCENARIOS
+    scenarios = all_scenarios()
     if group_filter:
-        scenarios = [s for s in SCENARIOS if s.group == group_filter]
+        scenarios = [s for s in scenarios if s.group == group_filter]
         if not scenarios:
             print(f"No scenarios for GROUP={group_filter!r}", file=sys.stderr)
             return 1
@@ -2638,12 +2689,13 @@ async def main() -> int:
             for run_index in range(1, eval_repeats + 1):
                 print(f"  --- run {run_index}/{eval_repeats} ---")
                 try:
-                    result, violations = await run_scenario(
-                        client,
-                        application,
-                        scenario,
-                        outbox_messages=outbox_messages,
-                    )
+                    with _intake_policy(scenario.intake):
+                        result, violations = await run_scenario(
+                            client,
+                            application,
+                            scenario,
+                            outbox_messages=outbox_messages,
+                        )
                     outbox_messages = await _fetch_outbox_messages(client)
                 except Exception as exc:  # noqa: BLE001 — CLI summary
                     print(f"  ERROR: {exc}")
@@ -2676,7 +2728,9 @@ async def main() -> int:
                 if not run_passed and result.session_id:
                     if scenario.group == "channels":
                         graph = application.state.assisted_graph
-                    elif scenario.group in ("case", "signatory", "flow_v2"):
+                    elif scenario.group in ("case", "signatory") or (
+                        scenario.group == "flow_v2" and scenario.intake == "v1"
+                    ):
                         graph = application.state.case_graph
                     else:
                         graph = application.state.graph

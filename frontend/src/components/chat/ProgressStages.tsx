@@ -7,7 +7,7 @@ import {
   stageVisualState,
   type ProgressStageKey,
 } from './inquiryProgress'
-import { stageLabel } from './progressStagesHelpers'
+import { sectionTabLabel, stageLabel } from './progressStagesHelpers'
 import styles from './ProgressStages.module.css'
 
 export type { ProgressStageKey } from './inquiryProgress'
@@ -20,6 +20,15 @@ interface ProgressStagesProps {
   onStageClick?: (stage: ProgressStageKey) => void
 }
 
+function sectionVisual(
+  section: { key: string; done: boolean },
+  draft: DraftSummary | null,
+): 'done' | 'current' | 'upcoming' {
+  if (section.done) return 'done'
+  if (draft?.section === section.key) return 'current'
+  return 'upcoming'
+}
+
 export function ProgressStages({
   phase,
   draft,
@@ -27,6 +36,28 @@ export function ProgressStages({
   messages,
   onStageClick,
 }: ProgressStagesProps) {
+  const sections = draft?.checks.sections ?? []
+  if (sections.length > 0) {
+    return (
+      <div className={styles.track} aria-label="Inquiry progress">
+        {sections.map((section) => {
+          const visual = sectionVisual(section, draft)
+          const label = sectionTabLabel(section, visual)
+          return (
+            <span
+              key={section.key}
+              className={styles.pill}
+              data-state={visual}
+              data-testid={`stage-${section.key}`}
+            >
+              {label}
+            </span>
+          )
+        })}
+      </div>
+    )
+  }
+
   return (
     <div className={styles.track} aria-label="Inquiry progress">
       {PROGRESS_STAGE_KEYS.map((key) => {

@@ -1,0 +1,81 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "suggest_replies",
+        "args": {
+          "options": [
+            "Store",
+            "Office"
+          ]
+        },
+        "id": "fv2-unit-offer",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Got it \u2014 a store. What do you sell? That helps us pick the right category."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "unit_type",
+              "value": "store",
+              "source": "user"
+            }
+          ]
+        },
+        "id": "fv2-ut",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "What do you sell? I'll map it to the right sales category."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "sales_category",
+              "value": "fnb_cafe",
+              "source": "derived",
+              "evidence": "we sell specialty coffee and pastries"
+            }
+          ]
+        },
+        "id": "fv2-cat",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Check the summary card and let me know if anything's off."
+  },
+  {
+    "content": "Looks good \u2014 here's what's next in the flow."
+  },
+  {
+    "content": "Thanks \u2014 let's keep going with the next step."
+  },
+  {
+    "content": "Thanks \u2014 let's keep going with the next step."
+  },
+  {
+    "content": "Thanks \u2014 let's keep going with the next step."
+  },
+  {
+    "content": "Thanks \u2014 let's keep going with the next step."
+  }
+]

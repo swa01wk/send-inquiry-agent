@@ -234,6 +234,7 @@ export const draftEmpty: DraftSummary = {
     terms_accepted: false,
     remaining: ['cr', 'fields', 'verify_email', 'verify_mobile', 'documents', 'terms'],
     next_step: 'cr',
+    sections: [],
   },
   can_submit: false,
   changed_keys: [],
@@ -289,6 +290,7 @@ export const draftMidway: DraftSummary = {
     terms_accepted: false,
     remaining: ['fields', 'verify_email', 'verify_mobile', 'documents', 'terms'],
     next_step: 'fields',
+    sections: [],
   },
   can_submit: false,
   changed_keys: ['company_name', 'company_address'],
@@ -357,6 +359,7 @@ export const draftComplete: DraftSummary = {
     terms_accepted: true,
     remaining: [],
     next_step: null,
+    sections: [],
   },
   can_submit: true,
   changed_keys: [],
@@ -592,6 +595,38 @@ export const existingCrChoiceCardExample: UiCard = {
       { value: 'continue', label: 'Continue as a new inquiry' },
     ],
     chosen: null,
+  },
+}
+
+export const companyRegistrationCardExample: UiCard = {
+  card_id: 'company_registration',
+  card_type: 'company_registration',
+  message_id: 'm-v2-cr',
+  payload: {
+    prompt:
+      'Company Registration: enter your 10-digit CR number to check whether your company is already registered with us, or skip it.',
+    input_placeholder: '10-digit CR number',
+    verify_label: 'Verify',
+    skip_label: 'Skip',
+    skip_confirm: {
+      prompt: 'Are you sure you want to proceed without CR ID?',
+      yes_label: 'Yes, continue without it',
+      no_label: "No, I'll enter it",
+    },
+    state: 'open',
+    cr_masked: null,
+    error: null,
+  },
+}
+
+export const termsCardExample: UiCard = {
+  card_id: 'terms',
+  card_type: 'terms',
+  message_id: 'm-v2-terms',
+  payload: {
+    text: 'Please read and accept the terms and privacy policy before we continue.',
+    privacy_url: '/privacy',
+    accepted: false,
   },
 }
 

@@ -78,6 +78,7 @@ select = ["E", "F", "I", "UP", "B"]
 "app/api/**/*.py" = ["B008"]
 "scripts/**/*.py" = ["E402"]  # sys.path is set before importing app.*
 "scripts/eval_live.py" = ["E402", "E501"]
+"scripts/flow_v2_eval_live.py" = ["E402", "E501"]
 
 [tool.mypy]
 python_version = "3.11"

@@ -257,7 +257,8 @@
         "required_docs_total": 2,
         "terms_accepted": true,
         "remaining": [],
-        "next_step": null
+        "next_step": null,
+        "sections": []
       },
       "can_submit": true,
       "changed_keys": [],

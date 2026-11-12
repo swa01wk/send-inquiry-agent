@@ -1,0 +1,299 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "suggest_replies",
+        "args": {
+          "options": [
+            "Store",
+            "Office"
+          ]
+        },
+        "id": "fv2-unit-offer",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Got it \u2014 a store. What do you sell? That helps us pick the right category."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "unit_type",
+              "value": "store",
+              "source": "user"
+            }
+          ]
+        },
+        "id": "fv2-ut",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "What do you sell? I'll map it to the right sales category."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "sales_category",
+              "value": "fnb_cafe",
+              "source": "derived",
+              "evidence": "we sell specialty coffee and pastries"
+            }
+          ]
+        },
+        "id": "fv2-cat",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Check the summary card and let me know if anything's off."
+  },
+  {
+    "content": "Looks good \u2014 here's what's next in the flow."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "first_name",
+              "value": "Sara",
+              "source": "user"
+            },
+            {
+              "key": "last_name",
+              "value": "Ali",
+              "source": "user"
+            },
+            {
+              "key": "email",
+              "value": "sara@beanstreet.example",
+              "source": "user"
+            },
+            {
+              "key": "contact_number",
+              "value": "0501234567",
+              "source": "user"
+            },
+            {
+              "key": "company_name",
+              "value": "Bean Street Trading Co.",
+              "source": "user"
+            },
+            {
+              "key": "company_address",
+              "value": "King Fahd Road Al Olaya Riyadh",
+              "source": "user"
+            },
+            {
+              "key": "brand_name_en",
+              "value": "Bean Street",
+              "source": "user"
+            },
+            {
+              "key": "brand_name_ar",
+              "value": "\u0628\u064a\u0646 \u0633\u062a\u0631\u064a\u062a",
+              "source": "user"
+            }
+          ]
+        },
+        "id": "fv2-contact",
+        "type": "tool_call"
+      },
+      {
+        "name": "send_verification",
+        "args": {},
+        "id": "fv2-v",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Thanks \u2014 I've sent the verification link and SMS code on the card below."
+  },
+  {
+    "content": "Looks good \u2014 here's what's next in the flow."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "suggest_replies",
+        "args": {
+          "options": [
+            "Store",
+            "Office"
+          ]
+        },
+        "id": "fv2-unit-offer",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Got it \u2014 a store. What do you sell? That helps us pick the right category."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "suggest_replies",
+        "args": {
+          "options": [
+            "Store",
+            "Office"
+          ]
+        },
+        "id": "fv2-unit-offer",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Got it \u2014 a store. What do you sell? That helps us pick the right category."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "suggest_replies",
+        "args": {
+          "options": [
+            "Store",
+            "Office"
+          ]
+        },
+        "id": "fv2-unit-offer",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Got it \u2014 a store. What do you sell? That helps us pick the right category."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "suggest_replies",
+        "args": {
+          "options": [
+            "Store",
+            "Office"
+          ]
+        },
+        "id": "fv2-unit-offer",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Got it \u2014 a store. What do you sell? That helps us pick the right category."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "suggest_replies",
+        "args": {
+          "options": [
+            "Store",
+            "Office"
+          ]
+        },
+        "id": "fv2-unit-offer",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Got it \u2014 a store. What do you sell? That helps us pick the right category."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "suggest_replies",
+        "args": {
+          "options": [
+            "Store",
+            "Office"
+          ]
+        },
+        "id": "fv2-unit-offer",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Got it \u2014 a store. What do you sell? That helps us pick the right category."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "malls",
+              "value": [
+                "riyadh-mall-a"
+              ],
+              "source": "user"
+            },
+            {
+              "key": "area_min",
+              "value": 30,
+              "source": "user"
+            },
+            {
+              "key": "area_max",
+              "value": 50,
+              "source": "user"
+            },
+            {
+              "key": "rent_max",
+              "value": 250000,
+              "source": "user"
+            },
+            {
+              "key": "lease_period",
+              "value": "3y",
+              "source": "user"
+            }
+          ]
+        },
+        "id": "fv2-prop",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Your property details are on the card \u2014 confirm them when you're ready."
+  },
+  {
+    "content": "Looks good \u2014 here's what's next in the flow."
+  },
+  {
+    "content": "Thanks \u2014 upload the Company Profile and Brand Profile on the card below."
+  }
+]

@@ -61,6 +61,7 @@ function optionLabel(item: MasterListItem): string {
 }
 
 export function ReviewCard({ payload, onEditField, onSubmit }: ReviewCardProps) {
+  const termsOnOwnCard = payload.terms_on_own_card === true
   const [consent, setConsent] = useState(false)
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
@@ -68,8 +69,13 @@ export function ReviewCard({ payload, onEditField, onSubmit }: ReviewCardProps) 
   const [editError, setEditError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
-  const submitEnabled = canSubmitWithConsent(payload.blockers, consent)
-  const hint = submitBlockerHint(payload.blockers, consent)
+  const submitEnabled = termsOnOwnCard
+    ? payload.blockers.length === 0
+    : canSubmitWithConsent(payload.blockers, consent)
+  const hint = submitBlockerHint(
+    payload.blockers,
+    termsOnOwnCard ? payload.terms_accepted : consent,
+  )
 
   const fieldKeyForEdit = editingKey ? draftFieldKey(editingKey) : null
   const masterKind = fieldKeyForEdit ? MASTER_KIND_BY_FIELD[fieldKeyForEdit] : null
@@ -202,12 +208,19 @@ export function ReviewCard({ payload, onEditField, onSubmit }: ReviewCardProps) 
           </div>
         ))}
       </div>
-      <label className={styles.consent}>
-        <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
-        <span>
-          I agree to the <a href="#">terms &amp; conditions</a> and <a href="#">privacy policy</a>.
-        </span>
-      </label>
+      {termsOnOwnCard ? (
+        <p className={styles.termsAccepted} data-testid="review-terms-accepted">
+          Terms accepted
+        </p>
+      ) : (
+        <label className={styles.consent}>
+          <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
+          <span>
+            I agree to the <a href="#">terms &amp; conditions</a> and <a href="#">privacy policy</a>
+            .
+          </span>
+        </label>
+      )}
       <button
         type="button"
         className={shared.primaryBtnFull}

@@ -265,11 +265,21 @@
         "required_docs_uploaded": 0,
         "required_docs_total": 2,
         "terms_accepted": false,
-        "remaining": ["fields", "verify_email", "verify_mobile", "documents", "terms"],
-        "next_step": "fields"
+        "remaining": [
+          "fields",
+          "verify_email",
+          "verify_mobile",
+          "documents",
+          "terms"
+        ],
+        "next_step": "fields",
+        "sections": []
       },
       "can_submit": false,
-      "changed_keys": ["company_name", "company_address"],
+      "changed_keys": [
+        "company_name",
+        "company_address"
+      ],
       "follow_on_of": null
     }
   },
@@ -496,11 +506,21 @@
               "required_docs_uploaded": 0,
               "required_docs_total": 2,
               "terms_accepted": false,
-              "remaining": ["fields", "verify_email", "verify_mobile", "documents", "terms"],
-              "next_step": "fields"
+              "remaining": [
+                "fields",
+                "verify_email",
+                "verify_mobile",
+                "documents",
+                "terms"
+              ],
+              "next_step": "fields",
+              "sections": []
             },
             "can_submit": false,
-            "changed_keys": ["company_name", "company_address"],
+            "changed_keys": [
+              "company_name",
+              "company_address"
+            ],
             "follow_on_of": null
           }
         },

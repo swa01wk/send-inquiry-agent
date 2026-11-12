@@ -20,3 +20,53 @@
 .chip:hover {
   background: var(--color-accent-tint);
 }
+
+.resumeLabel {
+  width: 100%;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.resumeRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  align-items: center;
+}
+
+.resumeInput {
+  flex: 1 1 180px;
+  min-height: var(--touch);
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 16px;
+}
+
+.resumeSend {
+  min-height: var(--touch);
+  padding: 8px 16px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.resumeSend:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.resumeCancel {
+  min-height: var(--touch);
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: var(--color-link);
+  font-weight: 600;
+  cursor: pointer;
+}

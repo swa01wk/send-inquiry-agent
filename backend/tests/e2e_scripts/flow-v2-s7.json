@@ -1,0 +1,164 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "suggest_replies",
+        "args": {
+          "options": [
+            "Store",
+            "Office"
+          ]
+        },
+        "id": "fv2-unit-offer",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Got it \u2014 a store. What do you sell? That helps us pick the right category."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "unit_type",
+              "value": "store",
+              "source": "user"
+            }
+          ]
+        },
+        "id": "fv2-ut",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "What do you sell? I'll map it to the right sales category."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "sales_category",
+              "value": "fnb_cafe",
+              "source": "derived",
+              "evidence": "we sell specialty coffee and pastries"
+            }
+          ]
+        },
+        "id": "fv2-cat",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Check the summary card and let me know if anything's off."
+  },
+  {
+    "content": "Looks good \u2014 here's what's next in the flow."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "sales_category",
+              "value": "fnb_cafe",
+              "source": "derived",
+              "evidence": "Layla Hassan, Oasis Coffee Co., Tahlia Street Jeddah, brand Oasis Coffee / \u0648\u0627\u062d\u0629 "
+            }
+          ]
+        },
+        "id": "fv2-cat",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Check the summary card and let me know if anything's off."
+  },
+  {
+    "content": "Looks good \u2014 here's what's next in the flow."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "malls",
+              "value": [
+                "riyadh-mall-a"
+              ],
+              "source": "user"
+            },
+            {
+              "key": "area_min",
+              "value": 30,
+              "source": "user"
+            },
+            {
+              "key": "area_max",
+              "value": 50,
+              "source": "user"
+            },
+            {
+              "key": "rent_max",
+              "value": 250000,
+              "source": "user"
+            },
+            {
+              "key": "lease_period",
+              "value": "3y",
+              "source": "user"
+            }
+          ]
+        },
+        "id": "fv2-prop",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Your property details are on the card \u2014 confirm them when you're ready."
+  },
+  {
+    "content": "Looks good \u2014 here's what's next in the flow."
+  },
+  {
+    "content": "Thanks \u2014 upload the Company Profile and Brand Profile on the card below."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "suggest_replies",
+        "args": {
+          "options": [
+            "Store",
+            "Office"
+          ]
+        },
+        "id": "fv2-unit-offer",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Got it \u2014 a store. What do you sell? That helps us pick the right category."
+  }
+]

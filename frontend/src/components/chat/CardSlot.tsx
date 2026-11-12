@@ -8,6 +8,8 @@ import { SalesDataUploadCard } from '../cards/SalesDataUploadCard'
 import { FormModeCard } from '../cards/FormModeCard'
 import { BasicInfoReviewCard } from '../cards/BasicInfoReviewCard'
 import { CrQuestionCard } from '../cards/CrQuestionCard'
+import { CompanyRegistrationCard } from '../cards/CompanyRegistrationCard'
+import { TermsCard } from '../cards/TermsCard'
 import { SignatoryQuestionCard } from '../cards/SignatoryQuestionCard'
 import { ExistingCrChoiceCard } from '../cards/ExistingCrChoiceCard'
 import { HandoffCard } from '../cards/HandoffCard'
@@ -143,6 +145,21 @@ export function CardSlot({
         <CrQuestionCard
           payload={card.payload}
           onAnswer={(hasCr) => actions.sendAction('cr_answer', { has_cr: hasCr })}
+        />
+      ) : null}
+      {card.card_type === 'company_registration' ? (
+        <CompanyRegistrationCard
+          payload={card.payload}
+          onVerify={(crNumber) => actions.sendAction('cr_check', { cr_number: crNumber })}
+          onSkip={() => actions.sendAction('cr_skip', {})}
+          onConfirmSkip={() => actions.sendAction('cr_skip', { confirmed: true })}
+          onDismissSkipConfirm={() => undefined}
+        />
+      ) : null}
+      {card.card_type === 'terms' ? (
+        <TermsCard
+          payload={card.payload}
+          onAccept={() => actions.postAcceptTerms?.() ?? Promise.resolve(true)}
         />
       ) : null}
       {card.card_type === 'signatory_question' ? (

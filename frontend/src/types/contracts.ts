@@ -22,6 +22,8 @@ export type CardType =
   | 'existing_cr_choice'
   | 'sign_in_prompt'
   | 'cr_question'
+  | 'company_registration'
+  | 'terms'
   | 'signatory_question'
 
 export type StepState = 'done' | 'current' | 'upcoming'
@@ -98,6 +100,32 @@ export interface CrQuestionPayload {
   yes_label: string
   no_label: string
   answered: 'yes' | 'no' | null
+}
+
+export interface SkipConfirmPayload {
+  prompt: string
+  yes_label: string
+  no_label: string
+}
+
+export type CompanyRegistrationState =
+  'open' | 'confirm_skip' | 'registered' | 'not_registered' | 'skipped'
+
+export interface CompanyRegistrationPayload {
+  prompt: string
+  input_placeholder: string
+  verify_label: string
+  skip_label: string
+  skip_confirm: SkipConfirmPayload
+  state: CompanyRegistrationState
+  cr_masked: string | null
+  error: string | null
+}
+
+export interface TermsPayload {
+  text: string
+  privacy_url: string
+  accepted: boolean
 }
 
 export interface MallPickerCity {
@@ -273,7 +301,21 @@ export interface ReviewGroup {
 }
 
 export type RemainingStep =
-  'cr' | 'fields' | 'verify_email' | 'verify_mobile' | 'documents' | 'terms'
+  | 'cr'
+  | 'unit_and_category'
+  | 'basic_info'
+  | 'fields'
+  | 'property_details'
+  | 'verify_email'
+  | 'verify_mobile'
+  | 'documents'
+  | 'terms'
+
+export interface SectionCheck {
+  key: string
+  label: string
+  done: boolean
+}
 
 export interface DraftChecks {
   required_filled: number
@@ -288,6 +330,8 @@ export interface DraftChecks {
   terms_accepted: boolean
   remaining: RemainingStep[]
   next_step: RemainingStep | null
+  /** Flow v2 step tabs; empty or omitted on the v1 intake. */
+  sections?: SectionCheck[]
 }
 
 export interface ReviewPayload {
@@ -296,6 +340,7 @@ export interface ReviewPayload {
   checks: DraftChecks
   can_submit: boolean
   terms_accepted: boolean
+  terms_on_own_card?: boolean
   blockers: string[]
 }
 
@@ -314,7 +359,7 @@ export interface SuccessPayload {
 export interface QuickReplyOption {
   label: string
   text: string
-  action?: 'send' | 'focus_input'
+  action?: 'send' | 'focus_input' | 'resume_pending'
   placeholder?: string | null
 }
 
@@ -433,6 +478,18 @@ export type UiCard =
     }
   | {
       card_id: string
+      card_type: 'company_registration'
+      message_id: string | null
+      payload: CompanyRegistrationPayload
+    }
+  | {
+      card_id: string
+      card_type: 'terms'
+      message_id: string | null
+      payload: TermsPayload
+    }
+  | {
+      card_id: string
       card_type: 'signatory_question'
       message_id: string | null
       payload: SignatoryQuestionPayload
@@ -481,6 +538,8 @@ export interface DraftSummary {
   can_submit: boolean
   changed_keys: string[]
   follow_on_of: string | null
+  /** Flow v2: first section not done; null on v1. */
+  section?: string | null
 }
 
 export type ChatRequest =
