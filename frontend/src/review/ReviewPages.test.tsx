@@ -36,7 +36,7 @@ describe('Reviewer console', () => {
     await user.click(screen.getByRole('button', { name: 'Sign in' }))
 
     expect(await screen.findByTestId('signed-in-reviewer')).toHaveTextContent(
-      'Regional Leasing Manager (Store)',
+      'Regional Sales Manager',
     )
     const row = await screen.findByTestId('queue-row-GEO-STR-123456')
     expect(within(row).getByRole('link', { name: 'GEO-STR-123456' })).toHaveAttribute(
@@ -70,13 +70,13 @@ describe('Reviewer console', () => {
     vi.spyOn(review, 'getCase').mockResolvedValue(caseDetail())
     renderAt('/review/cases/GEO-STR-123456')
     expect(await screen.findByTestId('case-stage')).toHaveTextContent('First review')
-    expect(screen.getByText('Regional Leasing Manager (Store) · Central')).toBeInTheDocument()
+    expect(screen.getByText('Regional Sales Manager · Central')).toBeInTheDocument()
     expect(screen.getByText('Verified (CR) · confirmed')).toBeInTheDocument()
     expect(screen.getByText('Derived · confirmed')).toBeInTheDocument()
     expect(screen.getByText('from: “we sell specialty coffee”')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'cr.pdf' })).toBeInTheDocument()
     expect(screen.getByTestId('checklist')).toHaveTextContent('Check the CR certificate')
-    expect(screen.getByTestId('timeline')).toHaveTextContent('Routed to Regional Leasing Manager')
+    expect(screen.getByTestId('timeline')).toHaveTextContent('Routed to Regional Sales Manager')
   })
 
   it('applies an action and shows the updated case', async () => {
@@ -84,12 +84,12 @@ describe('Reviewer console', () => {
     window.sessionStorage.setItem('cenomi.reviewerId', 'rlm_store-central')
     vi.spyOn(review, 'getCase').mockResolvedValue(caseDetail())
     const after = caseDetail({ legal_actions: [] })
-    after.brief = { ...after.brief, status: 'second_review', stage_label: 'Lead — second review' }
+    after.brief = { ...after.brief, status: 'second_review', stage_label: 'Tenant Qualified' }
     const act = vi.spyOn(review, 'actOnCase').mockResolvedValue(after)
     renderAt('/review/cases/GEO-STR-123456')
     await user.click(await screen.findByRole('button', { name: 'Approve first level' }))
     expect(act).toHaveBeenCalledWith('rlm_store-central', 'GEO-STR-123456', 'approve_first', {})
-    expect(await screen.findByTestId('case-stage')).toHaveTextContent('Lead — second review')
+    expect(await screen.findByTestId('case-stage')).toHaveTextContent('Tenant Qualified')
     expect(screen.getByTestId('no-actions')).toBeInTheDocument()
   })
 

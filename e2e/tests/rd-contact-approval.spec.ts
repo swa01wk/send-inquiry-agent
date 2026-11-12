@@ -37,7 +37,7 @@ test.describe('Story rd-contact-approval @scripted', () => {
         .getByTestId('action-approve_first')
         .getByRole('button', { name: 'Approve first level' })
         .click()
-      await expect(reviewerPage.getByTestId('case-stage')).toHaveText('Lead — second review')
+      await expect(reviewerPage.getByTestId('case-stage')).toHaveText('Tenant Qualified')
 
       await expect
         .poll(async () =>

@@ -6,6 +6,7 @@ export interface OutboxRow {
   id: string
   template: string
   to: string
+  subject?: string
   body: string
   links: string[]
 }

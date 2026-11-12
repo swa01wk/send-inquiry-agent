@@ -26,10 +26,10 @@ export function useReviewerId(): [string | null, (id: string | null) => void] {
 }
 
 export const ROLE_LABELS: Record<string, string> = {
-  lease_admin: 'Lease Admin',
-  rlm_store: 'Regional Leasing Manager (Store)',
-  rplm_media: 'Regional Property Leasing Manager (Media)',
-  rplm_specialty: 'Regional Property Leasing Manager (Specialty)',
+  lease_admin: 'Leasing Admin',
+  rlm_store: 'Regional Sales Manager',
+  rplm_media: 'Regional Product Line Manager (Media)',
+  rplm_specialty: 'Regional Product Line Manager (Specialty)',
 }
 
 export function regionLabel(region: string | null): string {

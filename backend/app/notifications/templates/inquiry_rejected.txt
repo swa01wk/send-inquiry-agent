@@ -7,6 +7,8 @@ Hello $first_name,
 Thank you for your interest in leasing with Cenomi. After review, we're not able to take
 your inquiry for $brand at $mall further at this time.
 
+Outcome: $outcome_label
+
 The leasing team's note: $remarks
 
 $after_rejection

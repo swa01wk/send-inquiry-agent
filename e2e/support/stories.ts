@@ -366,7 +366,7 @@ export async function runL5AttentionFlow(
   await approveDocumentsViaApi(request, reference)
   await page.reload()
   await page.getByRole('button', { name: 'Approve first level' }).click()
-  await expect(page.getByTestId('case-stage')).toHaveText('Lead — second review')
+  await expect(page.getByTestId('case-stage')).toHaveText('Tenant Qualified')
   if (beat) await beat(page)
   await advanceClockFromDevPage(page, '+48 h')
   await advanceClockFromDevPage(page, '+24 h')

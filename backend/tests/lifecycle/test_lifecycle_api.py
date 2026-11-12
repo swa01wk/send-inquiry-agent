@@ -140,8 +140,8 @@ async def test_case_detail_shows_brief_timeline_and_legal_actions(life) -> None:
     ).json()
     assert sorted(detail["legal_actions"]) == ["approve_first", "reject", "request_reupload"]
     assert detail["brief"]["reference"] == reference
-    assert detail["brief"]["stage_label"] == "First review"
-    assert detail["brief"]["queue_role"] == "Regional Leasing Manager (Store)"
+    assert detail["brief"]["stage_label"] == "With the Leasing Admin"
+    assert detail["brief"]["queue_role"] == "Regional Sales Manager"
     assert detail["rejection_categories"]
     types = [e["type"] for e in detail["timeline"]]
     assert "submit_result" in types and "case_transition" in types
@@ -415,7 +415,7 @@ async def test_tracking_page_follows_the_case(life) -> None:
     status = await client.get(f"/api/inquiries/{reference}", params={"t": token_from(tracking)})
     body = status.json()
     assert body["current_stage"] == "second_review"
-    assert [s["label"] for s in body["stages"]][2] == "Lead — second review"
+    assert [s["label"] for s in body["stages"]][2] == "Tenant Qualified"
     assert body["waiting_on_you"] == ["Add company contacts"]
 
 
@@ -437,7 +437,7 @@ async def test_tracking_page_names_a_rejection(life) -> None:
     assert body["current_stage"] == "outcome"
     assert body["stages"][-1] == {
         "key": "outcome",
-        "label": "Outcome — Not approved",
+        "label": "Outcome — Tenant Not Qualified",
         "state": "done",
     }
 

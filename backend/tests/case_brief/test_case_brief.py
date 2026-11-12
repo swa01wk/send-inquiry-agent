@@ -63,7 +63,7 @@ def test_fields_carry_source_and_evidence() -> None:
     assert by_key["company_name"].source == "verified"
     assert by_key["brand_name_en"].source == "user"
     assert brief.mall == "Riyadh Mall A"
-    assert brief.queue_role == "Regional Property Leasing Manager (Specialty)"
+    assert brief.queue_role == "Regional Product Line Manager (Specialty)"
 
 
 def test_skipped_cr_and_unconfirmed_values_are_on_the_checklist() -> None:
@@ -92,7 +92,7 @@ def test_second_review_checklist_from_the_policy() -> None:
     assert "Billing Contact missing" in text
     assert "Open request: sales data" in text
     assert brief.waiting_on == "applicant"
-    assert brief.stage_label == "Lead — second review"
+    assert brief.stage_label == "Tenant Qualified"
 
 
 def test_stage_ages() -> None:

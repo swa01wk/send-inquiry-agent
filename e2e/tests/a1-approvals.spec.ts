@@ -46,15 +46,21 @@ test.describe('Story A1 approvals and Yardi @scripted', () => {
         .getByTestId('action-approve_first')
         .getByRole('button', { name: 'Approve first level' })
         .click()
-      await expect(reviewerPage.getByTestId('case-stage')).toHaveText('Lead — second review')
+      await expect(reviewerPage.getByTestId('case-stage')).toHaveText('Tenant Qualified')
 
       // Final review: the RLM takes over from the Lease Admin (demo feedback §3.2).
       const finalReviewer = await reviewerFor(request, reference, 'final')
       await openCaseAs(reviewerPage, finalReviewer, reference)
-      await expect(reviewerPage.getByTestId('action-remove_contact')).toBeVisible()
-      const removeBlock = reviewerPage.getByTestId('action-remove_contact')
-      await removeBlock.getByLabel('Contact').selectOption('billing_contact')
-      await removeBlock.getByRole('button', { name: 'Remove' }).click()
+      // Flow v2 V14: the console has no Remove; the API event still exists for this story.
+      await expect(reviewerPage.getByTestId('action-remove_contact')).toHaveCount(0)
+      const removed = await request.post(
+        `http://127.0.0.1:8000/api/review/cases/${encodeURIComponent(reference)}/actions`,
+        {
+          headers: { 'X-Reviewer-Id': finalReviewer.id },
+          data: { action: 'remove_contact', payload: { role: 'billing_contact' } },
+        },
+      )
+      expect(removed.ok()).toBeTruthy()
 
       await expect
         .poll(async () =>
@@ -131,7 +137,7 @@ test.describe('Story A1 approvals and Yardi @scripted', () => {
       expect(trackHref).toBeTruthy()
       await applicantPage.goto(trackHref!)
       await expect(applicantPage.getByTestId('inquiry-status-page')).toBeVisible()
-      await expect(applicantPage.getByText('Lead — second review')).toBeVisible()
+      await expect(applicantPage.getByText('Tenant Qualified')).toBeVisible()
     } finally {
       await reviewerContext.close()
       await applicantContext.close()

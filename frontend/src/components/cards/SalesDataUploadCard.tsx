@@ -51,7 +51,7 @@ export function SalesDataUploadCard({
   return (
     <div className={`${shared.shell} ${styles.shell}`} data-testid="sales-data-upload-card">
       <div className={styles.header}>
-        <span className={styles.title}>Estimated sales data</span>
+        <span className={styles.title}>Forecasted Sales Data</span>
         {payload.remarks ? <p className={styles.remarks}>{payload.remarks}</p> : null}
       </div>
       <input
@@ -70,7 +70,7 @@ export function SalesDataUploadCard({
           <span className={payload.uploaded ? styles.statusOk : styles.statusMuted}>
             {payload.uploaded && payload.file_name
               ? `Uploaded · ${payload.file_name}${payload.size_bytes != null ? ` · ${formatFileSize(payload.size_bytes)}` : ''}`
-              : 'Upload one file with your estimated sales figures'}
+              : 'Upload one file with your forecasted sales figures'}
           </span>
           {error ? <span className={shared.captionError}>{error}</span> : null}
         </div>

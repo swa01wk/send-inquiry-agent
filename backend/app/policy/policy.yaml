@@ -110,6 +110,11 @@ contacts:
   # "Yes, I'm the signatory" copies the verified primary contact, approved on entry (M8).
   applicant_signatory_needs_approval: false
 
+# Azure AD accounts (flow v2 §3.6, V9). Reject Lead revokes the invitation made at first
+# approval; an account that existed before the inquiry is never touched (assumption A1).
+identity:
+  revoke_on_lead_rejection: true
+
 # ---- Proactive work (L5 §3.1–3.3) -----------------------------------------------------
 # Demo values. A trigger fires once per case per period: a stay in one review stage, or
 # one open request. Every decision is in the audit log.

@@ -152,7 +152,7 @@ def test_get_case_status_summary_includes_rejection_remarks(agent_runtime, strea
     result = get_case_status.invoke({"state": state, "runtime": runtime})
     summary = result.update["messages"][0].content
     assert reject_remarks in summary
-    assert "Outcome: rejected." in summary
+    assert "Outcome: rejected (Tenant Not Qualified)." in summary
     assert "After rejection:" in summary
 
 

@@ -106,7 +106,7 @@ def default_reminder_text(case: Case, request: CaseRequest) -> str:
         )
         what = f"your company contacts ({roles})"
     else:
-        what = "your estimated sales data"
+        what = "your Forecasted Sales Data"
     text = f"The leasing team is still waiting for {what} on your inquiry {case.reference}."
     if request.remarks.strip():
         text += f" Their note: “{request.remarks.strip()}”"

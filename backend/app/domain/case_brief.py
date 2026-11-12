@@ -21,6 +21,8 @@ from app.domain.rules import contact_verified
 from app.policy.config import get_policy
 from app.workflow.documents import current_decisions
 from app.workflow.expiry import EXPIRY_LABELS, expired_remarks, expiry_status, expiry_tracked
+from app.workflow.labels import FORECASTED_SALES_DATA, status_label
+from app.workflow.labels import STAGE_LABELS as _CHART_STAGE_LABELS
 from app.workflow.machine import approval_blockers, first_approval_blockers
 from app.workflow.models import (
     CONTACT_ROLE_LABELS,
@@ -138,19 +140,12 @@ class CaseBrief(BaseModel):
     stage_ages: list[StageAge]
     next_decision_checklist: list[str] = Field(default_factory=list)
     # Typed values the company or brand profile disagrees with (demo feedback §3.7, D12).
-    # Never a blocker: the Lease Admin decides.
+    # Never a blocker: the Leasing Admin decides.
     document_checks: list[DocumentMismatch] = Field(default_factory=list)
 
 
-STAGE_LABELS: dict[str, str] = {
-    "submitted": "Submitted",
-    "first_review": "First review",
-    "reupload_requested": "First review — waiting for re-upload",
-    "second_review": "Lead — second review",
-    "approved": "Approved — sending to Yardi",
-    "sent_to_yardi": "Approved and sent to Yardi",
-    "rejected": "Not approved",
-}
+# Labels live in `workflow/labels.py` (flow v2 §3.5); re-exported here for older imports.
+STAGE_LABELS = _CHART_STAGE_LABELS
 
 
 def waiting_on(case: Case) -> Literal["reviewer", "applicant", "system", "nobody"]:
@@ -225,7 +220,7 @@ def _checklist(
                 items.append(f"{label} missing: request contacts before final approval.")
             elif kind == "contact_not_approved":
                 label = CONTACT_ROLE_LABELS.get(detail, detail)
-                items.append(f"{label} waiting for the Lease Admin's approval.")
+                items.append(f"{label} waiting for the Leasing Admin's approval.")
         if not approval_blockers(case):
             items.append("Everything needed for final approval is in.")
     if case.status == CaseStatus.APPROVED and case.yardi.needs_operations:
@@ -299,9 +294,9 @@ def format_case_brief_text(brief: CaseBrief) -> str:
     if brief.sales_data:
         sd = brief.sales_data
         lines.append(
-            f"  - Estimated sales data: {sd.file_name or 'uploaded'}"
+            f"  - {FORECASTED_SALES_DATA}: {sd.file_name or 'uploaded'}"
             if sd.uploaded
-            else "  - Estimated sales data: missing"
+            else f"  - {FORECASTED_SALES_DATA}: missing"
         )
     if brief.contacts:
         lines.extend(["", "Tenant contacts:"])
@@ -393,7 +388,7 @@ def build_case_brief(
     sales_doc = (
         BriefDocument(
             doc_type=DocType.SALES_DATA.value,
-            label="Estimated sales data",
+            label=FORECASTED_SALES_DATA,
             required=False,
             uploaded=True,
             file_id=sales.file_id,
@@ -416,7 +411,7 @@ def build_case_brief(
     return CaseBrief(
         reference=case.reference,
         status=case.status.value,
-        stage_label=STAGE_LABELS.get(case.status.value, case.status.value),
+        stage_label=status_label(case),
         waiting_on=waiting_on(case),
         queue_role=ROLE_LABELS.get(queue.role_for(review_level(case.status))) if queue else None,
         queue_region=queue.region if queue else None,

@@ -281,7 +281,7 @@ test.describe('Re-demo flows (live model) @live', () => {
       const la = await laContext.newPage()
       const laErrors = watchPageErrors(la)
       await openCaseAs(la, leaseAdmin, reference)
-      await expect(la.getByTestId('case-stage')).toHaveText('First review')
+      await expect(la.getByTestId('case-stage')).toHaveText('With the Leasing Admin')
       if (opts.briefFlagsCompanyName) {
         await expect(la.getByTestId('document-check-company_name')).toBeVisible({
           timeout: 30_000,
@@ -293,7 +293,7 @@ test.describe('Re-demo flows (live model) @live', () => {
         .getByTestId('action-approve_first')
         .getByRole('button', { name: 'Approve first level' })
         .click()
-      await expect(la.getByTestId('case-stage')).toHaveText('Lead — second review')
+      await expect(la.getByTestId('case-stage')).toHaveText('Tenant Qualified')
 
       const mail = await latestMail(request, 'contacts_request', opts.applicantEmail)
       const casePage = await caseContext.newPage()
@@ -412,7 +412,7 @@ test.describe('Re-demo flows (live model) @live', () => {
 
       await test.step('12–13. Lease Admin: approve company, reject brand, ask again', async () => {
         await openCaseAs(la, leaseAdmin, reference)
-        await expect(la.getByTestId('case-stage')).toHaveText('First review')
+        await expect(la.getByTestId('case-stage')).toHaveText('With the Leasing Admin')
         const approveFirst = la
           .getByTestId('action-approve_first')
           .getByRole('button', { name: 'Approve first level' })
@@ -449,7 +449,7 @@ test.describe('Re-demo flows (live model) @live', () => {
         await caseChat.turn('Resubmit', () => caseChat.inquiry.resubmitDocuments())
         await expect(
           caseChat.inquiry.cards('case_status').getByRole('heading', { level: 3 }),
-        ).toHaveText('First review')
+        ).toHaveText('With the Leasing Admin')
       })
 
       await test.step('15. Lease Admin: approve the new file, then the first level', async () => {
@@ -460,7 +460,7 @@ test.describe('Re-demo flows (live model) @live', () => {
           .getByTestId('action-approve_first')
           .getByRole('button', { name: 'Approve first level' })
           .click()
-        await expect(la.getByTestId('case-stage')).toHaveText('Lead — second review')
+        await expect(la.getByTestId('case-stage')).toHaveText('Tenant Qualified')
       })
 
       await test.step('16–17. Applicant: signatory Yes, billing contact', async () => {
@@ -890,7 +890,7 @@ test.describe('Re-demo flows (live model) @live', () => {
         await caseChat.turn('Resubmit', () => caseChat.inquiry.resubmitDocuments())
         await expect(
           caseChat.inquiry.cards('case_status').getByRole('heading', { level: 3 }),
-        ).toHaveText('First review')
+        ).toHaveText('With the Leasing Admin')
       })
 
       await test.step('A4. Approve the new profile, then the first level', async () => {
@@ -902,7 +902,7 @@ test.describe('Re-demo flows (live model) @live', () => {
           .getByTestId('action-approve_first')
           .getByRole('button', { name: 'Approve first level' })
           .click()
-        await expect(la.getByTestId('case-stage')).toHaveText('Lead — second review')
+        await expect(la.getByTestId('case-stage')).toHaveText('Tenant Qualified')
       })
 
       await test.step('A5–6. Contacts, Lease Admin approves billing, RLM approves', async () => {

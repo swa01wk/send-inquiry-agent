@@ -45,7 +45,7 @@ test.describe('Story T1 @scripted', () => {
         .getByRole('link', { name: reference })
         .click()
 
-      await expect(reviewerPage.getByTestId('case-stage')).toHaveText('First review')
+      await expect(reviewerPage.getByTestId('case-stage')).toHaveText('With the Leasing Admin')
       // Day R2: the Lease Admin approves each document before the first level (§3.4).
       await approveDocumentsViaApi(request, reference)
       await reviewerPage.reload()
@@ -53,7 +53,7 @@ test.describe('Story T1 @scripted', () => {
         .getByTestId('action-approve_first')
         .getByRole('button', { name: 'Approve first level' })
         .click()
-      await expect(reviewerPage.getByTestId('case-stage')).toHaveText('Lead — second review')
+      await expect(reviewerPage.getByTestId('case-stage')).toHaveText('Tenant Qualified')
 
       await expect
         .poll(async () =>

@@ -65,5 +65,5 @@ def test_status_names_the_first_review_owner_role():
     draft, _, _ = write_fields(draft, [("unit_type", "media", Source.USER)], master=master)
     status = MockStatusService(submit).get(submit.submit(draft, master))
     assert status.current_stage == "first_review"
-    assert status.owner_role == "Regional Property Leasing Manager (Media)"
+    assert status.owner_role == "Regional Product Line Manager (Media)"
     assert status.waiting_on_you == []
