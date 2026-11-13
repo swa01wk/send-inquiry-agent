@@ -41,14 +41,14 @@ from app.api.cards import (
 )
 from app.api.channel_cards import (
     BASIC_INFO_CARD_ID,
+    CONTACT_CHECK_CARD_ID,
     CR_QUESTION_CARD_ID,
-    EXISTING_CR_CARD_ID,
     SEND_LINK_CARD_ID,
     SIGN_IN_CARD_ID,
     build_basic_info_card,
     build_company_registration_card,
+    build_contact_check_card,
     build_cr_question_card,
-    build_existing_cr_choice_card,
     build_send_link_card,
     build_sign_in_prompt_card,
 )
@@ -341,6 +341,38 @@ def verify_cr(
         )
     cards_shown = list(state["cards_shown"])
     tenant = rt.services.tenants.get_by_cr(validated) if result.exists else None
+    if state.get("assisted"):
+        # Flow v2 (§3.4): Check for Existing Customer → DB → Customer CR Existing?
+        session_id = state["session_id"]
+        record_flow_step(rt, inquiry_id=session_id, node=FlowNode.CHK_CC, actor="staff")
+        record_flow_step(rt, inquiry_id=session_id, node=FlowNode.DB)
+        record_flow_step(
+            rt, inquiry_id=session_id, node=FlowNode.CRX, outcome="yes" if result.exists else "no"
+        )
+    if state.get("assisted") and result.exists:
+        # Flow v2 (§3.4, V3): an existing CR on the call centre → "Primary Contact
+        # existing?". The CR is kept; nothing is prefilled from Yardi or the tenant record
+        # (M16), and the executive checks the caller's email on the card.
+        updated = state["draft"].model_copy(deep=True)
+        updated.cr_status = "existing"
+        updated, written, _errors = draft_ops.write_fields(
+            updated, [(FieldKey.CR_NUMBER.value, validated, Source.USER)], master=rt.master
+        )
+        card = build_contact_check_card(tenant.company_name if tenant else None)
+        _emit_card(card, runtime)
+        if CONTACT_CHECK_CARD_ID not in cards_shown:
+            cards_shown.append(CONTACT_CHECK_CARD_ID)
+        return _tool_result(
+            runtime,
+            draft=updated,
+            content=(
+                "This CR already has a Tenant Central account. Ask the executive for the "
+                "caller's email and to press Check contact on the card. Collect nothing else "
+                "until the check is done."
+            ),
+            changed_keys=["cr_number", *written],
+            cards_shown=cards_shown,
+        )
     outcome = apply_cr_result(state["draft"], validated, result, rt.master, tenant=tenant)
     updated = outcome.draft
 
@@ -379,34 +411,21 @@ def verify_cr(
         )
 
     if outcome.kind == "existing":
-        if state.get("assisted"):
-            # Intake channels §3.2: the executive chooses (sign in, or continue for them).
-            card = build_existing_cr_choice_card(validated, tenant.company_name if tenant else None)
-            _emit_card(card, runtime)
-            if EXISTING_CR_CARD_ID not in cards_shown:
-                cards_shown.append(EXISTING_CR_CARD_ID)
-            content = (
-                "This CR already has a Tenant Central account"
-                + (f" ({tenant.company_name})" if tenant else "")
-                + ". The executive chooses on the card: ask the caller to sign in to Tenant "
-                "Central, or continue the inquiry for them with the tenant record prefilled."
-            )
-        else:
-            # Intake channels §3.6 (sign_in): a button to Tenant Central; no inquiry here.
-            card = build_sign_in_prompt_card(rt.settings.public_base_url)
-            _emit_card(card, runtime)
-            if SIGN_IN_CARD_ID not in cards_shown:
-                cards_shown.append(SIGN_IN_CARD_ID)
-            rt.services.audit.record(
-                state["session_id"],
-                "inquiry_redirected",
-                actor="system",
-                payload={"reason": "sign_in", "channel": state.get("channel", "self_service")},
-            )
-            content = (
-                "CR number belongs to an existing Tenant Central account. A Sign in to "
-                "Tenant Central button is on the card; explain kindly and stop collecting."
-            )
+        # Intake channels §3.6 (sign_in): a button to Tenant Central; no inquiry here.
+        card = build_sign_in_prompt_card(rt.settings.public_base_url)
+        _emit_card(card, runtime)
+        if SIGN_IN_CARD_ID not in cards_shown:
+            cards_shown.append(SIGN_IN_CARD_ID)
+        rt.services.audit.record(
+            state["session_id"],
+            "inquiry_redirected",
+            actor="system",
+            payload={"reason": "sign_in", "channel": state.get("channel", "self_service")},
+        )
+        content = (
+            "CR number belongs to an existing Tenant Central account. A Sign in to "
+            "Tenant Central button is on the card; explain kindly and stop collecting."
+        )
         return _tool_result(
             runtime,
             draft=updated,
@@ -1252,13 +1271,13 @@ def show_application_link(
 ) -> Command[Any]:
     """Assisted mode: show the Send application link card once the basic info is complete.
     The executive presses the button; this tool never sends anything."""
-    if state.get("assisted") and state.get("existing_cr_choice") == "sign_in":
+    if state.get("assisted") and state.get("contact_check") == "inform":
         return _tool_result(
             runtime,
             draft=state["draft"],
             content=(
-                "The executive asked the caller to sign in; there's no application link "
-                "for this inquiry."
+                "The caller already has a Tenant Central login: they raise the inquiry "
+                "there, so there's no application link for this one."
             ),
             cards_shown=list(state["cards_shown"]),
         )

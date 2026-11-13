@@ -50,9 +50,10 @@ The console stands in for the inquiry-creation screen of the Tenant Admin Platfo
 **Starting an inquiry.** **New inquiry** creates an inquiry with `channel: "assisted"` and opens the chat in **assisted mode**:
 - The same intake agent, with an assisted prompt: it addresses the executive ("the caller", "they"), asks in the same bundles, and keeps answers short because someone is on the phone.
 - Tool allowlist: the intake tools minus `send_verification`, `request_documents` and `show_review`, plus `send_application_link`. Writes from `update_draft` are stored as `source: staff`.
-- **CR check, optional and skippable** (§7.1.1 a2). On an existing CR, an `existing_cr_choice` card offers:
-  - **Ask them to sign in** — the inquiry is closed as `redirected_to_sign_in`; the agent gives the executive the words to use.
-  - **Continue for them** (§7.1.2 a2) — the tenant record is loaded (§3.4) and its values are prefilled as `verified`.
+- **CR check, optional and skippable** (§7.1.1 a2). On an existing CR (flow v2, F4; `docs/spec.md` §17), a `contact_check` card asks for the caller's email:
+  - **The caller already has a login** — the inquiry is closed as `redirected_existing_contact`; the `inform_tenant` card gives the executive the words to use and an **Email sign-in link** button.
+  - **A new contact** — captured fresh, like a new CR; nothing is prefilled from the tenant record (M16).
+  - *Superseded:* the Day 5 `existing_cr_choice` card (Ask them to sign in / Continue for them with the tenant record prefilled) was removed in F4.
 - Handoff cases from the applicant chat (L3 §3.6) are listed in the console; opening one continues the **same** inquiry in assisted mode, with the conversation so far summarised for the executive.
 
 **Sending the link.** When the basic info is complete (every required basic-info field present), the **Send application link** button on a `send_link` card runs the UI action `send_application_link`:
@@ -127,7 +128,7 @@ Requirements: "Existing tenants raise inquiries through Leasing Opportunities on
 | # | Story | Proves |
 | --- | --- | --- |
 | S9 | An executive signs in to `/callcentre`, starts a new inquiry and types what the caller says (company, brand, mall, contact) in two messages → **Send application link** → the applicant opens the link from `/dev/inbox` in a new browser context → email verified → `basic_info_review` card shows the executive's values with "From the call centre" → edits the brand's Arabic name → **Proceed** → OTP → documents → Submit → submission email | C1 |
-| S10 | The executive enters CR `1010000000` → `existing_cr_choice` → **Continue for them** → the tenant record is prefilled → link → applicant completes as in S9. Second run: **Ask them to sign in** closes it | C2 |
+| S10 | The executive enters CR `1010000000` → `contact_check`. A new contact's email → captured fresh → link → applicant completes as in S9 (flow v2 CC2). Second run: `layla.hassan@oasiscoffee.example` → Inform → **Email sign-in link** (CC1) | C2 |
 | S11 | A tenant signs in at `/tenant`, opens Leasing Opportunities, raises an inquiry for a Specialty unit at a Jeddah mall → prefilled confirm card; picks one of two brands; keeps the documents on file → no email link or OTP → Submit → the inquiry appears in My inquiries with its reference | C3 |
 | S12 | On the public chat, CR `1010000000` → Sign in button → `/tenant` → Leasing Opportunities. With `allow_inquiry`, the chat continues with the prefilled `basic_info_review` card | C4 |
 | T9 | First-level approval of a prospective tenant's case opens a contacts request automatically; the `contacts_request` email arrives without a reviewer asking (L4 §3.4) | L4, §7.1.1 b |

@@ -13,9 +13,12 @@
     ]
   },
   {
-    "content": "Ask them to sign in on Tenant Central, or choose Continue for you to fill the inquiry from their tenant record."
+    "content": "This company already has a Tenant Central account. Please ask the caller for their email and press Check contact."
   },
   {
-    "content": "They'll sign in on Tenant Central — no application link from this chat."
+    "content": "The caller already has a login. You can say: \"You already have a Tenant Central account — please sign in and raise the inquiry from Leasing Opportunities.\" Use Email sign-in link to send them the link."
+  },
+  {
+    "content": "Sent — they'll get the sign-in link by email. There's nothing more to capture here."
   }
 ]

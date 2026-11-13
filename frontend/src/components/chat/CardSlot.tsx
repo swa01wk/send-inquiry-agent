@@ -11,7 +11,8 @@ import { CrQuestionCard } from '../cards/CrQuestionCard'
 import { CompanyRegistrationCard } from '../cards/CompanyRegistrationCard'
 import { TermsCard } from '../cards/TermsCard'
 import { SignatoryQuestionCard } from '../cards/SignatoryQuestionCard'
-import { ExistingCrChoiceCard } from '../cards/ExistingCrChoiceCard'
+import { ContactCheckCard } from '../cards/ContactCheckCard'
+import { InformTenantCard } from '../cards/InformTenantCard'
 import { HandoffCard } from '../cards/HandoffCard'
 import { SendLinkCard } from '../cards/SendLinkCard'
 import { SignInPromptCard } from '../cards/SignInPromptCard'
@@ -135,10 +136,16 @@ export function CardSlot({
           onSendLink={() => actions.sendAction('send_application_link', {})}
         />
       ) : null}
-      {card.card_type === 'existing_cr_choice' ? (
-        <ExistingCrChoiceCard
+      {card.card_type === 'contact_check' ? (
+        <ContactCheckCard
           payload={card.payload}
-          onChoose={(choice) => actions.sendAction('existing_cr_choice', { choice })}
+          onCheck={(email) => actions.sendAction('contact_check', { email })}
+        />
+      ) : null}
+      {card.card_type === 'inform_tenant' ? (
+        <InformTenantCard
+          payload={card.payload}
+          onSendSignInLink={() => actions.sendAction('send_sign_in_link', {})}
         />
       ) : null}
       {card.card_type === 'cr_question' ? (

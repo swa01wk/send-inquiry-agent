@@ -2,7 +2,7 @@
 
 Everything Cursor builds must match this file. If a contract here is missing or wrong, update this file in the same change.
 
-> **Flow v2 (13–18 Nov 2026).** [`specs/flow-v2-alignment.md`](specs/flow-v2-alignment.md) changes the intake order, the CR check on the public page, the second level and the status names. Its §7 lists the contract changes by build day (F1–F5); each day's PR folds its row into this file. Until a row lands, this file describes `main`. **F3 (public intake) has landed behind `flow_v2_intake.enabled`: see §16.**
+> **Flow v2 (13–18 Nov 2026).** [`specs/flow-v2-alignment.md`](specs/flow-v2-alignment.md) changes the intake order, the CR check on the public page, the second level and the status names. Its §7 lists the contract changes by build day (F1–F5); each day's PR folds its row into this file. Until a row lands, this file describes `main`. **F3 (public intake) has landed behind `flow_v2_intake.enabled`: see §16. F4 (call centre and reviewer assistant): see §17.**
 
 ## 1. Flow summary
 
@@ -495,9 +495,9 @@ Contacts being collected live on the case session (`Session.contacts_draft`); `w
 | `contacts` | `{request_id, remarks, rows:[{role, label, required, first_name, last_name, email, phone, source, confirmed, same_as_primary, approval, approval_remarks}], can_submit, blockers, roles, signatory_answer}` (card id `contacts`). `approval`: Cenomi's decision on the contact as sent (`pending` "Waiting for Cenomi", `approved`, `rejected` with `approval_remarks`), null when not sent or changed since; `roles`: a request opened by a rejection asks only for these; `signatory_answer`: `yes` \| `no` \| null |
 | `signatory_question` | `{prompt, yes_label, no_label, answered: yes\|no\|null}` (card id `signatory_question`): shown before the contacts card when a contacts request covering every role opens, until answered (policy `contacts.ask_signatory`); the buttons send `signatory_answer {is_signatory}` |
 | `sales_data_upload` | `{request_id, remarks, uploaded, file_name, size_bytes, allowed_extensions, max_mb}`; upload with `doc_type=sales_data` (card id `sales_data`) |
-| `reviewer_suggestion` | `{kind, action, payload, text}` — console assistant only; **Use** prefills the matching action form or Yardi re-link pickers (never submits). `kind`: `yardi_company`, `yardi_brand`, `reupload_remarks`, `rejection_remarks`, `contacts_request`, `tenant_reminder`. `action`: `request_reupload`, `reject`, `request_contacts`, `relink_company`, `relink_brand`, or empty for `tenant_reminder`. `payload`: e.g. `{remarks}`, `{company_id}`, `{brand_id}` |
+| `reviewer_suggestion` | `{kind, action, payload, text}` — console assistant only; **Use** prefills the matching action form or Yardi re-link pickers (never submits). `kind`: `yardi_company`, `yardi_brand`, `reupload_remarks`, `rejection_remarks`, `contacts_request`, `tenant_reminder`, `sales_data_need`. `action`: `request_reupload`, `reject`, `request_contacts`, `request_sales_data`, `relink_company`, `relink_brand`, or empty for `tenant_reminder`. `payload`: e.g. `{remarks}`, `{company_id}`, `{brand_id}` |
 
-**Reviewer assistant** (`REVIEWER_CONSOLE`, L4 §3.6): third LangGraph from `build_agent_graph` (`app/agent/reviewer_graph.py`, `reviewer_tools.py`, `reviewer_prompt.md`). Thread id `review:{case_id}:{reviewer_id}`. Tools (read-only, no `apply_event`, no case save): `get_case_brief`, `search_yardi_companies`, `list_company_brands`, `draft_reviewer_note`. Each suggestion tool emits a `reviewer_suggestion` card; audit `assistant_suggestion {kind, action}` per card (`used` when the reviewer submits from it, later).
+**Reviewer assistant** (`REVIEWER_CONSOLE`, L4 §3.6): third LangGraph from `build_agent_graph` (`app/agent/reviewer_graph.py`, `reviewer_tools.py`, `reviewer_prompt.md`). Thread id `review:{case_id}:{reviewer_id}`. Tools (read-only, no `apply_event`, no case save): `get_case_brief`, `search_yardi_companies`, `list_company_brands`, `draft_reviewer_note`, `assess_forecasted_sales_need` (§17). Each suggestion tool emits a `reviewer_suggestion` card; audit `assistant_suggestion {kind, action}` per card (`used` when the reviewer submits from it, later).
 
 **Documents:** `DocType.sales_data` exists only for case chats (`POST …/documents` with it in an intake chat is 400 `unknown_doc_type`); it isn't in the intake checklist or the policy's document lists. In a case chat, an upload returns the re-upload or sales-data card.
 
@@ -636,7 +636,8 @@ Spec: `docs/specs/intake-channels.md`. Every channel ends in the same draft, rul
 | --- | --- | --- |
 | `basic_info_review` | `{title, started_by, rows: [{key, label, display, source, confirmed, required}], missing, can_proceed, proceeded}` | Edit per field = `edit_field`; **Proceed** = `proceed_basic_info` (confirms every derived, verified or staff basic-info value in one step; audit `field_confirmed via=basic_info_review`). On the `existing_tenant` channel the card leaves out the brand (name, Arabic name, sales category): it's asked for in the chat and confirmed on its own card (R4) |
 | `send_link` | `{email_masked, can_send, missing, sent_to_masked}` | **Send application link** = `send_application_link` |
-| `existing_cr_choice` | `{cr_number, company_name, options: [{value: sign_in \| continue, label}], chosen}` | `existing_cr_choice {choice}` |
+| `contact_check` | `{prompt, company_name, input_placeholder, check_label, state: open \| existing \| new, email_masked, error}` | **Check contact** = `contact_check {email}` (§17) |
+| `inform_tenant` | `{title, say, email_masked, sign_in_label, offer_sign_in_link, sent, error}` | **Email sign-in link** = `send_sign_in_link {}` (§17) |
 | `sign_in_prompt` | `{message, sign_in_url, button_label}` | A link to `/tenant` |
 
 **Assisted mode** (call centre and Guest Service, `CALLCENTRE_CONSOLE=true`):
@@ -648,9 +649,7 @@ Spec: `docs/specs/intake-channels.md`. Every channel ends in the same draft, rul
 | GET | `/api/callcentre/handoffs` | Open handoff cases `[{case_id, inquiry_id, short_ref, reason, reason_label, summary, created_at}]` |
 | POST | `/api/callcentre/handoffs/{case_id}/open` | The same inquiry, now driven by the staff member (`staff_id` set), with a summary message → resume payload |
 
-Unknown or non-staff `X-Staff-Id` → 401 `unknown_staff`. In assisted mode the chat uses `app.state.assisted_graph`: the intake tools minus `send_verification`, `request_documents`, `show_review` and `start_follow_on`, plus `show_application_link` (shows the `send_link` card; it never sends). The router is skipped. The guard doesn't require `send_verification` or the sign-in wording. `verify_cr` on an existing CR shows `existing_cr_choice`:
-- `sign_in` → `Session.closed = "redirected_to_sign_in"`, audit `inquiry_redirected {reason: sign_in}`;
-- `continue` → the tenant record is prefilled and its documents attached, `Session.tenant_id` set, audit `tenant_prefill`.
+Unknown or non-staff `X-Staff-Id` → 401 `unknown_staff`. In assisted mode the chat uses `app.state.assisted_graph`: the intake tools minus `send_verification`, `request_documents`, `show_review` and `start_follow_on`, plus `show_application_link` (shows the `send_link` card; it never sends). The router is skipped. The guard doesn't require `send_verification` or the sign-in wording. `verify_cr` on an existing CR shows the `contact_check` card; nothing is prefilled from the tenant record (§17).
 
 **Application link.** `send_application_link` (staff only; needs the CR checked or skipped and every required basic-info field) emails `complete_application` with `<PUBLIC_BASE_URL>/inquiry/verify?t=<complete token>` (valid `EMAIL_LINK_TTL_HOURS`). The staff session keeps the token's nonce (`complete_nonce`): a resend makes the old link stop working, and the link is single use. Audit `application_link_sent {by, resend}`. `POST /api/verifications/email` accepts a `complete` token:
 - checks the nonce (400 `token_used`) and that the email is still the one it was sent to (400 `email_changed`);
@@ -720,3 +719,24 @@ The chat cards above, the `/callcentre` page and the assisted and existing-tenan
 **Flow steps recorded:** `start`, `raise_tp` (session), `chk_tp`, `db`, `exist yes|no|skipped`, `display`, `redirect` (registered), `emv`, `succ1`.
 
 **Invariants.** I8 applies to the v2 public chat (no CR repeated in replies or cards). **I9:** before submit, a v2 reply never names a unit or unit number (`unit|shop|kiosk <id>`, `OPP-n`).
+
+## 17. Flow v2 call centre and reviewer assistant (day F4)
+
+[`specs/flow-v2-alignment.md`](specs/flow-v2-alignment.md) §3.4, §3.11; V3, E2, E5; M16.
+
+**Existing CR → "Primary Contact existing?"** In assisted mode `verify_cr` on an existing CR records `chk_cc`, `db` and `crx yes`, sets `cr_status="existing"` and writes the CR number, and shows the `contact_check` card. Nothing is prefilled from the tenant record (M16). The check is a **card action**, not a REST endpoint (the alignment spec's `POST …/contact-check` is replaced): `contact_check {email}` → `IdentityService.has_account(email)`, flow step `pcx yes|no`:
+
+| Outcome | Session and draft | Cards | Note |
+| --- | --- | --- | --- |
+| Invalid email | unchanged | `contact_check` `open` + `error` (quiet) | `contact_check_invalid` |
+| Has a login | `contact_check="inform"`, `contact_email`, `closed="redirected_existing_contact"`; inquiry status `redirected`; audit `contact_checked {result: existing}`, `inquiry_redirected {reason: existing_contact, channel}`; flow step `inform` | `contact_check` `existing`, `inform_tenant` | `contact_existing inform` |
+| New contact | `contact_check="new_contact"`, `cr_status="new"`, `email` written (staff); audit `contact_checked {result: new}` | `contact_check` `new` | `contact_new fresh_capture` |
+
+After Inform, `show_application_link` and `send_application_link` are refused (`link_blocked existing_contact`).
+
+**Email sign-in link (E5).** `send_sign_in_link {}` (only after Inform, policy `callcentre.offer_sign_in_link`, default `true`) sends template `sign_in_link` (`$sign_in_url` = `<PUBLIC_BASE_URL>/tenant`, `$started_by`) to the checked email, throttled like resends (`{session}:sign_in`). Audit `sign_in_link_sent {channel}`; the card turns `sent`; note `sign_in_link_sent to=<masked>`. With the switch off the card shows the words to say only and the action is a quiet no-op.
+
+**One chart path for a call-centre inquiry.** `Session.origin_id`: the applicant session created from a `complete` token keeps the staff session id; `workflow/flow.call_centre_flow_id(session)` returns it. Flow steps on the staff id: `raise_cc` (New inquiry), `chk_cc`, `db`, `crx`, `pcx`, `inform` or `exec` + `email_link` (first send), `open_form` (applicant opens the link), `bic yes|no` (+ `update_bi` on no: any applicant field write before **Proceed**), `mob`, `succ2`. On submit: `upload_submit` and `ref2` (instead of `complete1`, `ref1`). `GET /api/dev/flow/{id}` merges the origin id's steps.
+
+**Forecasted Sales Data suggestion (E2).** Reviewer tool `assess_forecasted_sales_need()` (`workflow/forecasted_sales.assess_forecasted_sales`) returns the facts (company new to Cenomi = no tenant record, no linked or matching Yardi company; unit type; area and rent ranges, defaults read as not given; malls) and the rule from policy `forecasted_sales.suggest_when {new_company: true, area_min_sqm_at_least: 150}` (any condition → suggest; assumption A-F1). When it suggests and no sales-data request exists on the case, it emits a `reviewer_suggestion` `{kind: sales_data_need, action: request_sales_data, payload: {remarks: ""}}`; **Use** prefills the Ask the applicant form. It never sends the request.
+

@@ -17,6 +17,7 @@ from app.api.schemas import UiCard
 from app.domain.case_brief import build_case_brief, format_case_brief_text
 from app.domain.fields import document_label
 from app.proactive.engine import default_reminder_text
+from app.workflow.forecasted_sales import assess_forecasted_sales
 from app.workflow.models import Case, CaseRequest
 
 NOTE_KIND = Literal[
@@ -42,6 +43,7 @@ __all__ = [
     "search_yardi_companies",
     "list_company_brands",
     "draft_reviewer_note",
+    "assess_forecasted_sales_need",
     "reminder_check",
 ]
 
@@ -266,9 +268,35 @@ def draft_reviewer_note(
     return _tool_message(runtime, tool_content)
 
 
+@tool
+def assess_forecasted_sales_need(
+    state: Annotated[AgentState, InjectedState],
+    runtime: ToolRuntime,
+) -> Command[Any]:
+    """Check whether to ask the applicant for Forecasted Sales Data (flow v2 §3.11).
+
+    Returns the facts and the configured rule. Suggests the request only; never sends it."""
+    case = _case(state, runtime)
+    if case is None:
+        return _tool_message(runtime, "No case linked to this thread.")
+    rt = runtime_from_config(runtime.config)
+    assessment = assess_forecasted_sales(case, rt.services)
+    text = assessment.text()
+    if assessment.suggest:
+        _emit_suggestion(
+            runtime,
+            kind="sales_data_need",
+            action="request_sales_data",
+            payload={"remarks": ""},
+            text="Ask for Forecasted Sales Data: " + "; ".join(assessment.reasons) + ".",
+        )
+    return _tool_message(runtime, text)
+
+
 REVIEWER_TOOLS = [
     get_case_brief,
     search_yardi_companies,
     list_company_brands,
     draft_reviewer_note,
+    assess_forecasted_sales_need,
 ]

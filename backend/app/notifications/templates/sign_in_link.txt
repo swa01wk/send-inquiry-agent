@@ -1,0 +1,14 @@
+kind: action_required
+channel: email
+subject: Sign in to Cenomi Tenant Central
+---
+Hello,
+
+Thank you for calling Cenomi. Your company already has a Tenant Central account, and you have a login, so you can raise your leasing inquiry there yourself.
+
+Sign in to Tenant Central: $sign_in_url
+
+After signing in, open Leasing Opportunities and choose the mall and space you're interested in. Your company details are already on file.
+
+$started_by
+Cenomi Tenant Central

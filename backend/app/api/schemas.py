@@ -26,7 +26,6 @@ CardType = Literal[
     # Intake channels (spec §15)
     "basic_info_review",
     "send_link",
-    "existing_cr_choice",
     "sign_in_prompt",
     # Demo feedback §3.1
     "cr_question",
@@ -35,6 +34,9 @@ CardType = Literal[
     # Flow v2 (§3.2, §3.3)
     "company_registration",
     "terms",
+    # Flow v2 (§3.4, F4): call centre, existing CR
+    "contact_check",
+    "inform_tenant",
 ]
 
 StepState = Literal["done", "current", "upcoming"]
@@ -110,18 +112,34 @@ class SendLinkPayload(BaseModel):
     sent_to_masked: str | None = None
 
 
-class ExistingCrChoiceOption(BaseModel):
-    value: Literal["sign_in", "continue"]
-    label: str
+ContactCheckState = Literal["open", "existing", "new"]
 
 
-class ExistingCrChoicePayload(BaseModel):
-    """Assisted mode, existing CR (§3.2): `existing_cr_choice {choice}`."""
+class ContactCheckPayload(BaseModel):
+    """Flow v2 (§3.4, V3): call centre, existing CR → "Primary Contact existing?". The
+    executive enters the caller's email; Check sends `contact_check {email}`."""
 
-    cr_number: str
-    company_name: str | None
-    options: list[ExistingCrChoiceOption]
-    chosen: Literal["sign_in", "continue"] | None = None
+    prompt: str
+    company_name: str | None = None
+    input_placeholder: str
+    check_label: str
+    state: ContactCheckState = "open"
+    email_masked: str | None = None
+    error: str | None = None
+
+
+class InformTenantPayload(BaseModel):
+    """Flow v2 (§3.4, E5): the contact already has an account. The words to say, and an
+    **Email sign-in link** button (`send_sign_in_link {}`). No inquiry is raised."""
+
+    title: str
+    say: str
+    email_masked: str
+    sign_in_label: str
+    # Policy `callcentre.offer_sign_in_link`: off → the words to say only, no button.
+    offer_sign_in_link: bool = True
+    sent: bool = False
+    error: str | None = None
 
 
 class SignInPromptPayload(BaseModel):

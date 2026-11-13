@@ -9,7 +9,7 @@ from typing import Any, Literal
 
 from langchain_core.messages import HumanMessage
 
-from app.agent.channels import attach_documents_on_file, started_by_label
+from app.agent.channels import started_by_label
 from app.agent.context import message_context
 from app.agent.cr_check import (
     CustomerCheck,
@@ -24,6 +24,7 @@ from app.agent.pending import RESUME_PENDING_REPLY, normalise_email, note_verifi
 from app.agent.runtime import AgentRuntime
 from app.api.cards import (
     HANDOFF_CARD_ID,
+    _mask_email,
     allocate_confirm_card_id,
     build_confirm_fields_card,
     build_document_upload_card,
@@ -46,8 +47,9 @@ from app.api.case_cards import (
 from app.api.channel_cards import (
     BASIC_INFO_CARD_ID,
     build_basic_info_card,
+    build_contact_check_card,
     build_cr_question_card,
-    build_existing_cr_choice_card,
+    build_inform_tenant_card,
     build_send_link_card,
     build_sign_in_prompt_card,
     confirm_basic_info,
@@ -60,13 +62,13 @@ from app.domain.fields import document_definitions
 from app.domain.models import NEEDS_CONFIRMATION, DocType, FieldKey, InquiryDraft, Source
 from app.domain.rules import can_submit, contact_verified, open_fields, remaining_steps
 from app.domain.summary import build_draft_summary
-from app.domain.tenant_prefill import prefill_from_tenant
 from app.domain.validation import validate_malls
 from app.gateway import GatewayError
+from app.policy.config import get_policy
 from app.security import tokens
 from app.sessions import Session
 from app.workflow.contacts import apply_signatory_answer, confirm_contacts, contacts_blockers
-from app.workflow.flow import FlowNode, record_flow_step
+from app.workflow.flow import FlowNode, call_centre_flow_id, record_flow_step
 from app.workflow.machine import USER, IllegalTransition
 from app.workflow.models import Case, TenantContact, WorkflowEvent
 from app.workflow.service import apply_event, create_case
@@ -147,7 +149,8 @@ async def handle_ui_action(
         "submit_sales_data": _submit_sales_data,
         # Intake channels (spec §15)
         "send_application_link": _send_application_link,
-        "existing_cr_choice": _existing_cr_choice,
+        "contact_check": _contact_check,
+        "send_sign_in_link": _send_sign_in_link,
         "proceed_basic_info": _proceed_basic_info,
     }
     handler = handlers.get(action)
@@ -361,6 +364,14 @@ async def _submit_otp(
             events=_verification_events(session, draft, runtime, []),
         )
 
+    origin = call_centre_flow_id(session)
+    if origin:
+        # Flow v2 (§3.4): the applicant's Mobile Verification → Success? on the call-centre
+        # lane (the email was verified by opening the link).
+        record_flow_step(runtime, inquiry_id=origin, node=FlowNode.MOB, actor="user")
+        record_flow_step(
+            runtime, inquiry_id=origin, node=FlowNode.SUCC2, outcome="yes" if verified else "no"
+        )
     if verified:
         verified_before = contact_verified(draft)
         draft.mobile_verified = True
@@ -777,8 +788,14 @@ async def _accept_and_submit(
     # Flow v2 §3.1: "Complete form and submit" → "Reference No." on the chart, recorded on
     # the case id (the reference) before the case's own steps.
     submitter: Literal["staff", "user"] = "staff" if session.created_by else "user"
-    record_flow_step(runtime, inquiry_id=reference, node=FlowNode.COMPLETE1, actor=submitter)
-    record_flow_step(runtime, inquiry_id=reference, node=FlowNode.REF1)
+    if call_centre_flow_id(session):
+        # Flow v2 (§3.4): the applicant finishes a call-centre inquiry → "Upload docs and
+        # submit" → "Reference No." on the call-centre lane.
+        record_flow_step(runtime, inquiry_id=reference, node=FlowNode.UPLOAD_SUBMIT, actor="user")
+        record_flow_step(runtime, inquiry_id=reference, node=FlowNode.REF2)
+    else:
+        record_flow_step(runtime, inquiry_id=reference, node=FlowNode.COMPLETE1, actor=submitter)
+        record_flow_step(runtime, inquiry_id=reference, node=FlowNode.REF1)
     # The review lifecycle starts (L4): the case is created and routed to its queue.
     try:
         await create_case(
@@ -1293,10 +1310,8 @@ async def _send_application_link(
     del payload
     if not session.assisted:
         return ActionResult(note=HumanMessage(content="[ui_event] link_blocked not_assisted"))
-    if session.existing_cr_choice == "sign_in":
-        return ActionResult(
-            note=HumanMessage(content="[ui_event] link_blocked redirected_to_sign_in")
-        )
+    if session.contact_check == "inform":
+        return ActionResult(note=HumanMessage(content="[ui_event] link_blocked existing_contact"))
     card = build_send_link_card(session.draft, sent_to=session.link_sent_to)
     if not card.payload["can_send"]:
         missing = ", ".join(card.payload["missing"])
@@ -1342,6 +1357,10 @@ async def _send_application_link(
         by=session.staff_id,
         resend=resend,
     )
+    if not resend:
+        # Flow v2 (§3.4): the executive submits what they captured → the application link.
+        record_flow_step(runtime, inquiry_id=session.id, node=FlowNode.EXEC, actor="staff")
+        record_flow_step(runtime, inquiry_id=session.id, node=FlowNode.EMAIL_LINK)
     card = build_send_link_card(session.draft, sent_to=email)
     return ActionResult(
         note=HumanMessage(
@@ -1351,60 +1370,136 @@ async def _send_application_link(
     )
 
 
-async def _existing_cr_choice(
+async def _contact_check(
     payload: dict[str, Any],
     session: Session,
     runtime: AgentRuntime,
 ) -> ActionResult:
-    """Assisted mode, existing CR: ask them to sign in (no inquiry), or continue for them
-    with the tenant record prefilled (intake channels §3.2, §7.1.2 a2)."""
-    choice = payload.get("choice")
-    cr_number = session.draft.fields[FieldKey.CR_NUMBER].value
-    if not session.assisted or session.draft.cr_status != "existing" or not cr_number:
-        return ActionResult(note=HumanMessage(content="[ui_event] cr_choice_failed"))
-    tenant = runtime.services.tenants.get_by_cr(str(cr_number))
+    """Flow v2 (§3.4, V3): call centre, existing CR → "Primary Contact existing?". The
+    caller's email has a Tenant Central login → Inform (no inquiry); otherwise the executive
+    captures a fresh inquiry (M16: nothing prefilled)."""
+    tenant = (
+        runtime.services.tenants.get_by_cr(str(session.draft.fields[FieldKey.CR_NUMBER].value))
+        if session.draft.fields[FieldKey.CR_NUMBER].value
+        else None
+    )
     company = tenant.company_name if tenant else None
-    if choice == "sign_in":
-        session.existing_cr_choice = "sign_in"
-        session.closed = "redirected_to_sign_in"
+    if not session.assisted or session.draft.cr_status != "existing" or session.contact_check:
+        return ActionResult(
+            note=HumanMessage(content="[ui_event] contact_check_unavailable"), quiet=True
+        )
+    raw = str(payload.get("email") or "").strip()
+    checked = v.validate_email(raw)
+    if isinstance(checked, v.ValidationError):
+        card = build_contact_check_card(company, error=checked.message)
+        return ActionResult(
+            note=HumanMessage(content="[ui_event] contact_check_invalid"),
+            events=[_card_event(session, card)],
+            quiet=True,
+        )
+    email = str(checked)
+    masked = _mask_email(email)
+    exists = runtime.services.identity.has_account(email)
+    record_flow_step(
+        runtime,
+        inquiry_id=session.id,
+        node=FlowNode.PCX,
+        actor="staff",
+        outcome="yes" if exists else "no",
+    )
+    session.contact_email = email
+    if exists:
+        session.contact_check = "inform"
+        session.closed = "redirected_existing_contact"
+        _audit(runtime, session, "contact_checked", by_staff=True, result="existing")
         _audit(
             runtime,
             session,
             "inquiry_redirected",
             by_staff=True,
-            reason="sign_in",
+            reason="existing_contact",
             channel=session.channel,
         )
-        card = build_existing_cr_choice_card(str(cr_number), company, chosen="sign_in")
+        record_flow_step(runtime, inquiry_id=session.id, node=FlowNode.INFORM, actor="staff")
         return ActionResult(
-            note=HumanMessage(content="[ui_event] redirected_to_sign_in"),
+            note=HumanMessage(content="[ui_event] contact_existing inform"),
+            events=[
+                _card_event(
+                    session,
+                    build_contact_check_card(company, state="existing", email_masked=masked),
+                ),
+                _card_event(session, build_inform_tenant_card(masked)),
+            ],
+        )
+    session.contact_check = "new_contact"
+    draft = session.draft.model_copy(deep=True)
+    draft.cr_status = "new"
+    draft, written, _errors = draft_ops.write_fields(
+        draft, [(FieldKey.EMAIL.value, email, Source.USER)], master=runtime.master
+    )
+    session.draft = draft
+    _audit(runtime, session, "contact_checked", by_staff=True, result="new")
+    return ActionResult(
+        note=HumanMessage(content="[ui_event] contact_new fresh_capture"),
+        events=[
+            _card_event(
+                session, build_contact_check_card(company, state="new", email_masked=masked)
+            ),
+            _draft_event(draft, runtime, written),
+        ],
+        changed_keys=written,
+    )
+
+
+async def _send_sign_in_link(
+    payload: dict[str, Any],
+    session: Session,
+    runtime: AgentRuntime,
+) -> ActionResult:
+    """Flow v2 (§3.4, E5): email the caller a link to sign in to Tenant Central and raise
+    the inquiry from Leasing Opportunities. Only after the Inform outcome."""
+    del payload
+    email = session.contact_email
+    if (
+        not session.assisted
+        or session.contact_check != "inform"
+        or not email
+        or not get_policy().callcentre.offer_sign_in_link
+    ):
+        return ActionResult(
+            note=HumanMessage(content="[ui_event] sign_in_link_unavailable"), quiet=True
+        )
+    masked = _mask_email(email)
+    resend = runtime.services.resend
+    throttle_key = f"{session.id}:sign_in"
+    wait = resend.wait_seconds(throttle_key, "email")
+    if wait:
+        return ActionResult(
+            note=HumanMessage(content=f"[ui_event] resend_throttled {wait}"),
+            events=[_card_event(session, build_inform_tenant_card(masked, sent=True))],
+            quiet=True,
+        )
+    base = runtime.settings.public_base_url.rstrip("/")
+    context = {
+        "sign_in_url": f"{base}/tenant",
+        "started_by": started_by_label(runtime, session.staff_id),
+    }
+    send = functools.partial(runtime.services.notifications.send, inquiry_id=session.id)
+    try:
+        await runtime.services.gateway.call(
+            "notifications", "send", send, "sign_in_link", email, context, inquiry_id=session.id
+        )
+    except GatewayError as err:
+        card = build_inform_tenant_card(masked, error="The email didn't go out. Please try again.")
+        return ActionResult(
+            note=HumanMessage(content=f"[ui_event] sign_in_link_failed {err.kind}"),
             events=[_card_event(session, card)],
         )
-    if choice != "continue" or tenant is None:
-        return ActionResult(note=HumanMessage(content="[ui_event] cr_choice_failed no_record"))
-    session.existing_cr_choice = "continue"
-    draft, written = prefill_from_tenant(session.draft, tenant, runtime.master)
-    draft, documents = attach_documents_on_file(runtime, session.id, draft, tenant)
-    session.draft = draft
-    session.tenant_id = tenant.id
-    _audit(
-        runtime,
-        session,
-        "tenant_prefill",
-        by_staff=True,
-        tenant_id=tenant.id,
-        channel=session.channel,
-        keys=written,
-        documents=documents,
-    )
-    card = build_existing_cr_choice_card(str(cr_number), company, chosen="continue")
-    brands = "several brands" if len(tenant.brands) > 1 else "one brand"
+    resend.record(throttle_key, "email")
+    _audit(runtime, session, "sign_in_link_sent", by_staff=True, channel=session.channel)
     return ActionResult(
-        note=HumanMessage(
-            content=f"[ui_event] tenant_record_loaded {tenant.company_name} ({brands})"
-        ),
-        events=[_card_event(session, card), _draft_event(draft, runtime, written)],
-        changed_keys=written,
+        note=HumanMessage(content=f"[ui_event] sign_in_link_sent to={masked}"),
+        events=[_card_event(session, build_inform_tenant_card(masked, sent=True))],
     )
 
 
@@ -1430,6 +1525,23 @@ async def _proceed_basic_info(
     draft, keys = confirm_basic_info(session.draft, new_brand=new_brand)
     session.draft = draft
     _audit(runtime, session, "field_confirmed", keys=keys, via="basic_info_review")
+    origin = call_centre_flow_id(session)
+    if origin:
+        # Flow v2 (§3.4): "Basic Info Correct?" — no when the applicant changed anything the
+        # executive captured (→ "Update Basic Info"), yes otherwise.
+        changed = any(
+            e["type"] == "field_written" and e.get("actor") == "user"
+            for e in runtime.services.audit.events(session.id)
+        )
+        record_flow_step(
+            runtime,
+            inquiry_id=origin,
+            node=FlowNode.BIC,
+            actor="user",
+            outcome="no" if changed else "yes",
+        )
+        if changed:
+            record_flow_step(runtime, inquiry_id=origin, node=FlowNode.UPDATE_BI, actor="user")
     card = build_basic_info_card(
         draft,
         runtime.master,

@@ -44,7 +44,9 @@ class SessionState(BaseModel):
     link_sent_to: str | None = None
     complete_nonce: str | None = None
     closed: str | None = None
-    existing_cr_choice: str | None = None
+    contact_check: str | None = None
+    contact_email: str | None = None
+    origin_id: str | None = None
     signatory_answer: str | None = None
     test_scenario: str | None = None
     script_step: int = 0

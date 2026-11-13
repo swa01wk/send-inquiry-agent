@@ -103,6 +103,7 @@ def test_reviewer_allowlist_has_no_case_mutators() -> None:
         "search_yardi_companies",
         "list_company_brands",
         "draft_reviewer_note",
+        "assess_forecasted_sales_need",
     }
 
 

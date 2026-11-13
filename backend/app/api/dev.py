@@ -124,15 +124,22 @@ async def get_flow(
         if session is not None:
             reference = session.draft.reference
             case = services.cases.get(reference) if reference else None
-            ids += [session.inquiry_id or session.id, session.id]
+            ids += [session.origin_id or "", session.inquiry_id or session.id, session.id]
     else:
         ids.append(case.session_id)
+        try:
+            # A call-centre inquiry (§3.4): its first steps are on the staff chat.
+            origin = (await store.get(case.session_id)).origin_id
+        except SessionNotFound:
+            origin = None
+        if origin:
+            ids.insert(0, origin)
     if case is not None:
         ids.append(case.id)
     if not ids:
         ids.append(id_)
     steps: list[dict[str, Any]] = []
-    for inquiry_id in dict.fromkeys(ids):
+    for inquiry_id in dict.fromkeys(i for i in ids if i):
         steps += flow_path(runtime, inquiry_id)
     steps.sort(key=lambda s: str(s.get("at") or ""))
     if not steps and case is None:

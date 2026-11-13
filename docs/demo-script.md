@@ -208,9 +208,9 @@ Use **http://localhost:5173/callcentre** or open staff from **/dev** (**Sami Al 
 3. When details are ready, use the **Send application link** card → check **/dev/inbox** for `complete_application` to `sara@beanstreet.example`.
 4. **Existing CR (§7.1.2 a2):** one message such as  
    `The caller gave CR 1010000000 for a specialty kiosk at Riyadh Mall A`  
-   → **existing CR choice** card:
-   - **Ask them to sign in** — choice stays visible; **Send application link** must **not** appear afterward.
-   - **Continue for them** — prefilled draft (e.g. **Oasis Coffee Company**, verified source) → send link → applicant completes as below.
+   → **Check contact** card: enter the caller's email.
+   - `layla.hassan@oasiscoffee.example` (has a login) — **Inform** card with the words to say → **Email sign-in link** → `sign_in_link` in **/dev/inbox**; **Send application link** must **not** appear.
+   - Any new email (e.g. `huda.saleh@oasiscoffee.example`) — captured fresh, nothing prefilled from the tenant record → send link → applicant completes as below.
 
 Handoff cases from self-service appear under **Open handoffs** on the same page; open one to continue the inquiry as staff.
 

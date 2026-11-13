@@ -158,3 +158,15 @@ flow_v2_intake:
   max_malls: 5
   pending_inquiry_ttl_minutes: 120
   terms_before_documents: true
+
+# Flow v2 (§3.11, E2): when the reviewer assistant suggests asking for Forecasted Sales Data.
+# Either condition is enough, and the RSM always decides. Default from P3 until Cenomi says.
+forecasted_sales:
+  suggest_when:
+    new_company: true      # no tenant record or Yardi company for this CR
+    area_min_sqm_at_least: 150   # the smallest area they asked for is at least this
+
+# Flow v2 (§3.4, E5): when the caller already has a Tenant Central login, the Inform card
+# offers an "Email sign-in link" button (template `sign_in_link`). Off → words to say only.
+callcentre:
+  offer_sign_in_link: true

@@ -30,7 +30,7 @@ class AgentState(TypedDict):
     channel: NotRequired[str]
     assisted: NotRequired[bool]
     tenant_id: NotRequired[str | None]
-    existing_cr_choice: NotRequired[str | None]
+    contact_check: NotRequired[str | None]
     signatory_answer: NotRequired[str | None]
     # Scripted e2e scenario name (AGENT_MODE=scripted); decides the CR question in tests.
     test_scenario: NotRequired[str | None]

@@ -46,7 +46,9 @@ def session_from_parts(
         link_sent_to=handle.link_sent_to,
         complete_nonce=handle.complete_nonce,
         closed=handle.closed,
-        existing_cr_choice=handle.existing_cr_choice,
+        contact_check=handle.contact_check,
+        contact_email=handle.contact_email,
+        origin_id=handle.origin_id,
         signatory_answer=handle.signatory_answer,
         _version=inquiry.version,
     )
@@ -66,8 +68,14 @@ def apply_session_to_inquiry(session: Session, inquiry: Inquiry) -> Inquiry:
         confirm_card_turns=dict(session.confirm_card_turns),
         turn_index=session.turn_index,
     )
-    if session.closed:
-        updated.status = updated.status  # caller sets redirected when needed
+    if (
+        session.closed
+        and session.closed.startswith("redirected")
+        and updated.status in (InquiryStatus.DRAFT, InquiryStatus.PENDING)
+        and not session.draft.reference
+    ):
+        # Sent to sign in (registered CR, or a call-centre caller with a login, §3.4).
+        updated.status = InquiryStatus.REDIRECTED
     return updated
 
 
@@ -83,7 +91,9 @@ def handle_from_session(session: Session) -> HandleState:
         link_sent_to=session.link_sent_to,
         complete_nonce=session.complete_nonce,
         closed=session.closed,
-        existing_cr_choice=session.existing_cr_choice,
+        contact_check=session.contact_check,
+        contact_email=session.contact_email,
+        origin_id=session.origin_id,
         signatory_answer=session.signatory_answer,
         test_scenario=session.test_scenario,
         script_step=session.script_step,

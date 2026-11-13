@@ -236,7 +236,7 @@ async def run_turn(
     state["test_scenario"] = session.test_scenario
     state["assisted"] = session.assisted
     state["tenant_id"] = session.tenant_id
-    state["existing_cr_choice"] = session.existing_cr_choice
+    state["contact_check"] = session.contact_check
     state["signatory_answer"] = session.signatory_answer
     turn_start_draft = session.draft.model_copy(deep=True)
 

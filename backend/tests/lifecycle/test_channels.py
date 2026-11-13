@@ -219,36 +219,122 @@ async def test_application_link_hands_the_inquiry_to_the_applicant(life) -> None
     ]
 
 
-async def test_sign_in_choice_blocks_the_application_link(life) -> None:
+LAYLA = "layla.hassan@oasiscoffee.example"  # has a Tenant Central login (mock identity)
+NEW_CONTACT = "huda.saleh@oasiscoffee.example"
+
+
+def _flow_path(app: Any, *ids: str) -> list[str]:
+    path: list[str] = []
+    for inquiry_id in ids:
+        path += [
+            e["payload"]["node"]
+            for e in app.state.services.audit.events(inquiry_id)
+            if e["type"] == "flow_step"
+        ]
+    return path
+
+
+async def test_existing_contact_is_informed_and_gets_a_sign_in_link(life) -> None:
+    """CC1 (flow v2 §3.4, V3, E5): existing CR, the caller has a login → Inform, no
+    inquiry; Email sign-in link sends `sign_in_link`."""
     client, app = life
     session_id = await new_assisted(client, scenario="c1-existing-cr-sign-in")
-    await chat_message(
-        client,
-        session_id,
-        "The caller gave CR 1010000000 for a specialty kiosk at Riyadh Mall A",
-    )
-    events = await chat_action(client, session_id, "existing_cr_choice", {"choice": "sign_in"})
-    assert ui_cards(events, "send_link") == []
-    session = await app.state.session_store.get(session_id)
-    assert session.existing_cr_choice == "sign_in"
-    assert session.closed == "redirected_to_sign_in"
-
-
-async def test_assisted_e2e_script_existing_cr_then_send_link(life) -> None:
-    client, app = life
-    session_id = await new_assisted(client, scenario="c1-existing-cr")
     events = await chat_message(
         client,
         session_id,
         "The caller gave CR 1010000000 for a specialty kiosk at Riyadh Mall A",
     )
-    choice = ui_cards(events, "existing_cr_choice")[0]["payload"]
-    assert choice["company_name"] == "Oasis Coffee Company"
-    assert {o["value"] for o in choice["options"]} == {"sign_in", "continue"}
-    continued = await chat_action(client, session_id, "existing_cr_choice", {"choice": "continue"})
-    assert ui_cards(continued, "existing_cr_choice")[0]["payload"]["chosen"] == "continue"
-    link_card = ui_cards(continued, "send_link")[-1]["payload"]
+    check = ui_cards(events, "contact_check")[0]["payload"]
+    assert check["state"] == "open" and check["company_name"] == "Oasis Coffee Company"
+
+    events = await chat_action(client, session_id, "contact_check", {"email": LAYLA})
+    assert ui_cards(events, "contact_check")[-1]["payload"]["state"] == "existing"
+    inform = ui_cards(events, "inform_tenant")[-1]["payload"]
+    assert "Leasing Opportunities" in inform["say"] and inform["sent"] is False
+    assert LAYLA not in str(inform)
+    session = await app.state.session_store.get(session_id)
+    assert (session.contact_check, session.closed) == ("inform", "redirected_existing_contact")
+    # M16: nothing from the tenant record.
+    assert session.draft.fields[FieldKey.COMPANY_NAME].value is None
+
+    sent = await chat_action(client, session_id, "send_sign_in_link")
+    assert ui_cards(sent, "inform_tenant")[-1]["payload"]["sent"] is True
+    mail = outbox(app, LAYLA, "sign_in_link")
+    assert mail and mail[0]["links"][0].endswith("/tenant")
+
+    blocked = await chat_action(client, session_id, "send_application_link")
+    assert ui_cards(blocked, "send_link") == []
+    assert outbox(app, template="complete_application") == []
+    reasons = [
+        e["payload"].get("reason")
+        for e in app.state.services.audit.events(session_id)
+        if e["type"] == "inquiry_redirected"
+    ]
+    assert reasons == ["existing_contact"]
+    path = _flow_path(app, session_id)
+    for node in ("raise_cc", "chk_cc", "db", "crx", "pcx", "inform"):
+        assert node in path
+    assert path.index("pcx") < path.index("inform")
+
+
+async def test_sign_in_link_button_follows_policy(life) -> None:
+    """E5 switch `callcentre.offer_sign_in_link`: off → the words to say only."""
+    client, app = life
+    off = get_policy().with_changes(callcentre={"offer_sign_in_link": False})
+    with use_policy(off):
+        session_id = await new_assisted(client, scenario="c1-existing-cr-sign-in")
+        await chat_message(client, session_id, "CR 1010000000")
+        events = await chat_action(client, session_id, "contact_check", {"email": LAYLA})
+        inform = ui_cards(events, "inform_tenant")[-1]["payload"]
+        assert inform["offer_sign_in_link"] is False and inform["say"]
+        sent = await chat_action(client, session_id, "send_sign_in_link")
+        assert ui_cards(sent, "inform_tenant") == []
+        assert outbox(app, LAYLA, "sign_in_link") == []
+
+
+async def test_new_contact_on_an_existing_cr_is_captured_fresh(life) -> None:
+    """CC2 (§3.4, M16): existing CR, a new contact → fresh capture, then the link."""
+    client, app = life
+    session_id = await new_assisted(client, scenario="c1-existing-cr")
+    await chat_message(
+        client,
+        session_id,
+        "The caller gave CR 1010000000 for a specialty kiosk at Riyadh Mall A",
+    )
+    events = await chat_action(client, session_id, "contact_check", {"email": NEW_CONTACT})
+    assert ui_cards(events, "contact_check")[-1]["payload"]["state"] == "new"
+    assert ui_cards(events, "inform_tenant") == []
+    session = await app.state.session_store.get(session_id)
+    assert session.contact_check == "new_contact" and session.closed is None
+    assert session.draft.cr_status == "new"
+    assert session.draft.fields[FieldKey.EMAIL].value == NEW_CONTACT
+
+    events = await chat_message(
+        client,
+        session_id,
+        "Oasis Coffee Company, King Fahd Road Riyadh, brand Oasis Coffee, Huda Saleh, 0507654321",
+    )
+    link_card = ui_cards(events, "send_link")[-1]["payload"]
     assert link_card["can_send"] is True
+    session = await app.state.session_store.get(session_id)
+    company = session.draft.fields[FieldKey.COMPANY_NAME]
+    assert company.source == Source.STAFF  # typed by the executive, not from Yardi
+
+    await chat_action(client, session_id, "send_application_link")
+    path = _flow_path(app, session_id)
+    assert "pcx" in path and "inform" not in path
+    assert path.index("exec") < path.index("email_link")
+
+
+async def test_contact_check_needs_a_valid_email(life) -> None:
+    client, app = life
+    session_id = await new_assisted(client, scenario="c1-existing-cr")
+    await chat_message(client, session_id, "CR 1010000000")
+    events = await chat_action(client, session_id, "contact_check", {"email": "not-an-email"})
+    card = ui_cards(events, "contact_check")[-1]["payload"]
+    assert card["state"] == "open" and card["error"]
+    session = await app.state.session_store.get(session_id)
+    assert session.contact_check is None
 
 
 async def test_call_centre_e2e_script_reaches_send_link(life) -> None:
@@ -325,54 +411,15 @@ async def test_link_needs_the_basic_info(life) -> None:
     assert outbox(app, template="complete_application") == []
 
 
-async def test_existing_cr_continue_for_them_loads_the_tenant_record(life) -> None:
-    client, app = life
-    session_id = await new_assisted(client)
-    session = await app.state.session_store.get(session_id)
-    session.draft.fields[FieldKey.CR_NUMBER].value = "1010000000"
-    session.draft.cr_status = "existing"
-    events = await chat_action(client, session_id, "existing_cr_choice", {"choice": "continue"})
-    assert ui_cards(events, "existing_cr_choice")[0]["payload"]["chosen"] == "continue"
-    draft = session.draft
-    assert draft.cr_status == "tenant" and session.tenant_id == OASIS
-    company = draft.fields[FieldKey.COMPANY_NAME]
-    assert (company.value, company.source, company.confirmed) == (
-        "Oasis Coffee Company",
-        Source.VERIFIED,
-        False,
-    )
-    assert draft.fields[FieldKey.BRAND_NAME_EN].value == "Oasis Coffee"
-    assert draft.documents["company_profile"].on_file is True
-    stored = app.state.services.storage.path_for(
-        [session_id], draft.documents["company_profile"].file_id
-    )
-    assert stored is not None and stored.read_bytes().startswith(b"%PDF")
-
-
-async def test_existing_cr_ask_them_to_sign_in_closes_the_chat(life) -> None:
-    client, app = life
-    session_id = await new_assisted(client)
-    session = await app.state.session_store.get(session_id)
-    session.draft.fields[FieldKey.CR_NUMBER].value = "1010000000"
-    session.draft.cr_status = "existing"
-    await chat_action(client, session_id, "existing_cr_choice", {"choice": "sign_in"})
-    assert session.closed == "redirected_to_sign_in"
-    reasons = [
-        e["payload"].get("reason")
-        for e in app.state.services.audit.events(session_id)
-        if e["type"] == "inquiry_redirected"
-    ]
-    assert reasons == ["sign_in"]
-
-
-async def test_verify_cr_in_assisted_mode_offers_the_choice(tmp_path: Path) -> None:
-    steps = [tool_call("verify_cr", {"cr_number": "1010000000"}, "v1"), {"content": "Choose."}]
+async def test_verify_cr_in_assisted_mode_shows_the_contact_check(tmp_path: Path) -> None:
+    steps = [tool_call("verify_cr", {"cr_number": "1010000000"}, "v1"), {"content": "Email?"}]
     async with channel_app(tmp_path, steps) as (client, _app):
         session_id = await new_assisted(client)
         events = await chat_message(client, session_id, "CR 1010000000")
-        card = ui_cards(events, "existing_cr_choice")[0]["payload"]
+        card = ui_cards(events, "contact_check")[0]["payload"]
         assert card["company_name"] == "Oasis Coffee Company"
-        assert {o["value"] for o in card["options"]} == {"sign_in", "continue"}
+        assert card["state"] == "open"
+        assert ui_cards(events, "basic_info_review") == []
 
 
 async def test_handoff_cases_open_the_same_inquiry(life) -> None:
@@ -553,3 +600,38 @@ def test_prefill_needs_no_agent() -> None:
     draft, written = prefill_from_tenant(new_inquiry_draft(), oasis, load_master_data())
     assert draft.fields[FieldKey.MOBILE].value == "+966551110001"
     assert {"company_name", "brand_name_ar", "sales_category", "email"} <= set(written)
+
+
+async def test_call_centre_inquiry_reads_as_one_chart_path(life) -> None:
+    """CC3 (§3.4): exec → email_link → open_form → bic → upload_submit → ref2, with the
+    applicant's steps recorded on the staff chat's id."""
+    client, app = life
+    session_id, session = await assisted_ready(client, app)
+    email = str(session.draft.fields[FieldKey.EMAIL].value)
+    await chat_action(client, session_id, "send_application_link")
+    link = outbox(app, email, "complete_application")[0]["links"][0]
+    opened = await client.post("/api/verifications/email", json={"token": token_from(link)})
+    applicant_id = opened.json()["session_id"]
+    applicant = await app.state.session_store.get(applicant_id)
+    assert applicant.origin_id == session_id
+
+    await chat_action(client, applicant_id, "proceed_basic_info")
+    draft = ready_to_submit_draft(app)
+    applicant.draft = draft
+    events = await chat_action(client, applicant_id, "accept_and_submit", {"terms_accepted": True})
+    reference = ui_cards(events, "success")[0]["payload"]["reference"]
+
+    staff_path = _flow_path(app, session_id)
+    assert (
+        staff_path.index("exec")
+        < staff_path.index("email_link")
+        < staff_path.index("open_form")
+        < staff_path.index("bic")
+    )
+    case_path = _flow_path(app, reference)
+    assert "upload_submit" in case_path and "ref2" in case_path
+    assert "complete1" not in case_path
+    flow = await client.get(f"/api/dev/flow/{reference}")
+    if flow.status_code == 200:  # dev tools on in this app
+        path = flow.json()["path"]
+        assert path.index("email_link") < path.index("upload_submit")
