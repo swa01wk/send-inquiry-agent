@@ -635,3 +635,31 @@ async def test_call_centre_inquiry_reads_as_one_chart_path(life) -> None:
     if flow.status_code == 200:  # dev tools on in this app
         path = flow.json()["path"]
         assert path.index("email_link") < path.index("upload_submit")
+
+
+async def test_applicant_correction_in_chat_reads_as_update_basic_info(life) -> None:
+    """CC3 (F4 evals): a correction typed in the applicant's own words (written by the agent,
+    source user) is still a change → "Basic Info Correct?" no → "Update Basic Info"."""
+    client, app = life
+    session_id, session = await assisted_ready(client, app)
+    email = str(session.draft.fields[FieldKey.EMAIL].value)
+    await chat_action(client, session_id, "send_application_link")
+    link = outbox(app, email, "complete_application")[0]["links"][0]
+    opened = await client.post("/api/verifications/email", json={"token": token_from(link)})
+    applicant_id = opened.json()["session_id"]
+    app.state.services.audit.record(
+        applicant_id,
+        "field_written",
+        actor="agent",
+        payload={"key": "last_name", "source": "user", "confirmed": False, "display": "Al-Ali"},
+    )
+
+    await chat_action(client, applicant_id, "proceed_basic_info")
+
+    steps = [
+        e["payload"]
+        for e in app.state.services.audit.events(session_id)
+        if e["type"] == "flow_step" and e["payload"]["node"] in ("bic", "update_bi")
+    ]
+    assert [s["node"] for s in steps] == ["bic", "update_bi"]
+    assert steps[0].get("outcome") == "no"

@@ -48,6 +48,7 @@ from app.agent.invariants import (
     ui_evidence_from_audit,
 )
 from app.agent.model import get_chat_model
+from app.agent.reviewer_graph import build_reviewer_graph
 from app.config import get_settings
 from app.domain.document_checks import document_mismatches
 from app.domain.draft_ops import add_document, new_inquiry_draft, write_fields
@@ -2748,6 +2749,7 @@ async def main() -> int:
     application.state.graph = build_graph(model_factory=factory)
     application.state.case_graph = build_case_graph(model_factory=factory)
     application.state.assisted_graph = build_assisted_graph(model_factory=factory)
+    application.state.reviewer_graph = build_reviewer_graph(model_factory=factory)
 
     group_filter = os.environ.get("GROUP", "").strip().lower()
     scenarios = all_scenarios()

@@ -1169,6 +1169,28 @@ def _section_order_ok(
 _SELL_ASK_RE = re.compile(r"\bwhat\b[^.?!]{0,40}\bsell\b[^.?!]*\?", re.IGNORECASE)
 
 
+_SENTENCE_RE = re.compile(r"[^.!?؟]+[.!?؟]?")
+_ASK_VERB_RE = re.compile(
+    r"\b(share|tell me|send me|give me|provide|type|enter|what(?:'s| is| are))\b", re.IGNORECASE
+)
+_POINTS_AT_CARD_RE = re.compile(r"\b(card|shows|noted|saved|confirmed|got)\b", re.IGNORECASE)
+
+
+def _asking_sentences(text: str) -> list[str]:
+    """The sentences that ask for something: a question, or "please share / tell me …".
+    "The card now shows Café for your sales category" or "check the card for your brand
+    name" mention a field without asking for it (F4 evals: S1 flagged both)."""
+    out = []
+    for sentence in _SENTENCE_RE.findall(text):
+        sentence = sentence.strip()
+        if not sentence:
+            continue
+        question = sentence.endswith(("?", "؟"))
+        if question or (_ASK_VERB_RE.search(sentence) and not _POINTS_AT_CARD_RE.search(sentence)):
+            out.append(sentence)
+    return out
+
+
 def _unnecessary_zero(
     _s: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
 ) -> list[tuple[str, bool]]:
@@ -1193,8 +1215,9 @@ def _unnecessary_zero(
         text = turn.assistant
         if not text.strip():
             continue
+        asking = " ".join(_asking_sentences(text))
         for pattern, key in el._FIELD_ASK_PATTERNS:
-            if key.value in filled and pattern.search(text):
+            if key.value in filled and pattern.search(asking):
                 repeats.append(f"{key.value} at {turn.user[:30]!r}")
         if FieldKey.SALES_CATEGORY.value in filled and _SELL_ASK_RE.search(text):
             repeats.append(f"sales_category at {turn.user[:30]!r}")
@@ -1375,8 +1398,10 @@ def _no_inquiry_created(
 
 
 _DOC_WORDS = ("document", "upload", "profile", "pdf", "attach")
+# "The email on file" is the address the executive just checked, not a record lookup.
 _PREFILL_CLAIMS = (
-    "on file",
+    "details on file",
+    "company on file",
     "from their record",
     "from our record",
     "already have their",
@@ -1421,7 +1446,6 @@ def _cc_words_for_executive(
             "no verification, code or document words",
             not any(el._assisted_forbidden_phrase(x) for x in staff),
         ),
-        ("refers to the caller", any("caller" in x.lower() for x in staff)),
     ]
 
 
