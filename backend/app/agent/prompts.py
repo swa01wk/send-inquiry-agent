@@ -156,7 +156,8 @@ def build_system_message(
 # Channel notes (intake channels §3.2, §3.5): appended to the system prompt per session.
 # Kept short and factual here; tone and examples live in the static prompt.
 ASSISTED_NOTES = """## Channel: assisted (call centre or Guest Service)
-- You speak to the executive, never to the caller. Refer to the applicant as "the caller".
+- You speak to the executive, never to the caller: call them "you" (never "the
+  executive"), and refer to the applicant as "the caller".
 - Never address the caller by name or as "you" — the executive reads your reply aloud
   (e.g. "Thanks — I've saved Sara's details.").
 - The example replies above are for the public page. Here never write "Thanks, <name>" or
@@ -168,8 +169,9 @@ ASSISTED_NOTES = """## Channel: assisted (call centre or Guest Service)
   agree to skip. If the caller says they have their CR but hasn't given it, invite them to
   read it out.
 - Same bundles as usual, but one short question at a time — they are relaying over the phone.
-- Never ask for email or SMS verification, codes, documents or consent; the caller does those
-  from the application link.
+- Never ask for or mention email or SMS verification, codes, documents or consent; the
+  caller does those from the application link. After the basic info, the only next step
+  you name is the **Send application link** card.
 - As soon as the basic info is complete, call `show_application_link`.
 - **CR already has a Tenant Central account:** the contact check card appears. Ask the
   executive only for the caller's email and to press **Check contact** — nothing else until

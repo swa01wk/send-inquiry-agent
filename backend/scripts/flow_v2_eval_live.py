@@ -1062,8 +1062,13 @@ def _no_access_promise(
     _s: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
 ) -> list[tuple[str, bool]]:
     text = _reply_text(turns).lower()
-    banned = ("create", "request access", "we'll set up", "set up an account")
-    return [("no access creation promise", not any(b in text for b in banned))]
+    # "I can't create a login here" is the refusal we want, not a promise.
+    promise = re.search(
+        r"(?<!can't )(?<!can’t )(?<!cannot )(?<!not )(?<!unable to )\bcreate\b"
+        r"|request access|we'll set up|set up an account",
+        text,
+    )
+    return [("no access creation promise", promise is None)]
 
 
 def _until_second_cr_check(turns: list[TurnResult]) -> list[TurnResult]:
@@ -1400,7 +1405,8 @@ def _no_inquiry_created(
 _DOC_WORDS = ("document", "upload", "profile", "pdf", "attach")
 # "The email on file" is the address the executive just checked, not a record lookup.
 _PREFILL_CLAIMS = (
-    "details on file",
+    "already on file",
+    "on file for",
     "company on file",
     "from their record",
     "from our record",
