@@ -141,6 +141,31 @@ def current_section(draft: InquiryDraft) -> IntakeSection:
     return IntakeSection.REVIEW
 
 
+def ask_section(draft: InquiryDraft) -> IntakeSection:
+    """The section the agent should be asking about. Like `current_section`, except that a
+    value shown for confirmation counts as given: the user confirms it on the card while
+    the agent moves on (system prompt, "confirm by summarising")."""
+    for section in SECTION_ORDER:
+        if section is IntakeSection.UNIT_AND_CATEGORY:
+            if all(_has_value(draft, k) for k in UNIT_AND_CATEGORY_KEYS):
+                continue
+            return section
+        if section is IntakeSection.BASIC_INFO:
+            phones = (FieldKey.MOBILE, FieldKey.LANDLINE)
+            if all(_has_value(draft, k) for k in BASIC_INFO_KEYS) and any(
+                _has_value(draft, k) for k in phones
+            ):
+                continue
+            return section
+        if section is IntakeSection.PROPERTY_DETAILS:
+            if _has_value(draft, FieldKey.MALLS):
+                continue
+            return section
+        if not section_done(draft, section):
+            return section
+    return IntakeSection.REVIEW
+
+
 def section_rank(section: IntakeSection) -> int:
     return SECTION_ORDER.index(section)
 

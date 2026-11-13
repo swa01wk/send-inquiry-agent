@@ -902,7 +902,9 @@ def _check_flow_v2_s23(
         for phrase in (
             "still needed",
             "authorized signatory",
+            "authorised signatory",
             "billing contact",
+            "missing contacts",
             "before the final approve lead",
         )
     )
@@ -1444,7 +1446,8 @@ def _check_two_malls(
     last = turns[-1].assistant.lower() if turns else ""
     return [
         ("at most one mall saved", len(malls) <= 1),
-        ("asks which mall to start with", "which" in last),
+        # "Which one first?" or "start with just one: A or B" — both ask them to pick.
+        ("asks which mall to start with", "which" in last or ("one" in last and " or " in last)),
     ]
 
 

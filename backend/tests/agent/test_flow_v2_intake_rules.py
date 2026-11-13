@@ -204,3 +204,38 @@ def test_a_confirmed_category_is_not_asked_again() -> None:
             state, draft, "[ui_event] confirmed", "What do you sell, just to make sure?"
         )
     assert note is not None and "done_section_ask" in note
+
+
+def test_asking_the_next_section_while_a_value_awaits_its_card_is_fine() -> None:
+    from app.agent.guard import _later_section_ask_note
+    from app.agent.state import initial_agent_state
+    from app.domain.sections import IntakeSection, ask_section, current_section
+
+    master = load_master_data()
+    draft = new_inquiry_draft()
+    draft.intake_flow = "v2"
+    draft.cr_status = "skipped"
+    with intake_scope("v2"):
+        draft, _, _ = write_fields(
+            draft,
+            [("unit_type", "store", Source.USER), ("sales_category", "fnb_cafe", Source.DERIVED)],
+            master=master,
+        )
+        assert current_section(draft) is IntakeSection.UNIT_AND_CATEGORY
+        assert ask_section(draft) is IntakeSection.BASIC_INFO
+        state = initial_agent_state(session_id="s1", draft=draft, phase="collecting")
+        reply = "Check the card for Café. Who should our leasing team contact, and your email?"
+        assert _later_section_ask_note(state, draft, "we sell coffee", reply) is None
+
+
+def test_v2_arabic_brand_is_proposed_when_missing() -> None:
+    from app.agent.guard import _v2_arabic_brand_note
+    from app.agent.state import initial_agent_state
+
+    draft = _brand_profile_draft("v2")
+    state = initial_agent_state(session_id="s1", draft=draft, phase="collecting")
+    note = _v2_arabic_brand_note(state, draft, [], "Please send your name, email and phone.")
+    assert note is not None and "arabic_brand_missing" in note
+    assert _v2_arabic_brand_note(state, draft, [], "Check «بين ستريت» on the card.") is None
+    v1 = _brand_profile_draft("v1")
+    assert _v2_arabic_brand_note(state, v1, [], "Please send your name.") is None

@@ -185,6 +185,12 @@ def next_bundle_hint(
                 f"Next question ({bundle.name}): ask for {', '.join(asks)} together, "
                 "in one natural question."
             )
+            if assisted and bundle is CONTACT:
+                # Zara Home (call centre): the contact is the last of the basic info, so the
+                # link card goes out in the same turn as the contact, not after a retry.
+                lines.append(
+                    "When the contact is in, call show_application_link in that same turn."
+                )
         else:
             lines.append(
                 f"Next ({bundle.name}): infer the remaining values "

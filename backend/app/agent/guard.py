@@ -51,6 +51,7 @@ from app.domain.rules import compute_phase, contact_verified, remaining_steps
 from app.domain.sections import (
     SECTION_LABELS,
     IntakeSection,
+    ask_section,
     current_section,
     section_done,
     section_rank,
@@ -382,7 +383,9 @@ def _later_section_ask_note(
     earlier one is open → back to the agent once. Not when the user raised that section."""
     if draft.intake_flow != "v2" or state.get("assisted") or not ai_text:
         return None
-    current = current_section(draft)
+    # Where the agent should be asking: a value awaiting confirmation on its card counts as
+    # given, so "check the card, and now your contact details" is not a later-section ask.
+    current = ask_section(draft)
     if current not in (
         IntakeSection.COMPANY_REGISTRATION,
         IntakeSection.UNIT_AND_CATEGORY,
@@ -415,6 +418,46 @@ def _later_section_ask_note(
             f"Don't ask about it again; ask about {SECTION_LABELS[current]}. Reply again."
         )
     return None
+
+
+_ARABIC_LETTERS_RE = re.compile(r"[\u0600-\u06FF]")
+
+
+def _update_draft_wrote(turn_messages: list[BaseMessage], key: FieldKey) -> bool:
+    for message in turn_messages:
+        if not isinstance(message, AIMessage):
+            continue
+        for call in message.tool_calls or []:
+            if call.get("name") != "update_draft":
+                continue
+            fields = (call.get("args") or {}).get("fields") or []
+            if any(isinstance(f, dict) and f.get("key") == key.value for f in fields):
+                return True
+    return False
+
+
+def _v2_arabic_brand_note(
+    state: AgentState, draft: InquiryDraft, turn_messages: list[BaseMessage], ai_text: str
+) -> str | None:
+    """Flow v2 (S13): the English brand is in (typed or from the Brand Profile) but not the
+    Arabic one, and this reply neither proposes it nor saves it. Basic Info can't finish
+    without it, so propose it now rather than waiting for them to type it."""
+    if draft.intake_flow != "v2" or state.get("assisted") or not ai_text:
+        return None
+    if not _field_has_value(draft, FieldKey.BRAND_NAME_EN) or _field_has_value(
+        draft, FieldKey.BRAND_NAME_AR
+    ):
+        return None
+    if _update_draft_wrote(turn_messages, FieldKey.BRAND_NAME_AR):
+        return None
+    if _ARABIC_LETTERS_RE.search(ai_text):
+        return None
+    return (
+        f"{GUARD_PREFIX} arabic_brand_missing: the Arabic brand name is still empty. In this "
+        "reply, propose it yourself — update_draft with brand_name_ar (source derived, "
+        "evidence = the English brand name) — and ask them to check it on the card. "
+        "Then carry on as before."
+    )
 
 
 def _v2_missing_verification_note(
@@ -824,6 +867,7 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
                     phase,
                 )
                 or _later_section_ask_note(state, draft, user_text, ai_text)
+                or _v2_arabic_brand_note(state, draft, turn_messages, ai_text)
                 or (
                     None
                     if state.get("assisted")  # no verification in assisted mode
