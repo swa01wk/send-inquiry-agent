@@ -1,0 +1,805 @@
+{
+  "timestamp": "20261113T211330Z",
+  "provider": "azure",
+  "model": "gpt-5.4-mini",
+  "group": "channels",
+  "eval_repeats": 3,
+  "eval_tolerance": 5.0,
+  "baseline": null,
+  "baseline_check": "skipped (group filter); every scenario must pass",
+  "score_percent": 100.0,
+  "passed": true,
+  "invariant_failures": [],
+  "scenarios": [
+    {
+      "name": "1 happy path CR 1010123456 (call centre)",
+      "group": "channels",
+      "passed": true,
+      "passes": 3,
+      "runs": [
+        {
+          "run": 1,
+          "passed": true,
+          "checks": [
+            [
+              "company prefilled from CR",
+              true
+            ],
+            [
+              "company confirmed",
+              true
+            ],
+            [
+              "\u22646 user turns",
+              true
+            ],
+            [
+              "no reference without submit",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "The caller's CR number is 1010123456.",
+              "assistant": "The company details are in from the CR, and the card should show them for confirmation. Please check those details, then send the brand and space information next.",
+              "retractions": 0
+            },
+            {
+              "user": "Yes, that's correct.",
+              "assistant": "Thanks \u2014 the company details are confirmed. What\u2019s the brand name, which mall are you looking at, and what are you planning to open there?All set on those company details. What\u2019s the brand name, which mall are you looking at, and what are you planning to open there?",
+              "retractions": 0
+            },
+            {
+              "user": "Bean Street specialty coffee kiosk at Riyadh Mall A. Sara Ali, sara@beanstreet.example, +966501234567.",
+              "assistant": "The application link card is ready for the executive to send to the caller\u2019s email. Please press Send application link on the card, then the caller can continue from there.",
+              "retractions": 1
+            },
+            {
+              "user": "Yes, all correct.",
+              "assistant": "Thanks \u2014 the brand and space details are confirmed. The application link card is ready, and the executive can use it to continue.All set. The application link card is still ready for the executive to use.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "checks": [
+            [
+              "company prefilled from CR",
+              true
+            ],
+            [
+              "company confirmed",
+              true
+            ],
+            [
+              "\u22646 user turns",
+              true
+            ],
+            [
+              "no reference without submit",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "The caller's CR number is 1010123456.",
+              "assistant": "Thanks \u2014 the company details are ready on the card for confirmation. Please check the company name and address there, then we can move on to the brand and space.",
+              "retractions": 0
+            },
+            {
+              "user": "Yes, that's correct.",
+              "assistant": "Thanks. Tell me about the brand and what you'd like to open: what do you sell, which city or mall, and roughly how much space or budget?All set on that part. Tell me about the brand and what you'd like to open: what do you sell, which city or mall, and roughly how much space or budget?",
+              "retractions": 0
+            },
+            {
+              "user": "Bean Street specialty coffee kiosk at Riyadh Mall A. Sara Ali, sara@beanstreet.example, +966501234567.",
+              "assistant": "The application link card is open now. Please press Send application link there, then continue with the next steps on the card.",
+              "retractions": 1
+            },
+            {
+              "user": "Yes, all correct.",
+              "assistant": "Thanks \u2014 the card shows the brand and space details as confirmed now. Please press Send application link on the card if that hasn\u2019t been done yet, and keep going there.All set there. Please continue on the card to send the application link if it\u2019s still open.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 3,
+          "passed": true,
+          "checks": [
+            [
+              "company prefilled from CR",
+              true
+            ],
+            [
+              "company confirmed",
+              true
+            ],
+            [
+              "\u22646 user turns",
+              true
+            ],
+            [
+              "no reference without submit",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "The caller's CR number is 1010123456.",
+              "assistant": "Got it \u2014 the company details are prefilled on the card now. Please check the company name and address there, then tell me the brand and what you\u2019d like to open, along with the mall or city.",
+              "retractions": 0
+            },
+            {
+              "user": "Yes, that's correct.",
+              "assistant": "Thanks \u2014 the company details are confirmed. Tell me about your brand and what you\u2019d like to open, plus the mall or city, and if you have a rough size or budget you can add that too.Understood \u2014 we\u2019re past that card now. Please send the brand and space details next: what you sell, the mall or city, and any size or budget if you\u2019d like to include it.",
+              "retractions": 0
+            },
+            {
+              "user": "Bean Street specialty coffee kiosk at Riyadh Mall A. Sara Ali, sara@beanstreet.example, +966501234567.",
+              "assistant": "Thanks \u2014 the brand and contact details are in place. The application link card is ready for the executive to send, and the basic info looks complete.",
+              "retractions": 0
+            },
+            {
+              "user": "Yes, all correct.",
+              "assistant": "Confirmed on the card. The application link is still ready for the executive to send.All set on that card. The application link is still ready whenever the executive wants to send it.",
+              "retractions": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "CR company differs from brand (Zara Home) (call centre)",
+      "group": "channels",
+      "passed": true,
+      "passes": 2,
+      "runs": [
+        {
+          "run": 1,
+          "passed": true,
+          "checks": [
+            [
+              "company from CR is Fawaz",
+              true
+            ],
+            [
+              "brand_name_en is Zara Home",
+              true
+            ],
+            [
+              "malls is Mall of Arabia",
+              true
+            ],
+            [
+              "no retractions",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "The caller's CR number is 1010222222.",
+              "assistant": "\u062a\u0645. \u0623\u0631\u062c\u0648 \u062a\u0623\u0643\u064a\u062f \u0627\u0633\u0645 \u0627\u0644\u0634\u0631\u0643\u0629 \u0648\u0627\u0644\u0639\u0646\u0648\u0627\u0646 \u0639\u0644\u0649 \u0627\u0644\u0628\u0637\u0627\u0642\u0629\u060c \u062b\u0645 \u0646\u0643\u0645\u0644 \u0644\u0628\u0627\u0642\u064a \u0627\u0644\u062a\u0641\u0627\u0635\u064a\u0644.",
+              "retractions": 0
+            },
+            {
+              "user": "Yes, company details are correct.",
+              "assistant": "\u062a\u0645 \u062a\u0623\u0643\u064a\u062f \u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u0634\u0631\u0643\u0629. \u0627\u0644\u0622\u0646 \u0623\u062d\u062a\u0627\u062c \u0627\u0633\u0645 \u0627\u0644\u0639\u0644\u0627\u0645\u0629 \u0627\u0644\u062a\u062c\u0627\u0631\u064a\u0629 \u0648\u0645\u0627 \u0627\u0644\u0630\u064a \u064a\u0628\u064a\u0639\u0648\u0646\u0647\u060c \u0648\u0627\u0644\u0645\u0648\u0644 \u0627\u0644\u0630\u064a \u062a\u0631\u064a\u062f\u0648\u0646 \u0627\u0644\u062a\u0642\u062f\u064a\u0645 \u0639\u0644\u064a\u0647\u060c \u0648\u0645\u0639\u0647 \u0646\u0648\u0639 \u0627\u0644\u0645\u0633\u0627\u062d\u0629 \u0628\u0634\u0643\u0644 \u0645\u062e\u062a\u0635\u0631.\u062a\u0645\u0627\u0645\u060c \u0646\u0643\u0645\u0644 \u0645\u0646 \u0627\u0644\u0646\u0642\u0637\u0629 \u0627\u0644\u062a\u0627\u0644\u064a\u0629. \u0623\u0631\u0633\u0644 \u0627\u0633\u0645 \u0627\u0644\u0639\u0644\u0627\u0645\u0629 \u0627\u0644\u062a\u062c\u0627\u0631\u064a\u0629\u060c \u0648\u0645\u0627 \u0627\u0644\u0630\u064a \u064a\u0628\u064a\u0639\u0648\u0646\u0647\u060c \u0648\u0627\u0644\u0645\u0648\u0644 \u0627\u0644\u0645\u0637\u0644\u0648\u0628\u060c \u0648\u0646\u0648\u0639 \u0627\u0644\u0645\u0633\u0627\u062d\u0629 \u0641\u064a \u0631\u0633\u0627\u0644\u0629 \u0648\u0627\u062d\u062f\u0629 \u0625\u0630\u0627 \u0623\u0645\u0643\u0646.",
+              "retractions": 0
+            },
+            {
+              "user": "They're opening a Zara Home store at Mall of Arabia.",
+              "assistant": "\u0648\u0635\u0644\u062a\u0646\u064a \u062a\u0641\u0627\u0635\u064a\u0644 \u0627\u0644\u0632\u0627\u0631\u0627 \u0647\u0648\u0645 \u0648\u0627\u0644\u0645\u0648\u0644. \u0628\u0642\u064a \u0641\u0642\u0637 \u0646\u0624\u0643\u062f \u0646\u0648\u0639 \u0627\u0644\u0645\u0633\u0627\u062d\u0629 \u0625\u0646 \u0643\u0627\u0646 \u0639\u0646\u062f\u0647\u0645 \u062a\u0642\u062f\u064a\u0631\u060c \u0648\u0628\u0639\u062f\u064a\u0646 \u0623\u062d\u062a\u0627\u062c \u0627\u0633\u0645 \u0627\u0644\u0634\u062e\u0635 \u0644\u0644\u062a\u0648\u0627\u0635\u0644 \u0645\u0639\u0647\u060c \u0627\u0644\u0625\u064a\u0645\u064a\u0644\u060c \u0648\u0631\u0642\u0645 \u0627\u0644\u062c\u0648\u0627\u0644 \u0641\u064a \u0646\u0641\u0633 \u0627\u0644\u0631\u0633\u0627\u0644\u0629.",
+              "retractions": 0
+            },
+            {
+              "user": "Sara Ali, sara@zarahome.example, 0501234567",
+              "assistant": "\u062a\u0645 \u062d\u0641\u0638 \u0627\u0644\u0627\u0633\u0645 \u0648\u0627\u0644\u0625\u064a\u0645\u064a\u0644 \u0648\u0627\u0644\u062c\u0648\u0627\u0644. \u0628\u0637\u0627\u0642\u0629 \u0625\u0631\u0633\u0627\u0644 \u0631\u0627\u0628\u0637 \u0627\u0644\u0637\u0644\u0628 \u0638\u0627\u0647\u0631\u0629 \u0627\u0644\u0622\u0646\u060c \u0648\u064a\u0643\u0641\u064a \u0627\u0644\u0636\u063a\u0637 \u0639\u0644\u064a\u0647\u0627 \u0644\u0625\u0631\u0633\u0627\u0644 \u0627\u0644\u0631\u0627\u0628\u0637 \u0625\u0644\u0649 \u0627\u0644\u0628\u0631\u064a\u062f \u0627\u0644\u0645\u0633\u062c\u0651\u0644.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "checks": [
+            [
+              "company from CR is Fawaz",
+              true
+            ],
+            [
+              "brand_name_en is Zara Home",
+              true
+            ],
+            [
+              "malls is Mall of Arabia",
+              true
+            ],
+            [
+              "no retractions",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "The caller's CR number is 1010222222.",
+              "assistant": "The company details are already pulled in from the CR card, and the executive just needs to check them. Please confirm the company name and address on the card, then we can move on to the brand and space details.",
+              "retractions": 0
+            },
+            {
+              "user": "Yes, company details are correct.",
+              "assistant": "Thanks \u2014 the company details are confirmed. Next, please share the brand name, the mall, and what the caller wants to open, plus the kind of space if that\u2019s known.Thanks, we\u2019re already past that confirmation. Next, please share the brand name, the mall, and what the caller wants to open, plus the kind of space if that\u2019s known.",
+              "retractions": 0
+            },
+            {
+              "user": "They're opening a Zara Home store at Mall of Arabia.",
+              "assistant": "Got it \u2014 I\u2019ve added Zara Home at Mall of Arabia and pulled the space type from \u201cstore.\u201d Please send the caller\u2019s first name, last name, email, and phone number in one go.",
+              "retractions": 0
+            },
+            {
+              "user": "Sara Ali, sara@zarahome.example, 0501234567",
+              "assistant": "The basic info is complete, and the application link card is ready. Please press Send application link on the card so the caller can continue from there.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 3,
+          "passed": false,
+          "checks": [
+            [
+              "company from CR is Fawaz",
+              true
+            ],
+            [
+              "brand_name_en is Zara Home",
+              true
+            ],
+            [
+              "malls is Mall of Arabia",
+              true
+            ],
+            [
+              "no retractions",
+              false
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "The caller's CR number is 1010222222.",
+              "assistant": "Got it \u2014 the CR is verified, and the company details are ready on the card for confirmation. Please check the company name and address there, then we can move on to the brand and space.",
+              "retractions": 0
+            },
+            {
+              "user": "Yes, company details are correct.",
+              "assistant": "Thanks. The company details are confirmed, and the CR is set. Tell me about the brand and what you\u2019d like to open: what do you sell, which city or mall, and roughly how much space or budget, if you want to share it.All set on the company details. What do you sell, and which city or mall are you looking at?",
+              "retractions": 0
+            },
+            {
+              "user": "They're opening a Zara Home store at Mall of Arabia.",
+              "assistant": "I\u2019ve got the brand and store details noted, and the mall name is clear. Mall of Arabia isn\u2019t a city, so I need the city for the mall picker, or you can tell me the contact person\u2019s name, email, and phone number while we sort that out.",
+              "retractions": 0
+            },
+            {
+              "user": "Sara Ali, sara@zarahome.example, 0501234567",
+              "assistant": "The application link card is ready. Please press Send application link, and the caller can continue from there.",
+              "retractions": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "channels: dictated caller",
+      "group": "channels",
+      "passed": true,
+      "passes": 3,
+      "runs": [
+        {
+          "run": 1,
+          "passed": true,
+          "checks": [
+            [
+              "no reply greets or thanks the contact by first name",
+              true
+            ],
+            [
+              "no \"your \u2026 company/brand\" phrasing",
+              true
+            ],
+            [
+              "no verification/docs/terms asks",
+              true
+            ],
+            [
+              "no verification card",
+              true
+            ],
+            [
+              "send_link card on last turn",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "The caller doesn't have their CR to hand \u2014 skip it for now.",
+              "assistant": "Understood \u2014 we\u2019ll move on without the CR for now. Please have the caller share the company name and address together, and if they can, the brand and what they want to open as well.",
+              "retractions": 0
+            },
+            {
+              "user": "Company is Bean Street Trading Co., Olaya Street, Riyadh. Brand Bean Street, a specialty coffee kiosk at Riyadh Mall A.",
+              "assistant": "Got it \u2014 I\u2019ve put the company, brand, kiosk type and Riyadh Mall A into the card. Next, who should our leasing team contact, and what\u2019s the best email and phone number for them?",
+              "retractions": 0
+            },
+            {
+              "user": "Sara Ali, sara@beanstreet.example, 0501234567.",
+              "assistant": "Thanks \u2014 the basic info is all set. Please press the Send application link button on the card, and the application link will go to that email.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "checks": [
+            [
+              "no reply greets or thanks the contact by first name",
+              true
+            ],
+            [
+              "no \"your \u2026 company/brand\" phrasing",
+              true
+            ],
+            [
+              "no verification/docs/terms asks",
+              true
+            ],
+            [
+              "no verification card",
+              true
+            ],
+            [
+              "send_link card on last turn",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "The caller doesn't have their CR to hand \u2014 skip it for now.",
+              "assistant": "Understood \u2014 we can continue without the CR for now. Please share the company name and company address together, and I\u2019ll take it from there.",
+              "retractions": 0
+            },
+            {
+              "user": "Company is Bean Street Trading Co., Olaya Street, Riyadh. Brand Bean Street, a specialty coffee kiosk at Riyadh Mall A.",
+              "assistant": "Got it \u2014 I\u2019ve saved the company, brand, and Riyadh Mall A details. The brand summary card is up; once that looks right, I just need the contact person\u2019s first name, last name, email, and phone number in one message.",
+              "retractions": 0
+            },
+            {
+              "user": "Sara Ali, sara@beanstreet.example, 0501234567.",
+              "assistant": "The application link card is open now. Please press Send application link there, and then we can carry on if anything else comes up.",
+              "retractions": 1
+            }
+          ]
+        },
+        {
+          "run": 3,
+          "passed": true,
+          "checks": [
+            [
+              "no reply greets or thanks the contact by first name",
+              true
+            ],
+            [
+              "no \"your \u2026 company/brand\" phrasing",
+              true
+            ],
+            [
+              "no verification/docs/terms asks",
+              true
+            ],
+            [
+              "no verification card",
+              true
+            ],
+            [
+              "send_link card on last turn",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "The caller doesn't have their CR to hand \u2014 skip it for now.",
+              "assistant": "Understood \u2014 we\u2019ve skipped the CR for now. Please share the company name and company address together, and I\u2019ll take it from there.",
+              "retractions": 0
+            },
+            {
+              "user": "Company is Bean Street Trading Co., Olaya Street, Riyadh. Brand Bean Street, a specialty coffee kiosk at Riyadh Mall A.",
+              "assistant": "Got it \u2014 I\u2019ve put the company, brand and Riyadh Mall A into the summary card. What I still need is the contact for the leasing team: first name, last name, email, and phone number.",
+              "retractions": 0
+            },
+            {
+              "user": "Sara Ali, sara@beanstreet.example, 0501234567.",
+              "assistant": "Thanks \u2014 the basic info is complete, and the application link card is ready for the executive to send.",
+              "retractions": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "channels: existing tenant, new brand typed",
+      "group": "channels",
+      "passed": true,
+      "passes": 3,
+      "runs": [
+        {
+          "run": 1,
+          "passed": true,
+          "checks": [
+            [
+              "asks for the brand",
+              true
+            ],
+            [
+              "frames it as a new brand",
+              true
+            ],
+            [
+              "at most one question",
+              true
+            ],
+            [
+              "no verification ask",
+              true
+            ],
+            [
+              "no company/contact re-ask",
+              true
+            ],
+            [
+              "brand_name_en is Noor Kids",
+              true
+            ],
+            [
+              "brand_name_ar saved",
+              true
+            ],
+            [
+              "company still from the record",
+              true
+            ],
+            [
+              "mentions the Brand Profile",
+              true
+            ],
+            [
+              "never refuses",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Thanks, the details look right.",
+              "assistant": "Thanks, Khalid \u2014 I\u2019ve got that. The brand is the next open piece, so please tell me what the new brand is, or upload the Brand Profile and I can fill it in for you to check.",
+              "retractions": 0
+            },
+            {
+              "user": "It's a new brand: Noor Kids (\u0646\u0648\u0631 \u0644\u0644\u0623\u0637\u0641\u0627\u0644), children's fashion.",
+              "assistant": "Got it \u2014 Noor Kids and children\u2019s fashion are in. Please share the mall or city you\u2019d like, and if you know it, roughly how much space you want.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "checks": [
+            [
+              "asks for the brand",
+              true
+            ],
+            [
+              "frames it as a new brand",
+              true
+            ],
+            [
+              "at most one question",
+              true
+            ],
+            [
+              "no verification ask",
+              true
+            ],
+            [
+              "no company/contact re-ask",
+              true
+            ],
+            [
+              "brand_name_en is Noor Kids",
+              true
+            ],
+            [
+              "brand_name_ar saved",
+              true
+            ],
+            [
+              "company still from the record",
+              true
+            ],
+            [
+              "mentions the Brand Profile",
+              true
+            ],
+            [
+              "never refuses",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Thanks, the details look right.",
+              "assistant": "Thanks, Khalid. The contact details are on the card, and the brand is still the next thing we need. What\u2019s the new brand called, or would you like to upload the Brand Profile so I can fill it in for you?",
+              "retractions": 0
+            },
+            {
+              "user": "It's a new brand: Noor Kids (\u0646\u0648\u0631 \u0644\u0644\u0623\u0637\u0641\u0627\u0644), children's fashion.",
+              "assistant": "Got it \u2014 Noor Kids and children\u2019s fashion are in the card now. Since you\u2019ve confirmed the details, the next thing is the document upload card for the Company Profile and Brand Profile, and those are the ones required to submit.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 3,
+          "passed": true,
+          "checks": [
+            [
+              "asks for the brand",
+              true
+            ],
+            [
+              "frames it as a new brand",
+              true
+            ],
+            [
+              "at most one question",
+              true
+            ],
+            [
+              "no verification ask",
+              true
+            ],
+            [
+              "no company/contact re-ask",
+              true
+            ],
+            [
+              "brand_name_en is Noor Kids",
+              true
+            ],
+            [
+              "brand_name_ar saved",
+              true
+            ],
+            [
+              "company still from the record",
+              true
+            ],
+            [
+              "mentions the Brand Profile",
+              true
+            ],
+            [
+              "never refuses",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Thanks, the details look right.",
+              "assistant": "Thanks, Khalid. I\u2019ve kept those details on the card, and the next thing to sort is your new brand name. If you\u2019d like, you can type it here or upload the Brand Profile and I\u2019ll fill it in for you.",
+              "retractions": 0
+            },
+            {
+              "user": "It's a new brand: Noor Kids (\u0646\u0648\u0631 \u0644\u0644\u0623\u0637\u0641\u0627\u0644), children's fashion.",
+              "assistant": "Got it, Noor Kids for children\u2019s fashion. I\u2019ve pulled that into the summary card for you. Next, who should our leasing team contact, and can you send me the name, email and phone number in one go?",
+              "retractions": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "channels: existing tenant, two brands",
+      "group": "channels",
+      "passed": true,
+      "passes": 2,
+      "runs": [
+        {
+          "run": 1,
+          "passed": true,
+          "checks": [
+            [
+              "asks for the brand",
+              true
+            ],
+            [
+              "frames it as a new brand",
+              true
+            ],
+            [
+              "at most one question",
+              true
+            ],
+            [
+              "no verification ask",
+              true
+            ],
+            [
+              "no company/contact re-ask",
+              true
+            ],
+            [
+              "brand_name_en is Noor Beauty",
+              true
+            ],
+            [
+              "sales_category from TB-3 (beauty)",
+              true
+            ],
+            [
+              "turn 2 no mall or city ask",
+              true
+            ],
+            [
+              "turn 2 no what-they-sell ask",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Thanks, the details look right.",
+              "assistant": "Thanks, Khalid. That\u2019s the contact side sorted, and the brand is still the next thing to fill in. What\u2019s the new brand \u2014 you can type it here, or upload the Brand Profile and I\u2019ll fill it from there.",
+              "retractions": 0
+            },
+            {
+              "user": "It's for Noor Beauty.",
+              "assistant": "Noor Beauty noted. The brand line on the card is the piece still open, so please confirm it there, and if you\u2019d like I can help with the space next.",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "checks": [
+            [
+              "asks for the brand",
+              true
+            ],
+            [
+              "frames it as a new brand",
+              true
+            ],
+            [
+              "at most one question",
+              true
+            ],
+            [
+              "no verification ask",
+              true
+            ],
+            [
+              "no company/contact re-ask",
+              true
+            ],
+            [
+              "brand_name_en is Noor Beauty",
+              true
+            ],
+            [
+              "sales_category from TB-3 (beauty)",
+              true
+            ],
+            [
+              "turn 2 no mall or city ask",
+              true
+            ],
+            [
+              "turn 2 no what-they-sell ask",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Thanks, the details look right.",
+              "assistant": "Thanks \u2014 I\u2019ve moved that along. What new brand are you opening, and if you like you can add the space size or budget too.",
+              "retractions": 0
+            },
+            {
+              "user": "It's for Noor Beauty.",
+              "assistant": "Noor Beauty, got it. Is this inquiry for that brand or a new one?",
+              "retractions": 0
+            }
+          ]
+        },
+        {
+          "run": 3,
+          "passed": false,
+          "checks": [
+            [
+              "asks for the brand",
+              true
+            ],
+            [
+              "frames it as a new brand",
+              true
+            ],
+            [
+              "at most one question",
+              true
+            ],
+            [
+              "no verification ask",
+              false
+            ],
+            [
+              "no company/contact re-ask",
+              true
+            ],
+            [
+              "brand_name_en is Noor Beauty",
+              true
+            ],
+            [
+              "sales_category from TB-3 (beauty)",
+              true
+            ],
+            [
+              "turn 2 no mall or city ask",
+              true
+            ],
+            [
+              "turn 2 no what-they-sell ask",
+              true
+            ]
+          ],
+          "invariants": [],
+          "turns": [
+            {
+              "user": "Thanks, the details look right.",
+              "assistant": "Thanks, Khalid. The contact verification is already done, so you can move on to the brand details card now. What\u2019s the new brand \u2014 you can type it, or upload the Brand Profile and I\u2019ll fill it in for you to check.",
+              "retractions": 0
+            },
+            {
+              "user": "It's for Noor Beauty.",
+              "assistant": "Noor Beauty, got it. Is this inquiry for that brand, or for a new one under the same account?",
+              "retractions": 0
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "scenarios_passed": 5,
+    "scenarios_total": 5,
+    "retractions": 4,
+    "unnecessary_questions": 10
+  }
+}
