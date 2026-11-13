@@ -842,17 +842,91 @@ def _check_flow_v2_s21(
     return [
         ("says_forecasted", "forecasted" in text),
         ("no estimated wording", "estimated" not in text),
+        # The reason the request gives, in the applicant's chat (E2 itself: S21 E2 below).
         (
-            "e2_suggestion_has_reason",
+            "explains_the_request",
             any(word in text for word in ("because", "monthly", "first year", "review")),
         ),
-        (
-            "e2_never_sends_request",
-            case is not None and case.status == CaseStatus.SECOND_REVIEW,
-        ),
+        ("case stays with the RSM", case is not None and case.status == CaseStatus.SECOND_REVIEW),
         # §3.7: after sending, the RSM reviews it; nothing is approved yet.
         ("after_send_no_approval_claim", "approved" not in after_send),
         *_check_case_tone(turns),
+    ]
+
+
+def _check_flow_v2_s18(
+    _session: Session, turns: list[TurnResult], app: AppState | None = None
+) -> list[tuple[str, bool]]:
+    """S18 (V14): only the rejected document, with the reviewer's remark in plain words."""
+    text = _reply_text(turns).lower()
+    case = _case_for(app, _session) if app is not None else None
+    return [
+        (
+            "names_only_rejected_document_and_remark",
+            "brand profile" in text and "logo" in text and "company profile" not in text,
+        ),
+        ("tells them to upload and Resubmit", "upload" in text and "resubmit" in text),
+        ("no reviewer name", _no_reviewer_names(turns)),
+        (
+            "case waits for the re-upload",
+            case is not None and case.status == CaseStatus.REUPLOAD_REQUESTED,
+        ),
+        *_check_case_tone(turns),
+    ]
+
+
+_E2_QUESTION = "Should I ask this applicant for forecasted sales data?"
+
+
+async def _ask_reviewer_assistant_fsd(
+    client: AsyncClient,
+    session_id: str,
+    app: AppState,
+) -> list[TurnResult]:
+    """S21 (E2): the Regional Sales Manager asks the reviewer assistant on the case."""
+    session = await app.state.session_store.get(session_id)
+    reference = session.case_id if session else None
+    if not reference:
+        raise RuntimeError("S21 E2: no case behind the opened chat")
+    reviewer_id = await _reviewer_who_can(client, reference, "request_sales_data")
+    async with client.stream(
+        "POST",
+        f"/api/review/cases/{reference}/assistant",
+        json={"text": _E2_QUESTION},
+        headers={"X-Reviewer-Id": reviewer_id},
+    ) as response:
+        response.raise_for_status()
+        events = await _read_sse(response)
+    return [TurnResult(user=f"[rsm] {_E2_QUESTION}", assistant=_tokens(events), events=events)]
+
+
+def _check_flow_v2_s21_e2(
+    _session: Session, turns: list[TurnResult], app: AppState | None = None
+) -> list[tuple[str, bool]]:
+    """S21 (E2): one suggestion with its reason from the facts; never sends the request."""
+    reply = turns[-1].assistant.lower() if turns else ""
+    case = _case_for(app, _session) if app is not None else None
+    suggestions = [
+        data.get("payload") or {}
+        for name, data in (turns[-1].events if turns else [])
+        if name == "ui_card" and data.get("card_type") == "reviewer_suggestion"
+    ]
+    reasons = ("new to cenomi", "new company", "sqm", "square", "area", "because", "rule")
+    return [
+        ("says_forecasted", "forecasted" in reply and "estimated" not in reply),
+        ("e2_suggestion_has_reason", any(word in reply for word in reasons)),
+        (
+            "suggestion card when suggesting",
+            "not needed" in reply
+            or any(s.get("action") == "request_sales_data" for s in suggestions),
+        ),
+        (
+            "e2_never_sends_request",
+            case is not None
+            and not any(r.kind == "sales_data" for r in case.requests)
+            and not any(w in reply for w in ("i've sent", "i have sent", "i've requested")),
+        ),
+        ("no reviewer name", _no_reviewer_names(turns)),
     ]
 
 
@@ -2241,6 +2315,31 @@ SCENARIOS: list[LiveScenario] = [
         group="flow_v2",
         setup=_flow_v2_setup(FLOW_V2_SALES_DATA),
         after_turns=_after_sales_data_turn,
+    ),
+    LiveScenario(
+        "S21 E2 reviewer assistant suggestion",
+        [],
+        _check_flow_v2_s21_e2,
+        auto_otp=False,
+        group="flow_v2",
+        setup=_flow_v2_setup(FLOW_V2_UNIT),
+        after_turns=_ask_reviewer_assistant_fsd,
+    ),
+    LiveScenario(
+        "S18 Document rejected",
+        ["what do you need from me?"],
+        _check_flow_v2_s18,
+        auto_otp=False,
+        group="flow_v2",
+        setup=_case_setup(
+            [
+                {
+                    "action": "request_reupload",
+                    "doc_types": ["brand_profile"],
+                    "remarks": "Logo page missing",
+                },
+            ],
+        ),
     ),
     LiveScenario(
         "S22 Lead Rejected",

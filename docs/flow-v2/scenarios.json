@@ -2284,7 +2284,7 @@
           "cc_cr": "1010000000"
         },
         {
-          "cc_contact_check": "existing.tenant@zarahome.example"
+          "cc_contact_check": "layla.hassan@oasiscoffee.example"
         },
         {
           "cc_send_sign_in_link": true
@@ -2351,7 +2351,7 @@
           "cc_cr": "1010000000"
         },
         {
-          "cc_contact_check": "new.person@zarahome.example"
+          "cc_contact_check": "huda.saleh@oasiscoffee.example"
         },
         {
           "cc_capture": "unit_and_category,basic_info,property_details"
