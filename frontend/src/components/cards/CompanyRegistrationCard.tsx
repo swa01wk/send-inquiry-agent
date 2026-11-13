@@ -24,6 +24,12 @@ export function CompanyRegistrationCard({
   const showConfirm = payload.state === 'confirm_skip' && !dismissedConfirm
   const locked = payload.state === 'registered' || payload.state === 'skipped'
 
+  // Skip again after "No" must show the confirm again.
+  const handleSkip = () => {
+    setDismissedConfirm(false)
+    onSkip()
+  }
+
   const handleDismissConfirm = () => {
     setDismissedConfirm(true)
     onDismissSkipConfirm()
@@ -97,7 +103,7 @@ export function CompanyRegistrationCard({
             >
               {payload.verify_label}
             </button>
-            <button type="button" className={shared.textLink} onClick={onSkip}>
+            <button type="button" className={shared.textLink} onClick={handleSkip}>
               {payload.skip_label}
             </button>
           </div>
