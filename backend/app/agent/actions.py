@@ -901,7 +901,9 @@ async def _resume_pending(
     if found is not None:
         pending_id = str(found.id)
         resend = runtime.services.resend
-        if not resend.wait_seconds(pending_id, "email"):
+        # Its own limit: the verification email sent minutes earlier mustn't hold it back.
+        throttle_key = f"{pending_id}:resume"
+        if not resend.wait_seconds(throttle_key, "email"):
             try:
                 await runtime.services.gateway.call(
                     "email",
@@ -914,7 +916,7 @@ async def _resume_pending(
                     inquiry_id=pending_id,
                     template="resume_link",
                 )
-                resend.record(pending_id, "email")
+                resend.record(throttle_key, "email")
             except GatewayError:
                 logger.warning("resume link not sent for a pending inquiry")
     _audit(runtime, session, "pending_resume_requested", found=found is not None)

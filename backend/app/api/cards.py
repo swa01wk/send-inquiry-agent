@@ -28,7 +28,7 @@ from app.api.schemas import (
     VerificationMobile,
     VerificationPayload,
 )
-from app.domain.fields import FIELD_BY_KEY, GROUP_ORDER, FieldGroup
+from app.domain.fields import FIELD_BY_KEY, GROUP_ORDER, FieldGroup, cr_display
 from app.domain.master import MasterData
 from app.domain.models import DocType, FieldKey, InquiryDraft, Source
 from app.domain.rules import can_submit, contact_verified
@@ -134,6 +134,9 @@ def _document_number_rows(
         field = draft.fields[key]
         value = field.value
         display = str(value) if value not in (None, "") else None
+        if key == FieldKey.CR_NUMBER:
+            # Flow v2 (I8): masked on the public page until submit, like the review card.
+            display = cr_display(draft)
         rows.append(
             DocumentNumberRow(
                 key=key.value,

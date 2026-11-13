@@ -12,6 +12,8 @@ import {
   quickRepliesCardExample,
   reviewCardExample,
   sendLinkCardExample,
+  companyRegistrationCardExample,
+  termsCardExample,
   crQuestionCardExample,
   signatoryQuestionCardExample,
   contactsApprovalCardExample,
@@ -20,7 +22,13 @@ import {
   verificationCardExample,
 } from '../fixtures'
 import type { FeScenario } from './types'
-import type { CreateSessionResponse, DraftSummary, UiCard } from '../../types/contracts'
+import type {
+  CompanyRegistrationPayload,
+  CreateSessionResponse,
+  DraftSummary,
+  TermsPayload,
+  UiCard,
+} from '../../types/contracts'
 
 function session(
   cards: CreateSessionResponse['cards'],
@@ -41,6 +49,30 @@ function cardSession(card: UiCard, draft: DraftSummary): CreateSessionResponse {
     { id: 'welcome-1', role: 'assistant', text: 'Here is the card for this test scenario.' },
     { id: msgId, role: 'assistant', text: 'Please use the card below.' },
   ])
+}
+
+function companyRegistrationUiCard(patch: Partial<CompanyRegistrationPayload>): UiCard {
+  if (companyRegistrationCardExample.card_type !== 'company_registration') {
+    throw new Error('companyRegistrationCardExample fixture type')
+  }
+  return {
+    card_id: companyRegistrationCardExample.card_id,
+    card_type: 'company_registration',
+    message_id: companyRegistrationCardExample.message_id,
+    payload: { ...companyRegistrationCardExample.payload, ...patch },
+  }
+}
+
+function termsUiCard(patch: Partial<TermsPayload>): UiCard {
+  if (termsCardExample.card_type !== 'terms') {
+    throw new Error('termsCardExample fixture type')
+  }
+  return {
+    card_id: termsCardExample.card_id,
+    card_type: 'terms',
+    message_id: termsCardExample.message_id,
+    payload: { ...termsCardExample.payload, ...patch },
+  }
 }
 
 const confirmDraft = draftMidway
@@ -275,6 +307,62 @@ export const feScenarioDefinitions: FeScenario[] = [
   {
     name: 'cr-question',
     session: cardSession(crQuestionCardExample, draftEmpty),
+  },
+  {
+    name: 'company-registration',
+    session: cardSession(companyRegistrationCardExample, draftEmpty),
+    turns: [
+      {
+        when: { type: 'action', action: 'cr_check' },
+        events: [
+          {
+            event: 'ui_card',
+            data: companyRegistrationUiCard({
+              state: 'not_registered',
+              cr_masked: '•••••• 3456',
+              error: null,
+            }),
+          },
+          { event: 'done', data: { phase: 'collecting' } },
+        ],
+      },
+      {
+        when: { type: 'action', action: 'cr_skip' },
+        events: [
+          {
+            event: 'ui_card',
+            data: companyRegistrationUiCard({ state: 'confirm_skip', error: null }),
+          },
+          { event: 'done', data: { phase: 'gate' } },
+        ],
+      },
+      {
+        when: { type: 'action', action: 'cr_skip' },
+        events: [
+          {
+            event: 'ui_card',
+            data: companyRegistrationUiCard({ state: 'skipped', error: null }),
+          },
+          { event: 'done', data: { phase: 'collecting' } },
+        ],
+      },
+    ],
+  },
+  {
+    name: 'terms-card',
+    session: cardSession(termsCardExample, draftComplete),
+    turns: [
+      {
+        when: { type: 'action', action: 'accept_terms' },
+        events: [
+          {
+            event: 'ui_card',
+            data: termsUiCard({ accepted: true }),
+          },
+          { event: 'done', data: { phase: 'documents' } },
+        ],
+      },
+    ],
   },
   {
     name: 'signatory-question',

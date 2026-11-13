@@ -324,10 +324,52 @@ export class InquiryPage {
     await this.waitForTurnDone(doneBefore)
   }
 
+  async verifyCr(cr: string) {
+    const card = this.cards('company_registration')
+    await card.getByLabelText(/10-digit/i).fill(cr)
+    const doneBefore = await readDoneEventCount(this.page)
+    await card.getByRole('button', { name: /^verify$/i }).click()
+    await this.waitForTurnDone(doneBefore)
+  }
+
+  async skipCr(confirm = true) {
+    const card = this.cards('company_registration')
+    const doneBefore = await readDoneEventCount(this.page)
+    if (confirm) {
+      await card.getByRole('button', { name: /^skip$/i }).click()
+      await this.waitForTurnDone(doneBefore)
+      const doneBeforeConfirm = await readDoneEventCount(this.page)
+      await card.getByRole('button', { name: /yes, continue without it/i }).click()
+      await this.waitForTurnDone(doneBeforeConfirm)
+      return
+    }
+    await card.getByRole('button', { name: /^skip$/i }).click()
+    await this.waitForTurnDone(doneBefore)
+  }
+
+  async acceptTerms() {
+    const card = this.cards('terms')
+    const doneBefore = await readDoneEventCount(this.page)
+    await card.getByRole('checkbox').check()
+    await this.waitForTurnDone(doneBefore)
+  }
+
+  async continueMyInquiry(email: string) {
+    await this.page.getByRole('button', { name: /continue my inquiry/i }).click()
+    const inline = this.page.getByTestId('resume-pending-inline')
+    await inline.getByRole('textbox').fill(email)
+    const doneBefore = await readDoneEventCount(this.page)
+    await inline.getByRole('button', { name: /^continue$/i }).click()
+    await this.waitForTurnDone(doneBefore)
+  }
+
   async acceptAndSubmit() {
     const review = this.cards('review')
     await expect(review).toBeVisible({ timeout: 60_000 })
-    await review.getByRole('checkbox').check()
+    const termsOnCard = await review.getByTestId('review-terms-accepted').count()
+    if (termsOnCard === 0) {
+      await review.getByRole('checkbox').check()
+    }
     const doneBefore = await readDoneEventCount(this.page)
     await review.getByRole('button', { name: 'Submit inquiry' }).click()
     await this.waitForTurnDone(doneBefore)
@@ -337,7 +379,7 @@ export class InquiryPage {
     const card = this.cards('success')
     await expect(card).toBeVisible({ timeout: 60_000 })
     const text = await card.innerText()
-    const match = text.match(/GEO-(STR|MED|SPC)-\d{6}/)
+    const match = text.match(/GEO-(STR|MED|SPC|OFF)-\d{6}/)
     if (!match) throw new Error('reference not on success card')
     return match[0]
   }
@@ -391,6 +433,9 @@ export class InquiryPage {
     if (type === 'existing_cr_choice') return this.page.getByTestId('existing-cr-choice-card')
     if (type === 'sign_in_prompt') return this.page.getByTestId('sign-in-prompt-card')
     if (type === 'cr_question') return this.page.getByTestId('cr-question-card')
+    if (type === 'company_registration')
+      return this.page.getByTestId('company-registration-card')
+    if (type === 'terms') return this.page.getByTestId('terms-card')
     if (type === 'signatory_question') return this.page.getByTestId('signatory-question-card')
     return this.page.locator(`[data-card-type="${type}"]`)
   }

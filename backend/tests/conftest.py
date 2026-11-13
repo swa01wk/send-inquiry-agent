@@ -91,11 +91,14 @@ def _restore_policy(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPa
         if request.node.get_closest_marker("approvals") is not None:
             contacts = get_policy().contacts.model_dump(mode="json")
             overrides["contacts"] = {**contacts, "approval_required": True}
+    intake = get_policy().flow_v2_intake.model_dump(mode="json")
     if request.node.get_closest_marker("intake_v2") is not None:
-        # Flow v2 §3.3 (day F3): new self-service inquiries run the v2 public intake. Off in
-        # the shipped policy until the F3 Cursor PR flips it with the prompt and cards.
-        intake = get_policy().flow_v2_intake.model_dump(mode="json")
+        # Flow v2 §3.3 (day F3): new self-service inquiries run the v2 public intake.
         overrides["flow_v2_intake"] = {**intake, "enabled": True}
+    else:
+        # Tests written before the v2 flip keep v1 on self-service (same pattern as
+        # cr_question / lead_approval).
+        overrides["flow_v2_intake"] = {**intake, "enabled": False}
     policy = get_policy()
     if overrides:
         policy = policy.with_changes(**overrides)

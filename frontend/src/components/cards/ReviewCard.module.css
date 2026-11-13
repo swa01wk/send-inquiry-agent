@@ -105,6 +105,13 @@
   box-sizing: border-box;
 }
 
+.termsAccepted {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-success-fg);
+}
+
 .consent {
   display: flex;
   align-items: flex-start;

@@ -27,13 +27,18 @@ from app.agent.contact_infer import (
     parse_contact_from_message,
 )
 from app.agent.cr_question import CR_NUMBER_IN_REPLY, contains_cr_number, cr_question_active
-from app.agent.mall_match import fill_mentioned_malls, unknown_mall_phrases
+from app.agent.mall_match import (
+    fill_mentioned_malls,
+    mentioned_seed_mall_ids,
+    unknown_mall_phrases,
+)
 from app.agent.runtime import AgentRuntime
 from app.agent.state import AgentState
 from app.api.cards import (
     TERMS_CARD_ID,
     VERIFICATION_CARD_ID,
     build_document_upload_card,
+    build_mall_picker_card,
     build_quick_replies_card,
     build_review_card,
     build_terms_card,
@@ -46,6 +51,7 @@ from app.domain.rules import compute_phase, contact_verified, remaining_steps
 from app.domain.sections import (
     SECTION_LABELS,
     IntakeSection,
+    ask_section,
     current_section,
     section_done,
     section_rank,
@@ -316,6 +322,33 @@ def _terms_card_due(draft: InquiryDraft, cards_shown: list[str]) -> bool:
     )
 
 
+def _v2_mall_picker_city(
+    draft: InquiryDraft,
+    cards_shown: list[str],
+    user_text: str,
+    turn_messages: list[BaseMessage],
+    master: Any,
+) -> str | None:
+    """Flow v2 (S11): they named a city or "any mall in <city>" but no mall, and the model
+    didn't open the picker. The city to open it for, or None."""
+    if draft.intake_flow != "v2" or "malls" in cards_shown:
+        return None
+    if current_section(draft) is not IntakeSection.PROPERTY_DETAILS:
+        return None
+    if _field_has_value(draft, FieldKey.MALLS) or "show_mall_picker" in _tools_called(
+        turn_messages
+    ):
+        return None
+    if mentioned_seed_mall_ids(user_text, master):
+        return None
+    lowered = user_text.lower()
+    for city in master.cities:
+        names = {city.id.lower(), city.label.lower(), (city.label_ar or "").strip()}
+        if any(n and re.search(rf"(?<!\w){re.escape(n)}(?!\w)", lowered) for n in names):
+            return str(city.id)
+    return None
+
+
 # Rule 8 (flow v2 §3.3): words that show a reply asks about a section.
 _SECTION_ASK_RE: dict[IntakeSection, re.Pattern[str]] = {
     IntakeSection.UNIT_AND_CATEGORY: re.compile(
@@ -350,7 +383,9 @@ def _later_section_ask_note(
     earlier one is open → back to the agent once. Not when the user raised that section."""
     if draft.intake_flow != "v2" or state.get("assisted") or not ai_text:
         return None
-    current = current_section(draft)
+    # Where the agent should be asking: a value awaiting confirmation on its card counts as
+    # given, so "check the card, and now your contact details" is not a later-section ask.
+    current = ask_section(draft)
     if current not in (
         IntakeSection.COMPANY_REGISTRATION,
         IntakeSection.UNIT_AND_CATEGORY,
@@ -369,7 +404,60 @@ def _later_section_ask_note(
                 f"— it isn't done yet. Save anything they gave early, but don't ask about "
                 f"{SECTION_LABELS[section]} yet. Reply again."
             )
+    # A section already done and confirmed is never asked again (S1: "What do you sell,
+    # just to make sure?" right after they confirmed the category).
+    done = IntakeSection.UNIT_AND_CATEGORY
+    if (
+        section_rank(done) < section_rank(current)
+        and draft.fields[FieldKey.SALES_CATEGORY].confirmed
+        and _SECTION_ASK_RE[done].search(questions)
+        and not _SECTION_ASK_RE[done].search(user_text)
+    ):
+        return (
+            f"{GUARD_PREFIX} done_section_ask: {SECTION_LABELS[done]} is done and confirmed. "
+            f"Don't ask about it again; ask about {SECTION_LABELS[current]}. Reply again."
+        )
     return None
+
+
+_ARABIC_LETTERS_RE = re.compile(r"[\u0600-\u06FF]")
+
+
+def _update_draft_wrote(turn_messages: list[BaseMessage], key: FieldKey) -> bool:
+    for message in turn_messages:
+        if not isinstance(message, AIMessage):
+            continue
+        for call in message.tool_calls or []:
+            if call.get("name") != "update_draft":
+                continue
+            fields = (call.get("args") or {}).get("fields") or []
+            if any(isinstance(f, dict) and f.get("key") == key.value for f in fields):
+                return True
+    return False
+
+
+def _v2_arabic_brand_note(
+    state: AgentState, draft: InquiryDraft, turn_messages: list[BaseMessage], ai_text: str
+) -> str | None:
+    """Flow v2 (S13): the English brand is in (typed or from the Brand Profile) but not the
+    Arabic one, and this reply neither proposes it nor saves it. Basic Info can't finish
+    without it, so propose it now rather than waiting for them to type it."""
+    if draft.intake_flow != "v2" or state.get("assisted") or not ai_text:
+        return None
+    if not _field_has_value(draft, FieldKey.BRAND_NAME_EN) or _field_has_value(
+        draft, FieldKey.BRAND_NAME_AR
+    ):
+        return None
+    if _update_draft_wrote(turn_messages, FieldKey.BRAND_NAME_AR):
+        return None
+    if _ARABIC_LETTERS_RE.search(ai_text):
+        return None
+    return (
+        f"{GUARD_PREFIX} arabic_brand_missing: the Arabic brand name is still empty. In this "
+        "reply, propose it yourself — update_draft with brand_name_ar (source derived, "
+        "evidence = the English brand name) — and ask them to check it on the card. "
+        "Then carry on as before."
+    )
 
 
 def _v2_missing_verification_note(
@@ -467,7 +555,15 @@ def _brand_reask_note(state: AgentState, ai_text: str) -> str | None:
         # asking for it ("What's the brand name in Arabic?") isn't a re-ask (demo feedback
         # §3.7, R4). When the brand was typed or dictated, the model proposes the Arabic
         # name itself (system prompt), so asking is still a re-ask.
-        return None
+        if draft.intake_flow != "v2":
+            return None
+        # Flow v2 (S13): propose it on the card too, rather than waiting for them to type it.
+        return (
+            f"{GUARD_PREFIX} arabic_brand_ask: propose the Arabic brand name yourself — call "
+            "update_draft with brand_name_ar (source derived, evidence = the English brand "
+            "name) — and ask them to check it on the card. Don't ask them to type it. "
+            "Reply again."
+        )
     user_text, _ = _current_turn(state)
     if _field_has_value(draft, FieldKey.BRAND_NAME_EN) or _field_has_value(
         draft, FieldKey.BRAND_NAME_AR
@@ -771,6 +867,7 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
                     phase,
                 )
                 or _later_section_ask_note(state, draft, user_text, ai_text)
+                or _v2_arabic_brand_note(state, draft, turn_messages, ai_text)
                 or (
                     None
                     if state.get("assisted")  # no verification in assisted mode
@@ -811,6 +908,11 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
     if _terms_card_due(draft, cards_shown):
         _emit_card(build_terms_card(draft), writer)
         cards_shown.append(TERMS_CARD_ID)
+
+    picker_city = _v2_mall_picker_city(draft, cards_shown, user_text, turn_messages, runtime.master)
+    if picker_city is not None:
+        _emit_card(build_mall_picker_card(draft, runtime.master, picker_city), writer)
+        cards_shown.append("malls")
 
     documents_due = (
         _v2_documents_card_due(state, draft)

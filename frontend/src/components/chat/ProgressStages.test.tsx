@@ -53,4 +53,27 @@ describe('ProgressStages', () => {
     render(<ProgressStages phase="verifying" draft={draftMidway} cards={{}} messages={[]} />)
     expect(screen.getByTestId('stage-contact')).toHaveAttribute('aria-disabled', 'true')
   })
+
+  it('uses flow v2 section tabs when sections are present', () => {
+    render(
+      <ProgressStages
+        phase="collecting"
+        draft={{
+          ...draftEmpty,
+          section: 'unit_and_category',
+          checks: {
+            ...draftEmpty.checks,
+            sections: [
+              { key: 'company_registration', label: 'Company Registration', done: true },
+              { key: 'unit_and_category', label: 'Unit Type and Sales Category', done: false },
+            ],
+          },
+        }}
+        cards={{}}
+        messages={[]}
+      />,
+    )
+    expect(screen.getByTestId('stage-company_registration')).toHaveAttribute('data-state', 'done')
+    expect(screen.getByTestId('stage-unit_and_category')).toHaveAttribute('data-state', 'current')
+  })
 })

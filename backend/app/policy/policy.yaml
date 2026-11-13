@@ -153,7 +153,7 @@ proactive:
 # prompt, the cards and the re-recorded scripts. A self-service inquiry keeps the flow it
 # started with. Scripted scenarios named `flow-v2-s…` always run it.
 flow_v2_intake:
-  enabled: false
+  enabled: true
   product_lines: [store, office]
   max_malls: 5
   pending_inquiry_ttl_minutes: 120

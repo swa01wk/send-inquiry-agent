@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Annotated, Any, Literal
 
 from langchain_core.messages import HumanMessage, ToolMessage
@@ -123,12 +124,67 @@ def _user_words(state: AgentState) -> str:
     return _normalise_quote(" \n ".join(parts))
 
 
+_EMAIL_RE = re.compile(r"[\w.+-]+@([\w-]+)(?:\.[\w-]+)+")
+_NAME_KEYS = frozenset({FieldKey.BRAND_NAME_EN.value, FieldKey.COMPANY_NAME.value})
+_ARABIC_SCRIPT_RE = re.compile(r"[\u0600-\u06FF]")
+
+
+def _name_from_email_only(item: DraftFieldUpdate, said: str) -> bool:
+    """A brand or company name the user never wrote, only seen in an email domain
+    ("sara@beanstreet.example" → "Bean Street"). The prompt forbids it; this makes it a
+    rule (document_extract: the profiles then had nothing left to fill)."""
+    if item.key not in _NAME_KEYS or not isinstance(item.value, str):
+        return False
+    if _ARABIC_SCRIPT_RE.search(said):
+        # They wrote in Arabic: a Latin name is the agent's transliteration of what they
+        # typed («بين ستريت» → "Bean Street"), not something read off the email.
+        return False
+    squashed = re.sub(r"[^a-z0-9]", "", item.value.casefold())
+    if len(squashed) < 4:
+        return False
+    labels = {re.sub(r"[^a-z0-9]", "", m.group(1)) for m in _EMAIL_RE.finditer(said)}
+    if not any(
+        len(label) >= 4 and (squashed.startswith(label) or label.startswith(squashed))
+        for label in labels
+    ):
+        return False
+    rest = _EMAIL_RE.sub(" ", said)
+    words = re.findall(r"[a-z0-9]+", item.value.casefold())
+    return not all(re.search(rf"(?<![a-z0-9]){re.escape(w)}(?![a-z0-9])", rest) for w in words)
+
+
+_HAS_CR_YES_RE = re.compile(
+    r"\b(yes|yeah|yep|yup|sure|of course|we do|we have|i have|have one|have a cr|got one)\b"
+    r"|نعم|ايوه|أيوه|إيه|ايه|اي نعم|عندنا|لدينا|عندي|لدي|موجود",
+    re.IGNORECASE,
+)
+_HAS_CR_NO_RE = re.compile(
+    r"\b(no|nope|not|don't|dont|haven't|without)\b"
+    r"|ما عندنا|ما عندي|ليس لدينا|لا يوجد|ما فيه|لا\b|بدون",
+    re.IGNORECASE,
+)
+
+
+def _says_has_cr(text: str) -> bool:
+    """The user's words say yes to "Do you have a CR?" (and don't say no)."""
+    if not text or text.startswith("[ui_event]"):
+        return False
+    return bool(_HAS_CR_YES_RE.search(text)) and not _HAS_CR_NO_RE.search(text)
+
+
 def _category_from_brand_only(
-    item: DraftFieldUpdate, fields: list[DraftFieldUpdate], draft: InquiryDraft
+    item: DraftFieldUpdate,
+    fields: list[DraftFieldUpdate],
+    draft: InquiryDraft,
+    user_text: str = "",
 ) -> bool:
-    """A derived Sales Category with no evidence, or only the brand name as evidence."""
-    evidence = " ".join((item.evidence or "").split()).strip(_QUOTE_STRIP).lower()
-    if not evidence:
+    """A derived Sales Category based on nothing but the brand name (V12).
+
+    The basis is the model's evidence or, when it gave none, the user's last message. It
+    counts as brand-only when nothing is left once the brand names are taken out.
+    """
+    basis = " ".join((item.evidence or user_text or "").split()).strip(_QUOTE_STRIP).lower()
+    if not basis:
         return True
     brands = {
         str(f.value).strip().lower()
@@ -139,7 +195,10 @@ def _category_from_brand_only(
         value = draft.fields[key].value
         if value:
             brands.add(str(value).strip().lower())
-    return evidence in brands
+    rest = basis
+    for brand in sorted(brands, key=len, reverse=True):
+        rest = rest.replace(brand, " ")
+    return not re.search(r"\w{3,}", rest)
 
 
 def _evidence_for(
@@ -463,6 +522,17 @@ def record_cr_answer(
         test_scenario=state.get("test_scenario"),
     ):
         return _tool_result(runtime, draft=draft, content="Not used in this chat.")
+    if has_cr and not _says_has_cr(_last_user_text(state)):
+        # Arabic user: "نريد افتتاح كشك قهوة" (we want to open a coffee kiosk) was recorded
+        # as "has a CR", which sends them to sign in and ends the chat. Yes needs a yes.
+        return _tool_result(
+            runtime,
+            draft=draft,
+            content=(
+                "Not recorded: their message doesn't say they have a CR. Ask whether the "
+                "company has a CR, pointing to the Yes / No buttons on the card."
+            ),
+        )
     answered = apply_cr_answer(draft, has_cr)
     if answered is None:
         return _tool_result(runtime, draft=draft, content="The CR question is already answered.")
@@ -544,9 +614,16 @@ def update_draft(
 
     user_text = _last_user_text(state)
     keys_in_call = {item.key for item in fields}
+    said = _user_words(state)
     for item in fields:
         if item.key in PROTECTED_WRITE_KEYS:
             rejected.append(f"{item.key}: protected")
+            continue
+        if _name_from_email_only(item, said):
+            rejected.append(
+                f"{item.key}: not_given (only in their email address); leave it empty and "
+                "ask for it, or let the profile fill it"
+            )
             continue
         if item.source not in ("user", "derived"):
             rejected.append(f"{item.key}: invalid source")
@@ -594,7 +671,7 @@ def update_draft(
             item.key == FieldKey.SALES_CATEGORY.value
             and draft.intake_flow == "v2"
             and item.source == "derived"
-            and _category_from_brand_only(item, fields, draft)
+            and _category_from_brand_only(item, fields, draft, user_text)
         ):
             # Flow v2 (V12, FV11): the category comes from what the business sells.
             rejected.append(
@@ -838,8 +915,19 @@ def show_mall_picker(
 ) -> Command[Any]:
     """Show mall picker card for a city."""
     rt = runtime_from_config(runtime.config)
-    if city not in rt.master.ids_for_kind("cities"):
+    # The model often passes the city's name ("Jeddah") rather than its id ("jeddah").
+    wanted = city.strip().lower()
+    match = next(
+        (
+            c.id
+            for c in rt.master.cities
+            if wanted in {c.id.lower(), c.label.lower(), (c.label_ar or "").strip()}
+        ),
+        None,
+    )
+    if match is None:
         return _tool_result(runtime, draft=state["draft"], content=f"Unknown city: {city}.")
+    city = match
     card = build_mall_picker_card(state["draft"], rt.master, city)
     cards_shown = list(state["cards_shown"])
     if "malls" not in cards_shown:

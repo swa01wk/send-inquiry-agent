@@ -122,7 +122,10 @@ def test_record_cr_answer_no(ask_first, agent_runtime, base_state, stream_events
 def test_record_cr_answer_yes_shows_sign_in(
     ask_first, agent_runtime, base_state, stream_events
 ) -> None:
+    from langchain_core.messages import HumanMessage
+
     events, writer = stream_events
+    base_state["messages"] = [HumanMessage(content="Yes, we have one")]
     runtime = make_tool_runtime(state=base_state, agent_runtime=agent_runtime, writer=writer)
     result = record_cr_answer.invoke({"has_cr": True, "state": base_state, "runtime": runtime})
     assert result.update["draft"].cr_status == "existing"
@@ -131,6 +134,31 @@ def test_record_cr_answer_yes_shows_sign_in(
     audit = agent_runtime.services.audit.events("test-session")
     redirected = [e for e in audit if e["type"] == "inquiry_redirected"]
     assert redirected and redirected[-1]["payload"]["reason"] == "has_cr"
+
+
+@pytest.mark.parametrize("text", ["السلام عليكم، نريد افتتاح كشك قهوة", "We want a kiosk"])
+def test_record_cr_answer_yes_needs_a_yes(
+    ask_first, agent_runtime, base_state, stream_events, text
+) -> None:
+    """Arabic user: an opening message isn't a yes to "Do you have a CR?"."""
+    from langchain_core.messages import HumanMessage
+
+    events, writer = stream_events
+    base_state["messages"] = [HumanMessage(content=text)]
+    runtime = make_tool_runtime(state=base_state, agent_runtime=agent_runtime, writer=writer)
+    result = record_cr_answer.invoke({"has_cr": True, "state": base_state, "runtime": runtime})
+    assert result.update["draft"].cr_status == "unknown"
+    assert not [e for e in events if e.get("type") == "ui_card"]
+
+
+@pytest.mark.parametrize("text", ["نعم عندنا سجل", "yes", "We do have a CR"])
+def test_says_has_cr(text: str) -> None:
+    from app.agent.tools import _says_has_cr
+
+    assert _says_has_cr(text)
+    assert not _says_has_cr("ما عندنا سجل تجاري")
+    assert not _says_has_cr("no, not yet")
+    assert not _says_has_cr("I'm not sure")
 
 
 def test_record_cr_answer_unused_under_lookup(agent_runtime, base_state, stream_events) -> None:

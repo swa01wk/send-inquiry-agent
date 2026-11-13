@@ -99,6 +99,9 @@ function validateSseEvent(raw: unknown, filePath: string, at: string): void {
       if (!Array.isArray(data.checks.remaining)) {
         throw new Error(path(filePath, `${at}.data.checks.remaining must be an array`))
       }
+      if (data.checks.sections != null && !Array.isArray(data.checks.sections)) {
+        throw new Error(path(filePath, `${at}.data.checks.sections must be an array`))
+      }
       if (data.checks.next_step !== null && typeof data.checks.next_step !== 'string') {
         throw new Error(path(filePath, `${at}.data.checks.next_step must be a string or null`))
       }

@@ -16,6 +16,7 @@ from app.policy.config import PolicyConfig, get_policy
 from app.services.tenants import Tenant
 
 _PROMPT_PATH = Path(__file__).resolve().parent / "system_prompt.md"
+_PROMPT_V2_PATH = Path(__file__).resolve().parent / "system_prompt_v2.md"
 
 
 @lru_cache
@@ -23,9 +24,21 @@ def _static_prompt() -> str:
     return _PROMPT_PATH.read_text(encoding="utf-8").strip()
 
 
+@lru_cache
+def _static_prompt_v2() -> str:
+    return _PROMPT_V2_PATH.read_text(encoding="utf-8").strip()
+
+
+def _static_for_draft(draft: InquiryDraft) -> str:
+    if draft.intake_flow == "v2":
+        return _static_prompt_v2()
+    return _static_prompt()
+
+
 def clear_prompt_cache() -> None:
     """For tests after prompt file edits."""
     _static_prompt.cache_clear()
+    _static_prompt_v2.cache_clear()
 
 
 def rules_in_force(policy: PolicyConfig, master: MasterData, *, assisted: bool = False) -> str:
@@ -80,7 +93,20 @@ def rules_in_force(policy: PolicyConfig, master: MasterData, *, assisted: bool =
         docs_line += f" Optional: {', '.join(optional)}."
     lines.append(docs_line)
 
-    if assisted or policy.public_cr_check != "ask_then_sign_in":
+    if policy.public_cr_check == "verify_or_skip":
+        ttl = policy.flow_v2_intake.pending_inquiry_ttl_minutes
+        ttl_text = f"{ttl // 60} hours" if ttl % 60 == 0 and ttl >= 120 else f"{ttl} minutes"
+        lines.append(
+            "- Saving: nothing is kept until the email (and a mobile, when given) is verified; "
+            f"after that the inquiry is saved as pending for {ttl_text}."
+        )
+        lines.append(
+            "- Company Registration on the public page: the card takes the CR (Verify) or "
+            "Skip with confirmation. Never repeat a CR number in chat. Never say whether a "
+            "CR, company or person is known to Cenomi except the one registered-customer line "
+            "in the prompt."
+        )
+    elif assisted or policy.public_cr_check != "ask_then_sign_in":
         if policy.existing_tenant_policy == "sign_in":
             lines.append(
                 "- Existing tenants (the CR already has a Tenant Central account): explain "
@@ -118,7 +144,7 @@ def build_system_message(
         assisted=assisted,
         tenant_brands=tenant_brands,
     )
-    content = f"{_static_prompt()}\n\n{rules}\n\n## Current state\n{dynamic}\n{hint}"
+    content = f"{_static_for_draft(draft)}\n\n{rules}\n\n## Current state\n{dynamic}\n{hint}"
     return SystemMessage(content=content)
 
 

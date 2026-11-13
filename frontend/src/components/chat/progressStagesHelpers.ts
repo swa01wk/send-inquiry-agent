@@ -1,13 +1,14 @@
-import { PROGRESS_STAGE_LABELS, stageVisualState, type ProgressStageKey } from './inquiryProgress'
+import type { SectionCheck } from '../../types/contracts'
+import { PROGRESS_STAGE_LABELS, type ProgressStageKey } from './inquiryProgress'
+import type { StageVisualState } from './inquiryProgress'
 
-export function stageLabel(
-  key: ProgressStageKey,
-  visual: ReturnType<typeof stageVisualState>,
-): string {
-  const label = PROGRESS_STAGE_LABELS[key]
-  if (visual === 'done') return `✓ ${label}`
-  return label
+export function stageLabel(stage: ProgressStageKey, visual: StageVisualState): string {
+  const base = PROGRESS_STAGE_LABELS[stage]
+  if (visual === 'done') return `✓ ${base}`
+  return base
 }
 
-/** Alias used in tests and prompts. */
-export const stageText = stageLabel
+export function sectionTabLabel(section: SectionCheck, visual: StageVisualState): string {
+  if (visual === 'done') return `✓ ${section.label}`
+  return section.label
+}

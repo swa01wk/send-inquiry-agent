@@ -334,6 +334,27 @@ export function useChatSession() {
     [sendAction],
   )
 
+  const postAcceptTerms = useCallback(async (): Promise<boolean> => {
+    if (!state.sessionId || state.status === 'streaming') return false
+
+    dispatch({ type: 'turnStarted' })
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+
+    try {
+      const outcome = await streamChat(
+        state.sessionId,
+        { type: 'action', action: 'accept_terms', payload: { terms_accepted: true } },
+        (event) => dispatch({ type: 'sse', event }),
+        controller.signal,
+      )
+      return outcome !== 'error'
+    } catch {
+      return false
+    }
+  }, [dispatch, state.sessionId, state.status])
+
   const retry = useCallback(() => {
     if (!state.pendingRetry) return
     void runStream(state.pendingRetry)
@@ -371,6 +392,7 @@ export function useChatSession() {
     ...state,
     sendMessage,
     sendAction,
+    postAcceptTerms,
     isActionQueued,
     editReviewField,
     uploadDocument: uploadDocumentForType,

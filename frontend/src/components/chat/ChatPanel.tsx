@@ -30,6 +30,7 @@ export function ChatPanel({ draftPanelVisible, onToggleDraftPanel }: ChatPanelPr
     showTyping,
     sendMessage,
     sendAction,
+    postAcceptTerms,
     isActionQueued,
     editReviewField,
     uploadDocument,
@@ -64,6 +65,7 @@ export function ChatPanel({ draftPanelVisible, onToggleDraftPanel }: ChatPanelPr
   const cardActions = useMemo(
     () => ({
       sendAction,
+      postAcceptTerms,
       editReviewField,
       uploadDocument,
       removeDocument,
@@ -74,6 +76,7 @@ export function ChatPanel({ draftPanelVisible, onToggleDraftPanel }: ChatPanelPr
     }),
     [
       sendAction,
+      postAcceptTerms,
       editReviewField,
       uploadDocument,
       removeDocument,
@@ -148,6 +151,7 @@ export function ChatPanel({ draftPanelVisible, onToggleDraftPanel }: ChatPanelPr
           options={quickReplies}
           onSelect={sendMessage}
           onFocusInput={focusComposer}
+          onResumePending={(email) => sendAction('resume_pending', { email })}
           hidden={isStreaming}
         />
         <Composer
