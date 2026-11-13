@@ -10,6 +10,7 @@ export function prefillFromSuggestion(payload: ReviewerSuggestionPayload): Actio
     case 'request_reupload':
       return { token, reuploadRemarks: String(payload.payload.remarks ?? '') }
     case 'request_contacts':
+    case 'request_sales_data':
       return { token, requestRemarks: String(payload.payload.remarks ?? '') }
     case 'relink_company': {
       const companyId = String(payload.payload.company_id ?? '')

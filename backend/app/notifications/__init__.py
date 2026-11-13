@@ -25,6 +25,7 @@ TEMPLATE_NAMES = (
     "email_verification_link",
     "sms_otp",
     "resume_link",
+    "sign_in_link",
     "submission_email",
     "submission_sms",
     "call_centre_case",

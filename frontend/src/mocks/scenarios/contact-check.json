@@ -1,5 +1,5 @@
 {
-  "name": "existing-cr-choice",
+  "name": "contact-check",
   "session": {
     "session_id": "mock-session",
     "messages": [
@@ -16,23 +16,17 @@
     ],
     "cards": [
       {
-        "card_id": "existing-cr",
-        "card_type": "existing_cr_choice",
+        "card_id": "contact_check",
+        "card_type": "contact_check",
         "message_id": "m-channel-3",
         "payload": {
-          "cr_number": "1010000000",
+          "prompt": "This CR already has a Tenant Central account (Oasis Coffee Company). Ask for the caller's email to check whether they already have a login.",
           "company_name": "Oasis Coffee Company",
-          "options": [
-            {
-              "value": "sign_in",
-              "label": "Sign in to Tenant Central"
-            },
-            {
-              "value": "continue",
-              "label": "Continue as a new inquiry"
-            }
-          ],
-          "chosen": null
+          "input_placeholder": "Caller's email",
+          "check_label": "Check contact",
+          "state": "open",
+          "email_masked": null,
+          "error": null
         }
       }
     ],
@@ -263,36 +257,47 @@
     {
       "when": {
         "type": "action",
-        "action": "existing_cr_choice"
+        "action": "contact_check"
       },
       "events": [
         {
           "event": "ui_card",
           "data": {
-            "card_id": "existing-cr",
-            "card_type": "existing_cr_choice",
+            "card_id": "contact_check",
+            "card_type": "contact_check",
             "message_id": "m-channel-3",
             "payload": {
-              "cr_number": "1010000000",
+              "prompt": "This CR already has a Tenant Central account (Oasis Coffee Company). Ask for the caller's email to check whether they already have a login.",
               "company_name": "Oasis Coffee Company",
-              "options": [
-                {
-                  "value": "sign_in",
-                  "label": "Sign in to Tenant Central"
-                },
-                {
-                  "value": "continue",
-                  "label": "Continue as a new inquiry"
-                }
-              ],
-              "chosen": "continue"
+              "input_placeholder": "Caller's email",
+              "check_label": "Check contact",
+              "state": "existing",
+              "email_masked": "l***@oasiscoffee.example",
+              "error": null
+            }
+          }
+        },
+        {
+          "event": "ui_card",
+          "data": {
+            "card_id": "inform_tenant",
+            "card_type": "inform_tenant",
+            "message_id": "m-channel-4",
+            "payload": {
+              "title": "Inform the caller to raise the inquiry on Tenant Central",
+              "say": "You already have a Tenant Central account. Please sign in and raise the inquiry from Leasing Opportunities — your company details are already on file there.",
+              "email_masked": "l***@oasiscoffee.example",
+              "sign_in_label": "Email sign-in link",
+              "offer_sign_in_link": true,
+              "sent": false,
+              "error": null
             }
           }
         },
         {
           "event": "done",
           "data": {
-            "phase": "gate"
+            "phase": "collecting"
           }
         }
       ]

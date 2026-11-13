@@ -19,7 +19,8 @@ export type CardType =
   | 'reviewer_suggestion'
   | 'basic_info_review'
   | 'send_link'
-  | 'existing_cr_choice'
+  | 'contact_check'
+  | 'inform_tenant'
   | 'sign_in_prompt'
   | 'cr_question'
   | 'company_registration'
@@ -77,16 +78,27 @@ export interface SendLinkPayload {
   sent_to_masked?: string | null
 }
 
-export interface ExistingCrChoiceOption {
-  value: 'sign_in' | 'continue'
-  label: string
+/** Flow v2 (§3.4): call centre, existing CR — `contact_check {email}`. */
+export interface ContactCheckPayload {
+  prompt: string
+  company_name: string | null
+  input_placeholder: string
+  check_label: string
+  state: 'open' | 'existing' | 'new'
+  email_masked: string | null
+  error: string | null
 }
 
-export interface ExistingCrChoicePayload {
-  cr_number: string
-  company_name: string | null
-  options: ExistingCrChoiceOption[]
-  chosen?: 'sign_in' | 'continue' | null
+/** Flow v2 (§3.4, E5): the caller already has a login — `send_sign_in_link {}`. */
+export interface InformTenantPayload {
+  title: string
+  say: string
+  email_masked: string
+  sign_in_label: string
+  /** Policy `callcentre.offer_sign_in_link`: false → the words to say only. */
+  offer_sign_in_link: boolean
+  sent: boolean
+  error: string | null
 }
 
 export interface SignInPromptPayload {
@@ -280,8 +292,15 @@ export interface ReviewerSuggestionPayload {
     | 'rejection_remarks'
     | 'contacts_request'
     | 'tenant_reminder'
+    | 'sales_data_need'
   action:
-    'request_reupload' | 'reject' | 'request_contacts' | 'relink_company' | 'relink_brand' | ''
+    | 'request_reupload'
+    | 'reject'
+    | 'request_contacts'
+    | 'request_sales_data'
+    | 'relink_company'
+    | 'relink_brand'
+    | ''
   payload: Record<string, unknown>
   text: string
 }
@@ -460,9 +479,15 @@ export type UiCard =
     }
   | {
       card_id: string
-      card_type: 'existing_cr_choice'
+      card_type: 'contact_check'
       message_id: string | null
-      payload: ExistingCrChoicePayload
+      payload: ContactCheckPayload
+    }
+  | {
+      card_id: string
+      card_type: 'inform_tenant'
+      message_id: string | null
+      payload: InformTenantPayload
     }
   | {
       card_id: string

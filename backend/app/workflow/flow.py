@@ -104,6 +104,13 @@ def record_flow_step(
     )
 
 
+def call_centre_flow_id(session: Any) -> str | None:
+    """The staff chat id when this applicant chat continues a call-centre inquiry (§3.4):
+    the applicant's steps are recorded there, so the chart path reads as one inquiry."""
+    origin = getattr(session, "origin_id", None)
+    return str(origin) if origin else None
+
+
 def record_flow_step_audit(
     audit: Any,
     *,

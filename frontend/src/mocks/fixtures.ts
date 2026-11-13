@@ -583,18 +583,34 @@ export const sendLinkCardExample: UiCard = {
   },
 }
 
-export const existingCrChoiceCardExample: UiCard = {
-  card_id: 'existing-cr',
-  card_type: 'existing_cr_choice',
+export const contactCheckCardExample: UiCard = {
+  card_id: 'contact_check',
+  card_type: 'contact_check',
   message_id: 'm-channel-3',
   payload: {
-    cr_number: '1010000000',
+    prompt:
+      "This CR already has a Tenant Central account (Oasis Coffee Company). Ask for the caller's email to check whether they already have a login.",
     company_name: 'Oasis Coffee Company',
-    options: [
-      { value: 'sign_in', label: 'Sign in to Tenant Central' },
-      { value: 'continue', label: 'Continue as a new inquiry' },
-    ],
-    chosen: null,
+    input_placeholder: "Caller's email",
+    check_label: 'Check contact',
+    state: 'open',
+    email_masked: null,
+    error: null,
+  },
+}
+
+export const informTenantCardExample: UiCard = {
+  card_id: 'inform_tenant',
+  card_type: 'inform_tenant',
+  message_id: 'm-channel-4',
+  payload: {
+    title: 'Inform the caller to raise the inquiry on Tenant Central',
+    say: 'You already have a Tenant Central account. Please sign in and raise the inquiry from Leasing Opportunities — your company details are already on file there.',
+    email_masked: 'l***@oasiscoffee.example',
+    sign_in_label: 'Email sign-in link',
+    offer_sign_in_link: true,
+    sent: false,
+    error: null,
   },
 }
 

@@ -12,21 +12,23 @@ Read first: @docs/specs/flow-v2-alignment.md (§2 rows FV16–FV18, §3.4, §3.1
 
 ## Backend PR (Claude): lands first; use it, don't rebuild it
 - **Call centre:**
-  - `POST /api/callcentre/inquiries/{id}/contact-check {email}` (`IdentityService.has_account`);
-  - outcomes `inform` (status `redirected`, reason `existing_contact`) or `new_contact`;
-  - action `send_sign_in_link` + template `sign_in_link`;
+  - **as built:** a `contact_check` card in the chat (not a REST endpoint). **Check contact** sends `contact_check {email}` → `IdentityService.has_account`; see `docs/spec.md` §17;
+  - outcomes `inform` (status `redirected`, reason `existing_contact`; `inform_tenant` card with `say` and **Email sign-in link**) or `new_contact`;
+  - action `send_sign_in_link` + template `sign_in_link`; policy `callcentre.offer_sign_in_link`;
   - the `existing_cr_choice` card and its paths removed;
   - capture without Yardi prefill;
   - flow steps `raise_cc`, `chk_cc`, `db`, `crx`, `pcx`, `inform`, `exec`, `email_link`, `open_form`, `bic`, `update_bi`, `mob`, `succ2`, `upload_submit`, `ref2`.
-- **Call-centre console** (`frontend/src/callcentre/`): contact-check step, Inform panel with **Email sign-in link**.
-- **Reviewer assistant tool:** `assess_forecasted_sales_need()` (facts + matching rule), policy `forecasted_sales.suggest_when`.
+- **Chat cards:** `ContactCheckCard`, `InformTenantCard` (replace `ExistingCrChoiceCard`).
+- **Reviewer assistant tool:** `assess_forecasted_sales_need()` (facts + matching rule), policy `forecasted_sales.suggest_when`. Emits `reviewer_suggestion {kind: sales_data_need, action: request_sales_data}`; **Use** prefills the Ask the applicant form.
+- **Notes the assisted agent now sees** (`[ui_event] …`): `contact_existing inform` (give the words to say, point to **Email sign-in link**; collect nothing more), `contact_new fresh_capture` (capture the sections in order), `contact_check_invalid` (quiet), `sign_in_link_sent to=<masked>`, `link_blocked existing_contact`. `verify_cr` on an existing CR returns "Ask the executive for the caller's email and to press Check contact on the card. Collect nothing else until the check is done."
 - **Tests:** `tests/api/test_callcentre_flow_v2.py`, `tests/agent/test_reviewer_fsd_suggestion.py`; catalogue runner CC1–CC3, S16; Playwright `tests/flow-v2/cc1`…`cc3`, `s16`, `s18`; `a2-call-centre`, `a2-existing-cr` updated.
 - `docs/spec.md`: F4 row of spec §7; §15 intake channels.
 
 ## Your track (Cursor): prompts and wording
 1. **Assisted prompt (E5):**
    - On `inform`, give the executive one or two sentences to say: "You already have a Tenant Central account — please raise the inquiry from Leasing Opportunities after signing in."
-   - Offer **Email sign-in link**.
+   - Point to **Email sign-in link** on the card (the agent never sends it).
+   - Before the check is done, ask only for the caller's email.
    - On a new contact, capture Unit Type and Sales Category, Basic Info and Property Details in the app's order; never ask the executive for documents.
 2. **Case prompt (E3):**
    - In `lead_approved`, start with the signatory question.

@@ -35,6 +35,7 @@ from app.gateway import GatewayError
 from app.security import tokens
 from app.services.container import ServiceContainer
 from app.sessions import SessionNotFound, SessionStore
+from app.workflow.flow import FlowNode, record_flow_step_audit
 
 router = APIRouter(prefix="/api/verifications", tags=["verifications"])
 
@@ -193,6 +194,12 @@ async def complete_application(
         session.test_scenario = test_scenario
         session.script_step = 0
     services.storage.copy_session_files(staff_session.id, session.id)  # type: ignore[attr-defined]
+    # Flow v2 (§3.4): the applicant "Opens form (email verified)" on the call-centre lane;
+    # their later steps are recorded on the staff chat's id (`origin_id`).
+    session.origin_id = staff_session.id
+    record_flow_step_audit(
+        services.audit, inquiry_id=staff_session.id, node=FlowNode.OPEN_FORM, actor="user"
+    )
     staff_session.complete_nonce = None  # single use
     staff_session.closed = "handed_to_applicant"
     await store.save(staff_session)

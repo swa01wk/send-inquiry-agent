@@ -130,6 +130,24 @@ def _review_routing() -> dict[str, ReviewRoleName]:
     }
 
 
+class ForecastedSalesSuggestWhen(_Strict):
+    """Flow v2 (§3.11, E2; P3 default until Cenomi answers): when the reviewer assistant
+    suggests asking for Forecasted Sales Data. Either condition is enough; the RSM decides."""
+
+    new_company: bool = True
+    area_min_sqm_at_least: int | None = Field(default=150, ge=1)
+
+
+class ForecastedSalesPolicy(_Strict):
+    suggest_when: ForecastedSalesSuggestWhen = ForecastedSalesSuggestWhen()
+
+
+class CallCentrePolicy(_Strict):
+    """Flow v2 (§3.4, E5): the Inform outcome offers an Email sign-in link button."""
+
+    offer_sign_in_link: bool = True
+
+
 class FlowV2IntakePolicy(_Strict):
     """Flow v2 public intake (spec flow-v2-alignment §3.2, §3.3; day F3).
 
@@ -314,6 +332,8 @@ class PolicyConfig(_Strict):
     identity: IdentityPolicy = IdentityPolicy()
     lead_approval: LeadApprovalPolicy = LeadApprovalPolicy()
     flow_v2_intake: FlowV2IntakePolicy = FlowV2IntakePolicy()
+    forecasted_sales: ForecastedSalesPolicy = ForecastedSalesPolicy()
+    callcentre: CallCentrePolicy = CallCentrePolicy()
     # ---- Proactive work (L5) -----------------------------------------------------------
     proactive: ProactivePolicy = ProactivePolicy()
 

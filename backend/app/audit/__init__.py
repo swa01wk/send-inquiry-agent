@@ -63,6 +63,9 @@ ALLOWED_KEYS: dict[str, frozenset[str]] = {
     "inquiry_pending": frozenset({"channel"}),
     "pending_resume_requested": frozenset({"found"}),
     "inquiry_expired": frozenset({"reason"}),
+    # Flow v2 call centre (§3.4, day F4).
+    "contact_checked": frozenset({"result"}),
+    "sign_in_link_sent": frozenset({"channel"}),
     "routing_decision": frozenset({"intent", "via", "confidence"}),
     "assistant_suggestion": frozenset({"kind", "action", "used"}),
     # Intake channels (spec §15)

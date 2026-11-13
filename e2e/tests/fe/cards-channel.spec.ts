@@ -33,17 +33,39 @@ test.describe('Intake channel cards @fe', () => {
     await finishA11yOnPage(page, testInfo.project.name)
   })
 
-  test('existing_cr_choice', async ({ page }, testInfo) => {
+  test('contact_check', async ({ page }, testInfo) => {
     const inquiry = new FeInquiryPage(page)
-    await inquiry.openMock('existing-cr-choice')
-    await expect(inquiry.cards('existing_cr_choice')).toBeVisible()
-    await page.getByRole('button', { name: /continue as a new inquiry/i }).click()
+    await inquiry.openMock('contact-check')
+    const card = inquiry.cards('contact_check')
+    await expect(card).toBeVisible()
+    await card.getByLabel("Caller's email").fill('layla.hassan@oasiscoffee.example')
+    await card.getByRole('button', { name: 'Check contact' }).click()
     await inquiry.waitForTurnDone(0)
     expect(
       (await inquiry.mockRequests()).some(
-        (r) => (r as { action?: string }).action === 'existing_cr_choice',
+        (r) =>
+          (r as { action?: string }).action === 'contact_check' &&
+          (r as { payload?: { email?: string } }).payload?.email ===
+            'layla.hassan@oasiscoffee.example',
       ),
     ).toBeTruthy()
+    await expect(inquiry.cards('inform_tenant')).toBeVisible()
+    await finishA11yOnPage(page, testInfo.project.name)
+  })
+
+  test('inform_tenant', async ({ page }, testInfo) => {
+    const inquiry = new FeInquiryPage(page)
+    await inquiry.openMock('inform-tenant')
+    const card = inquiry.cards('inform_tenant')
+    await expect(card).toBeVisible()
+    await card.getByRole('button', { name: 'Email sign-in link' }).click()
+    await inquiry.waitForTurnDone(0)
+    expect(
+      (await inquiry.mockRequests()).some(
+        (r) => (r as { action?: string }).action === 'send_sign_in_link',
+      ),
+    ).toBeTruthy()
+    await expect(card.getByText(/Sign-in link sent to/)).toBeVisible()
     await finishA11yOnPage(page, testInfo.project.name)
   })
 

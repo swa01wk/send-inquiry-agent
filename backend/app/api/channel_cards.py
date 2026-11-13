@@ -10,9 +10,9 @@ from app.api.schemas import (
     BasicInfoReviewPayload,
     BasicInfoRow,
     CompanyRegistrationPayload,
+    ContactCheckPayload,
     CrQuestionPayload,
-    ExistingCrChoiceOption,
-    ExistingCrChoicePayload,
+    InformTenantPayload,
     SendLinkPayload,
     SignInPromptPayload,
     SkipConfirm,
@@ -23,10 +23,16 @@ from app.domain.fields import FIELD_BY_KEY, FieldGroup
 from app.domain.master import MasterData
 from app.domain.models import NEEDS_CONFIRMATION, FieldKey, InquiryDraft
 from app.domain.rules import can_submit
+from app.policy.config import get_policy
 
 BASIC_INFO_CARD_ID = "basic_info_review"
 SEND_LINK_CARD_ID = "send_link"
-EXISTING_CR_CARD_ID = "existing_cr_choice"
+CONTACT_CHECK_CARD_ID = "contact_check"
+INFORM_TENANT_CARD_ID = "inform_tenant"
+INFORM_TENANT_SAY = (
+    "You already have a Tenant Central account. Please sign in and raise the inquiry from "
+    "Leasing Opportunities — your company details are already on file there."
+)
 SIGN_IN_CARD_ID = "sign_in_prompt"
 CR_QUESTION_CARD_ID = "cr_question"
 
@@ -144,20 +150,48 @@ def build_send_link_card(draft: InquiryDraft, *, sent_to: str | None = None) -> 
     return UiCard(card_id=SEND_LINK_CARD_ID, card_type="send_link", payload=payload.model_dump())
 
 
-def build_existing_cr_choice_card(
-    cr_number: str, company_name: str | None, *, chosen: str | None = None
+def build_contact_check_card(
+    company_name: str | None,
+    *,
+    state: str = "open",
+    email_masked: str | None = None,
+    error: str | None = None,
 ) -> UiCard:
-    payload = ExistingCrChoicePayload(
-        cr_number=cr_number,
+    """Flow v2 (§3.4): call centre, existing CR → check the caller's contact."""
+    payload = ContactCheckPayload(
+        prompt=(
+            "This CR already has a Tenant Central account"
+            + (f" ({company_name})" if company_name else "")
+            + ". Ask for the caller's email to check whether they already have a login."
+        ),
         company_name=company_name,
-        options=[
-            ExistingCrChoiceOption(value="sign_in", label="Ask them to sign in"),
-            ExistingCrChoiceOption(value="continue", label="Continue for them"),
-        ],
-        chosen=chosen,  # type: ignore[arg-type]
+        input_placeholder="Caller's email",
+        check_label="Check contact",
+        state=state,  # type: ignore[arg-type]
+        email_masked=email_masked,
+        error=error,
     )
     return UiCard(
-        card_id=EXISTING_CR_CARD_ID, card_type="existing_cr_choice", payload=payload.model_dump()
+        card_id=CONTACT_CHECK_CARD_ID, card_type="contact_check", payload=payload.model_dump()
+    )
+
+
+def build_inform_tenant_card(
+    email_masked: str | None, *, sent: bool = False, error: str | None = None
+) -> UiCard:
+    """Flow v2 (§3.4, E5): "Inform the primary tenant to raise inquiry through tenant
+    platform", with the words to say and the sign-in link email."""
+    payload = InformTenantPayload(
+        title="Inform the caller to raise the inquiry on Tenant Central",
+        say=INFORM_TENANT_SAY,
+        email_masked=email_masked or "",
+        sign_in_label="Email sign-in link",
+        offer_sign_in_link=get_policy().callcentre.offer_sign_in_link,
+        sent=sent,
+        error=error,
+    )
+    return UiCard(
+        card_id=INFORM_TENANT_CARD_ID, card_type="inform_tenant", payload=payload.model_dump()
     )
 
 

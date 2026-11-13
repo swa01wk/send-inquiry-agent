@@ -83,8 +83,14 @@ class Session:
     complete_nonce: str | None = None
     # Why this chat ended without a submission, e.g. "redirected_to_sign_in".
     closed: str | None = None
-    # Assisted mode, existing CR: which option the executive chose on the card (§3.2).
-    existing_cr_choice: str | None = None
+    # Flow v2 (§3.4, F4): call centre, existing CR → "Primary Contact existing?".
+    # "inform" (the caller has a login: no inquiry) or "new_contact" (fresh capture), and
+    # the email that was checked.
+    contact_check: str | None = None
+    contact_email: str | None = None
+    # The staff chat this applicant chat continues (call-centre application link), so the
+    # chart path reads as one inquiry.
+    origin_id: str | None = None
     # Case mode, contacts request (demo feedback §3.5): "yes" | "no" to "Are you the
     # authorised signatory?", or None until answered.
     signatory_answer: str | None = None
@@ -135,7 +141,9 @@ class Session:
             "link_sent_to": self.link_sent_to,
             "complete_nonce": self.complete_nonce,
             "closed": self.closed,
-            "existing_cr_choice": self.existing_cr_choice,
+            "contact_check": self.contact_check,
+            "contact_email": self.contact_email,
+            "origin_id": self.origin_id,
             "signatory_answer": self.signatory_answer,
         }
 
@@ -170,7 +178,9 @@ class Session:
             link_sent_to=raw.get("link_sent_to"),
             complete_nonce=raw.get("complete_nonce"),
             closed=raw.get("closed"),
-            existing_cr_choice=raw.get("existing_cr_choice"),
+            contact_check=raw.get("contact_check"),
+            contact_email=raw.get("contact_email"),
+            origin_id=raw.get("origin_id"),
             signatory_answer=raw.get("signatory_answer"),
         )
 

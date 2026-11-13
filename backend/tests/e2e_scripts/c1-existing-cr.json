@@ -13,7 +13,10 @@
     ]
   },
   {
-    "content": "Ask the caller to sign in to Tenant Central, or choose Continue to fill the inquiry from their tenant record."
+    "content": "This company already has a Tenant Central account. Please ask the caller for their email and press Check contact."
+  },
+  {
+    "content": "A new contact for this company — let's capture the inquiry fresh. What are they looking for, and who are they?"
   },
   {
     "content": "",
@@ -23,18 +26,62 @@
         "args": {
           "fields": [
             {
+              "key": "company_name",
+              "value": "Oasis Coffee Company",
+              "source": "user"
+            },
+            {
+              "key": "company_address",
+              "value": "King Fahd Road, Riyadh",
+              "source": "user"
+            },
+            {
+              "key": "brand_name_en",
+              "value": "Oasis Coffee",
+              "source": "user"
+            },
+            {
+              "key": "brand_name_ar",
+              "value": "أواسيس كوفي",
+              "source": "derived",
+              "evidence": "Oasis Coffee"
+            },
+            {
               "key": "unit_type",
               "value": "specialty",
               "source": "user"
             },
             {
+              "key": "sales_category",
+              "value": "fnb_cafe",
+              "source": "derived",
+              "evidence": "specialty kiosk for coffee"
+            },
+            {
               "key": "malls",
-              "value": ["riyadh-mall-a"],
+              "value": [
+                "riyadh-mall-a"
+              ],
+              "source": "user"
+            },
+            {
+              "key": "first_name",
+              "value": "Huda",
+              "source": "user"
+            },
+            {
+              "key": "last_name",
+              "value": "Saleh",
+              "source": "user"
+            },
+            {
+              "key": "contact_number",
+              "value": "0507654321",
               "source": "user"
             }
           ]
         },
-        "id": "c1u1",
+        "id": "c1v2",
         "type": "tool_call"
       }
     ]
@@ -45,7 +92,7 @@
       {
         "name": "show_application_link",
         "args": {},
-        "id": "c1l1",
+        "id": "c1v3",
         "type": "tool_call"
       }
     ]

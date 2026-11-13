@@ -6,7 +6,8 @@ import {
   draftComplete,
   draftEmpty,
   draftMidway,
-  existingCrChoiceCardExample,
+  contactCheckCardExample,
+  informTenantCardExample,
   mallPickerCardExample,
   MOCK_WELCOME_MESSAGES,
   quickRepliesCardExample,
@@ -286,20 +287,44 @@ export const feScenarioDefinitions: FeScenario[] = [
     ],
   },
   {
-    name: 'existing-cr-choice',
-    session: cardSession(existingCrChoiceCardExample, draftEmpty),
+    name: 'contact-check',
+    session: cardSession(contactCheckCardExample, draftEmpty),
     turns: [
       {
-        when: { type: 'action', action: 'existing_cr_choice' },
+        when: { type: 'action', action: 'contact_check' },
         events: [
           {
             event: 'ui_card',
             data: {
-              ...existingCrChoiceCardExample,
-              payload: { ...existingCrChoiceCardExample.payload, chosen: 'continue' },
+              ...contactCheckCardExample,
+              payload: {
+                ...contactCheckCardExample.payload,
+                state: 'existing',
+                email_masked: 'l***@oasiscoffee.example',
+              },
             } as UiCard,
           },
-          { event: 'done', data: { phase: 'gate' } },
+          { event: 'ui_card', data: informTenantCardExample },
+          { event: 'done', data: { phase: 'collecting' } },
+        ],
+      },
+    ],
+  },
+  {
+    name: 'inform-tenant',
+    session: cardSession(informTenantCardExample, draftEmpty),
+    turns: [
+      {
+        when: { type: 'action', action: 'send_sign_in_link' },
+        events: [
+          {
+            event: 'ui_card',
+            data: {
+              ...informTenantCardExample,
+              payload: { ...informTenantCardExample.payload, sent: true },
+            } as UiCard,
+          },
+          { event: 'done', data: { phase: 'collecting' } },
         ],
       },
     ],

@@ -26,6 +26,7 @@ from app.services.call_centre import REASON_LABELS
 from app.services.container import ServiceContainer
 from app.services.reviewers import Reviewer
 from app.sessions import SessionNotFound, SessionStore
+from app.workflow.flow import FlowNode, record_flow_step_audit
 
 router = APIRouter(prefix="/api/callcentre", tags=["callcentre"])
 
@@ -101,6 +102,10 @@ async def new_inquiry(
     session.remember_card(card.model_dump())
     services.audit.record(
         session.id, "inquiry_created", actor="staff", payload={"channel": "assisted"}
+    )
+    # Flow v2 (§3.4): the call-centre lane starts at "Raise inquiry (call centre)".
+    record_flow_step_audit(
+        services.audit, inquiry_id=session.id, node=FlowNode.RAISE_CC, actor="staff"
     )
     await store.save(session)
     return CreateSessionResponse(
