@@ -153,6 +153,25 @@ def _name_from_email_only(item: DraftFieldUpdate, said: str) -> bool:
     return not all(re.search(rf"(?<![a-z0-9]){re.escape(w)}(?![a-z0-9])", rest) for w in words)
 
 
+_HAS_CR_YES_RE = re.compile(
+    r"\b(yes|yeah|yep|yup|sure|of course|we do|we have|i have|have one|have a cr|got one)\b"
+    r"|نعم|ايوه|أيوه|إيه|ايه|اي نعم|عندنا|لدينا|عندي|لدي|موجود",
+    re.IGNORECASE,
+)
+_HAS_CR_NO_RE = re.compile(
+    r"\b(no|nope|not|don't|dont|haven't|without)\b"
+    r"|ما عندنا|ما عندي|ليس لدينا|لا يوجد|ما فيه|لا\b|بدون",
+    re.IGNORECASE,
+)
+
+
+def _says_has_cr(text: str) -> bool:
+    """The user's words say yes to "Do you have a CR?" (and don't say no)."""
+    if not text or text.startswith("[ui_event]"):
+        return False
+    return bool(_HAS_CR_YES_RE.search(text)) and not _HAS_CR_NO_RE.search(text)
+
+
 def _category_from_brand_only(
     item: DraftFieldUpdate,
     fields: list[DraftFieldUpdate],
@@ -503,6 +522,17 @@ def record_cr_answer(
         test_scenario=state.get("test_scenario"),
     ):
         return _tool_result(runtime, draft=draft, content="Not used in this chat.")
+    if has_cr and not _says_has_cr(_last_user_text(state)):
+        # Arabic user: "نريد افتتاح كشك قهوة" (we want to open a coffee kiosk) was recorded
+        # as "has a CR", which sends them to sign in and ends the chat. Yes needs a yes.
+        return _tool_result(
+            runtime,
+            draft=draft,
+            content=(
+                "Not recorded: their message doesn't say they have a CR. Ask whether the "
+                "company has a CR, pointing to the Yes / No buttons on the card."
+            ),
+        )
     answered = apply_cr_answer(draft, has_cr)
     if answered is None:
         return _tool_result(runtime, draft=draft, content="The CR question is already answered.")
