@@ -21,7 +21,7 @@ from app.agent.guard import claims_submission
 from app.agent.pending import RESUME_PENDING_REPLY
 from app.domain.draft_ops import new_inquiry_draft
 from app.domain.master import load_master_data
-from app.domain.models import FieldKey
+from app.domain.models import FieldKey, Source
 from app.domain.sections import (
     BASIC_INFO_KEYS,
     PROPERTY_KEYS,
@@ -895,7 +895,7 @@ def _expect_checks(
             key.value
             for key in (*BASIC_INFO_KEYS, *PROPERTY_KEYS)
             if draft.fields[key].value not in (None, "", [])
-            and draft.fields[key].source.value != "default"
+            and draft.fields[key].source not in (None, Source.DEFAULT)
         ]
         checks.append((f"side questions wrote nothing (wrote: {written or 'none'})", not written))
     if section := expect.get("returns_to_section"):
@@ -923,7 +923,7 @@ def _expect_checks(
         checks.append(("nothing prefilled from the tenant record", not prefilled))
     for key in expect.get("basic_info_changed") or []:
         value = draft.fields[FieldKey(key)]
-        checks.append((f"applicant changed {key}", value.source.value == "user"))
+        checks.append((f"applicant changed {key}", value.source == Source.USER))
     return checks
 
 
