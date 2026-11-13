@@ -239,3 +239,21 @@ def test_v2_arabic_brand_is_proposed_when_missing() -> None:
     assert _v2_arabic_brand_note(state, draft, [], "Check «بين ستريت» on the card.") is None
     v1 = _brand_profile_draft("v1")
     assert _v2_arabic_brand_note(state, v1, [], "Please send your name.") is None
+
+
+def test_a_brand_only_in_the_email_domain_is_refused() -> None:
+    from app.agent.tools import _name_from_email_only, _normalise_quote
+
+    said = _normalise_quote("Specialty coffee kiosk. Sara Ali, sara@beanstreet.example, 0501234567")
+    brand = DraftFieldUpdate(
+        key=FieldKey.BRAND_NAME_EN.value, value="Bean Street", source="derived"
+    )
+    company = DraftFieldUpdate(
+        key=FieldKey.COMPANY_NAME.value, value="Bean Street Trading", source="derived"
+    )
+    assert _name_from_email_only(brand, said)
+    assert _name_from_email_only(company, said)
+    typed = _normalise_quote("Bean Street café, sara@beanstreet.example")
+    assert not _name_from_email_only(brand, typed)
+    other = DraftFieldUpdate(key=FieldKey.FIRST_NAME.value, value="Sara", source="user")
+    assert not _name_from_email_only(other, said)

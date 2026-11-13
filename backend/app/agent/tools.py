@@ -124,6 +124,30 @@ def _user_words(state: AgentState) -> str:
     return _normalise_quote(" \n ".join(parts))
 
 
+_EMAIL_RE = re.compile(r"[\w.+-]+@([\w-]+)(?:\.[\w-]+)+")
+_NAME_KEYS = frozenset({FieldKey.BRAND_NAME_EN.value, FieldKey.COMPANY_NAME.value})
+
+
+def _name_from_email_only(item: DraftFieldUpdate, said: str) -> bool:
+    """A brand or company name the user never wrote, only seen in an email domain
+    ("sara@beanstreet.example" → "Bean Street"). The prompt forbids it; this makes it a
+    rule (document_extract: the profiles then had nothing left to fill)."""
+    if item.key not in _NAME_KEYS or not isinstance(item.value, str):
+        return False
+    squashed = re.sub(r"[^a-z0-9]", "", item.value.casefold())
+    if len(squashed) < 4:
+        return False
+    labels = {re.sub(r"[^a-z0-9]", "", m.group(1)) for m in _EMAIL_RE.finditer(said)}
+    if not any(
+        len(label) >= 4 and (squashed.startswith(label) or label.startswith(squashed))
+        for label in labels
+    ):
+        return False
+    rest = _EMAIL_RE.sub(" ", said)
+    words = re.findall(r"[a-z0-9]+", item.value.casefold())
+    return not all(re.search(rf"(?<![a-z0-9]){re.escape(w)}(?![a-z0-9])", rest) for w in words)
+
+
 def _category_from_brand_only(
     item: DraftFieldUpdate,
     fields: list[DraftFieldUpdate],
@@ -555,9 +579,16 @@ def update_draft(
 
     user_text = _last_user_text(state)
     keys_in_call = {item.key for item in fields}
+    said = _user_words(state)
     for item in fields:
         if item.key in PROTECTED_WRITE_KEYS:
             rejected.append(f"{item.key}: protected")
+            continue
+        if _name_from_email_only(item, said):
+            rejected.append(
+                f"{item.key}: not_given (only in their email address); leave it empty and "
+                "ask for it, or let the profile fill it"
+            )
             continue
         if item.source not in ("user", "derived"):
             rejected.append(f"{item.key}: invalid source")
