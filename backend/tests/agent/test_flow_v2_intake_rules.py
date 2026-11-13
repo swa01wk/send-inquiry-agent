@@ -257,3 +257,6 @@ def test_a_brand_only_in_the_email_domain_is_refused() -> None:
     assert not _name_from_email_only(brand, typed)
     other = DraftFieldUpdate(key=FieldKey.FIRST_NAME.value, value="Sara", source="user")
     assert not _name_from_email_only(other, said)
+    # Arabic user: "Bean Street" is the transliteration of what they typed (Arabic user).
+    arabic = _normalise_quote("اسم العلامة بين ستريت، sara@beanstreet.example، 0501234567")
+    assert not _name_from_email_only(brand, arabic)

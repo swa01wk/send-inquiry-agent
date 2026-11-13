@@ -126,6 +126,7 @@ def _user_words(state: AgentState) -> str:
 
 _EMAIL_RE = re.compile(r"[\w.+-]+@([\w-]+)(?:\.[\w-]+)+")
 _NAME_KEYS = frozenset({FieldKey.BRAND_NAME_EN.value, FieldKey.COMPANY_NAME.value})
+_ARABIC_SCRIPT_RE = re.compile(r"[\u0600-\u06FF]")
 
 
 def _name_from_email_only(item: DraftFieldUpdate, said: str) -> bool:
@@ -133,6 +134,10 @@ def _name_from_email_only(item: DraftFieldUpdate, said: str) -> bool:
     ("sara@beanstreet.example" → "Bean Street"). The prompt forbids it; this makes it a
     rule (document_extract: the profiles then had nothing left to fill)."""
     if item.key not in _NAME_KEYS or not isinstance(item.value, str):
+        return False
+    if _ARABIC_SCRIPT_RE.search(said):
+        # They wrote in Arabic: a Latin name is the agent's transliteration of what they
+        # typed («بين ستريت» → "Bean Street"), not something read off the email.
         return False
     squashed = re.sub(r"[^a-z0-9]", "", item.value.casefold())
     if len(squashed) < 4:
