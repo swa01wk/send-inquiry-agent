@@ -177,14 +177,14 @@ def build_contact_check_card(
 
 
 def build_inform_tenant_card(
-    email_masked: str, *, sent: bool = False, error: str | None = None
+    email_masked: str | None, *, sent: bool = False, error: str | None = None
 ) -> UiCard:
     """Flow v2 (§3.4, E5): "Inform the primary tenant to raise inquiry through tenant
     platform", with the words to say and the sign-in link email."""
     payload = InformTenantPayload(
         title="Inform the caller to raise the inquiry on Tenant Central",
         say=INFORM_TENANT_SAY,
-        email_masked=email_masked,
+        email_masked=email_masked or "",
         sign_in_label="Email sign-in link",
         offer_sign_in_link=get_policy().callcentre.offer_sign_in_link,
         sent=sent,

@@ -9,6 +9,7 @@ CONTEXT = {
     "tracking_url": "http://localhost:5173/inquiry/status/GEO-STR-123456?t=x",
     "verify_url": "http://localhost:5173/inquiry/verify?t=y",
     "resume_url": "http://localhost:5173/inquiry/resume?t=z",
+    "sign_in_url": "http://localhost:5173/tenant",
     "code": "1234",
     "ttl_hours": 72,
     "ttl_days": 7,
