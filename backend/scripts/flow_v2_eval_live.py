@@ -975,12 +975,42 @@ def _section_order_ok(
     return [("sections never go backwards", monotonic)]
 
 
-def _unnecessary_zero(
-    session: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
-) -> list[tuple[str, bool]]:
-    el = _el()
+_SELL_ASK_RE = re.compile(r"\bwhat\b[^.?!]{0,40}\bsell\b[^.?!]*\?", re.IGNORECASE)
 
-    return [("no_field_asked_twice KPI", el.count_unnecessary_questions(session, turns) == 0)]
+
+def _unnecessary_zero(
+    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
+) -> list[tuple[str, bool]]:
+    """No reply asks for a value that is already filled *at that turn*.
+
+    The shared KPI compares every reply with the final draft, so asking for the brand
+    before the user gave it counted as a repeat. Here each reply is judged against the
+    values the draft events had shown up to and including its own turn.
+    """
+    el = _el()
+    filled: set[str] = set()
+    repeats: list[str] = []
+    for turn in turns:
+        for event, data in turn.events:
+            if event != "draft":
+                continue
+            filled = {
+                str(row.get("key"))
+                for row in data.get("fields") or []
+                if row.get("display") not in (None, "")
+            }
+        text = turn.assistant
+        if not text.strip():
+            continue
+        for pattern, key in el._FIELD_ASK_PATTERNS:
+            if key.value in filled and pattern.search(text):
+                repeats.append(f"{key.value} at {turn.user[:30]!r}")
+        if FieldKey.SALES_CATEGORY.value in filled and _SELL_ASK_RE.search(text):
+            repeats.append(f"sales_category at {turn.user[:30]!r}")
+    label = "no_field_asked_twice KPI"
+    if repeats:
+        label += f" ({'; '.join(repeats)[:200]})"
+    return [(label, not repeats)]
 
 
 def _resume_reply_neutral(

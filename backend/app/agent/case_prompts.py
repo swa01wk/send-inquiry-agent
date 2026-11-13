@@ -10,7 +10,7 @@ from langchain_core.messages import SystemMessage
 
 from app.agent.runtime import AgentRuntime
 from app.agent.state import AgentState
-from app.api.case_cards import _STAGE_LABELS
+from app.api.case_cards import _STAGE_LABELS, signatory_question_due
 from app.domain.fields import document_label
 from app.policy.config import get_policy
 from app.services.status import REQUEST_LABELS, _from_case, final_approval_label
@@ -86,6 +86,16 @@ def build_case_system_message(state: AgentState, runtime: AgentRuntime) -> Syste
         if headline := final_approval_label(status.status):
             lines.append(f"Outcome wording: {headline}")
         lines.append(f"Open requests:\n{open_text}")
+        if any(
+            r.status == "open" and signatory_question_due(r, state.get("signatory_answer"))
+            for r in case.requests
+        ):
+            # S23 (E3): one question first, decided in code rather than left to the prompt.
+            lines.append(
+                "Next: the signatory question is not answered. This reply asks only whether "
+                "they are the authorised signatory (Yes / No on the signatory card). Do not ask "
+                "for the billing contact, names, emails or any other role in this reply."
+            )
         status_block = "\n".join(lines)
     contacts = state.get("contacts_draft") or []
     content = (

@@ -157,3 +157,50 @@ def test_mall_picker_opens_for_a_named_city_on_v2() -> None:
         assert _v2_mall_picker_city(draft, [], "Jeddah Mall A please", [], master) is None
         draft.intake_flow = "v1"
         assert _v2_mall_picker_city(draft, [], "any mall in Jeddah", [], master) is None
+
+
+def _brand_profile_draft(flow: str):
+    from app.domain.fields import document_label
+    from app.domain.models import DocType
+
+    master = load_master_data()
+    draft = new_inquiry_draft()
+    draft, _, _ = write_fields(
+        draft, [(FieldKey.BRAND_NAME_EN.value, "Bean Street", Source.DERIVED)], master=master
+    )
+    draft.fields[FieldKey.BRAND_NAME_EN].evidence = f"{document_label(DocType.BRAND_PROFILE)}: x"
+    draft.intake_flow = flow  # type: ignore[assignment]
+    return draft
+
+
+def test_v2_proposes_the_arabic_brand_after_a_brand_profile() -> None:
+    from app.agent.guard import _brand_reask_note
+    from app.agent.state import initial_agent_state
+
+    ask = "What's your brand name in Arabic?"
+    v1 = initial_agent_state(session_id="s1", draft=_brand_profile_draft("v1"), phase="collecting")
+    assert _brand_reask_note(v1, ask) is None
+    v2 = initial_agent_state(session_id="s2", draft=_brand_profile_draft("v2"), phase="collecting")
+    note = _brand_reask_note(v2, ask)
+    assert note is not None and "arabic_brand_ask" in note
+
+
+def test_a_confirmed_category_is_not_asked_again() -> None:
+    from app.agent.guard import _later_section_ask_note
+    from app.agent.state import initial_agent_state
+
+    master = load_master_data()
+    draft = new_inquiry_draft()
+    draft.intake_flow = "v2"
+    draft.cr_status = "skipped"
+    with intake_scope("v2"):
+        draft, _, _ = write_fields(
+            draft,
+            [("unit_type", "store", Source.USER), ("sales_category", "fnb_cafe", Source.USER)],
+            master=master,
+        )
+        state = initial_agent_state(session_id="s1", draft=draft, phase="collecting")
+        note = _later_section_ask_note(
+            state, draft, "[ui_event] confirmed", "What do you sell, just to make sure?"
+        )
+    assert note is not None and "done_section_ask" in note

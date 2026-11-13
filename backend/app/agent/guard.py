@@ -401,6 +401,19 @@ def _later_section_ask_note(
                 f"— it isn't done yet. Save anything they gave early, but don't ask about "
                 f"{SECTION_LABELS[section]} yet. Reply again."
             )
+    # A section already done and confirmed is never asked again (S1: "What do you sell,
+    # just to make sure?" right after they confirmed the category).
+    done = IntakeSection.UNIT_AND_CATEGORY
+    if (
+        section_rank(done) < section_rank(current)
+        and draft.fields[FieldKey.SALES_CATEGORY].confirmed
+        and _SECTION_ASK_RE[done].search(questions)
+        and not _SECTION_ASK_RE[done].search(user_text)
+    ):
+        return (
+            f"{GUARD_PREFIX} done_section_ask: {SECTION_LABELS[done]} is done and confirmed. "
+            f"Don't ask about it again; ask about {SECTION_LABELS[current]}. Reply again."
+        )
     return None
 
 
@@ -499,7 +512,15 @@ def _brand_reask_note(state: AgentState, ai_text: str) -> str | None:
         # asking for it ("What's the brand name in Arabic?") isn't a re-ask (demo feedback
         # §3.7, R4). When the brand was typed or dictated, the model proposes the Arabic
         # name itself (system prompt), so asking is still a re-ask.
-        return None
+        if draft.intake_flow != "v2":
+            return None
+        # Flow v2 (S13): propose it on the card too, rather than waiting for them to type it.
+        return (
+            f"{GUARD_PREFIX} arabic_brand_ask: propose the Arabic brand name yourself — call "
+            "update_draft with brand_name_ar (source derived, evidence = the English brand "
+            "name) — and ask them to check it on the card. Don't ask them to type it. "
+            "Reply again."
+        )
     user_text, _ = _current_turn(state)
     if _field_has_value(draft, FieldKey.BRAND_NAME_EN) or _field_has_value(
         draft, FieldKey.BRAND_NAME_AR
