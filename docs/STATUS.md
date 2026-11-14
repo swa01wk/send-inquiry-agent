@@ -12,7 +12,7 @@ The single place to see what's built, what's next and how the agent maps to the 
 
 **Status values:** ✅ Done · 🟡 In progress, or built at demo depth during the breadth days · ⬜ Not started · ⛔ Blocked · ➖ Waived (with reason)
 
-**Last updated:** 4 Nov 2026 · demo feedback planned (PRD v1.1, [spec](specs/demo-feedback.md), days R1–R5 in `prompts/feedback/`, re-demo Tue 10 Nov); earlier: step 12 done (parity suite, live-eval baseline 27/27), 11e out-of-order intake, 5-day close-out (30 Oct)
+**Last updated:** 14 Nov 2026 · flow v2 F0–F4 merged (#91–#100), F5 in progress (#101); earlier, 4 Nov 2026 · demo feedback planned (PRD v1.1, [spec](specs/demo-feedback.md), days R1–R5 in `prompts/feedback/`, re-demo Tue 10 Nov); earlier: step 12 done (parity suite, live-eval baseline 27/27), 11e out-of-order intake, 5-day close-out (30 Oct)
 
 ## 0. Delivery plan
 
@@ -31,12 +31,12 @@ The single place to see what's built, what's next and how the agent maps to the 
 | Re-demo R3 | Sat 7 Nov | Type or upload; profile checks | #68 (backend) | R3 Cursor PR | ✅ | D11, D12. Intake prompt; confirm-card evidence; documents-card note; `rd-type-or-upload`; golden; `document_extract` eval; `unnecessary_questions` KPI |
 | Re-demo R4 | Mon 9 Nov (moved from Sun 8 Nov) | Signed-in new brand (Yardi by CR) | #72 (backend, prompt, scripts and Playwright in one PR) | — | 🟡 | D13. `company_by_cr`; Leasing Opportunities prefills the company from Yardi, no brand, both profiles uploaded afresh, the Company Profile checked against the record; no brand picker; `rd-signed-in-new-brand`; a1 stories re-scripted; rehearsal step 11. Golden skipped (the parity recorder is intake-only). Live `channels` eval: Swaroop |
 | Re-demo R5 | Mon 9 Nov | Hardening on Postgres; `demo.spec.ts` for 10 Nov; demo script | #71 (seeds, `/dev` demo cases, rehearsal spec, `done` after save and lease release); #73 (uploads wait for a reply in progress; brand pick); #74 (CI: `demo_stack` suite) | #75 (demo script and queries, written by Claude); #76 (POC-LIFECYCLE approvals, F14/F15) | 🟡 | D10: `make e2e-demo` green on Postgres in Actions (×4), and the restart beat green on the Docker stack in Actions (`demo_stack`). D15 open: live evals need the model locally (the Actions OpenAI key has expired). Left for Swaroop: live tuning and evals, `make e2e-live`, machine check, rehearsal from `/dev`, sharing the flow with Muzammil. **Re-demo Tue 10 Nov** |
-| Flow v2 F0 docs | Thu 12 Nov | Docs: flow v2 spec, scenario catalogue (S1–S24, CC1–CC3), test plan, day prompts | F0 docs PR | — | 🟡 | [spec](specs/flow-v2-alignment.md); [tracker](https://claude.ai/artifact/N6P9iLDCZBniCLoNmXng67); decisions M13–M26 and A1–A3 confirmed 11–12 Nov |
-| Flow v2 F1 | Fri 13 Nov | Chart names, revoke on Reject Lead, console fixes (V4, V5, V8, V9, V14) | #91 | F1 Cursor PR | 🟡 | FV2–FV4; S19, S20 case agent, `flow_v2` eval (S19–S20), Playwright case-chat steps |
-| Flow v2 F2 | Sat 14 Nov | Approve Lead? → contacts → Approve Lead; unit assignment; reminders; `FlowNode` (V6, V7, V11, E4) | #92/#93/#94 (backend) | F2 Cursor PR | 🟡 | FV1, FV5–FV8; S21–S24 case agent, cards, scripts, `flow_v2` eval (S19–S24) |
-| Flow v2 F3 | Mon 16 Nov | Public intake in the app's order; Company Registration; Store and Office; pending inquiry (V1, V2, V10–V13, E1) | #97 (backend) | F3 Cursor PR | 🟡 | Policy on; v2 prompt, cards, scripts s01–s17; conftest v1 guard; FE Vitest + @fe flow-v2 cards. INT/golden/eval_live pending full run |
-| Flow v2 F4 | Tue 17 Nov | Call-centre contact check; case agent and reviewer assistant (V3, E2, E3, E5) | | | ⬜ | FV16–FV18; S16, S18, CC1–CC3 |
-| Flow v2 F5 | Wed 18 Nov | Full Playwright and eval runs, demo script, docs | | | ⬜ | FV19–FV22 |
+| Flow v2 F0 docs | Thu 12 Nov | Docs: flow v2 spec, scenario catalogue (S1–S24, CC1–CC3), test plan, day prompts | F0 docs PR | — | ✅ | [spec](specs/flow-v2-alignment.md); [tracker](https://claude.ai/artifact/N6P9iLDCZBniCLoNmXng67); decisions M13–M26 and A1–A3 confirmed 11–12 Nov |
+| Flow v2 F1 | Fri 13 Nov | Chart names, revoke on Reject Lead, console fixes (V4, V5, V8, V9, V14) | #91 | #95 | ✅ | FV2–FV4; S19, S20 case agent, `flow_v2` eval (S19–S20), Playwright case-chat steps |
+| Flow v2 F2 | Sat 14 Nov | Approve Lead? → contacts → Approve Lead; unit assignment; reminders; `FlowNode` (V6, V7, V11, E4) | #92/#93/#94 (backend) | #96 | ✅ | FV1, FV5–FV8; S21–S24 case agent, cards, scripts, `flow_v2` eval (S19–S24) |
+| Flow v2 F3 | Mon 16 Nov | Public intake in the app's order; Company Registration; Store and Office; pending inquiry (V1, V2, V10–V13, E1) | #97 (backend) | #98 | ✅ | Policy on; v2 prompt, cards, scripts s01–s17; FE Vitest + @fe flow-v2 cards. `flow_v2` eval 100% before merge |
+| Flow v2 F4 | Tue 17 Nov | Call-centre contact check; case agent and reviewer assistant (V3, E2, E3, E5) | #99 | #100 | ✅ | Contact check card (not an endpoint), Inform + Email sign-in link, one chart path across both chats, `assess_forecasted_sales_need`. `flow_v2` eval 28/28 (14 Nov), `channels` 5/5, `case` 4/4 |
+| Flow v2 F5 | Wed 18 Nov | Full Playwright and eval runs, demo script, docs | #101 | — | 🟡 | AGENT-DET catalogue runner (S1–S17, CC1–CC3) green in CI; Playwright catalogue spec; this file and POC-LIFECYCLE §2 redrawn. Gate runs below |
 | Sprint 1 | 3–16 Nov (proposed to 20 Nov, Part C) | M0 and L3 gates (incl. E10, intake channels); full test harness | #48 (Day 5 leftovers); #49 (11d-a) | #50 (11d-b); #51 (11d-c) | 🟡 | **Started early, 30 Oct.** Steps 11d, 11e, 12 done; step 13 in progress; re-demo days R1–R5 (5–9 Nov, incl. the weekend) run inside this sprint |
 | Sprint 2 | 17–30 Nov | L4 gate; channels row C5 | | | ⬜ | |
 | Closing | 1 Dec – ~16 Dec | L5 to gate quality (thin L5 runs from Day 5); production readiness | | | ⬜ | |
@@ -235,6 +235,18 @@ What each layer proves and when it runs: [`docs/specs/testing-strategy.md`](spec
 | AGENT-DET | Tools, guard, actions, bundles, prompt snapshot, routing, allowlists, scenarios, parity goldens | `make test-agent` (`pytest -m agent`) | Every PR (inside `test-be`) | ✅ | Parity suite in `tests/parity/` (step 12); catalogue adds landline-only and two-malls-named |
 | AGENT-LIVE | `eval_live.py` scenario groups, ×3 repeats, invariants I1–I7, score vs baseline | `make eval-live` | `workflow_dispatch` suite `eval`; nightly opt-in | ✅ | `EVAL_REPEATS` / `EVAL_TOLERANCE`, per-turn invariants (`app/agent/invariants.py`), JSON+MD in `backend/eval-results/`; formal baseline recording in step 12 |
 | E2E-LIVE | Playwright, real frontend + backend + model; personas and live stories | `make e2e-live` | `workflow_dispatch` suite `live`; nightly opt-in | ✅ | `@live` personas; per-turn invariants in `e2e/support/invariants.ts`; `@flaky` excluded from stable pass rate (`liveSummary` reporter) |
+
+### Flow v2 layers and gate (F5)
+
+Every catalogue scenario on every layer that can see it ([test plan](testing/flow-v2-test-plan.md) §1). Gate rows: [spec](specs/flow-v2-alignment.md) FV19–FV22.
+
+| Layer | What runs | Command | Result |
+| --- | --- | --- | --- |
+| AGENT-DET | `tests/flow_v2/test_catalogue.py`: S1–S17, CC1–CC3 through the HTTP app with their scripts (`flow-v2-<id>.json`); path rule, `expect`, invariants | `make test-agent` (in `ci.yml`) | ✅ 20/20 on #101 |
+| INT | `e2e/tests/flow-v2/catalogue.spec.ts` (S1–S17, CC1–CC3, same scripts and steps as AGENT-DET) and `s19`–`s24` specs, desktop and mobile | `make e2e-int ARGS='--grep @flow-v2'` | ⬜ to record (FV19) |
+| AGENT-LIVE | `eval_live.py GROUP=flow_v2`: S1–S24, CC1–CC3 (+ S21 E2), ×3 | `make eval-live GROUP=flow_v2` | ✅ 28/28 (14 Nov, before #100); second day to record (FV21) |
+| E2E-LIVE | the same specs, `@live`, real model | `make e2e-live ARGS='--grep @flow-v2'` | ⬜ to record twice (FV20: ≥ 22/24 + CC1–CC3) |
+| DEMO | `make e2e-demo` on Postgres | `make e2e-demo` | ⬜ after the demo script update |
 
 Coverage (from 11d): `app/domain` **93%** (target floor 95%) · `app/agent` **89%** (floor 85%, enforced) · `app` **92%** (floor 85%, enforced).
 
