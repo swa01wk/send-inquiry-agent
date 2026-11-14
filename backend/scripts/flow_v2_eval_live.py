@@ -161,6 +161,13 @@ class _StepCtx:
     catalogue: dict[str, Any]
     # CC1–CC3: the executive's chat; `session_id` moves to the applicant's after the link.
     staff_session_id: str | None = None
+    # AGENT-DET (scripted model): the e2e script for new chats, sent as X-Test-Scenario.
+    script: str | None = None
+    applicant_script: str | None = None
+
+    def headers(self, script: str | None = None, **extra: str) -> dict[str, str]:
+        name = script if script is not None else self.script
+        return {**extra, **({"X-Test-Scenario": name} if name else {})}
 
 
 async def _run_stream(
@@ -477,7 +484,7 @@ async def _execute_step(
         await ctx.client.post("/api/dev/clock/advance", json={"hours": minutes / 60})
         return None
     if step.get("new_session") is True:
-        created = await ctx.client.post("/api/sessions")
+        created = await ctx.client.post("/api/sessions", headers=ctx.headers())
         created.raise_for_status()
         ctx.session_id = created.json()["session_id"]
         return "new_session"
@@ -732,7 +739,11 @@ async def _execute_cc_step(
                 break
         if not token:
             raise RuntimeError("open_application_link: no complete_application email")
-        opened = await ctx.client.post("/api/verifications/email", json={"token": token})
+        opened = await ctx.client.post(
+            "/api/verifications/email",
+            json={"token": token},
+            headers=ctx.headers(ctx.applicant_script),
+        )
         opened.raise_for_status()
         ctx.session_id = str(opened.json()["session_id"])
     elif kind == "edit_field":
@@ -775,17 +786,25 @@ async def run_flow_v2_catalogue(
     scenario: LiveScenario,
     *,
     outbox_messages: list[dict[str, Any]],
+    script: str | None = None,
+    applicant_script: str | None = None,
 ) -> tuple[Any, list[tuple[Any, int]]]:
+    """Run one catalogue entry. `script` (AGENT-DET) drives a scripted model instead of the
+    real one: the e2e script name for the chat, and `applicant_script` for the applicant's
+    chat that opens from the call-centre link."""
     el = _el()
 
     entry = scenario.catalogue
     if entry is None:
         raise RuntimeError("catalogue missing")
+    test_headers = {"X-Test-Scenario": script} if script else {}
     if "call_centre" in (entry.get("contexts") or []):
         app.state.services.notifications.clear()  # the outbox checks read this run only
-        created = await client.post("/api/callcentre/inquiries", headers=_STAFF_HEADERS)
+        created = await client.post(
+            "/api/callcentre/inquiries", headers={**_STAFF_HEADERS, **test_headers}
+        )
     else:
-        created = await client.post("/api/sessions")
+        created = await client.post("/api/sessions", headers=test_headers)
     created.raise_for_status()
     session_id = created.json()["session_id"]
     ctx = _StepCtx(
@@ -796,6 +815,8 @@ async def run_flow_v2_catalogue(
         turns=[],
         catalogue=entry,
         staff_session_id=session_id if "call_centre" in (entry.get("contexts") or []) else None,
+        script=script,
+        applicant_script=applicant_script,
     )
     violations: list[tuple[Any, int]] = []
     turn_index = 0

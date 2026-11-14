@@ -1,0 +1,170 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "verify_cr",
+        "args": {
+          "cr_number": "1010000000"
+        },
+        "id": "cc2-v",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "This CR already has a Tenant Central account. Please ask the caller for their email and press Check contact on the card."
+  },
+  {
+    "content": "A new contact for this company — let's capture the inquiry fresh. What is the caller looking for, and what do they sell?"
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "unit_type",
+              "value": "store",
+              "source": "user"
+            },
+            {
+              "key": "sales_category",
+              "value": "fnb_cafe",
+              "source": "user"
+            }
+          ]
+        },
+        "id": "cc-unit",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Got it — a store selling coffee and pastries. Next, the caller's company, brand and contact details."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "company_name",
+              "value": "Oasis Coffee Company",
+              "source": "user"
+            },
+            {
+              "key": "company_address",
+              "value": "King Fahd Road, Riyadh",
+              "source": "user"
+            },
+            {
+              "key": "brand_name_en",
+              "value": "Oasis Coffee",
+              "source": "user"
+            },
+            {
+              "key": "brand_name_ar",
+              "value": "أواسيس كوفي",
+              "source": "user"
+            },
+            {
+              "key": "first_name",
+              "value": "Huda",
+              "source": "user"
+            },
+            {
+              "key": "last_name",
+              "value": "Saleh",
+              "source": "user"
+            },
+            {
+              "key": "contact_number",
+              "value": "0507654321",
+              "source": "user"
+            }
+          ]
+        },
+        "id": "cc2-basic",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Thanks — I've saved Huda's details. Which mall is the caller after, and the size and budget?"
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "malls",
+              "value": [
+                "riyadh-mall-a"
+              ],
+              "source": "user"
+            },
+            {
+              "key": "area_min",
+              "value": 40,
+              "source": "user"
+            },
+            {
+              "key": "area_max",
+              "value": 80,
+              "source": "user"
+            },
+            {
+              "key": "rent_min",
+              "value": 150000,
+              "source": "user"
+            },
+            {
+              "key": "rent_max",
+              "value": 250000,
+              "source": "user"
+            }
+          ]
+        },
+        "id": "cc-prop",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "show_application_link",
+        "args": {},
+        "id": "cc-link",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "The caller's details are complete — press Send application link when you're ready."
+  },
+  {
+    "content": "Sent — the caller finishes the inquiry from the link in their email."
+  },
+  {
+    "content": "Noted."
+  },
+  {
+    "content": "Noted."
+  },
+  {
+    "content": "Noted."
+  },
+  {
+    "content": "Noted."
+  }
+]
