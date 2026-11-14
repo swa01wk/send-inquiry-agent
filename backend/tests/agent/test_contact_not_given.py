@@ -33,10 +33,11 @@ def test_invented_contact_is_refused(key: str, value: str) -> None:
         ("email", "Sara@BeanStreet.example"),
         ("contact_number", "+966501234567"),
         ("mobile", "0501234567"),
+        ("landline", "+96611234567"),
     ],
 )
 def test_typed_contact_is_kept(key: str, value: str) -> None:
-    said = _said("Sara Al-Ali, sara@beanstreet.example, ٠٥٠١٢٣٤٥٦٧")
+    said = _said("Sara Al-Ali, sara@beanstreet.example, ٠٥٠١٢٣٤٥٦٧, office 011234567")
     assert not _contact_not_given(DraftFieldUpdate(key=key, value=value, source="user"), said)
 
 

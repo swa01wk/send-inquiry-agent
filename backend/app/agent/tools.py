@@ -178,7 +178,7 @@ _PHONE_KEYS = frozenset(
 def _contact_not_given(item: DraftFieldUpdate, said: str) -> bool:
     """A contact detail "from the user" that they never typed (F5 evals, S16: asked "how
     long does the review take?", the model saved an invented Sara Ali with an email). The
-    email must be in their words, the phone's last 9 digits too, and each name word unless
+    email must be in their words, the phone's national number too, and each name word unless
     they wrote in Arabic (then a Latin name is a transliteration)."""
     if item.source != "user" or item.key not in _CONTACT_KEYS:
         return False
@@ -188,8 +188,9 @@ def _contact_not_given(item: DraftFieldUpdate, said: str) -> bool:
     if item.key == FieldKey.EMAIL.value:
         return value not in said
     if item.key in _PHONE_KEYS:
-        digits = re.sub(r"\D", "", value)
-        return len(digits) >= 7 and digits[-9:] not in re.sub(r"\D", "", said)
+        # The national number: "+966 11 234 567", "0096611234567" and "011234567" match.
+        national = re.sub(r"^(?:00)?(?:966)?0*", "", re.sub(r"\D", "", value))
+        return len(national) >= 7 and national not in re.sub(r"\D", "", said)
     if _ARABIC_SCRIPT_RE.search(said) or _ARABIC_SCRIPT_RE.search(value):
         return False
     words = re.findall(r"[a-z]+", value)
