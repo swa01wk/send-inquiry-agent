@@ -247,7 +247,13 @@ def _tool_result(
     update: dict[str, Any] = {"draft": draft}
     if changed_keys is not None:
         _emit_draft(draft, changed_keys, runtime)
-        _refresh_send_link_card(draft, runtime, cards_shown)
+        shown = _refresh_send_link_card(draft, runtime, cards_shown)
+        if shown is not None:
+            cards_shown = shown
+            content += (
+                " The basic info is complete: the Send application link card is now shown — "
+                "tell the executive to press it."
+            )
     if cards_shown is not None:
         update["cards_shown"] = cards_shown
     if confirm_card_keys is not None:
@@ -266,21 +272,30 @@ def _tool_result(
 
 def _refresh_send_link_card(
     draft: InquiryDraft, runtime: ToolRuntime, cards_shown: list[str] | None
-) -> None:
-    """Assisted mode: the Send application link card, once shown, follows the draft, so it
-    turns ready the moment the basic info is complete (not only when the tool is called
-    again). Never after the link went out: the card then shows who it was sent to."""
+) -> list[str] | None:
+    """Assisted mode: the Send application link card follows the draft. Once shown it turns
+    ready the moment the basic info is complete; and when a write completes the basic info
+    before the card was shown, code shows it (no model call needed: F5 evals saw a retry
+    each time the model forgot `show_application_link`). Returns the new `cards_shown` when
+    this write showed the card for the first time. Never after the link went out (the card
+    then shows who it was sent to), and never for an existing contact (Inform)."""
     state = getattr(runtime, "state", None) or {}
-    if not state.get("assisted"):
-        return
-    if SEND_LINK_CARD_ID not in (cards_shown or state.get("cards_shown") or []):
-        return
+    if not state.get("assisted") or state.get("contact_check") == "inform":
+        return None
+    current = list(cards_shown if cards_shown is not None else state.get("cards_shown") or [])
     session_id = state.get("session_id")
     if session_id:
         services = runtime_from_config(runtime.config).services
         if any(e["type"] == "application_link_sent" for e in services.audit.events(session_id)):
-            return
-    _emit_card(build_send_link_card(draft), runtime)
+            return None
+    card = build_send_link_card(draft)
+    if SEND_LINK_CARD_ID in current:
+        _emit_card(card, runtime)
+        return None
+    if not card.payload["can_send"]:
+        return None
+    _emit_card(card, runtime)
+    return [*current, SEND_LINK_CARD_ID]
 
 
 def _write_source(source: str, state: AgentState) -> Source:

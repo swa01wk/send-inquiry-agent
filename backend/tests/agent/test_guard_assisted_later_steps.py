@@ -28,6 +28,7 @@ def test_later_steps_are_flagged_in_assisted_mode(reply: str) -> None:
         "The application link card is ready: press Send application link.",
         "Please ask for the caller's email and press Check contact on the card.",
         "The caller will verify their email from the link.",
+        "Got it — the CR is verified and the company details are on the card.",
     ],
 )
 def test_ordinary_assisted_replies_pass(reply: str) -> None:

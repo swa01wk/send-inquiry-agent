@@ -768,8 +768,11 @@ def _assisted_verification_claim_note(state: AgentState, ai_text: str) -> str | 
 # Assisted mode: the caller verifies and uploads from the application link, so the
 # executive's chat never talks about those steps (F4 evals CC3: "then we can move on to
 # verification", "the verification and documents steps will open up").
+# "The CR is verified" is the registry check, not the caller's verification: only the
+# verification step itself, codes and documents count (F5 evals: Zara Home retracted).
 _ASSISTED_LATER_STEPS_RE = re.compile(
-    r"\b(verif(?:y|ied|ication)\w*|one-time code|sms code|otp|documents?|uploads?)\b",
+    r"\b(verification|verify (?:their|the caller's|your) (?:email|mobile|phone)"
+    r"|one-time code|sms code|otp|documents?|uploads?)\b",
     re.IGNORECASE,
 )
 
