@@ -127,7 +127,7 @@ async def test_catalogue_scenario(det: tuple[AsyncClient, Any], scenario_id: str
 
 
 async def test_confirm_plan_endpoint(det: tuple[AsyncClient, Any]) -> None:
-    """GET /api/dev/confirm-plan: nothing to confirm on a fresh chat, and a bad section is refused."""
+    """GET /api/dev/confirm-plan: nothing to confirm on a fresh chat; a bad section is refused."""
     client, _app = det
     created = await client.post("/api/sessions")
     session_id = created.json()["session_id"]
