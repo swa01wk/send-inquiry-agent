@@ -243,7 +243,7 @@ Every catalogue scenario on every layer that can see it ([test plan](testing/flo
 | Layer | What runs | Command | Result |
 | --- | --- | --- | --- |
 | AGENT-DET | `tests/flow_v2/test_catalogue.py`: S1–S17, CC1–CC3 through the HTTP app with their scripts (`flow-v2-<id>.json`); path rule, `expect`, invariants | `make test-agent` (in `ci.yml`) | ✅ 20/20 on #101 |
-| INT | `e2e/tests/flow-v2/catalogue.spec.ts` (S1–S17, CC1–CC3, same scripts and steps as AGENT-DET) and `s19`–`s24` specs, desktop and mobile | `make e2e-int ARGS='--grep @flow-v2'` | ⬜ to record (FV19) |
+| INT | `e2e/tests/flow-v2/catalogue.spec.ts` (S1–S17, CC1–CC3, same scripts and steps as AGENT-DET) and `s19`–`s24` specs, desktop and mobile | `make e2e-int ARGS='--grep @flow-v2'` | ✅ Actions (#101, run 43579711101): full `@scripted` 150 passed, 2 skipped, including the 52 `@flow-v2` (26 × desktop Chrome and mobile WebKit). Swaroop's Mac run to record (FV19) |
 | AGENT-LIVE | `eval_live.py GROUP=flow_v2`: S1–S24, CC1–CC3 (+ S21 E2), ×3 | `make eval-live GROUP=flow_v2` | ✅ 28/28 (14 Nov, before #100); second day to record (FV21) |
 | E2E-LIVE | the same specs, `@live`, real model | `make e2e-live ARGS='--grep @flow-v2'` | ⬜ to record twice (FV20: ≥ 22/24 + CC1–CC3) |
 | DEMO | `make e2e-demo` on Postgres | `make e2e-demo` | ⬜ after the demo script update |
