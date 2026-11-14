@@ -820,6 +820,38 @@ def _assisted_addresses_caller_note(state: AgentState, draft: Any, ai_text: str)
     )
 
 
+_LATIN_LETTERS_RE = re.compile(r"[A-Za-z]")
+_EMAIL_OR_URL_RE = re.compile(r"\S+@\S+|https?://\S+")
+
+
+def _last_typed_text(state: AgentState) -> str:
+    """The user's last typed message (card notes and guard notes skipped)."""
+    for message in reversed(state["messages"]):
+        if not isinstance(message, HumanMessage):
+            continue
+        text = _content_text(message)
+        if text.startswith(("[ui_event]", GUARD_PREFIX)):
+            continue
+        return text.split("\n\n[", 1)[0]
+    return ""
+
+
+def _wrong_language_note(state: AgentState, ai_text: str) -> str | None:
+    """They wrote in Arabic and the reply has no Arabic at all (F5 evals, "Arabic user":
+    after «سارة علي، sara@…، 05…» the agent switched to English). Emails and links don't
+    count as English."""
+    if not ai_text or _ARABIC_LETTERS_RE.search(ai_text):
+        return None
+    typed = _EMAIL_OR_URL_RE.sub(" ", _last_typed_text(state))
+    arabic = len(_ARABIC_LETTERS_RE.findall(typed))
+    if arabic < 3 or arabic < len(_LATIN_LETTERS_RE.findall(typed)):
+        return None
+    return (
+        f"{GUARD_PREFIX} The user writes in Arabic: reply again in Arabic, with the same "
+        "content. Keep names, emails and ids as they are."
+    )
+
+
 def _assisted_reply_note(state: AgentState, draft: Any, ai_text: str) -> str | None:
     """Both assisted wording rules in one note: the guard retries once, so a reply that
     thanks the caller by name and claims a verification send must fix both at once."""
@@ -919,6 +951,7 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
                     )
                 )
                 or _missed_capture_note({**state, "draft": draft}, phase)
+                or _wrong_language_note(state, ai_text)
             )
 
     if note is not None:
