@@ -401,6 +401,11 @@ async def _execute_step(
         )
         return "enter_code"
     if step.get("accept_terms") is True:
+        session = await ctx.app.state.session_store.get(ctx.session_id)
+        if session is None or "terms" not in session.cards:
+            # No terms card in this chat (the applicant's link chat accepts the terms on the
+            # review card): nothing to tick, as in the browser.
+            return None
         events = await el._action(
             ctx.client, ctx.session_id, "accept_terms", {"terms_accepted": True}
         )

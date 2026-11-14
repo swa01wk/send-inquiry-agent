@@ -208,7 +208,11 @@ export async function runStep(ctx: StepCtx, step: CatalogueStep): Promise<void> 
     await turn(ctx, () => card.getByRole('button', { name: 'Verify', exact: true }).click())
     return
   }
-  if (step.accept_terms === true) return chat.acceptTerms()
+  if (step.accept_terms === true) {
+    // The applicant's link chat (CC2, CC3) accepts the terms on the review card instead.
+    if ((await chat.cards('terms').count()) === 0) return
+    return chat.acceptTerms()
+  }
   if (step.upload && typeof step.upload === 'object') {
     for (const [docType, fileName] of Object.entries(step.upload as Record<string, string>)) {
       await uploadOne(ctx, docType, fileName)
