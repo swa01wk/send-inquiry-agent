@@ -570,11 +570,12 @@
           "ref1"
         ],
         [
-          "ptc_create"
+          "ptc_create",
+          "az1"
         ]
       ],
       "not_path": [
-        "az1"
+        "reg_link1"
       ],
       "decisions": [
         "M19",
@@ -666,7 +667,8 @@
           "start",
           "raise_tp",
           "chk_tp",
-          "exist"
+          "exist",
+          "emv"
         ]
       ],
       "not_path": [
@@ -697,6 +699,12 @@
         },
         {
           "confirm_card": "unit_and_category"
+        },
+        {
+          "say": "Sara Ali, Bean Street Trading Co., King Fahd Road Al Olaya Riyadh, brand Bean Street / بين ستريت, sara@beanstreet.example, 0501234567"
+        },
+        {
+          "confirm_card": "basic_info"
         },
         {
           "say": "I'll come back later"
@@ -1267,7 +1275,8 @@
           "chk_tp",
           "exist",
           "emv",
-          "succ1"
+          "succ1",
+          "complete1"
         ]
       ],
       "not_path": [],
@@ -1329,6 +1338,9 @@
             "company_profile": "company_profile.pdf",
             "brand_profile": "brand_profile.pdf"
           }
+        },
+        {
+          "submit": true
         }
       ],
       "expect": {

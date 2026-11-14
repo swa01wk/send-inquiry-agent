@@ -152,6 +152,10 @@ async def _invite(
 ) -> Case:
     identity = runtime.services.identity
     if identity.has_account(email):
+        if role == "primary_contact":
+            # Chart S7 (A1): Azure AD is checked at first approval and the existing login
+            # stays; no invitation, so no Login/Registration link (reg_link1).
+            record_flow_step(runtime, inquiry_id=case.id, node=FlowNode.AZ1, outcome="existing")
         return case
     if any(i.email.lower() == email.lower() for i in case.onboarding.invitations):
         return case
