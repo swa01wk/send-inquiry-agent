@@ -202,6 +202,8 @@ class FlowSeedIn(BaseModel):
     stage: Literal["submitted", "qualified", "lead_approved"]
     unit_type: Literal["store", "office", "media", "specialty"] | None = None
     malls: list[str] | None = None
+    # S15 (Playwright): an open inquiry for this CR and mall, the duplicate to warn about.
+    cr_number: str | None = Field(default=None, pattern=r"^\d{10}$")
 
 
 class FlowSeedOut(BaseModel):
@@ -227,7 +229,12 @@ async def seed_flow(
     runtime = AgentRuntime(services=services, master=master, settings=settings)
     try:
         case, email = await seed_flow_case(
-            runtime, store, body.stage, unit_type=body.unit_type, malls=body.malls
+            runtime,
+            store,
+            body.stage,
+            unit_type=body.unit_type,
+            malls=body.malls,
+            cr_number=body.cr_number,
         )
     except (IllegalTransition, RuntimeError, ValueError) as exc:
         raise ApiError(409, "seed_failed", str(exc)) from exc

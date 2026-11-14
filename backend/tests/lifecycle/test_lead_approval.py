@@ -9,6 +9,7 @@ from typing import Any
 
 import pytest
 from app.agent.case_tools import _status_summary
+from app.domain.models import FieldKey
 from app.workflow.models import CaseStatus
 from tests.lifecycle.conftest import APPLICANT, STORE_CENTRAL, act, outbox, submit_case
 from tests.lifecycle.test_contact_approval import OMAR, _card, _open, _send
@@ -265,3 +266,18 @@ async def test_flow_seed_applies_the_real_events(
     flow = (await client.get(f"/api/dev/flow/{body['reference']}")).json()
     assert flow["path"][:2] == ["complete1", "ref1"]
     assert reached in flow["path"] and not_yet not in flow["path"]
+
+
+async def test_dev_seed_can_carry_a_cr_number(life) -> None:
+    """S15 (Playwright): the seeded open inquiry is the duplicate for this CR and mall."""
+    client, app = life
+    seeded = await client.post(
+        "/api/dev/flow/seed",
+        json={"stage": "submitted", "malls": ["riyadh-mall-a"], "cr_number": "1010222222"},
+    )
+    assert seeded.status_code == 200, seeded.text
+    case = app.state.services.cases.get(seeded.json()["reference"])
+    assert case is not None
+    assert case.draft.fields[FieldKey.CR_NUMBER].value == "1010222222"
+    bad = await client.post("/api/dev/flow/seed", json={"stage": "submitted", "cr_number": "12"})
+    assert bad.status_code == 422

@@ -60,6 +60,7 @@ _UNIT_RE = re.compile(
 )
 _GEO_REF_RE = re.compile(r"GEO-(?:STR|OFF)-\d{6}")
 
+
 def _load_intake_catalogue() -> list[dict[str, Any]]:
     data = json.loads(_CATALOGUE_PATH.read_text(encoding="utf-8"))
     global _CATALOGUE_ROOT
@@ -640,30 +641,6 @@ async def _seed_open_inquiry(ctx: _StepCtx, spec: dict[str, Any]) -> str:
 _STAFF_HEADERS = {"X-Staff-Id": "customer-care-1"}
 STAFF_LABEL = "[staff] "
 
-# CC1–CC3: what the executive dictates for each section (the caller's words, relayed).
-_CC_DICTATION: dict[str, dict[str, str]] = {
-    "CC2": {
-        "unit_and_category": "They want a store. They sell specialty coffee and pastries.",
-        "basic_info": (
-            "Company is Oasis Coffee Company, King Fahd Road, Riyadh. The brand is Oasis "
-            "Coffee. The caller is Huda Saleh, mobile 0507654321."
-        ),
-        "property_details": (
-            "Riyadh Mall A, 40 to 80 square metres, budget 150,000 to 250,000 riyals a year."
-        ),
-    },
-    "CC3": {
-        "unit_and_category": "A store — they sell specialty coffee and pastries.",
-        "basic_info": (
-            "The brand is Bean Street. The caller is Sara Ali, sara@beanstreet.example, "
-            "mobile 0501234567."
-        ),
-        "property_details": (
-            "Riyadh Mall A, 40 to 80 square metres, budget 150,000 to 250,000 riyals a year."
-        ),
-    },
-}
-
 _CC_STEPS = (
     "cc_cr",
     "cc_contact_check",
@@ -709,7 +686,8 @@ async def _execute_cc_step(
         events = await el._action(ctx.client, ctx.session_id, "send_sign_in_link", {})
         await run(STAFF_LABEL + "[send_sign_in_link]", [events])
     elif kind == "cc_capture":
-        dictation = _CC_DICTATION[ctx.catalogue["id"]]
+        # The catalogue's `cc_dictation`: the caller's words, relayed (Playwright reads it too).
+        dictation = dict(ctx.catalogue.get("cc_dictation") or {})
         for section in str(arg).split(","):
             text = dictation[section]
             batches = [await el._message(ctx.client, ctx.session_id, text)]
