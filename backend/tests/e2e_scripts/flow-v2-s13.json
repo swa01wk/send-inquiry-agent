@@ -16,7 +16,7 @@
     ]
   },
   {
-    "content": "Got it \u2014 a store. What do you sell? That helps us pick the right category."
+    "content": "Got it — a store. What do you sell? That helps us pick the right category."
   },
   {
     "content": "",
@@ -64,22 +64,45 @@
     "content": "Check the summary card and let me know if anything's off."
   },
   {
-    "content": "Looks good \u2014 here's what's next in the flow."
+    "content": "Looks good — here's what's next in the flow."
   },
   {
-    "content": "Yes \u2014 upload the Company Profile and Brand Profile on the card and I'll fill in what I can."
+    "content": "Yes — upload the Company Profile and Brand Profile on the card and I'll fill in what I can."
   },
   {
-    "content": "Got the Company Profile \u2014 I've filled in what it shows. Check the card."
+    "content": "Got the Company Profile — I've filled in what it shows. Check the card."
   },
   {
-    "content": "Got the Brand Profile too \u2014 check what I filled in on the card."
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "brand_name_ar",
+              "value": "بين ستريت",
+              "source": "derived",
+              "evidence": "Bean Street"
+            }
+          ]
+        },
+        "id": "s13-ar",
+        "type": "tool_call"
+      }
+    ]
   },
   {
-    "content": "Both profiles are in \u2014 check the cards for what I filled in."
+    "content": "Got the Brand Profile — I've proposed the Arabic brand name بين ستريت. Check the cards."
   },
   {
-    "content": "Thanks \u2014 confirmed. Who should our leasing team contact? Your name, email and mobile."
+    "content": "Thanks — confirmed."
+  },
+  {
+    "content": "Thanks — confirmed."
+  },
+  {
+    "content": "Thanks — all confirmed. Who should our leasing team contact? Your name, email and mobile."
   },
   {
     "content": "",
@@ -122,7 +145,7 @@
     ]
   },
   {
-    "content": "Thanks \u2014 I've sent the verification link and SMS code on the card below."
+    "content": "Thanks — I've sent the verification link and SMS code on the card below."
   },
   {
     "content": "Verified. Which mall, size and budget?"
@@ -169,18 +192,18 @@
     ]
   },
   {
-    "content": "Your property details are on the card \u2014 confirm them when you're ready."
+    "content": "Your property details are on the card — confirm them when you're ready."
   },
   {
-    "content": "Looks good \u2014 here's what's next in the flow."
+    "content": "Looks good — here's what's next in the flow."
   },
   {
-    "content": "Looks good \u2014 here's what's next in the flow."
+    "content": "Looks good — here's what's next in the flow."
   },
   {
-    "content": "Looks good \u2014 here's what's next in the flow."
+    "content": "Looks good — here's what's next in the flow."
   },
   {
-    "content": "Looks good \u2014 here's what's next in the flow."
+    "content": "Looks good — here's what's next in the flow."
   }
 ]
