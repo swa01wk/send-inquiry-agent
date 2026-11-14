@@ -376,7 +376,9 @@ export class InquiryPage {
   async successReference(): Promise<string> {
     const card = this.cards('success')
     await expect(card).toBeVisible({ timeout: 60_000 })
-    const text = await card.innerText()
+    await expect(card).toContainText(/GEO-/, { timeout: 10_000 })
+    // textContent, not innerText: Linux WebKit (mobile) can read innerText as "" here.
+    const text = (await card.textContent()) ?? ''
     const match = text.match(/GEO-(STR|MED|SPC|OFF)-\d{6}/)
     if (!match) throw new Error('reference not on success card')
     return match[0]
