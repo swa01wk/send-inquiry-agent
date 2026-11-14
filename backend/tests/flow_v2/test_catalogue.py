@@ -81,7 +81,11 @@ def _transcript(turns: list[Any]) -> str:
     lines = []
     for i, turn in enumerate(turns):
         cards = [d.get("card_type") for n, d in turn.events if n == "ui_card"]
-        lines.append(f"  [{i}] {turn.user[:90]!r}\n      → {turn.assistant[:160]!r} cards={cards}")
+        other = [n for n, _d in turn.events if n not in ("token", "ui_card", "draft", "done")]
+        lines.append(
+            f"  [{i}] {turn.user[:90]!r}\n      → {turn.assistant[:160]!r} cards={cards}"
+            f" events={other}"
+        )
     return "\n".join(lines)
 
 
@@ -123,7 +127,7 @@ async def test_catalogue_scenario(det: tuple[AsyncClient, Any], scenario_id: str
 
 
 async def test_confirm_plan_endpoint(det: tuple[AsyncClient, Any]) -> None:
-    """GET /api/dev/confirm-plan: nothing to confirm on a fresh chat, and a bad section 422s."""
+    """GET /api/dev/confirm-plan: nothing to confirm on a fresh chat, and a bad section is refused."""
     client, _app = det
     created = await client.post("/api/sessions")
     session_id = created.json()["session_id"]
@@ -131,4 +135,4 @@ async def test_confirm_plan_endpoint(det: tuple[AsyncClient, Any]) -> None:
     assert plan.status_code == 200
     assert plan.json() == {"card_ids": [], "say_yes": False}
     bad = await client.get(f"/api/dev/confirm-plan/{session_id}", params={"section": "nope"})
-    assert bad.status_code == 422
+    assert bad.status_code == 400

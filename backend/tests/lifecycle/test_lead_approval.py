@@ -280,4 +280,4 @@ async def test_dev_seed_can_carry_a_cr_number(life) -> None:
     assert case is not None
     assert case.draft.fields[FieldKey.CR_NUMBER].value == "1010222222"
     bad = await client.post("/api/dev/flow/seed", json={"stage": "submitted", "cr_number": "12"})
-    assert bad.status_code == 422
+    assert bad.status_code == 400
