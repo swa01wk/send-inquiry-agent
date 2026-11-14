@@ -36,3 +36,8 @@ def test_card_notes_are_skipped_and_english_users_pass() -> None:
     assert _wrong_language_note(_state("Bean Street, Riyadh Mall A"), "Thanks!") is None
     # A Latin brand with one Arabic word is still an English message.
     assert _wrong_language_note(_state("Bean Street «بين» at Riyadh Mall A"), "Thanks!") is None
+
+
+def test_arabic_brand_name_in_an_english_chat_passes() -> None:
+    state = _state("I'll upload the Brand Profile", "مخبز الواحة")
+    assert _wrong_language_note(state, "Saved. Now upload the Company Profile.") is None

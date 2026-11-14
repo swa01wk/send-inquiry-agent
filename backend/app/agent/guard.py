@@ -824,27 +824,33 @@ _LATIN_LETTERS_RE = re.compile(r"[A-Za-z]")
 _EMAIL_OR_URL_RE = re.compile(r"\S+@\S+|https?://\S+")
 
 
-def _last_typed_text(state: AgentState) -> str:
-    """The user's last typed message (card notes and guard notes skipped)."""
-    for message in reversed(state["messages"]):
+def _typed_texts(state: AgentState) -> list[str]:
+    """What the user typed in this chat, oldest first (card and guard notes skipped; a note
+    appended to a typed message is dropped)."""
+    texts: list[str] = []
+    for message in state["messages"]:
         if not isinstance(message, HumanMessage):
             continue
         text = _content_text(message)
         if text.startswith(("[ui_event]", GUARD_PREFIX)):
             continue
-        return text.split("\n\n[", 1)[0]
-    return ""
+        texts.append(_EMAIL_OR_URL_RE.sub(" ", text.split("\n\n[", 1)[0]))
+    return texts
 
 
 def _wrong_language_note(state: AgentState, ai_text: str) -> str | None:
-    """They wrote in Arabic and the reply has no Arabic at all (F5 evals, "Arabic user":
-    after «سارة علي، sara@…، 05…» the agent switched to English). Emails and links don't
-    count as English."""
+    """The user writes in Arabic and the reply has no Arabic at all (F5 evals, "Arabic
+    user": after «سارة علي، sara@…، 05…» the agent switched to English). Arabic means most
+    of what they typed is Arabic and so is their last message; an Arabic brand name typed in
+    an English chat (rd-signed-in-new-brand) doesn't count. Emails and links are skipped."""
     if not ai_text or _ARABIC_LETTERS_RE.search(ai_text):
         return None
-    typed = _EMAIL_OR_URL_RE.sub(" ", _last_typed_text(state))
-    arabic = len(_ARABIC_LETTERS_RE.findall(typed))
-    if arabic < 3 or arabic < len(_LATIN_LETTERS_RE.findall(typed)):
+    typed = _typed_texts(state)
+    if not typed or not _ARABIC_LETTERS_RE.search(typed[-1]):
+        return None
+    everything = " ".join(typed)
+    arabic = len(_ARABIC_LETTERS_RE.findall(everything))
+    if arabic < 3 or arabic <= len(_LATIN_LETTERS_RE.findall(everything)):
         return None
     return (
         f"{GUARD_PREFIX} The user writes in Arabic: reply again in Arabic, with the same "
