@@ -112,7 +112,7 @@ async def test_catalogue_scenario(det: tuple[AsyncClient, Any], scenario_id: str
     checks: list[tuple[str, bool]] = [
         *[c for c in result.checks if c[0].startswith("all steps ran")],
         *fv2._flow_paths_ok(path, entry),
-        *fv2._expect_checks(session, result.turns, app, entry),
+        *fv2._expect_checks(session, result.turns, app, entry, wording=False),
         *[(f"invariant {v.id} at step {n}: {v.detail}", False) for v, n in violations],
     ]
     failed = [name for name, ok in checks if not ok]

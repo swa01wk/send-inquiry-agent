@@ -67,10 +67,19 @@
     "content": "Looks good \u2014 here's what's next in the flow."
   },
   {
-    "content": "Thanks \u2014 let's keep going with the next step."
+    "content": "Yes \u2014 upload the Company Profile and Brand Profile on the card and I'll fill in what I can."
   },
   {
-    "content": "Looks good \u2014 here's what's next in the flow."
+    "content": "Got the Company Profile \u2014 I've filled in what it shows. Check the card."
+  },
+  {
+    "content": "Got the Brand Profile too. The Company Profile's company name doesn't match the Brand Profile; check the cards."
+  },
+  {
+    "content": "Thanks \u2014 those are confirmed."
+  },
+  {
+    "content": "Thanks \u2014 confirmed. Who should our leasing team contact? Your name, email and mobile."
   },
   {
     "content": "",
@@ -98,27 +107,25 @@
               "key": "contact_number",
               "value": "0501234567",
               "source": "user"
-            },
-            {
-              "key": "company_name",
-              "value": "Acme Trading LLC",
-              "source": "user"
             }
           ]
         },
-        "id": "fv2-contact",
+        "id": "s13-contact",
         "type": "tool_call"
       },
       {
         "name": "send_verification",
         "args": {},
-        "id": "fv2-v",
+        "id": "s13-v",
         "type": "tool_call"
       }
     ]
   },
   {
     "content": "Thanks \u2014 I've sent the verification link and SMS code on the card below."
+  },
+  {
+    "content": "Verified. Which mall, size and budget?"
   },
   {
     "content": "",
@@ -156,7 +163,7 @@
             }
           ]
         },
-        "id": "fv2-prop",
+        "id": "s13-prop",
         "type": "tool_call"
       }
     ]
@@ -168,6 +175,12 @@
     "content": "Looks good \u2014 here's what's next in the flow."
   },
   {
-    "content": "Thanks \u2014 upload the Company Profile and Brand Profile on the card below."
+    "content": "Looks good \u2014 here's what's next in the flow."
+  },
+  {
+    "content": "Looks good \u2014 here's what's next in the flow."
+  },
+  {
+    "content": "Looks good \u2014 here's what's next in the flow."
   }
 ]

@@ -43,6 +43,9 @@
     "content": "Got it — a store selling coffee and pastries. Next, the caller's company, brand and contact details."
   },
   {
+    "content": "Thanks — that's confirmed."
+  },
+  {
     "content": "",
     "tool_calls": [
       {
@@ -88,6 +91,12 @@
   },
   {
     "content": "Thanks — I've saved Sara's details. Which mall is the caller after, and the size and budget?"
+  },
+  {
+    "content": "Thanks — that's confirmed."
+  },
+  {
+    "content": "Thanks — that's confirmed."
   },
   {
     "content": "",
@@ -143,6 +152,9 @@
   },
   {
     "content": "The caller's details are complete — press Send application link when you're ready."
+  },
+  {
+    "content": "Thanks — that's confirmed."
   },
   {
     "content": "Sent — the caller finishes the inquiry from the link in their email."

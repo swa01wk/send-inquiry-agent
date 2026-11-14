@@ -866,6 +866,8 @@ def _expect_checks(
     turns: list[TurnResult],
     app: AppState,
     entry: dict[str, Any],
+    *,
+    wording: bool = True,
 ) -> list[tuple[str, bool]]:
     expect = entry.get("expect") or {}
     draft = session.draft if session else new_inquiry_draft()
@@ -919,7 +921,7 @@ def _expect_checks(
             and draft.fields[key].source not in (None, Source.DEFAULT)
         ]
         checks.append((f"side questions wrote nothing (wrote: {written or 'none'})", not written))
-    if section := expect.get("returns_to_section"):
+    if wording and (section := expect.get("returns_to_section")):
         checks.extend(_returns_to_section(turns, str(section), entry))
     # Call-centre stories only (the public entries' outbox and status rows are documentation).
     call_centre = "call_centre" in (entry.get("contexts") or [])
