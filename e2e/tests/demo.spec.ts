@@ -351,10 +351,10 @@ test.describe('Demo script — flow v2 @demo', () => {
       })
 
       await beatStep(
-        '8. Applicant: "Yes, I\'m the authorised signatory" → billing contact (F19)',
+        '8. Applicant: "Yes, I\'m the authorised signatory" → billing contact (S24, F19)',
         async () => {
           const mail = await latestMail(request, 'contacts_request', APPLICANT_EMAIL)
-          await casePage.goto(caseLink(mail, 'rd-contact-approval'))
+          await casePage.goto(caseLink(mail, 'flow-v2-s24'))
           await caption(casePage, '8. Applicant: signatory question, then the billing contact')
           await caseChat.waitForChatReady()
           await expect(caseChat.cards('signatory_question')).toBeVisible({ timeout: 60_000 })
