@@ -56,7 +56,14 @@ from app.api.schemas import UiCard
 from app.domain import draft_ops
 from app.domain import validation as v
 from app.domain.faq import search_faq as faq_search
-from app.domain.models import EVIDENCE_MAX_CHARS, NEEDS_CONFIRMATION, FieldKey, InquiryDraft, Source
+from app.domain.models import (
+    EVIDENCE_MAX_CHARS,
+    NEEDS_CONFIRMATION,
+    FieldKey,
+    InquiryDraft,
+    Source,
+    WriteKey,
+)
 from app.domain.rules import can_submit, contact_verified
 from app.domain.summary import build_draft_summary
 from app.domain.validation import validate_cr_number
@@ -160,11 +167,11 @@ _CONTACT_KEYS = frozenset(
         FieldKey.EMAIL.value,
         FieldKey.MOBILE.value,
         FieldKey.LANDLINE.value,
-        FieldKey.CONTACT_NUMBER.value,
+        WriteKey.CONTACT_NUMBER.value,
     }
 )
 _PHONE_KEYS = frozenset(
-    {FieldKey.MOBILE.value, FieldKey.LANDLINE.value, FieldKey.CONTACT_NUMBER.value}
+    {FieldKey.MOBILE.value, FieldKey.LANDLINE.value, WriteKey.CONTACT_NUMBER.value}
 )
 
 
