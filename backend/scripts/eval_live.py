@@ -1522,7 +1522,13 @@ def _check_two_malls(
     return [
         ("at most one mall saved", len(malls) <= 1),
         # "Which one first?" or "start with just one: A or B" — both ask them to pick.
-        ("asks which mall to start with", "which" in last or ("one" in last and " or " in last)),
+        # "Please pick one to begin with" asks too (F5 run 2).
+        (
+            "asks which mall to start with",
+            "which" in last
+            or ("one" in last and " or " in last)
+            or bool(re.search(r"\b(pick|choose|select)\b[^.?!]*\bone\b", last)),
+        ),
     ]
 
 

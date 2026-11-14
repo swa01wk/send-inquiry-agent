@@ -56,7 +56,14 @@ from app.api.schemas import UiCard
 from app.domain import draft_ops
 from app.domain import validation as v
 from app.domain.faq import search_faq as faq_search
-from app.domain.models import EVIDENCE_MAX_CHARS, NEEDS_CONFIRMATION, FieldKey, InquiryDraft, Source
+from app.domain.models import (
+    EVIDENCE_MAX_CHARS,
+    NEEDS_CONFIRMATION,
+    FieldKey,
+    InquiryDraft,
+    Source,
+    WriteKey,
+)
 from app.domain.rules import can_submit, contact_verified
 from app.domain.summary import build_draft_summary
 from app.domain.validation import validate_cr_number
@@ -153,6 +160,56 @@ def _name_from_email_only(item: DraftFieldUpdate, said: str) -> bool:
     return not all(re.search(rf"(?<![a-z0-9]){re.escape(w)}(?![a-z0-9])", rest) for w in words)
 
 
+_CONTACT_KEYS = frozenset(
+    {
+        FieldKey.FIRST_NAME.value,
+        FieldKey.LAST_NAME.value,
+        FieldKey.EMAIL.value,
+        FieldKey.MOBILE.value,
+        FieldKey.LANDLINE.value,
+        WriteKey.CONTACT_NUMBER.value,
+    }
+)
+_PHONE_KEYS = frozenset(
+    {FieldKey.MOBILE.value, FieldKey.LANDLINE.value, WriteKey.CONTACT_NUMBER.value}
+)
+
+
+def _turn_was_typed(state: AgentState) -> bool:
+    """The latest user input is a typed message, not a card action note (guard notes are
+    skipped)."""
+    for message in reversed(state["messages"]):
+        if isinstance(message, HumanMessage):
+            content = message.content
+            text = content if isinstance(content, str) else str(content)
+            if text.startswith("[ui_event] guard:"):
+                continue  # a guard retry: the turn is whatever came before it
+            return not text.startswith("[ui_event]")
+    return False
+
+
+def _contact_not_given(item: DraftFieldUpdate, said: str) -> bool:
+    """A contact detail "from the user" that they never typed (F5 evals, S16: asked "how
+    long does the review take?", the model saved an invented Sara Ali with an email). The
+    email must be in their words, the phone's national number too, and each name word unless
+    they wrote in Arabic (then a Latin name is a transliteration)."""
+    if item.source != "user" or item.key not in _CONTACT_KEYS:
+        return False
+    if not isinstance(item.value, str) or not item.value.strip():
+        return False
+    value = v.normalise_digits(item.value).casefold().strip()
+    if item.key == FieldKey.EMAIL.value:
+        return value not in said
+    if item.key in _PHONE_KEYS:
+        # The national number: "+966 11 234 567", "0096611234567" and "011234567" match.
+        national = re.sub(r"^(?:00)?(?:966)?0*", "", re.sub(r"\D", "", value))
+        return len(national) >= 7 and national not in re.sub(r"\D", "", said)
+    if _ARABIC_SCRIPT_RE.search(said) or _ARABIC_SCRIPT_RE.search(value):
+        return False
+    words = re.findall(r"[a-z]+", value)
+    return any(not re.search(rf"(?<![a-z]){re.escape(word)}(?![a-z])", said) for word in words)
+
+
 _HAS_CR_YES_RE = re.compile(
     r"\b(yes|yeah|yep|yup|sure|of course|we do|we have|i have|have one|have a cr|got one)\b"
     r"|نعم|ايوه|أيوه|إيه|ايه|اي نعم|عندنا|لدينا|عندي|لدي|موجود",
@@ -247,7 +304,13 @@ def _tool_result(
     update: dict[str, Any] = {"draft": draft}
     if changed_keys is not None:
         _emit_draft(draft, changed_keys, runtime)
-        _refresh_send_link_card(draft, runtime, cards_shown)
+        shown = _refresh_send_link_card(draft, runtime, cards_shown)
+        if shown is not None:
+            cards_shown = shown
+            content += (
+                " The basic info is complete: the Send application link card is now shown — "
+                "tell the executive to press it."
+            )
     if cards_shown is not None:
         update["cards_shown"] = cards_shown
     if confirm_card_keys is not None:
@@ -266,21 +329,30 @@ def _tool_result(
 
 def _refresh_send_link_card(
     draft: InquiryDraft, runtime: ToolRuntime, cards_shown: list[str] | None
-) -> None:
-    """Assisted mode: the Send application link card, once shown, follows the draft, so it
-    turns ready the moment the basic info is complete (not only when the tool is called
-    again). Never after the link went out: the card then shows who it was sent to."""
+) -> list[str] | None:
+    """Assisted mode: the Send application link card follows the draft. Once shown it turns
+    ready the moment the basic info is complete; and when a write completes the basic info
+    before the card was shown, code shows it (no model call needed: F5 evals saw a retry
+    each time the model forgot `show_application_link`). Returns the new `cards_shown` when
+    this write showed the card for the first time. Never after the link went out (the card
+    then shows who it was sent to), and never for an existing contact (Inform)."""
     state = getattr(runtime, "state", None) or {}
-    if not state.get("assisted"):
-        return
-    if SEND_LINK_CARD_ID not in (cards_shown or state.get("cards_shown") or []):
-        return
+    if not state.get("assisted") or state.get("contact_check") == "inform":
+        return None
+    current = list(cards_shown if cards_shown is not None else state.get("cards_shown") or [])
     session_id = state.get("session_id")
     if session_id:
         services = runtime_from_config(runtime.config).services
         if any(e["type"] == "application_link_sent" for e in services.audit.events(session_id)):
-            return
-    _emit_card(build_send_link_card(draft), runtime)
+            return None
+    card = build_send_link_card(draft)
+    if SEND_LINK_CARD_ID in current:
+        _emit_card(card, runtime)
+        return None
+    if not card.payload["can_send"]:
+        return None
+    _emit_card(card, runtime)
+    return [*current, SEND_LINK_CARD_ID]
 
 
 def _write_source(source: str, state: AgentState) -> Source:
@@ -654,9 +726,18 @@ def update_draft(
     user_text = _last_user_text(state)
     keys_in_call = {item.key for item in fields}
     said = _user_words(state)
+    # Only on a turn the user typed: a scripted card-press turn may write what the next
+    # message types (Playwright and parity scripts), and the live slip was on typed turns.
+    typed_turn = _turn_was_typed(state)
     for item in fields:
         if item.key in PROTECTED_WRITE_KEYS:
             rejected.append(f"{item.key}: protected")
+            continue
+        if typed_turn and _contact_not_given(item, said):
+            rejected.append(
+                f"{item.key}: not_given (the user hasn't typed it); never invent contact "
+                "details: answer their question and ask for it"
+            )
             continue
         if _name_from_email_only(item, said):
             rejected.append(

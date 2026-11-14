@@ -1,0 +1,24 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "verify_cr",
+        "args": {
+          "cr_number": "1010000000"
+        },
+        "id": "c1sv1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "This company already has a Tenant Central account. Please ask the caller for their email and press Check contact."
+  },
+  {
+    "content": "The caller already has a login. You can say: \"You already have a Tenant Central account — please sign in and raise the inquiry from Leasing Opportunities.\" Use Email sign-in link to send them the link."
+  },
+  {
+    "content": "Sent — they'll get the sign-in link by email. There's nothing more to capture here."
+  }
+]

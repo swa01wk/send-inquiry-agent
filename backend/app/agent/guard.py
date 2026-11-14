@@ -768,8 +768,11 @@ def _assisted_verification_claim_note(state: AgentState, ai_text: str) -> str | 
 # Assisted mode: the caller verifies and uploads from the application link, so the
 # executive's chat never talks about those steps (F4 evals CC3: "then we can move on to
 # verification", "the verification and documents steps will open up").
+# "The CR is verified" is the registry check, not the caller's verification: only the
+# verification step itself, codes and documents count (F5 evals: Zara Home retracted).
 _ASSISTED_LATER_STEPS_RE = re.compile(
-    r"\b(verif(?:y|ied|ication)\w*|one-time code|sms code|otp|documents?|uploads?)\b",
+    r"\b(verification|verify (?:their|the caller's|your) (?:email|mobile|phone)"
+    r"|one-time code|sms code|otp|documents?|uploads?)\b",
     re.IGNORECASE,
 )
 
@@ -814,6 +817,44 @@ def _assisted_addresses_caller_note(state: AgentState, draft: Any, ai_text: str)
         f"{GUARD_PREFIX} Assisted mode: you are talking to the executive, not the caller. "
         "Don't greet or thank the caller by name. Reply again starting with "
         f"\"Thanks — I've saved {first}'s details.\" and keep the rest of your reply."
+    )
+
+
+_LATIN_LETTERS_RE = re.compile(r"[A-Za-z]")
+_EMAIL_OR_URL_RE = re.compile(r"\S+@\S+|https?://\S+")
+
+
+def _typed_texts(state: AgentState) -> list[str]:
+    """What the user typed in this chat, oldest first (card and guard notes skipped; a note
+    appended to a typed message is dropped)."""
+    texts: list[str] = []
+    for message in state["messages"]:
+        if not isinstance(message, HumanMessage):
+            continue
+        text = _content_text(message)
+        if text.startswith(("[ui_event]", GUARD_PREFIX)):
+            continue
+        texts.append(_EMAIL_OR_URL_RE.sub(" ", text.split("\n\n[", 1)[0]))
+    return texts
+
+
+def _wrong_language_note(state: AgentState, ai_text: str) -> str | None:
+    """The user writes in Arabic and the reply has no Arabic at all (F5 evals, "Arabic
+    user": after «سارة علي، sara@…، 05…» the agent switched to English). Arabic means most
+    of what they typed is Arabic and so is their last message; an Arabic brand name typed in
+    an English chat (rd-signed-in-new-brand) doesn't count. Emails and links are skipped."""
+    if not ai_text or _ARABIC_LETTERS_RE.search(ai_text):
+        return None
+    typed = _typed_texts(state)
+    if not typed or not _ARABIC_LETTERS_RE.search(typed[-1]):
+        return None
+    everything = " ".join(typed)
+    arabic = len(_ARABIC_LETTERS_RE.findall(everything))
+    if arabic < 3 or arabic <= len(_LATIN_LETTERS_RE.findall(everything)):
+        return None
+    return (
+        f"{GUARD_PREFIX} The user writes in Arabic: reply again in Arabic, with the same "
+        "content. Keep names, emails and ids as they are."
     )
 
 
@@ -916,6 +957,7 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
                     )
                 )
                 or _missed_capture_note({**state, "draft": draft}, phase)
+                or _wrong_language_note(state, ai_text)
             )
 
     if note is not None:

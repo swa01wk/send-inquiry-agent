@@ -74,20 +74,60 @@
         "args": {
           "fields": [
             {
-              "key": "sales_category",
-              "value": "fnb_cafe",
-              "source": "derived",
-              "evidence": "Layla Hassan, Oasis Coffee Co., Tahlia Street Jeddah, brand Oasis Coffee / \u0648\u0627\u062d\u0629 "
+              "key": "first_name",
+              "value": "Layla",
+              "source": "user"
+            },
+            {
+              "key": "last_name",
+              "value": "Hassan",
+              "source": "user"
+            },
+            {
+              "key": "email",
+              "value": "layla.hassan@oasiscoffee.example",
+              "source": "user"
+            },
+            {
+              "key": "contact_number",
+              "value": "0505550101",
+              "source": "user"
+            },
+            {
+              "key": "company_name",
+              "value": "Oasis Coffee Co.",
+              "source": "user"
+            },
+            {
+              "key": "company_address",
+              "value": "Tahlia Street Jeddah",
+              "source": "user"
+            },
+            {
+              "key": "brand_name_en",
+              "value": "Oasis Coffee",
+              "source": "user"
+            },
+            {
+              "key": "brand_name_ar",
+              "value": "\u0648\u0627\u062d\u0629 \u0627\u0644\u0642\u0647\u0648\u0629",
+              "source": "user"
             }
           ]
         },
-        "id": "fv2-cat",
+        "id": "fv2-contact",
+        "type": "tool_call"
+      },
+      {
+        "name": "send_verification",
+        "args": {},
+        "id": "fv2-v",
         "type": "tool_call"
       }
     ]
   },
   {
-    "content": "Check the summary card and let me know if anything's off."
+    "content": "Thanks \u2014 I've sent the verification link and SMS code on the card below."
   },
   {
     "content": "Looks good \u2014 here's what's next in the flow."

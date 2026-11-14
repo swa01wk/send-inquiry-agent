@@ -278,6 +278,13 @@
           }
         },
         {
+          "event": "token",
+          "data": {
+            "message_id": "m-channel-4",
+            "text": "The caller already has a login. Here is what to say."
+          }
+        },
+        {
           "event": "ui_card",
           "data": {
             "card_id": "inform_tenant",

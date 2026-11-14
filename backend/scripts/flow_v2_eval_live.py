@@ -25,7 +25,6 @@ from app.domain.models import FieldKey, Source
 from app.domain.sections import (
     BASIC_INFO_KEYS,
     PROPERTY_KEYS,
-    UNIT_AND_CATEGORY_KEYS,
     current_section,
     section_rank,
 )
@@ -60,12 +59,6 @@ _UNIT_RE = re.compile(
     re.IGNORECASE,
 )
 _GEO_REF_RE = re.compile(r"GEO-(?:STR|OFF)-\d{6}")
-
-_SECTION_KEYS: dict[str, set[FieldKey]] = {
-    "unit_and_category": set(UNIT_AND_CATEGORY_KEYS),
-    "basic_info": set(BASIC_INFO_KEYS) | {FieldKey.MOBILE, FieldKey.LANDLINE},
-    "property_details": set(PROPERTY_KEYS),
-}
 
 
 def _load_intake_catalogue() -> list[dict[str, Any]]:
@@ -161,6 +154,13 @@ class _StepCtx:
     catalogue: dict[str, Any]
     # CC1–CC3: the executive's chat; `session_id` moves to the applicant's after the link.
     staff_session_id: str | None = None
+    # AGENT-DET (scripted model): the e2e script for new chats, sent as X-Test-Scenario.
+    script: str | None = None
+    applicant_script: str | None = None
+
+    def headers(self, script: str | None = None, **extra: str) -> dict[str, str]:
+        name = script if script is not None else self.script
+        return {**extra, **({"X-Test-Scenario": name} if name else {})}
 
 
 async def _run_stream(
@@ -223,25 +223,19 @@ async def _confirm_section(ctx: _StepCtx, section: str) -> list[list[tuple[str, 
     """
     el = _el()
 
+    from app.api.dev import confirm_plan
+
     session = await ctx.app.state.session_store.get(ctx.session_id)
     if session is None:
         raise RuntimeError("no session for confirm_card")
-    open_keys: set[str] = set()
-    for key in _SECTION_KEYS[section]:
-        field_value = session.draft.fields[key]
-        if field_value.value not in (None, "", []) and not field_value.confirmed:
-            open_keys.add(key.value)
-    if not open_keys:
-        return []
+    # The same plan Playwright reads from GET /api/dev/confirm-plan (one script fits both).
+    plan = confirm_plan(session, section)
     batches: list[list[tuple[str, dict[str, Any]]]] = []
-    # Every card that still shows an open value (a profile upload makes one per document).
-    for cid, keys in reversed(list(session.confirm_card_keys.items())):
-        if open_keys.intersection(keys):
-            batches.append(
-                await el._action(ctx.client, ctx.session_id, "confirm_card", {"card_id": cid})
-            )
-            open_keys -= set(keys)
-    if open_keys:
+    for cid in plan.card_ids:
+        batches.append(
+            await el._action(ctx.client, ctx.session_id, "confirm_card", {"card_id": cid})
+        )
+    if plan.say_yes:
         batches.append(await el._message(ctx.client, ctx.session_id, "Yes, that's all correct."))
     return batches
 
@@ -407,6 +401,11 @@ async def _execute_step(
         )
         return "enter_code"
     if step.get("accept_terms") is True:
+        session = await ctx.app.state.session_store.get(ctx.session_id)
+        if session is None or "terms" not in session.cards:
+            # No terms card in this chat (the applicant's link chat accepts the terms on the
+            # review card): nothing to tick, as in the browser.
+            return None
         events = await el._action(
             ctx.client, ctx.session_id, "accept_terms", {"terms_accepted": True}
         )
@@ -424,14 +423,33 @@ async def _execute_step(
         files = step["upload"]
         assert isinstance(files, dict)
         for doc_type, file_name in files.items():
-            await ctx.client.post(
+            uploaded = await ctx.client.post(
                 f"/api/sessions/{ctx.session_id}/documents",
                 data={"doc_type": doc_type},
                 files={"file": (file_name, _fixture_bytes(file_name), "application/pdf")},
             )
-            events = await el._action(
-                ctx.client, ctx.session_id, "documents_updated", {"doc_type": doc_type}
-            )
+            # The chat's own rule (useChatSession.uploadDocumentForType): a profile that filled
+            # fields or disagrees gets a turn of its own; otherwise one turn once every
+            # required document is in. The same scripts then serve AGENT-DET and Playwright.
+            payload: dict[str, Any] | None
+            if not uploaded.is_success:
+                # The card refuses a wrong type or size before sending (no turn in the app);
+                # AGENT-LIVE still lets the model explain it (S14's wording checks).
+                payload = None if ctx.script else {"doc_type": doc_type}
+            else:
+                body = uploaded.json()
+                checks = (body.get("draft") or {}).get("checks") or {}
+                done = int(checks.get("required_docs_uploaded", 0))
+                total = int(checks.get("required_docs_total", 2))
+                if body.get("fields_filled") or body.get("mismatches"):
+                    payload = {"doc_type": doc_type}
+                elif done == total:
+                    payload = {}
+                else:
+                    payload = None
+            if payload is None:
+                continue
+            events = await el._action(ctx.client, ctx.session_id, "documents_updated", payload)
             await _run_stream(
                 ctx,
                 label=f"[upload {doc_type}]",
@@ -477,7 +495,7 @@ async def _execute_step(
         await ctx.client.post("/api/dev/clock/advance", json={"hours": minutes / 60})
         return None
     if step.get("new_session") is True:
-        created = await ctx.client.post("/api/sessions")
+        created = await ctx.client.post("/api/sessions", headers=ctx.headers())
         created.raise_for_status()
         ctx.session_id = created.json()["session_id"]
         return "new_session"
@@ -628,30 +646,6 @@ async def _seed_open_inquiry(ctx: _StepCtx, spec: dict[str, Any]) -> str:
 _STAFF_HEADERS = {"X-Staff-Id": "customer-care-1"}
 STAFF_LABEL = "[staff] "
 
-# CC1–CC3: what the executive dictates for each section (the caller's words, relayed).
-_CC_DICTATION: dict[str, dict[str, str]] = {
-    "CC2": {
-        "unit_and_category": "They want a store. They sell specialty coffee and pastries.",
-        "basic_info": (
-            "Company is Oasis Coffee Company, King Fahd Road, Riyadh. The brand is Oasis "
-            "Coffee. The caller is Huda Saleh, mobile 0507654321."
-        ),
-        "property_details": (
-            "Riyadh Mall A, 40 to 80 square metres, budget 150,000 to 250,000 riyals a year."
-        ),
-    },
-    "CC3": {
-        "unit_and_category": "A store — they sell specialty coffee and pastries.",
-        "basic_info": (
-            "The brand is Bean Street. The caller is Sara Ali, sara@beanstreet.example, "
-            "mobile 0501234567."
-        ),
-        "property_details": (
-            "Riyadh Mall A, 40 to 80 square metres, budget 150,000 to 250,000 riyals a year."
-        ),
-    },
-}
-
 _CC_STEPS = (
     "cc_cr",
     "cc_contact_check",
@@ -697,7 +691,8 @@ async def _execute_cc_step(
         events = await el._action(ctx.client, ctx.session_id, "send_sign_in_link", {})
         await run(STAFF_LABEL + "[send_sign_in_link]", [events])
     elif kind == "cc_capture":
-        dictation = _CC_DICTATION[ctx.catalogue["id"]]
+        # The catalogue's `cc_dictation`: the caller's words, relayed (Playwright reads it too).
+        dictation = dict(ctx.catalogue.get("cc_dictation") or {})
         for section in str(arg).split(","):
             text = dictation[section]
             batches = [await el._message(ctx.client, ctx.session_id, text)]
@@ -732,7 +727,11 @@ async def _execute_cc_step(
                 break
         if not token:
             raise RuntimeError("open_application_link: no complete_application email")
-        opened = await ctx.client.post("/api/verifications/email", json={"token": token})
+        opened = await ctx.client.post(
+            "/api/verifications/email",
+            json={"token": token},
+            headers=ctx.headers(ctx.applicant_script),
+        )
         opened.raise_for_status()
         ctx.session_id = str(opened.json()["session_id"])
     elif kind == "edit_field":
@@ -775,17 +774,25 @@ async def run_flow_v2_catalogue(
     scenario: LiveScenario,
     *,
     outbox_messages: list[dict[str, Any]],
+    script: str | None = None,
+    applicant_script: str | None = None,
 ) -> tuple[Any, list[tuple[Any, int]]]:
+    """Run one catalogue entry. `script` (AGENT-DET) drives a scripted model instead of the
+    real one: the e2e script name for the chat, and `applicant_script` for the applicant's
+    chat that opens from the call-centre link."""
     el = _el()
 
     entry = scenario.catalogue
     if entry is None:
         raise RuntimeError("catalogue missing")
+    test_headers = {"X-Test-Scenario": script} if script else {}
     if "call_centre" in (entry.get("contexts") or []):
         app.state.services.notifications.clear()  # the outbox checks read this run only
-        created = await client.post("/api/callcentre/inquiries", headers=_STAFF_HEADERS)
+        created = await client.post(
+            "/api/callcentre/inquiries", headers={**_STAFF_HEADERS, **test_headers}
+        )
     else:
-        created = await client.post("/api/sessions")
+        created = await client.post("/api/sessions", headers=test_headers)
     created.raise_for_status()
     session_id = created.json()["session_id"]
     ctx = _StepCtx(
@@ -796,6 +803,8 @@ async def run_flow_v2_catalogue(
         turns=[],
         catalogue=entry,
         staff_session_id=session_id if "call_centre" in (entry.get("contexts") or []) else None,
+        script=script,
+        applicant_script=applicant_script,
     )
     violations: list[tuple[Any, int]] = []
     turn_index = 0
@@ -845,6 +854,8 @@ def _expect_checks(
     turns: list[TurnResult],
     app: AppState,
     entry: dict[str, Any],
+    *,
+    wording: bool = True,
 ) -> list[tuple[str, bool]]:
     expect = entry.get("expect") or {}
     draft = session.draft if session else new_inquiry_draft()
@@ -898,7 +909,7 @@ def _expect_checks(
             and draft.fields[key].source not in (None, Source.DEFAULT)
         ]
         checks.append((f"side questions wrote nothing (wrote: {written or 'none'})", not written))
-    if section := expect.get("returns_to_section"):
+    if wording and (section := expect.get("returns_to_section")):
         checks.extend(_returns_to_section(turns, str(section), entry))
     # Call-centre stories only (the public entries' outbox and status rows are documentation).
     call_centre = "call_centre" in (entry.get("contexts") or [])
