@@ -25,7 +25,6 @@ from app.domain.models import FieldKey, Source
 from app.domain.sections import (
     BASIC_INFO_KEYS,
     PROPERTY_KEYS,
-    UNIT_AND_CATEGORY_KEYS,
     current_section,
     section_rank,
 )
@@ -60,13 +59,6 @@ _UNIT_RE = re.compile(
     re.IGNORECASE,
 )
 _GEO_REF_RE = re.compile(r"GEO-(?:STR|OFF)-\d{6}")
-
-_SECTION_KEYS: dict[str, set[FieldKey]] = {
-    "unit_and_category": set(UNIT_AND_CATEGORY_KEYS),
-    "basic_info": set(BASIC_INFO_KEYS) | {FieldKey.MOBILE, FieldKey.LANDLINE},
-    "property_details": set(PROPERTY_KEYS),
-}
-
 
 def _load_intake_catalogue() -> list[dict[str, Any]]:
     data = json.loads(_CATALOGUE_PATH.read_text(encoding="utf-8"))
@@ -230,25 +222,19 @@ async def _confirm_section(ctx: _StepCtx, section: str) -> list[list[tuple[str, 
     """
     el = _el()
 
+    from app.api.dev import confirm_plan
+
     session = await ctx.app.state.session_store.get(ctx.session_id)
     if session is None:
         raise RuntimeError("no session for confirm_card")
-    open_keys: set[str] = set()
-    for key in _SECTION_KEYS[section]:
-        field_value = session.draft.fields[key]
-        if field_value.value not in (None, "", []) and not field_value.confirmed:
-            open_keys.add(key.value)
-    if not open_keys:
-        return []
+    # The same plan Playwright reads from GET /api/dev/confirm-plan (one script fits both).
+    plan = confirm_plan(session, section)
     batches: list[list[tuple[str, dict[str, Any]]]] = []
-    # Every card that still shows an open value (a profile upload makes one per document).
-    for cid, keys in reversed(list(session.confirm_card_keys.items())):
-        if open_keys.intersection(keys):
-            batches.append(
-                await el._action(ctx.client, ctx.session_id, "confirm_card", {"card_id": cid})
-            )
-            open_keys -= set(keys)
-    if open_keys:
+    for cid in plan.card_ids:
+        batches.append(
+            await el._action(ctx.client, ctx.session_id, "confirm_card", {"card_id": cid})
+        )
+    if plan.say_yes:
         batches.append(await el._message(ctx.client, ctx.session_id, "Yes, that's all correct."))
     return batches
 
@@ -431,14 +417,33 @@ async def _execute_step(
         files = step["upload"]
         assert isinstance(files, dict)
         for doc_type, file_name in files.items():
-            await ctx.client.post(
+            uploaded = await ctx.client.post(
                 f"/api/sessions/{ctx.session_id}/documents",
                 data={"doc_type": doc_type},
                 files={"file": (file_name, _fixture_bytes(file_name), "application/pdf")},
             )
-            events = await el._action(
-                ctx.client, ctx.session_id, "documents_updated", {"doc_type": doc_type}
-            )
+            # The chat's own rule (useChatSession.uploadDocumentForType): a profile that filled
+            # fields or disagrees gets a turn of its own; otherwise one turn once every
+            # required document is in. The same scripts then serve AGENT-DET and Playwright.
+            payload: dict[str, Any] | None
+            if not uploaded.is_success:
+                # The card refuses a wrong type or size before sending (no turn in the app);
+                # AGENT-LIVE still lets the model explain it (S14's wording checks).
+                payload = None if ctx.script else {"doc_type": doc_type}
+            else:
+                body = uploaded.json()
+                checks = (body.get("draft") or {}).get("checks") or {}
+                done = int(checks.get("required_docs_uploaded", 0))
+                total = int(checks.get("required_docs_total", 2))
+                if body.get("fields_filled") or body.get("mismatches"):
+                    payload = {"doc_type": doc_type}
+                elif done == total:
+                    payload = {}
+                else:
+                    payload = None
+            if payload is None:
+                continue
+            events = await el._action(ctx.client, ctx.session_id, "documents_updated", payload)
             await _run_stream(
                 ctx,
                 label=f"[upload {doc_type}]",

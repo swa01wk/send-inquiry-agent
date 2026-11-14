@@ -120,3 +120,15 @@ async def test_catalogue_scenario(det: tuple[AsyncClient, Any], scenario_id: str
         f"{scenario_id} failed: {failed}\n  path: {path}\n"
         f"  script step: {session.script_step if session else '?'}\n{_transcript(result.turns)}"
     )
+
+
+async def test_confirm_plan_endpoint(det: tuple[AsyncClient, Any]) -> None:
+    """GET /api/dev/confirm-plan: nothing to confirm on a fresh chat, and a bad section 422s."""
+    client, _app = det
+    created = await client.post("/api/sessions")
+    session_id = created.json()["session_id"]
+    plan = await client.get(f"/api/dev/confirm-plan/{session_id}", params={"section": "basic_info"})
+    assert plan.status_code == 200
+    assert plan.json() == {"card_ids": [], "say_yes": False}
+    bad = await client.get(f"/api/dev/confirm-plan/{session_id}", params={"section": "nope"})
+    assert bad.status_code == 422
