@@ -170,17 +170,7 @@ def _load_e2e_steps(name: str) -> list[dict[str, Any]]:
 
 
 def all_scenarios() -> list[ParityScenario]:
-    # The shared catalogue steps type everything in one message; here the user presses
-    # each confirm card, which runs a turn, so those turns get their own replies (a write
-    # before the user typed the details is refused: update_draft `not_given`).
-    shared = catalogue.model_steps_for("12-wrong-code")
-    wrong_otp_steps = [
-        *shared[:2],
-        {"content": "Thanks. Next, your brand, the mall and your contact details."},
-        *shared[2:5],
-        {"content": "Thanks, that's confirmed."},
-        *shared[5:],
-    ] + [
+    wrong_otp_steps = catalogue.model_steps_for("12-wrong-code") + [
         {"content": "Sorry — that didn't match. A fresh SMS code was sent; try again in the box."},
         *_AFTER_VERIFICATION_STEPS,
     ]

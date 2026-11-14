@@ -175,6 +175,19 @@ _PHONE_KEYS = frozenset(
 )
 
 
+def _turn_was_typed(state: AgentState) -> bool:
+    """The latest user input is a typed message, not a card action note (guard notes are
+    skipped)."""
+    for message in reversed(state["messages"]):
+        if isinstance(message, HumanMessage):
+            content = message.content
+            text = content if isinstance(content, str) else str(content)
+            if text.startswith("[ui_event] guard:"):
+                continue  # a guard retry: the turn is whatever came before it
+            return not text.startswith("[ui_event]")
+    return False
+
+
 def _contact_not_given(item: DraftFieldUpdate, said: str) -> bool:
     """A contact detail "from the user" that they never typed (F5 evals, S16: asked "how
     long does the review take?", the model saved an invented Sara Ali with an email). The
@@ -713,11 +726,14 @@ def update_draft(
     user_text = _last_user_text(state)
     keys_in_call = {item.key for item in fields}
     said = _user_words(state)
+    # Only on a turn the user typed: a scripted card-press turn may write what the next
+    # message types (Playwright and parity scripts), and the live slip was on typed turns.
+    typed_turn = _turn_was_typed(state)
     for item in fields:
         if item.key in PROTECTED_WRITE_KEYS:
             rejected.append(f"{item.key}: protected")
             continue
-        if _contact_not_given(item, said):
+        if typed_turn and _contact_not_given(item, said):
             rejected.append(
                 f"{item.key}: not_given (the user hasn't typed it); never invent contact "
                 "details: answer their question and ask for it"

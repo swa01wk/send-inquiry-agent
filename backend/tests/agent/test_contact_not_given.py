@@ -49,3 +49,15 @@ def test_arabic_writer_keeps_a_transliterated_name_and_derived_values_pass() -> 
     assert not _contact_not_given(
         DraftFieldUpdate(key="email", value="x@y.example", source="derived"), _said("hi")
     )
+
+
+def test_only_typed_turns_are_checked() -> None:
+    from app.agent.tools import _turn_was_typed
+    from langchain_core.messages import HumanMessage
+
+    typed = {"messages": [HumanMessage(content="how long does the review take?")]}
+    retry = {"messages": [*typed["messages"], HumanMessage(content="[ui_event] guard: again")]}
+    card = {"messages": [HumanMessage(content="[ui_event] fields_confirmed unit_type")]}
+    assert _turn_was_typed(typed)  # type: ignore[arg-type]
+    assert _turn_was_typed(retry)  # type: ignore[arg-type]
+    assert not _turn_was_typed(card)  # type: ignore[arg-type]
