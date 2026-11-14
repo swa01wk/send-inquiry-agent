@@ -52,7 +52,7 @@ Read first: @docs/specs/flow-v2-alignment.md (§2 rows FV16–FV18, §3.4, §3.1
 - E2E-LIVE smoke: CC1.
 
 ## End-of-day check
-- [ ] Executive enters `1010000000`, then `existing.tenant@zarahome.example` → Inform with words to say → **Email sign-in link** → `sign_in_link` in the outbox; no inquiry (CC1).
+- [ ] Executive enters `1010000000`, then `layla.hassan@oasiscoffee.example` → Inform with words to say → **Email sign-in link** → `sign_in_link` in the outbox; no inquiry (CC1).
 - [ ] Same CR, a new email → fresh capture (no Yardi values) → application link → applicant changes their last name → OTP → terms → documents → Submit (CC2, CC3).
 - [ ] RSM asks the assistant about forecasted sales → a suggestion with a reason; nothing sent (S21).
 - [ ] Case chat after lead approval: signatory first, then billing; missing roles named (S23).

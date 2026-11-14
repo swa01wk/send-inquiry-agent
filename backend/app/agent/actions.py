@@ -1528,9 +1528,10 @@ async def _proceed_basic_info(
     origin = call_centre_flow_id(session)
     if origin:
         # Flow v2 (§3.4): "Basic Info Correct?" — no when the applicant changed anything the
-        # executive captured (→ "Update Basic Info"), yes otherwise.
+        # executive captured (→ "Update Basic Info"), yes otherwise. Every write on this chat
+        # is the applicant's, from a card (actor user) or in their own words (actor agent).
         changed = any(
-            e["type"] == "field_written" and e.get("actor") == "user"
+            e["type"] == "field_written" and (e.get("payload") or {}).get("source") != "staff"
             for e in runtime.services.audit.events(session.id)
         )
         record_flow_step(

@@ -24,6 +24,8 @@ def test_false_submit_claims_match(text: str) -> None:
         "Our leasing team will contact applicants after the inquiry is sent.",
         "When your application is received, the team reviews it.",
         "As soon as the request is submitted you'll get a reference.",
+        # F4 evals (assisted): the link going out is not the inquiry being submitted.
+        "The application link has been sent to the email on file.",
     ],
 )
 def test_conditional_mentions_are_not_claims(text: str) -> None:

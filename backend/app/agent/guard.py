@@ -66,7 +66,8 @@ GUARD_PREFIX = "[ui_event] guard:"
 # "I've sent your inquiry", "your reference number is GEO-…". Plain uses of the word
 # "reference" ("for your reference") do not match.
 _FALSE_SUBMIT_RE = re.compile(
-    r"\b(inquiry|enquiry|application|request)\b[^.!?\n]{0,40}?"
+    # "The application link has been sent" (assisted) is the link, not a submission.
+    r"\b(inquiry|enquiry|application(?!\s+link)|request)\b[^.!?\n]{0,40}?"
     r"\b(has been|have been|was|is now|is)\s+"
     r"(submitted|sent|received)\b"
     r"|\bI(?:'ve| have)\s+(?:submitted|sent)\s+(?:your|the)\b"
@@ -764,6 +765,32 @@ def _assisted_verification_claim_note(state: AgentState, ai_text: str) -> str | 
     )
 
 
+# Assisted mode: the caller verifies and uploads from the application link, so the
+# executive's chat never talks about those steps (F4 evals CC3: "then we can move on to
+# verification", "the verification and documents steps will open up").
+_ASSISTED_LATER_STEPS_RE = re.compile(
+    r"\b(verif(?:y|ied|ication)\w*|one-time code|sms code|otp|documents?|uploads?)\b",
+    re.IGNORECASE,
+)
+
+
+def _assisted_later_steps_note(state: AgentState, ai_text: str) -> str | None:
+    if not state.get("assisted") or not ai_text:
+        return None
+    # "The caller will verify their email from the link" is fine: it names the link.
+    sentences = re.findall(r"[^.!?\n]+", ai_text)
+    if not any(
+        _ASSISTED_LATER_STEPS_RE.search(sentence) and "link" not in sentence.lower()
+        for sentence in sentences
+    ):
+        return None
+    return (
+        f"{GUARD_PREFIX} Assisted mode: don't mention verification, codes or documents — "
+        "the caller does those from the application link. Reply again without them; once "
+        "the basic info is in, the next step is the Send application link card."
+    )
+
+
 def _assisted_addresses_caller_note(state: AgentState, draft: Any, ai_text: str) -> str | None:
     """Assisted mode: the executive reads every reply, so it must not greet or thank the
     caller by name ("Thanks, Sara"); "Thanks — I've saved Sara's details." is fine."""
@@ -796,7 +823,8 @@ def _assisted_reply_note(state: AgentState, draft: Any, ai_text: str) -> str | N
     notes = [
         note
         for note in (
-            _assisted_verification_claim_note(state, ai_text),
+            _assisted_verification_claim_note(state, ai_text)
+            or _assisted_later_steps_note(state, ai_text),
             _assisted_addresses_caller_note(state, draft, ai_text),
         )
         if note

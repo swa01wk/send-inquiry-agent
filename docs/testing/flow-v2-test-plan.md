@@ -98,12 +98,12 @@ Scripted model scripts: `backend/tests/e2e_scripts/flow-v2-s01.json` … `flow-v
 | `confirms_derived_values_before_moving_on`, `never_reasks_value_from_document` | Confirm card before the next section; KPI | S13 |
 | `gives_refusal_reason_plainly`, `names_the_right_document` | After an upload error note | S14 |
 | `warns_once_neutrally` | One duplicate warning; no blame wording | S15 |
-| `answers_then_offers_to_continue`, `arabic_in_arabic`, `no_promises` | Existing `off_topic_offers_continue`, Arabic letters, `_no_timeline_promise` | S16 |
+| `answers_then_offers_to_continue`, `arabic_in_arabic`, `no_promises` | Existing `off_topic_offers_continue`, Arabic letters, `_no_timeline_promise`; plus `returns_to_section` (the side replies come back to Basic Info, never to unit type) and `draft_unchanged_by_side_questions` | S16 |
 | `says_not_sent_invents_no_reference`, `offers_retry` | No `GEO-` in replies after `submit_pending` | S17 |
 | `names_only_rejected_document_and_remark` | Case agent names the Brand Profile and paraphrases the remark | S18 |
 | `explains_outcome_no_reviewer_names_no_promises`, `offers_new_inquiry`, `explains_outcome_offers_new_inquiry` | `_no_reviewer_names`, `_no_timeline_promise`, `after_rejection` offered | S19, S22 |
 | `where_is_it_gives_right_stage` | Mentions "Tenant Qualified" or its plain meaning; no stage ahead of the case | S20 |
-| `says_forecasted`, `e2_suggestion_has_reason`, `e2_never_sends_request` | "forecasted" present, "estimated" absent; the assistant reply has "because" or a fact; no `sales_data_requested` by the assistant | S21 |
+| `says_forecasted`, `e2_suggestion_has_reason`, `e2_never_sends_request` | "forecasted" present, "estimated" absent; the **reviewer assistant's** reply to the RSM gives a reason from the facts (new to Cenomi, area); no sales-data request on the case after it (scenario "S21 E2 reviewer assistant suggestion") | S21 |
 | `e3_lists_whats_missing`, `signatory_question_first`, `no_per_contact_approval_mentioned`, `handles_yes_no_unsure` | Existing signatory checks; missing roles named; no "approve each contact" wording | S23, S24 |
 | `e5_gives_words_to_say`, `no_inquiry_created`, `asks_same_sections_without_documents`, `no_prefill_claims`, `assisted_words_for_executive`, `no_documents_asked_from_executive` | Assisted channel checks | CC1–CC3 |
 

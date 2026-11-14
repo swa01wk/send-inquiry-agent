@@ -1,4 +1,5 @@
-"""Flow v2 public intake scenarios (S1–S17) for AGENT-LIVE (`eval_live.py`).
+"""Flow v2 catalogue scenarios for AGENT-LIVE (`eval_live.py`): the public intake (S1–S17)
+and the call-centre stories (CC1–CC3).
 
 Loaded lazily from `eval_live` so the main module can finish defining helpers first.
 """
@@ -20,7 +21,7 @@ from app.agent.guard import claims_submission
 from app.agent.pending import RESUME_PENDING_REPLY
 from app.domain.draft_ops import new_inquiry_draft
 from app.domain.master import load_master_data
-from app.domain.models import FieldKey
+from app.domain.models import FieldKey, Source
 from app.domain.sections import (
     BASIC_INFO_KEYS,
     PROPERTY_KEYS,
@@ -72,7 +73,7 @@ def _load_intake_catalogue() -> list[dict[str, Any]]:
     global _CATALOGUE_ROOT
     _CATALOGUE_ROOT = data
     out: list[dict[str, Any]] = []
-    intake_ids = {f"S{n}" for n in range(1, 18)}
+    intake_ids = {f"S{n}" for n in range(1, 18)} | {"CC1", "CC2", "CC3"}
     for entry in data["scenarios"]:
         if entry["id"] not in intake_ids:
             continue
@@ -158,6 +159,8 @@ class _StepCtx:
     auto_otp: bool
     turns: list[TurnResult]
     catalogue: dict[str, Any]
+    # CC1–CC3: the executive's chat; `session_id` moves to the applicant's after the link.
+    staff_session_id: str | None = None
 
 
 async def _run_stream(
@@ -382,6 +385,7 @@ async def _execute_step(
         return "verify_email"
     if "enter_code" in step:
         code = str(step["enter_code"])
+        await _proceed_basic_info_once(ctx, scenario, outbox, turn_index, violations)
         session = await ctx.app.state.session_store.get(ctx.session_id)
         if session is not None and session.draft.mobile_verified:
             return None
@@ -578,6 +582,10 @@ async def _execute_step(
     if "seed_open_inquiry" in step:
         await _seed_open_inquiry(ctx, dict(step["seed_open_inquiry"]))
         return None
+    if cc_kind := next((k for k in _CC_STEPS if k in step), None):
+        return await _execute_cc_step(
+            ctx, cc_kind, step[cc_kind], scenario, outbox, turn_index, violations
+        )
     if step.get("leave"):
         return None
     raise RuntimeError(f"unsupported catalogue step: {step!r}")
@@ -617,6 +625,150 @@ async def _seed_open_inquiry(ctx: _StepCtx, spec: dict[str, Any]) -> str:
     return str(success[0]["payload"]["reference"])
 
 
+_STAFF_HEADERS = {"X-Staff-Id": "customer-care-1"}
+STAFF_LABEL = "[staff] "
+
+# CC1–CC3: what the executive dictates for each section (the caller's words, relayed).
+_CC_DICTATION: dict[str, dict[str, str]] = {
+    "CC2": {
+        "unit_and_category": "They want a store. They sell specialty coffee and pastries.",
+        "basic_info": (
+            "Company is Oasis Coffee Company, King Fahd Road, Riyadh. The brand is Oasis "
+            "Coffee. The caller is Huda Saleh, mobile 0507654321."
+        ),
+        "property_details": (
+            "Riyadh Mall A, 40 to 80 square metres, budget 150,000 to 250,000 riyals a year."
+        ),
+    },
+    "CC3": {
+        "unit_and_category": "A store — they sell specialty coffee and pastries.",
+        "basic_info": (
+            "The brand is Bean Street. The caller is Sara Ali, sara@beanstreet.example, "
+            "mobile 0501234567."
+        ),
+        "property_details": (
+            "Riyadh Mall A, 40 to 80 square metres, budget 150,000 to 250,000 riyals a year."
+        ),
+    },
+}
+
+_CC_STEPS = (
+    "cc_cr",
+    "cc_contact_check",
+    "cc_send_sign_in_link",
+    "cc_capture",
+    "cc_submit",
+    "open_application_link",
+    "edit_field",
+)
+
+_FIELD_WORDS = {"last_name": "last name", "first_name": "first name", "mobile": "mobile"}
+
+
+async def _execute_cc_step(
+    ctx: _StepCtx,
+    kind: str,
+    arg: Any,
+    scenario: LiveScenario,
+    outbox: list[dict[str, Any]],
+    turn_index: int,
+    violations: list[tuple[Any, int]],
+) -> str:
+    el = _el()
+
+    async def run(label: str, batches: list[list[tuple[str, dict[str, Any]]]]) -> None:
+        await _run_stream(
+            ctx,
+            label=label,
+            stream_batches=batches,
+            scenario=scenario,
+            outbox_messages=outbox,
+            turn_index=turn_index,
+            violations_out=violations,
+        )
+
+    if kind == "cc_cr":
+        text = f"The caller's CR number is {arg}."
+        await run(STAFF_LABEL + text, [await el._message(ctx.client, ctx.session_id, text)])
+    elif kind == "cc_contact_check":
+        events = await el._action(ctx.client, ctx.session_id, "contact_check", {"email": arg})
+        await run(STAFF_LABEL + "[contact_check]", [events])
+    elif kind == "cc_send_sign_in_link":
+        events = await el._action(ctx.client, ctx.session_id, "send_sign_in_link", {})
+        await run(STAFF_LABEL + "[send_sign_in_link]", [events])
+    elif kind == "cc_capture":
+        dictation = _CC_DICTATION[ctx.catalogue["id"]]
+        for section in str(arg).split(","):
+            text = dictation[section]
+            batches = [await el._message(ctx.client, ctx.session_id, text)]
+            batches.extend(await _confirm_section(ctx, section))
+            await run(STAFF_LABEL + text, batches)
+    elif kind == "cc_submit":
+        session = await ctx.app.state.session_store.get(ctx.session_id)
+        card = (session.cards.get("send_link") or {}).get("payload") or {} if session else {}
+        if not card.get("can_send"):
+            # The agent shows the link card when the basic info is in; nudge once.
+            text = "That's everything from the caller — please show the application link."
+            await run(STAFF_LABEL + text, [await el._message(ctx.client, ctx.session_id, text)])
+            session = await ctx.app.state.session_store.get(ctx.session_id)
+            card = (session.cards.get("send_link") or {}).get("payload") or {} if session else {}
+        if not card.get("can_send"):
+            raise RuntimeError(f"cc_submit: link card not ready (missing: {card.get('missing')})")
+        events = await el._action(ctx.client, ctx.session_id, "send_application_link", {})
+        await run(STAFF_LABEL + "[send_application_link]", [events])
+    elif kind == "open_application_link":
+        session = await ctx.app.state.session_store.get(ctx.session_id)
+        email = str(session.draft.fields[FieldKey.EMAIL].value or "") if session else ""
+        token = None
+        for msg in ctx.app.state.services.notifications.messages(to=email):  # newest first
+            if msg.get("template") != "complete_application":
+                continue
+            for link in msg.get("links") or []:
+                qs = parse_qs(urlparse(link).query)
+                if qs.get("t"):
+                    token = qs["t"][0]
+                    break
+            if token:
+                break
+        if not token:
+            raise RuntimeError("open_application_link: no complete_application email")
+        opened = await ctx.client.post("/api/verifications/email", json={"token": token})
+        opened.raise_for_status()
+        ctx.session_id = str(opened.json()["session_id"])
+    elif kind == "edit_field":
+        field, value = str(arg[0]), str(arg[1])
+        text = f"One correction: my {_FIELD_WORDS.get(field, field)} is {value}."
+        await run(text, [await el._message(ctx.client, ctx.session_id, text)])
+    return kind
+
+
+async def _proceed_basic_info_once(
+    ctx: _StepCtx,
+    scenario: LiveScenario,
+    outbox: list[dict[str, Any]],
+    turn_index: int,
+    violations: list[tuple[Any, int]],
+) -> None:
+    """The applicant presses Proceed on the basic-info review (CC2, CC3) before the code."""
+    el = _el()
+    session = await ctx.app.state.session_store.get(ctx.session_id)
+    if session is None or not session.origin_id:
+        return
+    card = (session.cards.get("basic_info_review") or {}).get("payload") or {}
+    if card.get("proceeded"):
+        return
+    events = await el._action(ctx.client, ctx.session_id, "proceed_basic_info", {})
+    await _run_stream(
+        ctx,
+        label="[proceed_basic_info]",
+        stream_batches=[events],
+        scenario=scenario,
+        outbox_messages=outbox,
+        turn_index=turn_index,
+        violations_out=violations,
+    )
+
+
 async def run_flow_v2_catalogue(
     client: AsyncClient,
     app: AppState,
@@ -629,7 +781,11 @@ async def run_flow_v2_catalogue(
     entry = scenario.catalogue
     if entry is None:
         raise RuntimeError("catalogue missing")
-    created = await client.post("/api/sessions")
+    if "call_centre" in (entry.get("contexts") or []):
+        app.state.services.notifications.clear()  # the outbox checks read this run only
+        created = await client.post("/api/callcentre/inquiries", headers=_STAFF_HEADERS)
+    else:
+        created = await client.post("/api/sessions")
     created.raise_for_status()
     session_id = created.json()["session_id"]
     ctx = _StepCtx(
@@ -639,6 +795,7 @@ async def run_flow_v2_catalogue(
         auto_otp=scenario.auto_otp,
         turns=[],
         catalogue=entry,
+        staff_session_id=session_id if "call_centre" in (entry.get("contexts") or []) else None,
     )
     violations: list[tuple[Any, int]] = []
     turn_index = 0
@@ -733,6 +890,40 @@ def _expect_checks(
     if expect.get("inquiry_status") == "first_review" and draft.reference:
         case = app.state.services.cases.get(draft.reference)
         checks.append(("submitted case exists", case is not None))
+    if expect.get("draft_unchanged_by_side_questions"):
+        written = [
+            key.value
+            for key in (*BASIC_INFO_KEYS, *PROPERTY_KEYS)
+            if draft.fields[key].value not in (None, "", [])
+            and draft.fields[key].source not in (None, Source.DEFAULT)
+        ]
+        checks.append((f"side questions wrote nothing (wrote: {written or 'none'})", not written))
+    if section := expect.get("returns_to_section"):
+        checks.extend(_returns_to_section(turns, str(section), entry))
+    # Call-centre stories only (the public entries' outbox and status rows are documentation).
+    call_centre = "call_centre" in (entry.get("contexts") or [])
+    if call_centre and expect.get("inquiry_status") == "redirected":
+        checks.append(
+            (
+                "closed as redirected_existing_contact",
+                bool(session and session.closed == "redirected_existing_contact"),
+            )
+        )
+    if expect.get("no_inquiry"):
+        checks.append(("no reference", not draft.reference))
+    if call_centre and (templates := expect.get("outbox")):
+        sent = {m.get("template") for m in app.state.services.notifications.messages()}
+        for template in templates:
+            checks.append((f"outbox has {template}", template in sent))
+    if expect.get("no_yardi_prefill") and session is not None:
+        ids = [i for i in (session.origin_id, session.id) if i]
+        prefilled = any(
+            e["type"] == "tenant_prefill" for i in ids for e in app.state.services.audit.events(i)
+        )
+        checks.append(("nothing prefilled from the tenant record", not prefilled))
+    for key in expect.get("basic_info_changed") or []:
+        value = draft.fields[FieldKey(key)]
+        checks.append((f"applicant changed {key}", value.source == Source.USER))
     return checks
 
 
@@ -871,8 +1062,13 @@ def _no_access_promise(
     _s: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
 ) -> list[tuple[str, bool]]:
     text = _reply_text(turns).lower()
-    banned = ("create", "request access", "we'll set up", "set up an account")
-    return [("no access creation promise", not any(b in text for b in banned))]
+    # "I can't create a login here" is the refusal we want, not a promise.
+    promise = re.search(
+        r"(?<!can't )(?<!can’t )(?<!cannot )(?<!not )(?<!unable to )\bcreate\b"
+        r"|request access|we'll set up|set up an account",
+        text,
+    )
+    return [("no access creation promise", promise is None)]
 
 
 def _until_second_cr_check(turns: list[TurnResult]) -> list[TurnResult]:
@@ -978,6 +1174,28 @@ def _section_order_ok(
 _SELL_ASK_RE = re.compile(r"\bwhat\b[^.?!]{0,40}\bsell\b[^.?!]*\?", re.IGNORECASE)
 
 
+_SENTENCE_RE = re.compile(r"[^.!?؟]+[.!?؟]?")
+_ASK_VERB_RE = re.compile(
+    r"\b(share|tell me|send me|give me|provide|type|enter|what(?:'s| is| are))\b", re.IGNORECASE
+)
+_POINTS_AT_CARD_RE = re.compile(r"\b(card|shows|noted|saved|confirmed|got)\b", re.IGNORECASE)
+
+
+def _asking_sentences(text: str) -> list[str]:
+    """The sentences that ask for something: a question, or "please share / tell me …".
+    "The card now shows Café for your sales category" or "check the card for your brand
+    name" mention a field without asking for it (F4 evals: S1 flagged both)."""
+    out = []
+    for sentence in _SENTENCE_RE.findall(text):
+        sentence = sentence.strip()
+        if not sentence:
+            continue
+        question = sentence.endswith(("?", "؟"))
+        if question or (_ASK_VERB_RE.search(sentence) and not _POINTS_AT_CARD_RE.search(sentence)):
+            out.append(sentence)
+    return out
+
+
 def _unnecessary_zero(
     _s: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
 ) -> list[tuple[str, bool]]:
@@ -1002,8 +1220,9 @@ def _unnecessary_zero(
         text = turn.assistant
         if not text.strip():
             continue
+        asking = " ".join(_asking_sentences(text))
         for pattern, key in el._FIELD_ASK_PATTERNS:
-            if key.value in filled and pattern.search(text):
+            if key.value in filled and pattern.search(asking):
                 repeats.append(f"{key.value} at {turn.user[:30]!r}")
         if FieldKey.SALES_CATEGORY.value in filled and _SELL_ASK_RE.search(text):
             repeats.append(f"sales_category at {turn.user[:30]!r}")
@@ -1110,6 +1329,139 @@ def _wrong_code_on_card(
     ]
 
 
+_SECTION_WORDS = {
+    "basic_info": (
+        "company",
+        "brand",
+        "your name",
+        "full name",
+        "contact",
+        "شركة",
+        "العلامة",
+        "اسم",
+    ),
+    "property_details": ("mall", "area", "budget", "sqm", "مول", "المساحة", "الميزانية"),
+}
+_UNIT_SECTION_WORDS = ("store or an office", "store or office", "what do you sell", "what you sell")
+
+
+def _returns_to_section(
+    turns: list[TurnResult], section: str, entry: dict[str, Any]
+) -> list[tuple[str, bool]]:
+    """S16: the replies to the side questions (the `say` steps after the last `confirm_card`)
+    go back to the section they were on — never to an earlier one."""
+    steps = entry.get("steps") or []
+    last_confirm = max((i for i, st in enumerate(steps) if "confirm_card" in st), default=-1)
+    side_texts = {str(st["say"]) for st in steps[last_confirm + 1 :] if "say" in st}
+    side = [t.assistant.lower() for t in turns if t.user in side_texts and t.assistant.strip()]
+    words = _SECTION_WORDS.get(section, ())
+    return [
+        (
+            f"side replies come back to {section}",
+            bool(side) and any(w in reply for reply in side for w in words),
+        ),
+        (
+            "never back to unit type and category",
+            not any(w in reply for reply in side for w in _UNIT_SECTION_WORDS),
+        ),
+    ]
+
+
+def _staff_turns(turns: list[TurnResult]) -> list[TurnResult]:
+    return [t for t in turns if t.user.startswith(STAFF_LABEL)]
+
+
+def _e5_words_to_say(
+    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
+) -> list[tuple[str, bool]]:
+    """CC1 (E5): after the check, sentences to say — sign in and raise it from Leasing
+    Opportunities — and the card's button, never an application link."""
+    reply = next(
+        (t.assistant for t in turns if t.user == STAFF_LABEL + "[contact_check]"), ""
+    ).lower()
+    return [
+        ("words to say mention signing in", "sign in" in reply or "sign-in" in reply),
+        (
+            "words to say point to Leasing Opportunities or Tenant Central",
+            "leasing opportunities" in reply or "tenant central" in reply,
+        ),
+        ("no application link offered", "application link" not in reply),
+    ]
+
+
+def _no_inquiry_created(
+    session: Any, turns: list[TurnResult], app: AppState, _e: dict[str, Any]
+) -> list[tuple[str, bool]]:
+    reference = session.draft.reference if session else None
+    sent = {m.get("template") for m in app.state.services.notifications.messages()}
+    cards = {d.get("card_type") for n, d in _all_events(turns) if n == "ui_card"}
+    return [
+        ("no inquiry submitted", not reference),
+        ("no application link email", "complete_application" not in sent),
+        ("no send_link card", "send_link" not in cards),
+    ]
+
+
+_DOC_WORDS = ("document", "upload", "profile", "pdf", "attach")
+# "The email on file" is the address the executive just checked, not a record lookup.
+_PREFILL_CLAIMS = (
+    "already on file",
+    "on file for",
+    "company on file",
+    "from their record",
+    "from our record",
+    "already have their",
+    "prefilled",
+    "pre-filled",
+    "pulled their",
+    "loaded their",
+)
+
+
+def _cc_sections_without_documents(
+    session: Any, turns: list[TurnResult], app: AppState, _e: dict[str, Any]
+) -> list[tuple[str, bool]]:
+    staff = _staff_turns(turns)
+    texts = [t.assistant.lower() for t in staff]
+    sent = {m.get("template") for m in app.state.services.notifications.messages()}
+    return [
+        (
+            "no documents asked from the executive",
+            not any(w in x for x in texts for w in _DOC_WORDS),
+        ),
+        ("application link sent after capture", "complete_application" in sent),
+    ]
+
+
+def _cc_no_prefill_claims(
+    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
+) -> list[tuple[str, bool]]:
+    text = " ".join(t.assistant.lower() for t in _staff_turns(turns))
+    return [
+        ("no claims of details from their records", not any(p in text for p in _PREFILL_CLAIMS))
+    ]
+
+
+def _cc_words_for_executive(
+    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
+) -> list[tuple[str, bool]]:
+    el = _el()
+    staff = [t.assistant for t in _staff_turns(turns) if t.assistant.strip()]
+    return [
+        (
+            "no verification, code or document words",
+            not any(el._assisted_forbidden_phrase(x) for x in staff),
+        ),
+    ]
+
+
+def _cc_no_documents(
+    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
+) -> list[tuple[str, bool]]:
+    texts = [t.assistant.lower() for t in _staff_turns(turns)]
+    return [("no documents asked", not any(w in x for x in texts for w in _DOC_WORDS))]
+
+
 def _mall_in_master(
     session: Any, _t: list[TurnResult], _a: AppState, _e: dict[str, Any]
 ) -> list[tuple[str, bool]]:
@@ -1171,6 +1523,12 @@ _CHECKS: dict[str, Callable[..., list[tuple[str, bool]]]] = {
     "names_the_right_document": lambda s, t, a, e: [("names document", True)],
     "warns_once_neutrally": lambda s, t, a, e: [("warns once", True)],
     "friendly_retry": _wrong_code_on_card,
+    "e5_gives_words_to_say": _e5_words_to_say,
+    "no_inquiry_created": _no_inquiry_created,
+    "asks_same_sections_without_documents": _cc_sections_without_documents,
+    "no_prefill_claims": _cc_no_prefill_claims,
+    "assisted_words_for_executive": _cc_words_for_executive,
+    "no_documents_asked_from_executive": _cc_no_documents,
     "offers_person_past_limit": lambda s, t, a, e: [("handoff after limit", True)],
 }
 
