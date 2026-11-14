@@ -304,6 +304,14 @@ export const feScenarioDefinitions: FeScenario[] = [
               },
             } as UiCard,
           },
+          // The inform card hangs off its own reply (m-channel-4), as in the app.
+          {
+            event: 'token',
+            data: {
+              message_id: 'm-channel-4',
+              text: 'The caller already has a login. Here is what to say.',
+            },
+          },
           { event: 'ui_card', data: informTenantCardExample },
           { event: 'done', data: { phase: 'collecting' } },
         ],
