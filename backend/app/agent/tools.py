@@ -153,6 +153,42 @@ def _name_from_email_only(item: DraftFieldUpdate, said: str) -> bool:
     return not all(re.search(rf"(?<![a-z0-9]){re.escape(w)}(?![a-z0-9])", rest) for w in words)
 
 
+_CONTACT_KEYS = frozenset(
+    {
+        FieldKey.FIRST_NAME.value,
+        FieldKey.LAST_NAME.value,
+        FieldKey.EMAIL.value,
+        FieldKey.MOBILE.value,
+        FieldKey.LANDLINE.value,
+        FieldKey.CONTACT_NUMBER.value,
+    }
+)
+_PHONE_KEYS = frozenset(
+    {FieldKey.MOBILE.value, FieldKey.LANDLINE.value, FieldKey.CONTACT_NUMBER.value}
+)
+
+
+def _contact_not_given(item: DraftFieldUpdate, said: str) -> bool:
+    """A contact detail "from the user" that they never typed (F5 evals, S16: asked "how
+    long does the review take?", the model saved an invented Sara Ali with an email). The
+    email must be in their words, the phone's last 9 digits too, and each name word unless
+    they wrote in Arabic (then a Latin name is a transliteration)."""
+    if item.source != "user" or item.key not in _CONTACT_KEYS:
+        return False
+    if not isinstance(item.value, str) or not item.value.strip():
+        return False
+    value = v.normalise_digits(item.value).casefold().strip()
+    if item.key == FieldKey.EMAIL.value:
+        return value not in said
+    if item.key in _PHONE_KEYS:
+        digits = re.sub(r"\D", "", value)
+        return len(digits) >= 7 and digits[-9:] not in re.sub(r"\D", "", said)
+    if _ARABIC_SCRIPT_RE.search(said) or _ARABIC_SCRIPT_RE.search(value):
+        return False
+    words = re.findall(r"[a-z]+", value)
+    return any(not re.search(rf"(?<![a-z]){re.escape(word)}(?![a-z])", said) for word in words)
+
+
 _HAS_CR_YES_RE = re.compile(
     r"\b(yes|yeah|yep|yup|sure|of course|we do|we have|i have|have one|have a cr|got one)\b"
     r"|نعم|ايوه|أيوه|إيه|ايه|اي نعم|عندنا|لدينا|عندي|لدي|موجود",
@@ -672,6 +708,12 @@ def update_draft(
     for item in fields:
         if item.key in PROTECTED_WRITE_KEYS:
             rejected.append(f"{item.key}: protected")
+            continue
+        if _contact_not_given(item, said):
+            rejected.append(
+                f"{item.key}: not_given (the user hasn't typed it); never invent contact "
+                "details: answer their question and ask for it"
+            )
             continue
         if _name_from_email_only(item, said):
             rejected.append(
