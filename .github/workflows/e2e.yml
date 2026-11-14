@@ -31,6 +31,10 @@ on:
         description: eval-live scenarios whose name contains this text (eval suite only; empty = all)
         type: string
         default: ''
+      args:
+        description: Extra Playwright arguments (scripted suite only), e.g. --grep @flow-v2
+        type: string
+        default: ''
       update_snapshots:
         description: Rewrite the card screenshot baselines (fe suite only)
         type: boolean
@@ -208,7 +212,9 @@ jobs:
           (cd frontend && npm ci)
           (cd e2e && npm ci && npx playwright install --with-deps chromium webkit)
       - name: Integration Playwright (@scripted)
-        run: make e2e-int
+        env:
+          PW_ARGS: ${{ inputs.args }}
+        run: make e2e-int ARGS="$PW_ARGS"
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

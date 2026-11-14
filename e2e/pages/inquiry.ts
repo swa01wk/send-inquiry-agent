@@ -256,9 +256,7 @@ export class InquiryPage {
 
   async answerSignatoryQuestion(isSignatory: boolean) {
     const card = this.cards('signatory_question')
-    const label = isSignatory
-      ? /yes, i'm the authorised signatory/i
-      : /no, someone else is/i
+    const label = isSignatory ? /yes, i'm the authorised signatory/i : /no, someone else is/i
     const doneBefore = await readDoneEventCount(this.page)
     await card.getByRole('button', { name: label }).click()
     await this.waitForTurnDone(doneBefore)
@@ -326,7 +324,7 @@ export class InquiryPage {
 
   async verifyCr(cr: string) {
     const card = this.cards('company_registration')
-    await card.getByLabelText(/10-digit/i).fill(cr)
+    await card.getByLabel(/10-digit/i).fill(cr)
     const doneBefore = await readDoneEventCount(this.page)
     await card.getByRole('button', { name: /^verify$/i }).click()
     await this.waitForTurnDone(doneBefore)
@@ -378,7 +376,9 @@ export class InquiryPage {
   async successReference(): Promise<string> {
     const card = this.cards('success')
     await expect(card).toBeVisible({ timeout: 60_000 })
-    const text = await card.innerText()
+    await expect(card).toContainText(/GEO-/, { timeout: 10_000 })
+    // textContent, not innerText: Linux WebKit (mobile) can read innerText as "" here.
+    const text = (await card.textContent()) ?? ''
     const match = text.match(/GEO-(STR|MED|SPC|OFF)-\d{6}/)
     if (!match) throw new Error('reference not on success card')
     return match[0]
@@ -434,8 +434,7 @@ export class InquiryPage {
     if (type === 'inform_tenant') return this.page.getByTestId('inform-tenant-card')
     if (type === 'sign_in_prompt') return this.page.getByTestId('sign-in-prompt-card')
     if (type === 'cr_question') return this.page.getByTestId('cr-question-card')
-    if (type === 'company_registration')
-      return this.page.getByTestId('company-registration-card')
+    if (type === 'company_registration') return this.page.getByTestId('company-registration-card')
     if (type === 'terms') return this.page.getByTestId('terms-card')
     if (type === 'signatory_question') return this.page.getByTestId('signatory-question-card')
     return this.page.locator(`[data-card-type="${type}"]`)

@@ -1,6 +1,6 @@
 # POC lifecycle: the process, the agent, and what proves it
 
-**26 Oct 2026, updated 9 Nov 2026** for the 3–4 Nov demo feedback (F14, F15): the approvals (§2.2, §3.6–3.8), the CR question, type or upload, and the signed-in new brand (§3.1–3.4). One place that explains the whole inquiry-to-lead lifecycle the POC covers, and verifies it three ways: against the agent's design (who does what, what code enforces), against the maturity framework (L1–L5), and against the specs.
+**26 Oct 2026, updated 9 Nov 2026** for the 3–4 Nov demo feedback (F14, F15), and **18 Nov 2026** for flow v2: §2 is redrawn to Cenomi's "Prospective Tenant Journey" chart (public, call-centre and signed-in paths; first level; second level with Approve Lead? → contacts → Approve Lead), with the chart steps in code and the states, including `pending` and `lead_approved`. One place that explains the whole inquiry-to-lead lifecycle the POC covers, and verifies it three ways: against the agent's design (who does what, what code enforces), against the maturity framework (L1–L5), and against the specs.
 
 **Sources:** Cenomi Requirements Document v2.1.7.1 — §7.1, §7.1.1, §7.1.2 (process flows and both swimlane diagrams), the roles table, §6 phases, §7.12 Tenant Administration Platform, §7.14 Dashboard, §7.15 Notifications. Line-by-line coverage of §7.1 is in [`docs/specs/workflows-7-1.md`](specs/workflows-7-1.md); delivery order is in [`docs/DELIVERY-PLAN.md`](DELIVERY-PLAN.md).
 
@@ -27,108 +27,123 @@
 
 ## 2. The lifecycle at a glance
 
+**Redrawn for flow v2 (F5, 18 Nov 2026):** Cenomi's "Prospective Tenant Journey" chart, as built in F1–F4 ([`specs/flow-v2-alignment.md`](specs/flow-v2-alignment.md)). The box ids in brackets (`chk_tp`, `emv`, `approve_lead2`, …) are the chart's ids. Code records each one as a `flow_step` when a case reaches it (§2.4), and every test layer checks the route against [`docs/flow-v2/scenarios.json`](flow-v2/scenarios.json).
+
 ### 2.1 From first contact to a submitted inquiry
 
 ```mermaid
 flowchart TD
-  A1(["Prospective tenant:<br/>'Send us an inquiry' chat<br/>(§7.1.1 a1)"])
-  A2(["Call centre or Guest Service<br/>raises it for the caller<br/>(§7.1.1 a2, §7.1.2 a2)"])
-  A3(["Existing tenant signs in:<br/>Leasing Opportunities<br/>(§7.1.2 a1)"])
+  P(["Public page: 'Send us an inquiry'<br/>[start → raise_tp]"])
+  C(["Call centre / Guest Service:<br/>New inquiry [raise_cc]"])
+  T(["Signed-in tenant:<br/>Leasing Opportunities"])
 
-  A1 --> CR{"CR check<br/>(optional, skippable)"}
-  A2 --> CRS{"CR check<br/>(executive)"}
-  A3 --> PF["Prefill from tenant record;<br/>property preselected"]
+  P --> CRC{"Company Registration card:<br/>Verify or Skip [chk_tp → db]"}
+  CRC -- "registered CR [exist yes]" --> SIGN["'Customer already registered.<br/>Please login' [display → redirect]<br/>no inquiry"]
+  CRC -- "not registered / skipped (confirmed)<br/>[exist no | skipped]" --> UC["Unit Type and Sales Category<br/>(Store, Office; what you sell)"]
+  UC --> BI["Basic Info: company, brand EN/AR,<br/>contact (type or upload the profiles)"]
+  BI --> V["Email link + mobile OTP [emv → succ1]<br/>verified, not submitted = pending"]
+  V --> PD["Property Details: malls (several, any region),<br/>area, budget, lease period"]
+  PD --> TD["Terms; Company and Brand Profile;<br/>review card"]
+  TD --> S1["Submit once [complete1]<br/>reference + tracking email [ref1]"]
 
-  CR -- "existing CR" --> POL{"existing_tenant_policy"}
-  POL -- "sign_in (default)" --> SIGN["Sign in to Tenant Central"] --> A3
-  POL -- "allow_inquiry" --> PF2["Prefill from tenant record"] --> LINKV
-  CR -- "new or skipped" --> BI["Basic info in bundles:<br/>company, brand and space, contact"]
+  C --> CCR{"CR [chk_cc → db → crx]"}
+  CCR -- "existing CR" --> PCX{"Contact check card:<br/>caller's email [pcx]"}
+  PCX -- "has a login" --> INF["Inform: words to say +<br/>Email sign-in link [inform]<br/>no inquiry"]
+  PCX -- "new contact" --> FRESH["Fresh capture, same sections,<br/>nothing prefilled (M16)"]
+  CCR -- "new CR / skipped" --> FRESH
+  FRESH --> EXEC["Send application link [exec → email_link]"]
+  EXEC --> OPEN["Applicant opens it [open_form]:<br/>email verified by the link"]
+  OPEN --> BIC{"Basic Info correct? [bic]"}
+  BIC -- "changes something" --> UBI["Update Basic Info [update_bi]"] --> MOB
+  BIC -- "Proceed" --> MOB["Mobile OTP [mob → succ2]"]
+  MOB --> S2["Documents + submit [upload_submit]<br/>reference + tracking email [ref2]"]
 
-  CRS -- "existing CR" --> CH{"Executive chooses"}
-  CH -- "ask them to sign in" --> SIGN
-  CH -- "continue for them" --> PF3["Prefill from tenant record"] --> SL
-  CRS -- "new or skipped" --> BIS["Executive enters basic info<br/>(source: staff)"] --> SL["Send application link"]
-  SL --> LINK["Applicant opens link:<br/>email auto-verified"] --> PROC["Review basic info → Proceed"] --> OTP
-
-  BI --> LINKV["Email link + mobile OTP<br/>(resend after a set time)"]
-  LINKV --> DOCS
-  OTP["Mobile OTP"] --> DOCS
-  PF --> CONF["Confirm prefilled details<br/>(no link or OTP: signed in)"] --> DOCS
-
-  DOCS["Documents:<br/>Company and Brand Profile required;<br/>CR, VAT, National ID, National Address optional, with numbers"]
-  DOCS --> REV["Review card + consent"] --> SUB["Submit (once)"]
-  SUB --> REF["Reference on screen;<br/>email and SMS with tracking link"]
+  T --> TC["Confirm prefilled company;<br/>new brand typed or from the Brand Profile"] --> TD
 ```
+
+The public page never asks for a login (M18) and never writes the registry's company name or address (M23). A verified, unsubmitted inquiry is `pending`. Leaving before verification keeps nothing; leaving after it, the applicant comes back with **Continue my inquiry** and an emailed resume link. Pending inquiries expire after the configured time.
 
 ### 2.2 From submitted inquiry to a Yardi-ready lead
 
-Updated for the demo feedback (F8, F12, F16, F18, F19). Every approval is a person's decision. The system never approves or rejects on its own (ADR-R6).
+Every decision is a person's (ADR-R6). The system and the assistants suggest; they never approve, reject or send a request on their own.
 
 ```mermaid
 flowchart TD
-  REF["Submitted inquiry"] --> RT["Route by mall region and product line<br/>first level: Lease Admin of the region<br/>final level: RLM-Store / RPLM-Media / RPLM-Specialty"]
-  RT --> MAIL["'Inquiry for approval' email<br/>to the Lease Admin, link to the case (F7)"]
+  REF["Submitted inquiry"] --> VLA["Routed to the Lease Admin of the region [vla]"]
 
-  subgraph L1["First-level verification (§7.1.1 b): Lease Admin"]
-    MAIL --> EXP["Confirms each profile's expiry<br/>(extracted by the document review service)"]
-    EXP --> DOC{"Approves or rejects<br/>each document, with remarks"}
-    DOC -- "rejected" --> RU["Re-upload request<br/>(only the rejected documents)"] --> RUA["Applicant re-uploads<br/>in the case chat"] --> DOC
-    DOC -- "every required document approved" --> AF{"Approve first level"}
-    AF -- "reject + remarks" --> RJ1["Rejected<br/>rejection email"]
-    AF -- "approve" --> AD1["Azure AD invitation<br/>(only if no account)"]
-    AD1 --> AC["Contacts request:<br/>'Are you the authorised signatory?'"]
+  subgraph L1["First level: Lease Admin"]
+    VLA --> DOK{"Documents OK? [docsok]<br/>expiry confirmed; each document approved or rejected"}
+    DOK -- "no" --> RU["Request Reupload [reup_req → reup_mail]<br/>only the rejected documents"] --> RS["Tenant re-uploads, Resubmit [reup_submit]"] --> DOK
+    DOK -- "yes" --> APT{"Approve Prospective Tenant? [approve_pt]"}
+    APT -- "no" --> NQ["Tenant Not Qualified [not_q]<br/>rejection email [rej_mail]"]
+    APT -- "yes" --> PTC["Primary contact created [ptc_create]<br/>Azure AD invitation if no account [az1 → reg_link1]"]
+    PTC --> Q["Tenant Qualified [qualified]"]
   end
 
-  AC --> LEAD["Lead — second review"]
-
-  subgraph L2["Second-level verification (§7.1.1 c)"]
-    LEAD --> SIG["Applicant: signatory Yes / No;<br/>billing and other contacts"]
-    SIG --> CA{"Lease Admin approves or rejects<br/>each contact, with remarks"}
-    CA -- "rejected" --> CF["Applicant fixes that contact"] --> CA
-    CA -- "required contacts approved" --> V2{"RLM / RPLM works the lead"}
-    V2 -- "estimated sales data" --> SD["Request → applicant uploads<br/>→ reviewer notified"] --> V2
-    V2 -- "re-link" --> RL["Company: first-name search, active Yardi companies;<br/>brand: from that company's leases and proposals"] --> V2
-    V2 -- "reject + remarks" --> RJ2["Rejected<br/>rejection email"]
-    V2 -- "approve" --> AD2["Azure AD accounts for contacts without one;<br/>roles assigned"]
+  Q --> PROD{"Product = Specialty/Media? [prod2]"}
+  subgraph L2["Second level: RSM (Store, Office) or RPLM (Media, Specialty)"]
+    PROD -- "no" --> RSM["Unit assigned [rsm]"]
+    PROD -- "yes" --> RPLM["Unit assigned [rplm]"]
+    RSM --> FSD{"Require Forecasted Sales Data? [fsd_q]<br/>reviewer assistant suggests, with a reason (E2)"}
+    RPLM --> FSD
+    FSD -- "yes" --> FN["Request → tenant uploads [fsd_notify → fsd_provide]"] --> AL
+    FSD -- "no" --> AL{"Approve Lead? [approve_lead]"}
+    AL -- "no" --> RL["Reject Lead [reject_lead]<br/>invitation revoked if unused [az2]; rejection email"]
+    AL -- "yes = lead_approved" --> RC["Request for Additional Contacts<br/>[req_contacts → contacts_notify]"]
+    RC --> CP["Case agent: signatory first, then billing<br/>and what's missing (E3) [contacts_provide]"]
+    CP --> AL2{"Approve Lead [approve_lead2]"}
   end
 
-  AD2 --> ACC["Acceptance email"] --> Y["Send to Yardi:<br/>customer, brand, contacts, sales data, documents"]
-  Y --> PROP["Proposal stage (§7.2, out of scope)"]
+  AL2 --> ACC["User accounts for all contacts [create_all]<br/>Azure AD invitations [az3 → reg_link2]"]
+  ACC --> Y["Sent to Yardi [yardi_box → end]"]
 ```
 
-A re-uploaded document and a resubmitted contact go back to *waiting for a decision* (F16). An approval sent for a file that has since been replaced is refused. An expired document can't be approved. A "Yes, I'm the authorised signatory" answer needs no separate approval, because the email link and OTP already verified that person (*pending Cenomi*, M8).
+A re-uploaded document goes back to *waiting for a decision*. An approval for a file that has since been replaced is refused, and an expired document can't be approved. "Yes, I'm the authorised signatory" needs no separate approval: the email link and OTP already verified that person.
 
-### 2.3 Case states (the workflow state machine, M0 §6)
+### 2.3 States
+
+**Case** (`CaseStatus`, the workflow machine):
 
 ```mermaid
 stateDiagram-v2
-  [*] --> draft
-  draft --> submitting: submit_requested
+  [*] --> submitting: submit_requested
   submitting --> submitted: submit_succeeded
-  submitting --> draft: submit_failed (definite)
-  draft --> abandoned: expired
-  draft --> redirected: redirected_to_sign_in
   submitted --> first_review: routed
   first_review --> reupload_requested: reupload_requested
   reupload_requested --> first_review: documents_resubmitted
-  first_review --> rejected: rejected
-  first_review --> second_review: approved_first
-  second_review --> second_review: contacts / sales data requested or provided, re-link, contact removed
-  second_review --> rejected: rejected
-  second_review --> approved: approved
+  first_review --> rejected: rejected (Tenant Not Qualified)
+  first_review --> second_review: approved_first (Tenant Qualified)
+  second_review --> second_review: unit assigned, sales data requested / provided, re-link
+  second_review --> lead_approved: lead_approved (Approve Lead? yes)
+  second_review --> rejected: rejected (Reject Lead)
+  lead_approved --> lead_approved: contacts requested / provided, re-link
+  lead_approved --> approved: approved (Approve Lead)
   approved --> sent_to_yardi: sent_to_yardi
   approved --> approved: yardi_failed (retry)
   rejected --> [*]
   sent_to_yardi --> [*]
-  abandoned --> [*]
-  redirected --> [*]
 ```
 
-Inside `draft`, the intake phase (gate → collecting → verifying → documents → review) is computed from the draft by `compute_phase`, as today. `awaiting_applicant` (assisted inquiries waiting for the link to be opened) is a draft sub-state.
+There is no reject after Approve Lead? = Yes: the chart's final box has no No branch (M26). `draft → submitting` can also go back (`submit_failed`), and a draft can be `abandoned` or `redirected`.
 
-### 2.4 Three-lane flow after the 3–4 Nov demo feedback (tenant · agent · human)
+**Inquiry** (`InquiryStatus`, the stored inquiry before and after submit): `draft` → `pending` (verified, not submitted; `abandoned` after the pending time) → `submitting` → `submitted`, then the case's status. `redirected` closes an inquiry that went to sign-in: a registered CR on the public page, or an existing contact in the call centre (Inform). Inside `draft`, the intake section (Company Registration → Unit Type and Sales Category → Basic Info → Verification → Property Details → Terms and Documents) is computed from the draft (`app/domain/sections.py`).
 
-Agreed 4 Nov 2026 ([demo feedback spec](specs/demo-feedback.md)), and it replaces the public-page CR lookup in §2.1. The agent lane names which agent or service acts at each step. Every approval sits in the human lane, and the agent lane never approves, rejects or changes a case on its own (ADR-R6). All of it is built in days R1–R5 for the 10 Nov re-demo, except the lead codes (marked *later*).
+### 2.4 Chart steps in code (`FlowNode`)
+
+`app/workflow/flow.py`. Code records a `flow_step` audit entry each time a case reaches a box; the model never does. `GET /api/dev/flow/{id}` (dev tools) returns the path for a session, inquiry or reference, merged across the call-centre and applicant chats. Connectors and out-of-scope boxes (`A1`–`A3`, `B1`, `B2`, `reg1`, `reg2`) are never recorded.
+
+| Part | Steps |
+| --- | --- |
+| Public intake | `start`, `raise_tp`, `chk_tp`, `db`, `exist`, `display`, `redirect`, `emv`, `succ1`, `complete1`, `ref1` |
+| Call centre | `raise_cc`, `chk_cc`, `crx`, `pcx`, `inform`, `exec`, `email_link`, `open_form`, `bic`, `update_bi`, `mob`, `succ2`, `upload_submit`, `ref2` |
+| First level | `vla`, `docsok`, `reup_req`, `reup_mail`, `reup_submit`, `approve_pt`, `not_q`, `rej_mail`, `ptc_create`, `az1`, `reg_link1`, `qualified` |
+| Second level | `prod2`, `rsm`, `rplm`, `fsd_q`, `fsd_notify`, `fsd_provide`, `approve_lead`, `reject_lead`, `az2`, `req_contacts`, `contacts_notify`, `contacts_provide`, `approve_lead2`, `create_all`, `az3`, `reg_link2`, `yardi_box`, `end` |
+
+Who records each one: [`specs/flow-v2-alignment.md`](specs/flow-v2-alignment.md) §3.1.
+
+### 2.5 Before flow v2: three-lane flow after the 3–4 Nov demo feedback (tenant · agent · human)
+
+*Kept for history; §2.1–2.3 replace it.* Agreed 4 Nov 2026 ([demo feedback spec](specs/demo-feedback.md)), and it replaces the public-page CR lookup in §2.1. The agent lane names which agent or service acts at each step. Every approval sits in the human lane, and the agent lane never approves, rejects or changes a case on its own (ADR-R6). All of it is built in days R1–R5 for the 10 Nov re-demo, except the lead codes (marked *later*).
 
 ```mermaid
 flowchart LR

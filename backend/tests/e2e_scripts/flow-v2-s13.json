@@ -16,7 +16,7 @@
     ]
   },
   {
-    "content": "Got it \u2014 a store. What do you sell? That helps us pick the right category."
+    "content": "Got it — a store. What do you sell? That helps us pick the right category."
   },
   {
     "content": "",
@@ -64,13 +64,45 @@
     "content": "Check the summary card and let me know if anything's off."
   },
   {
-    "content": "Looks good \u2014 here's what's next in the flow."
+    "content": "Looks good — here's what's next in the flow."
   },
   {
-    "content": "Thanks \u2014 let's keep going with the next step."
+    "content": "Yes — upload the Company Profile and Brand Profile on the card and I'll fill in what I can."
   },
   {
-    "content": "Looks good \u2014 here's what's next in the flow."
+    "content": "Got the Company Profile — I've filled in what it shows. Check the card."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "brand_name_ar",
+              "value": "بين ستريت",
+              "source": "derived",
+              "evidence": "Bean Street"
+            }
+          ]
+        },
+        "id": "s13-ar",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Got the Brand Profile — I've proposed the Arabic brand name بين ستريت. Check the cards."
+  },
+  {
+    "content": "Thanks — confirmed."
+  },
+  {
+    "content": "Thanks — confirmed."
+  },
+  {
+    "content": "Thanks — all confirmed. Who should our leasing team contact? Your name, email and mobile."
   },
   {
     "content": "",
@@ -98,27 +130,25 @@
               "key": "contact_number",
               "value": "0501234567",
               "source": "user"
-            },
-            {
-              "key": "company_name",
-              "value": "Acme Trading LLC",
-              "source": "user"
             }
           ]
         },
-        "id": "fv2-contact",
+        "id": "s13-contact",
         "type": "tool_call"
       },
       {
         "name": "send_verification",
         "args": {},
-        "id": "fv2-v",
+        "id": "s13-v",
         "type": "tool_call"
       }
     ]
   },
   {
-    "content": "Thanks \u2014 I've sent the verification link and SMS code on the card below."
+    "content": "Thanks — I've sent the verification link and SMS code on the card below."
+  },
+  {
+    "content": "Verified. Which mall, size and budget?"
   },
   {
     "content": "",
@@ -156,18 +186,24 @@
             }
           ]
         },
-        "id": "fv2-prop",
+        "id": "s13-prop",
         "type": "tool_call"
       }
     ]
   },
   {
-    "content": "Your property details are on the card \u2014 confirm them when you're ready."
+    "content": "Your property details are on the card — confirm them when you're ready."
   },
   {
-    "content": "Looks good \u2014 here's what's next in the flow."
+    "content": "Looks good — here's what's next in the flow."
   },
   {
-    "content": "Thanks \u2014 upload the Company Profile and Brand Profile on the card below."
+    "content": "Looks good — here's what's next in the flow."
+  },
+  {
+    "content": "Looks good — here's what's next in the flow."
+  },
+  {
+    "content": "Looks good — here's what's next in the flow."
   }
 ]

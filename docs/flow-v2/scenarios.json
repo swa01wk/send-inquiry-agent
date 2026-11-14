@@ -2393,6 +2393,11 @@
           "asks_same_sections_without_documents",
           "no_prefill_claims"
         ]
+      },
+      "cc_dictation": {
+        "unit_and_category": "They want a store. They sell specialty coffee and pastries.",
+        "basic_info": "Company is Oasis Coffee Company, King Fahd Road, Riyadh. The brand is Oasis Coffee. The caller is Huda Saleh, mobile 0507654321.",
+        "property_details": "Riyadh Mall A, 40 to 80 square metres, budget 150,000 to 250,000 riyals a year."
       }
     },
     {
@@ -2485,6 +2490,11 @@
           "assisted_words_for_executive",
           "no_documents_asked_from_executive"
         ]
+      },
+      "cc_dictation": {
+        "unit_and_category": "A store — they sell specialty coffee and pastries.",
+        "basic_info": "The brand is Bean Street. The caller is Sara Ali, sara@beanstreet.example, mobile 0501234567.",
+        "property_details": "Riyadh Mall A, 40 to 80 square metres, budget 150,000 to 250,000 riyals a year."
       }
     }
   ]

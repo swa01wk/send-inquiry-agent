@@ -31,13 +31,58 @@ from app.api.errors import ApiError
 from app.clock import SimulatedClock
 from app.config import Settings
 from app.domain.master import MasterData
+from app.domain.models import FieldKey
+from app.domain.sections import BASIC_INFO_KEYS, PROPERTY_KEYS, UNIT_AND_CATEGORY_KEYS
 from app.policy.config import get_policy
 from app.proactive.engine import TickResult, tick
 from app.proactive.notification_policy import quiet_hours_end
 from app.services.container import ServiceContainer
-from app.sessions import SessionNotFound, SessionStore
+from app.sessions import Session, SessionNotFound, SessionStore
 
 router = APIRouter(prefix="/api/dev", tags=["dev"])
+
+
+# Test runners' "confirm this section" step (flow v2 test plan §4, §6): the cards still showing
+# an unconfirmed value of the section, newest first, or a plain "yes" when no card covers it.
+# AGENT-DET and Playwright both follow this plan, so one scripted model fits both.
+CONFIRM_SECTIONS: dict[str, frozenset[FieldKey]] = {
+    "unit_and_category": frozenset(UNIT_AND_CATEGORY_KEYS),
+    "basic_info": frozenset(BASIC_INFO_KEYS) | {FieldKey.MOBILE, FieldKey.LANDLINE},
+    "property_details": frozenset(PROPERTY_KEYS),
+}
+
+
+class ConfirmPlanOut(BaseModel):
+    card_ids: list[str]
+    say_yes: bool
+
+
+def confirm_plan(session: Session, section: str) -> ConfirmPlanOut:
+    open_keys = {
+        key.value
+        for key in CONFIRM_SECTIONS[section]
+        if session.draft.fields[key].value not in (None, "", [])
+        and not session.draft.fields[key].confirmed
+    }
+    card_ids: list[str] = []
+    for card_id, keys in reversed(list(session.confirm_card_keys.items())):
+        if open_keys.intersection(keys):
+            card_ids.append(card_id)
+            open_keys -= set(keys)
+    return ConfirmPlanOut(card_ids=card_ids, say_yes=bool(open_keys))
+
+
+@router.get("/confirm-plan/{session_id}", response_model=ConfirmPlanOut)
+async def get_confirm_plan(
+    session_id: str,
+    section: Literal["unit_and_category", "basic_info", "property_details"],
+    store: SessionStore = Depends(get_session_store),
+) -> ConfirmPlanOut:
+    try:
+        session = await store.get(session_id)
+    except SessionNotFound as exc:
+        raise ApiError(404, "not_found", "No such session.") from exc
+    return confirm_plan(session, section)
 
 
 @router.get("/outbox")
@@ -157,6 +202,8 @@ class FlowSeedIn(BaseModel):
     stage: Literal["submitted", "qualified", "lead_approved"]
     unit_type: Literal["store", "office", "media", "specialty"] | None = None
     malls: list[str] | None = None
+    # S15 (Playwright): an open inquiry for this CR and mall, the duplicate to warn about.
+    cr_number: str | None = Field(default=None, pattern=r"^\d{10}$")
 
 
 class FlowSeedOut(BaseModel):
@@ -182,7 +229,12 @@ async def seed_flow(
     runtime = AgentRuntime(services=services, master=master, settings=settings)
     try:
         case, email = await seed_flow_case(
-            runtime, store, body.stage, unit_type=body.unit_type, malls=body.malls
+            runtime,
+            store,
+            body.stage,
+            unit_type=body.unit_type,
+            malls=body.malls,
+            cr_number=body.cr_number,
         )
     except (IllegalTransition, RuntimeError, ValueError) as exc:
         raise ApiError(409, "seed_failed", str(exc)) from exc

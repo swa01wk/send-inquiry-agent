@@ -184,5 +184,24 @@
   },
   {
     "content": "Thanks \u2014 upload the Company Profile and Brand Profile on the card below."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "suggest_replies",
+        "args": {
+          "options": [
+            "Store",
+            "Office"
+          ]
+        },
+        "id": "fv2-unit-offer",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Got it \u2014 a store. What do you sell? That helps us pick the right category."
   }
 ]

@@ -142,18 +142,19 @@
             {
               "key": "malls",
               "value": [
-                "riyadh-mall-a"
+                "riyadh-mall-a",
+                "jeddah-mall-a"
               ],
               "source": "user"
             },
             {
               "key": "area_min",
-              "value": 30,
+              "value": 40,
               "source": "user"
             },
             {
               "key": "area_max",
-              "value": 50,
+              "value": 40,
               "source": "user"
             }
           ]

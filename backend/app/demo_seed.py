@@ -305,6 +305,7 @@ async def seed_flow_case(
     *,
     unit_type: str | None = None,
     malls: list[str] | None = None,
+    cr_number: str | None = None,
 ) -> tuple[Case, str]:
     """A case at `stage`, built by applying the real events in order (flow v2 §3.1), so its
     chart path is the real one. For the after-submit Playwright scenarios (S18–S24).
@@ -324,6 +325,13 @@ async def seed_flow_case(
         )
         if errors:
             raise ValueError(f"flow seed malls: {errors}")
+    if cr_number:
+        draft, _written, errors = draft_ops.write_fields(
+            draft, [(FieldKey.CR_NUMBER.value, cr_number, Source.USER)], master=runtime.master
+        )
+        if errors:
+            raise ValueError(f"flow seed CR: {errors}")
+        draft.cr_status = "new"
     session.draft = _attach_documents(runtime, session.id, draft, _FILES["B"])
     result = await handle_ui_action("accept_and_submit", {"terms_accepted": True}, session, runtime)
     await store.save(session)

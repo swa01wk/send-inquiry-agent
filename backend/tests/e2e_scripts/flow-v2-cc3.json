@@ -1,0 +1,174 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "verify_cr",
+        "args": {
+          "cr_number": "1010123456"
+        },
+        "id": "cc3-v",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "The CR checks out and the company name and address are on the card. What is the caller looking for, and what do they sell?"
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "unit_type",
+              "value": "store",
+              "source": "user"
+            },
+            {
+              "key": "sales_category",
+              "value": "fnb_cafe",
+              "source": "user"
+            }
+          ]
+        },
+        "id": "cc-unit",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Got it — a store selling coffee and pastries. Next, the caller's company, brand and contact details."
+  },
+  {
+    "content": "Thanks — that's confirmed."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "brand_name_en",
+              "value": "Bean Street",
+              "source": "user"
+            },
+            {
+              "key": "brand_name_ar",
+              "value": "بين ستريت",
+              "source": "user"
+            },
+            {
+              "key": "first_name",
+              "value": "Sara",
+              "source": "user"
+            },
+            {
+              "key": "last_name",
+              "value": "Ali",
+              "source": "user"
+            },
+            {
+              "key": "email",
+              "value": "sara@beanstreet.example",
+              "source": "user"
+            },
+            {
+              "key": "contact_number",
+              "value": "0501234567",
+              "source": "user"
+            }
+          ]
+        },
+        "id": "cc3-basic",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Thanks — I've saved Sara's details. Which mall is the caller after, and the size and budget?"
+  },
+  {
+    "content": "Thanks — that's confirmed."
+  },
+  {
+    "content": "Thanks — that's confirmed."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "malls",
+              "value": [
+                "riyadh-mall-a"
+              ],
+              "source": "user"
+            },
+            {
+              "key": "area_min",
+              "value": 40,
+              "source": "user"
+            },
+            {
+              "key": "area_max",
+              "value": 80,
+              "source": "user"
+            },
+            {
+              "key": "rent_min",
+              "value": 150000,
+              "source": "user"
+            },
+            {
+              "key": "rent_max",
+              "value": 250000,
+              "source": "user"
+            }
+          ]
+        },
+        "id": "cc-prop",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "show_application_link",
+        "args": {},
+        "id": "cc-link",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "The caller's details are complete — press Send application link when you're ready."
+  },
+  {
+    "content": "Thanks — that's confirmed."
+  },
+  {
+    "content": "Sent — the caller finishes the inquiry from the link in their email."
+  },
+  {
+    "content": "Noted."
+  },
+  {
+    "content": "Noted."
+  },
+  {
+    "content": "Noted."
+  },
+  {
+    "content": "Noted."
+  }
+]

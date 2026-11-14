@@ -1,0 +1,80 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "last_name",
+              "value": "Al-Ali",
+              "source": "user"
+            }
+          ]
+        },
+        "id": "cc3-edit",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Updated — your last name is Al-Ali. Press Proceed when the details look right."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "send_verification",
+        "args": {
+          "resend": false
+        },
+        "id": "a2a1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "I've sent a code to your mobile — enter it below."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "request_documents",
+        "args": {},
+        "id": "a2a2",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Company Profile and Brand Profile are required — the rest are optional."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "show_review",
+        "args": {},
+        "id": "a2a3",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Check everything on the review card and submit when you're ready."
+  },
+  {
+    "content": "Noted."
+  },
+  {
+    "content": "Noted."
+  },
+  {
+    "content": "Noted."
+  },
+  {
+    "content": "Noted."
+  }
+]
