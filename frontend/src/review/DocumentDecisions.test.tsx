@@ -1,8 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import type { BriefContact, BriefDocument } from '../api/review'
-import { ContactDecisions } from './ContactDecisions'
+import type { BriefDocument } from '../api/review'
 import { DocumentDecisions } from './DocumentDecisions'
 
 function doc(overrides: Partial<BriefDocument> = {}): BriefDocument {
@@ -108,53 +107,5 @@ describe('DocumentDecisions', () => {
     )
     expect(screen.queryByTestId('doc-approve-company_profile')).not.toBeInTheDocument()
     expect(screen.queryByTestId('doc-reject-company_profile')).not.toBeInTheDocument()
-  })
-})
-
-function contact(overrides: Partial<BriefContact> = {}): BriefContact {
-  return {
-    role: 'billing_contact',
-    label: 'Billing Contact',
-    name: 'Omar Saleh',
-    email: 'omar@beanstreet.example',
-    phone: '+966551234567',
-    same_as_primary: false,
-    contact_id: 'ct_1',
-    approval: 'pending',
-    approval_remarks: null,
-    approved_by: null,
-    added_by: 'tenant',
-    ...overrides,
-  }
-}
-
-describe('ContactDecisions', () => {
-  it('approves and rejects (with remarks) a pending contact', async () => {
-    const user = userEvent.setup()
-    const onAct = vi.fn()
-    render(<ContactDecisions contacts={[contact()]} canDecide busy={false} onAct={onAct} />)
-    const reject = screen.getByTestId('contact-reject-billing_contact')
-    expect(reject).toBeDisabled()
-    await user.type(screen.getByLabelText('Remarks (needed to reject)'), 'Use the finance mailbox')
-    await user.click(reject)
-    expect(onAct).toHaveBeenCalledWith('reject_contact', {
-      contact_id: 'ct_1',
-      remarks: 'Use the finance mailbox',
-    })
-    await user.click(screen.getByTestId('contact-approve-billing_contact'))
-    expect(onAct).toHaveBeenCalledWith('approve_contact', { contact_id: 'ct_1' })
-  })
-
-  it('shows the chips read-only to the final reviewer', () => {
-    render(
-      <ContactDecisions
-        contacts={[contact({ approval: 'approved' })]}
-        canDecide={false}
-        busy={false}
-        onAct={vi.fn()}
-      />,
-    )
-    expect(screen.getByTestId('contact-approval-billing_contact')).toHaveTextContent('Approved')
-    expect(screen.queryByTestId('contact-approve-billing_contact')).not.toBeInTheDocument()
   })
 })

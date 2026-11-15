@@ -50,9 +50,7 @@ async def test_seed_builds_cases_a_b_and_c(life) -> None:
 
     b = by_key["B"]
     assert b is not None and b.status == CaseStatus.SECOND_REVIEW
-    roles = {c.role: c.approval for c in b.tenant_contacts}
-    assert roles["authorized_signatory"] == "approved"  # the verified primary contact
-    assert roles["billing_contact"] == "pending"
+    assert {c.role for c in b.tenant_contacts} == {"authorized_signatory", "billing_contact"}
 
     c = by_key["C"]
     assert c is not None and c.status == CaseStatus.SENT_TO_YARDI

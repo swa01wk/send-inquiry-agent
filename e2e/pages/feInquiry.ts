@@ -79,7 +79,6 @@ export class FeInquiryPage {
     if (cardType === 'contact_check') return this.page.getByTestId('contact-check-card')
     if (cardType === 'inform_tenant') return this.page.getByTestId('inform-tenant-card')
     if (cardType === 'sign_in_prompt') return this.page.getByTestId('sign-in-prompt-card')
-    if (cardType === 'cr_question') return this.page.getByTestId('cr-question-card')
     if (cardType === 'signatory_question') return this.page.getByTestId('signatory-question-card')
     return this.page.locator(`[data-testid="card-slot-"]`)
   }
@@ -101,17 +100,6 @@ export class FeInquiryPage {
   async confirmCard() {
     const doneBefore = await readDoneEventCount(this.page)
     await this.page.getByRole('button', { name: 'Looks right' }).last().click()
-    await this.waitForTurnDone(doneBefore)
-  }
-
-  /** "Do you have a CR?" (demo feedback §3.1): Yes is the first button, No the second. */
-  async answerCrQuestion(hasCr: boolean) {
-    const card = this.cards('cr_question')
-    const doneBefore = await readDoneEventCount(this.page)
-    await card
-      .getByRole('button')
-      .nth(hasCr ? 0 : 1)
-      .click()
     await this.waitForTurnDone(doneBefore)
   }
 

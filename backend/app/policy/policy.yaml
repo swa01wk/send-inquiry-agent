@@ -8,21 +8,15 @@
 # Product lines (unit type ids in master data). Requirements §1 and §7.1.1.
 product_lines: [store, media, specialty]
 
-# What happens when a CR already has a Tenant Central account (assumption 3).
-#   sign_in       — point the applicant to Sign In; no inquiry is created.
-#   allow_inquiry — the inquiry continues (requirements §7.1).
-existing_tenant_policy: sign_in
+# A CR that already has a Tenant Central account: the person signs in; no inquiry is created
+# (chart S3, M13, M18). The policy option to continue the inquiry was removed with flow v2.
 
-# The public page and the CR (demo feedback §3.1, 4 Nov 2026):
-#   lookup           — a CR number typed in the public chat is checked in the registry.
-#   ask_then_sign_in — the agent asks "Do you have a CR?": Yes → sign in, No → carry on in
-#                      chat. The public page never takes or looks up a CR number.
-# Self-service channel only: call-centre staff keep the lookup (D3).
-public_cr_check: ask_then_sign_in
-
-# A tenant signed in to Tenant Central (Leasing Opportunities) is already verified by Azure
-# AD: the email link and SMS code are skipped (intake channels §3.5, assumption D4).
-signed_in_skips_verification: true
+# The CR in chat:
+#   lookup         — a CR number given in chat is checked in the registry (call centre, D3).
+#   verify_or_skip — the Company Registration card (Verify or Skip). Every new self-service
+#                    inquiry runs the flow v2 intake (flow_v2_intake below), which uses this.
+# The 4 Nov "Do you have a CR?" question (ask_then_sign_in) was removed with flow v2.
+public_cr_check: lookup
 
 # Malls one inquiry can cover (assumption 2). Another inquiry can follow for the rest.
 max_malls_per_inquiry: 1
@@ -113,12 +107,10 @@ document_expiry:
 # Tenant contacts at second review (demo feedback §3.5, day R2).
 contacts:
   # Flow v2 (V7, M15, M26): no per-contact approval; the required contacts must be given
-  # before the final "Approve Lead". true: the Leasing Admin approves each one (R2).
-  approval_required: false
+  # before the final "Approve Lead".
   # The contacts request opens with "Are you the authorised signatory?".
   ask_signatory: true
-  # "Yes, I'm the signatory" copies the verified primary contact, approved on entry (M8).
-  applicant_signatory_needs_approval: false
+  # "Yes, I'm the signatory" copies the verified primary contact (M8).
 
 # Azure AD accounts (flow v2 §3.6, V9). Reject Lead revokes the invitation made at first
 # approval; an account that existed before the inquiry is never touched (assumption A1).

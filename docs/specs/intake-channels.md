@@ -2,6 +2,8 @@
 
 **Status:** locked (PRD v1.0, `docs/PRD.md`) · **Requirements:** v2.1.7.1 §7.1, §7.1.1 a2, §7.1.2 · **Depends on:** [L3](l3-reliable-intake.md) §3.2 (signed links and resume), [L4](l4-outcome-assistance.md) §3.1 (case data) · **Cursor step:** `prompts/21c-intake-channels.md` · **Traceability:** [workflows-7-1.md](workflows-7-1.md)
 
+> **Superseded in part (15 Nov 2026, flow v2):** raising an inquiry from Tenant Central (R4), the `existing_tenant` chat channel, the tenant prefill, documents on file, My inquiries, `existing_tenant_policy` and `signed_in_skips_verification` were removed. The client-approved chart ends at Leasing Opportunities after "Customer already registered. Please login" (S3, M13). See [flow v2 alignment](flow-v2-alignment.md) §5.3.
+
 ## 1. Why
 
 The other specs cover one way in: a prospective tenant typing in the chat on the sign-in page (§7.1.1 a1). Requirements §7.1 has three more, and the POC needs all of them to show the real process:

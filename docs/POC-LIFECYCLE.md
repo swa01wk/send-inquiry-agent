@@ -35,10 +35,9 @@
 flowchart TD
   P(["Public page: 'Send us an inquiry'<br/>[start → raise_tp]"])
   C(["Call centre / Guest Service:<br/>New inquiry [raise_cc]"])
-  T(["Signed-in tenant:<br/>Leasing Opportunities"])
 
   P --> CRC{"Company Registration card:<br/>Verify or Skip [chk_tp → db]"}
-  CRC -- "registered CR [exist yes]" --> SIGN["'Customer already registered.<br/>Please login' [display → redirect]<br/>no inquiry"]
+  CRC -- "registered CR [exist yes]" --> SIGN["'Customer already registered.<br/>Please login' [display → redirect]<br/>no inquiry"] --> LO(["Tenant Central sign-in →<br/>Leasing Opportunities (chart ends, A)"])
   CRC -- "not registered / skipped (confirmed)<br/>[exist no | skipped]" --> UC["Unit Type and Sales Category<br/>(Store, Office; what you sell)"]
   UC --> BI["Basic Info: company, brand EN/AR,<br/>contact (type or upload the profiles)"]
   BI --> V["Email link + mobile OTP [emv → succ1]<br/>verified, not submitted = pending"]
@@ -57,8 +56,6 @@ flowchart TD
   BIC -- "changes something" --> UBI["Update Basic Info [update_bi]"] --> MOB
   BIC -- "Proceed" --> MOB["Mobile OTP [mob → succ2]"]
   MOB --> S2["Documents + submit [upload_submit]<br/>reference + tracking email [ref2]"]
-
-  T --> TC["Confirm prefilled company;<br/>new brand typed or from the Brand Profile"] --> TD
 ```
 
 The public page never asks for a login (M18) and never writes the registry's company name or address (M23). A verified, unsubmitted inquiry is `pending`. Leaving before verification keeps nothing; leaving after it, the applicant comes back with **Continue my inquiry** and an emailed resume link. Pending inquiries expire after the configured time.
@@ -205,7 +202,7 @@ Each stage lists what the requirements ask for, what deterministic code does, wh
 | --- | --- | --- | --- | --- | --- |
 | Self-service, prospective | §7.1.1 a1 | Session, welcome, `route_message()` | Intake agent; routes status, General Inquiry, existing-tenant and off-topic messages; offers a person | L3 §3.5 | Built; router Day 3 |
 | Call centre or Guest Service | §7.1.1 a2, §7.1.2 a2; roles table | Staff sign-in, `channel: assisted`, `staff` source | Intake agent in assisted mode: talks to the executive about "the caller" | Channels §3.2 | Day 5 |
-| Existing tenant, signed in | §7.1.2 a1 | Tenant sign-in, Leasing Opportunities, preselected property. Every inquiry is a **new brand**: company name and address from Yardi by CR (`verified`, confirmed by the tenant), no brand prefilled, both profiles uploaded afresh | Intake agent in existing-tenant mode: greets by name, says the details come from the Cenomi record, asks for the new brand (typed or from the Brand Profile), asks once if it repeats an existing brand | Channels §3.4–3.5; demo feedback §3.8 | Day 5; R4 |
+| Existing tenant, signed in | §7.1.2 a1 | Tenant sign-in lands on a read-only Leasing Opportunities (S3, M13). Raising an inquiry there (R4) was removed on 15 Nov: it isn't on the client-approved chart | — | [Flow v2 alignment](specs/flow-v2-alignment.md) §5.3 | Removed |
 | Public page: "Do you have a CR?" | §7.1; demo feedback F1, F2 | `cr_question` card; `public_cr_check: ask_then_sign_in`. Yes → sign-in card → Leasing Opportunities. A typed CR number is never looked up, stored or repeated (INV8) | Asks the question, points to the sign-in button; on No, offers type or upload | Demo feedback §3.1 | R1 |
 
 ### 3.2 Intake: basic info
@@ -234,7 +231,6 @@ Each stage lists what the requirements ask for, what deterministic code does, wh
 | Company Profile and Brand Profile required; CR, VAT, National ID, National Address optional | Presence, type and size only; no content read | Says which are required, mentions optional ones once | `docs/spec.md` §2 | Built |
 | CR ID shown read-only; VAT ID, National ID, National Address entered with their documents | `numbers[]` on the card, existing validators | — | Pre-baseline F5 | Day 1 |
 | Moving on when the required documents are in | `documents_updated` runs a turn; review card appears | One-line thanks and pointer | Pre-baseline F2 | Day 1 |
-| Existing tenants: documents on file | Referenced from the tenant record; keep or replace. Not for the Company and Brand Profiles, which a new brand uploads afresh; the Company Profile is checked against the Yardi record | Offers them; says both profiles are needed for a new brand | Channels §3.4; demo feedback §3.8 | Day 5; R4 |
 | Profile expiry | The document review service extracts the expiry date; the Lease Admin confirms it; expired, expiring soon or valid from `policy.yaml` and the clock | — | Demo feedback §3.4 | R1, R2 |
 
 ### 3.5 Review, consent, submit

@@ -11,7 +11,6 @@ import { AttentionPage } from './review/AttentionPage'
 import { ReviewCasePage } from './review/ReviewCasePage'
 import { ReviewQueuePage } from './review/ReviewQueuePage'
 import { TenantHomePage } from './tenant/TenantHomePage'
-import { TenantInquiriesPage } from './tenant/TenantInquiriesPage'
 import { TenantOpportunitiesPage } from './tenant/TenantOpportunitiesPage'
 
 function App() {
@@ -34,9 +33,6 @@ function App() {
         {TENANT_PORTAL ? <Route path="/tenant" element={<TenantHomePage />} /> : null}
         {TENANT_PORTAL ? (
           <Route path="/tenant/opportunities" element={<TenantOpportunitiesPage />} />
-        ) : null}
-        {TENANT_PORTAL ? (
-          <Route path="/tenant/inquiries" element={<TenantInquiriesPage />} />
         ) : null}
       </Routes>
     </BrowserRouter>

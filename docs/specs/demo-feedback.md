@@ -2,6 +2,8 @@
 
 **Status:** agreed 4 Nov 2026 (PRD v1.1, `docs/PRD.md` §11) · **Delivery:** days R1–R5 (Thu 5 – Mon 9 Nov), `prompts/feedback/` ([DELIVERY-PLAN](../DELIVERY-PLAN.md) Part C) · **Re-demo:** Tue 10 Nov 2026 · **Tracker:** [demo feedback implementation tracker](https://claude.ai/artifact/U4cXzYrjUKofTVjWR4oEHx) (F1–F20, I1–I19, M1–M12)
 
+> **Superseded in part (15 Nov 2026, flow v2):** raising an inquiry from Tenant Central (R4), the `existing_tenant` chat channel, the tenant prefill, documents on file, My inquiries, `existing_tenant_policy` and `signed_in_skips_verification` were removed. The client-approved chart ends at Leasing Opportunities after "Customer already registered. Please login" (S3, M13). See [flow v2 alignment](flow-v2-alignment.md) §5.3.
+
 This spec changes what the 5-day slice built, in response to the client's demo feedback. It doesn't replace the M0, L3, L4 or L5 specs. Where it changes one of them, the section here says so, and the PR that builds it updates `docs/spec.md`.
 
 ## 1. Why

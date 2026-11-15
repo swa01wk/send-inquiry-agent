@@ -1,14 +1,10 @@
+import { submitInquiry } from '../../support/intake'
 import { expect, test } from '@playwright/test'
 import { InquiryPage } from '../../pages/inquiry'
 import { expectFlowPath, reviewerAct, trackingStages } from '../../support/flowV2'
 import { fetchDevOutbox, latestByTemplate } from '../../support/outbox'
 import { openCaseAs } from '../../support/stories'
-import {
-  APPLICANT_EMAIL,
-  approveDocumentsViaApi,
-  reviewerFor,
-  submitScriptedInquiry,
-} from '../../support/submit'
+import { APPLICANT_EMAIL, approveDocumentsViaApi, reviewerFor } from '../../support/submit'
 
 /**
  * S20 Qualified (flow v2 §3.5, FV2; docs/flow-v2/scenarios.json): Approve Prospective Tenant?
@@ -22,7 +18,7 @@ test.describe('S20 Qualified @flow-v2 @scripted', () => {
     request,
   }) => {
     test.setTimeout(180_000)
-    const reference = await submitScriptedInquiry(page, request, 's1-happy-path')
+    const reference = await submitInquiry(page, request)
     await approveDocumentsViaApi(request, reference)
     const leasingAdmin = await reviewerFor(request, reference, 'first')
     await reviewerAct(request, leasingAdmin.id, reference, 'approve_first')
@@ -48,7 +44,9 @@ test.describe('S20 Qualified @flow-v2 @scripted', () => {
     // reference (the submission email carries the session id).
     const caseMail = mail.filter((m) => m.inquiry_id === reference)
     expect(latestByTemplate(caseMail, 'azure_ad_invitation')).toBeTruthy()
-    expect(latestByTemplate(caseMail, 'first_level_approved')?.subject).toContain('Tenant Qualified')
+    expect(latestByTemplate(caseMail, 'first_level_approved')?.subject).toContain(
+      'Tenant Qualified',
+    )
 
     const approvedMail = latestByTemplate(caseMail, 'first_level_approved')
     const casePath = approvedMail?.links.find((l) => l.includes('/inquiry/case'))

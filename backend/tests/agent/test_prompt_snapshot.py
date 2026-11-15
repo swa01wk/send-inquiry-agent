@@ -16,7 +16,6 @@ from app.domain.draft_ops import add_document, new_inquiry_draft, write_fields
 from app.domain.master import load_master_data
 from app.domain.models import DocType, FieldKey, InquiryDraft, Source
 from app.domain.rules import compute_phase
-from app.domain.tenant_prefill import prefill_from_tenant
 from langchain_core.runnables.config import RunnableConfig
 from tests.domain.conftest import fill_minimal_collectible
 
@@ -126,11 +125,6 @@ def _build_cases(runtime: AgentRuntime) -> dict[str, dict]:
     )
     submitted = _ready_to_submit()
     submitted.reference = "GEO-STR-100001"
-    tenant = runtime.services.tenants.get_by_id("T-1002")
-    assert tenant is not None
-    existing_tenant_draft, _ = prefill_from_tenant(
-        new_inquiry_draft(), tenant, master, brand_id=None
-    )
     return {
         "phase_gate": _state_for(gate),
         "phase_collecting": _state_for(collecting),
@@ -140,11 +134,6 @@ def _build_cases(runtime: AgentRuntime) -> dict[str, dict]:
         "phase_existing_account": _state_for(existing),
         "phase_submitted": _state_for(submitted),
         "channel_assisted": _state_for(_assisted_collecting_draft(), assisted=True),
-        "channel_existing_tenant": _state_for(
-            existing_tenant_draft,
-            channel="existing_tenant",
-            tenant_id="T-1002",
-        ),
     }
 
 
@@ -164,7 +153,6 @@ CASE_IDS = [
     "phase_existing_account",
     "phase_submitted",
     "channel_assisted",
-    "channel_existing_tenant",
 ]
 
 

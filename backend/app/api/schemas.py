@@ -27,8 +27,6 @@ CardType = Literal[
     "basic_info_review",
     "send_link",
     "sign_in_prompt",
-    # Demo feedback §3.1
-    "cr_question",
     # Demo feedback §3.5
     "signatory_question",
     # Flow v2 (§3.2, §3.3)
@@ -143,22 +141,11 @@ class InformTenantPayload(BaseModel):
 
 
 class SignInPromptPayload(BaseModel):
-    """Public page, existing CR under `existing_tenant_policy: sign_in` (§3.6), or a Yes to
-    "Do you have a CR?" (demo feedback §3.1)."""
+    """Public page, a CR that already has a Tenant Central account (chart S3): sign in."""
 
     message: str
     sign_in_url: str
     button_label: str
-
-
-class CrQuestionPayload(BaseModel):
-    """Public page, `public_cr_check: ask_then_sign_in` (demo feedback §3.1): the buttons
-    send `cr_answer {has_cr}`. `answered` is set once the applicant picks."""
-
-    prompt: str
-    yes_label: str
-    no_label: str
-    answered: Literal["yes", "no"] | None = None
 
 
 class SkipConfirm(BaseModel):
@@ -329,8 +316,6 @@ class FormModePayload(BaseModel):
     next_step: FormModeStep
     fields: list[FormModeField] = Field(default_factory=list)
     can_skip_cr: bool = False
-    # Demo feedback §3.1: the CR step is the `cr_question` card, not a CR number input.
-    cr_question: bool = False
 
 
 class CaseRequestRow(BaseModel):
@@ -369,11 +354,6 @@ class ContactRow(BaseModel):
     source: str | None = None
     confirmed: bool = False
     same_as_primary: bool = False
-    # Cenomi's decision on this contact as sent (demo feedback §3.5): pending ("Waiting for
-    # Cenomi"), approved, or rejected with the reviewer's remarks. None: not sent yet, or
-    # changed since it was sent.
-    approval: Literal["pending", "approved", "rejected"] | None = None
-    approval_remarks: str | None = None
 
 
 class ContactsPayload(BaseModel):

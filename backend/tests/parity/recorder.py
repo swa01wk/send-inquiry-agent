@@ -161,7 +161,7 @@ def write_session_snapshot(name: str, session_payload: dict[str, Any]) -> Path:
     path = session_sidecar_path(name)
     # A card on the welcome message keeps that message's id: the normaliser renames card
     # message ids (m1, m2…) but not message ids, and a card whose message_id matches no
-    # message isn't rendered (the rd-cr-question welcome card).
+    # message isn't rendered (a welcome card).
     message_ids = {
         str(m["id"]): str(m["id"])
         for m in session_payload.get("messages", [])
@@ -178,7 +178,7 @@ async def record_all(settings: Settings) -> None:
         # lookup behaviour via `X-Test-Scenario` and stay on disk until intentionally replaced.
         # GOLDEN_FORCE=1 re-records every golden (an intentional refresh).
         force = os.environ.get("GOLDEN_FORCE") == "1"
-        if not force and scenario.name != "rd-cr-question" and golden_path(scenario.name).is_file():
+        if not force and golden_path(scenario.name).is_file():
             print(f"skip {scenario.name} (existing golden)")
             continue
         events, session_payload = await record_scenario(settings, scenario)

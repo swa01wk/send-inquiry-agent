@@ -19,7 +19,6 @@ def _write(tmp_path: Path, text: str) -> Path:
 def test_default_policy_matches_poc_assumptions() -> None:
     policy = load_policy()
     assert policy.product_lines == ["store", "media", "specialty"]
-    assert policy.existing_tenant_policy == "sign_in"
     assert policy.max_malls_per_inquiry == 1
     assert policy.phone.allowed_countries == "any"
     assert (policy.verification.email, policy.verification.mobile) == ("link", "otp")
@@ -42,11 +41,7 @@ def test_invalid_yaml_is_a_clear_error(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     ("replace", "with_text", "message"),
     [
-        (
-            "existing_tenant_policy: sign_in",
-            "existing_tenant_policy: maybe",
-            "existing_tenant_policy",
-        ),
+        ("public_cr_check: lookup", "public_cr_check: maybe", "public_cr_check"),
         ("max_malls_per_inquiry: 1", "max_malls_per_inquiry: 0", "max_malls_per_inquiry"),
         ("  mobile: otp", "  mobile: whatsapp", "verification.mobile"),
         ("allowed_countries: any", "allowed_countries: [uk]", "calling code"),

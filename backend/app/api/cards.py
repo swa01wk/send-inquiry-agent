@@ -44,13 +44,6 @@ WELCOME_MESSAGE_2 = (
     "I'll check whether you already have an account with us."
 )
 
-# Demo feedback §3.1 (`public_cr_check: ask_then_sign_in`): the second welcome bubble asks
-# whether the company has a CR; the `cr_question` card under it has the two answers.
-WELCOME_MESSAGE_2_CR_QUESTION = (
-    "I'll help you send a leasing inquiry in a few minutes, no long form. "
-    "To start, does your company have a CR?"
-)
-
 # Flow v2 (§3.2, §3.3): the Company Registration card sits under the second bubble; the
 # quick replies offer "Continue my inquiry" (a pending inquiry, V13).
 WELCOME_MESSAGE_2_FLOW_V2 = (

@@ -21,12 +21,16 @@ from app.main import create_app
 from app.services.container import build_services
 from app.sessions import SessionStore
 from app.workflow.effects import run_effects
-from app.workflow.machine import USER, transition
+from app.workflow.machine import transition
 from app.workflow.models import TenantContact, WorkflowEvent
-from app.workflow.service import apply_event
 from httpx import ASGITransport, AsyncClient
-from tests.lifecycle.conftest import APPLICANT, act, lifecycle_settings, submit_case
-from tests.lifecycle.test_document_approval import LEASE_ADMIN, approve_documents, reviewed
+from tests.lifecycle.conftest import APPLICANT, lifecycle_settings, submit_case
+from tests.lifecycle.test_document_approval import (
+    LEASE_ADMIN,
+    approve_documents,
+    decide,
+    reviewed,
+)
 
 pytestmark = [pytest.mark.approvals, pytest.mark.lease_admin]
 
@@ -89,47 +93,27 @@ async def test_document_decisions_survive_a_restart(durable) -> None:
 async def test_an_effect_missed_before_a_restart_runs_once_after_it(durable) -> None:
     client, app = durable
     reference = await submit_case(client, app, prepare=reviewed())
-    await approve_documents(client, reference)
-    assert (await act(client, LEASE_ADMIN, reference, "approve_first")).status_code == 200
+    rejected = await decide(
+        client, reference, "brand_profile", "reject_document", remarks="Logo page missing"
+    )
+    assert rejected.status_code == 200, rejected.text
     services = app.state.services
-    runtime = AgentRuntime(
-        services=services, master=load_master_data(), settings=app.state.settings
-    )
-    await apply_event(
-        runtime,
-        reference,
-        WorkflowEvent(
-            name="contacts_provided",
-            payload={
-                "contacts": [
-                    _contact("authorized_signatory", "sign@beanstreet.example"),
-                    _contact("billing_contact", "omar@beanstreet.example"),
-                ]
-            },
-        ),
-        USER,
-    )
     case = services.cases.get(reference)
-    billing = next(c for c in case.tenant_contacts if c.role == "billing_contact")
-    event = WorkflowEvent(
-        name="contact_rejected", payload={"contact_id": billing.contact_id, "remarks": "Typo"}
-    )
+    event = WorkflowEvent(name="reupload_requested", payload={})
     lease_admin = services.reviewers.get(LEASE_ADMIN).actor()
     # The transition is saved, then the process stops: no email went out.
     services.cases.save(transition(case, event, actor=lease_admin, now=clock.now()))
 
     restarted = build_services(app.state.settings)
     case = restarted.cases.get(reference)
-    rejected = next(c for c in case.tenant_contacts if c.role == "billing_contact")
-    assert (rejected.approval, rejected.approval_remarks) == ("rejected", "Typo")
-    assert case.open_request("contacts").roles == ["billing_contact"]
+    assert case.open_request("reupload") is not None
 
     def requests_sent() -> int:
         return len(
             [
                 m
                 for m in restarted.notifications.messages(to=APPLICANT)
-                if m["template"] == "contacts_request"
+                if m["template"] == "reupload_request"
             ]
         )
 

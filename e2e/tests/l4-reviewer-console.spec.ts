@@ -1,7 +1,8 @@
+import { submitInquiry } from '../support/intake'
 import { expect, test } from '@playwright/test'
 import { clearDevOutbox } from '../support/outbox'
 import { openCaseAs } from '../support/stories'
-import { approveDocumentsViaApi, reviewerFor, submitScriptedInquiry } from '../support/submit'
+import { approveDocumentsViaApi, reviewerFor } from '../support/submit'
 
 /** Day 4: the console offers only the actions the state machine allows (L4 §3.3). */
 test.describe('Reviewer console @scripted', () => {
@@ -11,7 +12,7 @@ test.describe('Reviewer console @scripted', () => {
   }) => {
     test.setTimeout(240_000)
     await clearDevOutbox(request)
-    const reference = await submitScriptedInquiry(page, request, 's1-happy-path')
+    const reference = await submitInquiry(page, request)
     const reviewer = await reviewerFor(request, reference)
 
     await page.goto('/review')

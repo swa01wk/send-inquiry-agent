@@ -1,14 +1,10 @@
+import { submitInquiry } from '../../support/intake'
 import { expect, test } from '@playwright/test'
 import { InquiryPage } from '../../pages/inquiry'
 import { reviewerAct, trackingStages } from '../../support/flowV2'
 import { fetchDevOutbox, latestByTemplate } from '../../support/outbox'
 import { openCaseAs } from '../../support/stories'
-import {
-  APPLICANT_EMAIL,
-  approveDocumentsViaApi,
-  reviewerFor,
-  submitScriptedInquiry,
-} from '../../support/submit'
+import { APPLICANT_EMAIL, approveDocumentsViaApi, reviewerFor } from '../../support/submit'
 
 /**
  * S19 Not qualified (flow v2 §3.5, FV2; docs/flow-v2/scenarios.json): Approve Prospective
@@ -22,7 +18,7 @@ test.describe('S19 Not qualified @flow-v2 @scripted', () => {
     request,
   }) => {
     test.setTimeout(180_000)
-    const reference = await submitScriptedInquiry(page, request, 's1-happy-path')
+    const reference = await submitInquiry(page, request)
     await approveDocumentsViaApi(request, reference)
     const leasingAdmin = await reviewerFor(request, reference, 'first')
     await reviewerAct(request, leasingAdmin.id, reference, 'reject', {

@@ -16,18 +16,15 @@ from app.domain import draft_ops
 from app.domain import validation as v
 from app.domain.master import MasterData
 from app.domain.models import FieldKey, InquiryDraft, Source
-from app.domain.tenant_prefill import prefill_from_tenant
 from app.gateway import GatewayError
-from app.policy.config import get_policy
 from app.services.cr import CrResult
-from app.services.tenants import Tenant
 from app.workflow.flow import FlowNode, record_flow_step
 
 if TYPE_CHECKING:
     from app.agent.runtime import AgentRuntime
     from app.sessions import Session
 
-CrKind = Literal["existing", "existing_allowed", "new"]
+CrKind = Literal["existing", "new"]
 CONFIRMABLE_FROM_CR = (FieldKey.COMPANY_NAME.value, FieldKey.COMPANY_ADDRESS.value)
 
 
@@ -45,23 +42,9 @@ def apply_cr_result(
     cr_number: str,
     result: CrResult,
     master: MasterData,
-    *,
-    tenant: Tenant | None = None,
 ) -> CrOutcome:
-    """Existing account → `existing` (or continue under `allow_inquiry`, prefilled from the
-    tenant record when there is one); new → prefill the company name and address as
-    `verified`, unconfirmed, for the user to confirm."""
-    if result.exists and get_policy().existing_tenant_policy == "allow_inquiry":
-        # Requirements §7.1: existing tenants may raise an inquiry from this page.
-        if tenant is not None:
-            updated, written = prefill_from_tenant(draft, tenant, master)
-            return CrOutcome(kind="existing_allowed", draft=updated, changed=written)
-        updated, written, _errors = draft_ops.write_fields(
-            draft, [(FieldKey.CR_NUMBER.value, cr_number, Source.USER)], master=master
-        )
-        updated.cr_status = "new"
-        return CrOutcome(kind="existing_allowed", draft=updated, changed=written)
-
+    """Existing account → `existing`: the person signs in (chart S3, M18). New → prefill the
+    company name and address as `verified`, unconfirmed, for the user to confirm."""
     if result.exists:
         updated = draft.model_copy(deep=True)
         updated.cr_status = "existing"

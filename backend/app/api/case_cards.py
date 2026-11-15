@@ -179,14 +179,6 @@ def signatory_question_due(request: CaseRequest | None, answer: str | None) -> b
     )
 
 
-def _sent_approval(case: Case | None, contact: TenantContact | None) -> TenantContact | None:
-    """The case's contact for this role if the card still shows what was sent."""
-    if case is None or contact is None:
-        return None
-    sent = next((c for c in case.tenant_contacts if c.role == contact.role), None)
-    return sent if sent is not None and sent.values() == contact.values() else None
-
-
 def build_contacts_card(
     contacts: list[TenantContact],
     request: CaseRequest | None,
@@ -195,7 +187,6 @@ def build_contacts_card(
     signatory_answer: Literal["yes", "no"] | None = None,
 ) -> UiCard:
     policy = get_policy().second_level_contacts
-    approval_on = get_policy().contacts.approval_required
     by_role = {c.role: c for c in contacts}
     rows: list[ContactRow] = []
     for role in [*policy.required, *policy.optional]:
@@ -208,7 +199,6 @@ def build_contacts_card(
             else []
         )
         filled = [f for f in fields if f.value not in (None, "")]
-        sent = _sent_approval(case, contact)
         rows.append(
             ContactRow(
                 role=role,
@@ -221,9 +211,6 @@ def build_contacts_card(
                 source=filled[0].source.value if filled and filled[0].source else None,
                 confirmed=bool(filled) and all(f.confirmed for f in filled),
                 same_as_primary=contact.same_as_primary if contact else False,
-                # Flow v2 (V7): no approval chip when per-contact approval is off.
-                approval=sent.approval if sent and approval_on else None,
-                approval_remarks=sent.approval_remarks if sent and approval_on else None,
             )
         )
     blockers = contacts_blockers(contacts)

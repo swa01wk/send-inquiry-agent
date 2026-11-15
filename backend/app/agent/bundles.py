@@ -126,7 +126,6 @@ def next_bundle_hint(
     cards_shown: list[str] | None = None,
     *,
     assisted: bool = False,
-    tenant_brands: list[str] | None = None,
 ) -> str:
     """One or two lines telling the agent what to ask for next, as one question."""
     del cards_shown  # verification progress now lives on the draft
@@ -135,14 +134,6 @@ def next_bundle_hint(
     if draft.intake_flow == "v2" and not assisted:
         return _v2_hint(draft)
     if draft.cr_status == "unknown":
-        if not assisted and get_policy().public_cr_check == "ask_then_sign_in":
-            # Demo feedback §3.1. Self-service and existing-tenant chats reach here with
-            # cr_status unknown only on the public page (tenants start as "tenant").
-            return (
-                "Next question: ask whether the company has a CR, pointing to the card's "
-                "buttons. Never ask for the CR number. If the user volunteers other details, "
-                "save them too."
-            )
         return (
             "Next question: ask for the CR number (or offer to continue without it). "
             "If the user volunteers other details, save them too."
@@ -162,19 +153,7 @@ def next_bundle_hint(
     for bundle in (COMPANY, BRAND_AND_SPACE, CONTACT):
         if not _missing(draft, bundle):
             continue
-        if (
-            bundle is BRAND_AND_SPACE
-            and tenant_brands
-            and not _has_value(draft, FieldKey.BRAND_NAME_EN)
-        ):
-            brands_or = " or ".join(tenant_brands)
-            lines.append(
-                "Next question (brand): ask what the new brand is — they can type it or upload "
-                "its Brand Profile for you to fill in. One question. If it matches one they "
-                f"already have ({brands_or}), ask once whether it's that brand or a new one. The "
-                "mall and space type are already set from the unit they chose."
-            )
-        elif bundle is BRAND_AND_SPACE and _arabic_name_to_ask(draft):
+        if bundle is BRAND_AND_SPACE and _arabic_name_to_ask(draft):
             lines.append(
                 "Next question (brand): ask for the brand name in Arabic, in chat (no card "
                 "holds it). The Brand Profile gave the English name and doesn't give the "
