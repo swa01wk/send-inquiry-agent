@@ -12,13 +12,13 @@ from app.agent.case_tools import _status_summary
 from app.domain.models import FieldKey
 from app.workflow.models import CaseStatus
 from tests.lifecycle.conftest import APPLICANT, STORE_CENTRAL, act, outbox, submit_case
-from tests.lifecycle.test_signatory_question import OMAR, _card, _open, _send
 from tests.lifecycle.test_document_approval import (
     LEASE_ADMIN,
     approve_documents,
     detail,
     reviewed,
 )
+from tests.lifecycle.test_signatory_question import OMAR, _card, _open, _send
 from tests.scenarios.helpers import chat_action
 
 pytestmark = [pytest.mark.approvals, pytest.mark.lease_admin, pytest.mark.lead_approval]
