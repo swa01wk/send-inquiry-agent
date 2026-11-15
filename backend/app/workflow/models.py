@@ -159,13 +159,13 @@ class TenantContact(BaseModel):
     mobile: FieldValue = Field(default_factory=FieldValue)
     landline: FieldValue = Field(default_factory=FieldValue)
     same_as_primary: bool = False
-    # Contact approval (demo feedback §3.5). Set by the state machine only: whatever the
-    # applicant's payload says here is ignored. A changed contact gets a new id, so an
-    # approval made on the old values can't land on the new ones (ADR-R4).
+    # A changed contact gets a new id (set by the state machine only).
     contact_id: str = ""
+    # Per-contact approval was removed with flow v2 (V7, M15): kept so cases saved before
+    # it still load; nothing sets or reads them.
     approval: ApprovalStatus = "pending"
     approval_remarks: str | None = None
-    approved_by: str | None = None  # a reviewer id, or "system:<reason>"
+    approved_by: str | None = None
     added_by: Literal["tenant", "reviewer", "system"] = "tenant"
 
     @model_validator(mode="after")

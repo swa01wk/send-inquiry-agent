@@ -83,7 +83,6 @@ function blockerLabel(code: string): string {
     return `${CONTACT_LABELS[subject] ?? categoryLabel(subject)} still needed`
   if (kind === 'open_request')
     return `${REQUEST_LABELS[subject] ?? categoryLabel(subject)} request still open`
-  if (kind === 'contact_not_approved') return `${categoryLabel(subject)} not approved yet`
   if (kind === 'document_pending') return `${categoryLabel(subject)}: approve or reject it`
   if (kind === 'document_rejected') return `${categoryLabel(subject)} rejected: request a re-upload`
   if (kind === 'expiry_unconfirmed') return `${categoryLabel(subject)}: confirm the expiry date`

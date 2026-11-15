@@ -113,12 +113,10 @@ document_expiry:
 # Tenant contacts at second review (demo feedback §3.5, day R2).
 contacts:
   # Flow v2 (V7, M15, M26): no per-contact approval; the required contacts must be given
-  # before the final "Approve Lead". true: the Leasing Admin approves each one (R2).
-  approval_required: false
+  # before the final "Approve Lead".
   # The contacts request opens with "Are you the authorised signatory?".
   ask_signatory: true
-  # "Yes, I'm the signatory" copies the verified primary contact, approved on entry (M8).
-  applicant_signatory_needs_approval: false
+  # "Yes, I'm the signatory" copies the verified primary contact (M8).
 
 # Azure AD accounts (flow v2 §3.6, V9). Reject Lead revokes the invitation made at first
 # approval; an account that existed before the inquiry is never touched (assumption A1).

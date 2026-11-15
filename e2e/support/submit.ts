@@ -162,25 +162,6 @@ export async function approveDocumentsViaApi(
 }
 
 /**
- * Day R2 (demo feedback §3.5): the Lease Admin approves every pending tenant contact through
- * the console API. Stories that aren't about contact approval call this before the final
- * **Approve**, then reload the console.
- */
-export async function approveContactsViaApi(
-  request: APIRequestContext,
-  reference: string,
-): Promise<void> {
-  const leaseAdmin = await reviewerFor(request, reference, 'first')
-  const detail = await caseDetailAs(request, leaseAdmin.id, reference)
-  for (const contact of detail.brief.contacts) {
-    if (contact.approval !== 'pending' || !contact.contact_id) continue
-    await actAs(request, leaseAdmin.id, reference, 'approve_contact', {
-      contact_id: contact.contact_id,
-    })
-  }
-}
-
-/**
  * Flow v2 day F2 (spec §3.7): the final reviewer assigns a unit on the inquiry's first mall
  * and answers "Approve Lead?" = Yes, which opens the contacts request. Stories that aren't
  * about the second level call this after **Approve first level**, before the contacts.

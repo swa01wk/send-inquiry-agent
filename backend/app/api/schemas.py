@@ -355,11 +355,6 @@ class ContactRow(BaseModel):
     source: str | None = None
     confirmed: bool = False
     same_as_primary: bool = False
-    # Cenomi's decision on this contact as sent (demo feedback §3.5): pending ("Waiting for
-    # Cenomi"), approved, or rejected with the reviewer's remarks. None: not sent yet, or
-    # changed since it was sent.
-    approval: Literal["pending", "approved", "rejected"] | None = None
-    approval_remarks: str | None = None
 
 
 class ContactsPayload(BaseModel):

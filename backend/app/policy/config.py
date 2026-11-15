@@ -207,13 +207,8 @@ class DocumentExpiryPolicy(_Strict):
 class ContactsPolicy(_Strict):
     """Tenant contacts at second review (demo feedback §3.5)."""
 
-    # The first-level reviewer (Lease Admin) approves each contact before final approval.
-    approval_required: bool = True
     # The contacts request opens with "Are you the authorised signatory?".
     ask_signatory: bool = True
-    # false: "Yes, I'm the signatory" copies the verified primary contact, approved on entry
-    # (M8). true: it waits for the Lease Admin like any other contact.
-    applicant_signatory_needs_approval: bool = False
 
 
 class LeadApprovalPolicy(_Strict):

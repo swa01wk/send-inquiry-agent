@@ -336,8 +336,7 @@ def _provide(case: Case, minutes: int, billing_email: str = "omar@beanstreet.exa
         minutes,
         contacts=[
             _contact("authorized_signatory", "sara@beanstreet.example", same_as_primary=True),
-            # Whatever the applicant's payload claims about approval is ignored.
-            _contact("billing_contact", billing_email, approval="approved", approved_by="me"),
+            _contact("billing_contact", billing_email),
         ],
     )
 
@@ -346,115 +345,18 @@ def _by_role(case: Case, role: str) -> TenantContact:
     return next(c for c in case.tenant_contacts if c.role == role)
 
 
-def test_the_applicant_signatory_is_approved_on_entry_and_billing_waits() -> None:
+def test_contacts_need_no_approval_and_keep_their_ids_when_unchanged() -> None:
+    """Flow v2 (V7, M15): no per-contact decisions; the final approval needs only the
+    mandatory contacts. An unchanged contact keeps its id, a changed one gets a new one."""
     case = _provide(_second_review(), 7)
-    signatory = _by_role(case, "authorized_signatory")
-    billing = _by_role(case, "billing_contact")
-    assert (signatory.approval, signatory.approved_by) == ("approved", "system:verified_primary")
-    assert (billing.approval, billing.approved_by, billing.added_by) == ("pending", None, "tenant")
-    assert billing.contact_id.startswith("ct_") and billing.contact_id != "ct_billing_contact"
-    assert approval_blockers(case) == ["contact_not_approved:billing_contact"]
-    assert "approved" not in legal_events(case, RLM)
-    assert "contact_approved" in legal_events(case, LEASE_ADMIN)
-    assert "contact_approved" not in legal_events(case, RLM)
-
-
-def test_the_lease_admin_approves_a_contact_then_the_rlm_can_approve() -> None:
-    case = _provide(_second_review(), 7)
-    billing = _by_role(case, "billing_contact")
-    with pytest.raises(IllegalTransition) as wrong_role:
-        _go(case, "contact_approved", RLM, 8, contact_id=billing.contact_id)
-    assert wrong_role.value.code == "not_in_queue"
-    case = _go(case, "contact_approved", LEASE_ADMIN, 8, contact_id=billing.contact_id)
-    assert _by_role(case, "billing_contact").approved_by == "lease_admin-central"
-    with pytest.raises(IllegalTransition, match="already approved"):
-        _go(case, "contact_approved", LEASE_ADMIN, 9, contact_id=billing.contact_id)
     assert approval_blockers(case) == []
-    assert _go(case, "approved", RLM, 10).status == CaseStatus.APPROVED
-
-
-def test_a_rejected_contact_opens_a_request_for_that_role() -> None:
-    case = _provide(_second_review(), 7)
+    assert not {"contact_approved", "contact_rejected"} & set(legal_events(case, LEASE_ADMIN))
     billing = _by_role(case, "billing_contact")
-    with pytest.raises(IllegalTransition, match="Remarks are required"):
-        _go(case, "contact_rejected", LEASE_ADMIN, 8, contact_id=billing.contact_id)
-    case = _go(
-        case,
-        "contact_rejected",
-        LEASE_ADMIN,
-        8,
-        contact_id=billing.contact_id,
-        remarks="Use the finance mailbox",
-    )
-    rejected = _by_role(case, "billing_contact")
-    assert (rejected.approval, rejected.approval_remarks) == ("rejected", "Use the finance mailbox")
-    request = case.open_request("contacts")
-    assert request is not None
-    assert request.roles == ["billing_contact"]
-    assert request.remarks == "Billing Contact: Use the finance mailbox"
-    assert approval_blockers(case) == [
-        "open_request:contacts",
-        "contact_not_approved:billing_contact",
-    ]
-
-    # The tenant fixes it: a new id, pending; the old id is stale.
-    fixed = _provide(case, 20, billing_email="finance@beanstreet.example")
-    new_billing = _by_role(fixed, "billing_contact")
-    assert new_billing.approval == "pending"
-    assert new_billing.contact_id != billing.contact_id
-    assert _by_role(fixed, "authorized_signatory").approval == "approved"
-    with pytest.raises(IllegalTransition) as stale:
-        _go(fixed, "contact_approved", LEASE_ADMIN, 21, contact_id=billing.contact_id)
-    assert stale.value.code == "stale_contact"
-    fixed = _go(fixed, "contact_approved", LEASE_ADMIN, 22, contact_id=new_billing.contact_id)
-    assert approval_blockers(fixed) == []
-
-
-def test_unchanged_approved_contacts_stay_approved_and_changed_ones_go_back() -> None:
-    case = _provide(_second_review(), 7)
-    billing = _by_role(case, "billing_contact")
-    case = _go(case, "contact_approved", LEASE_ADMIN, 8, contact_id=billing.contact_id)
     case = _go(case, "contacts_requested", RLM, 9)
     again = _provide(case, 10)
     assert _by_role(again, "billing_contact").contact_id == billing.contact_id
-    assert _by_role(again, "billing_contact").approval == "approved"
     changed = _provide(case, 10, billing_email="new@beanstreet.example")
-    assert _by_role(changed, "billing_contact").approval == "pending"
-
-
-def test_a_second_rejection_adds_its_role_to_the_open_request() -> None:
-    case = _go(
-        _second_review(),
-        "contacts_provided",
-        USER,
-        7,
-        contacts=[
-            _contact("authorized_signatory", "sign@beanstreet.example"),
-            _contact("billing_contact", "omar@beanstreet.example"),
-        ],
-    )
-    signatory = _by_role(case, "authorized_signatory")
-    assert signatory.approval == "pending"  # not the applicant: waits like any contact
-    billing = _by_role(case, "billing_contact")
-    case = _go(
-        case, "contact_rejected", LEASE_ADMIN, 8, contact_id=billing.contact_id, remarks="Typo"
-    )
-    case = _go(
-        case,
-        "contact_rejected",
-        LEASE_ADMIN,
-        9,
-        contact_id=signatory.contact_id,
-        remarks="Not a director",
-    )
-    request = case.open_request("contacts")
-    assert request is not None
-    assert request.roles == ["billing_contact", "authorized_signatory"]
-    assert request.remarks.splitlines() == [
-        "Billing Contact: Typo",
-        "Authorized Signatory: Not a director",
-    ]
-    assert len([r for r in case.requests if r.kind == "contacts"]) == 2
+    assert _by_role(changed, "billing_contact").contact_id != billing.contact_id
 
 
 def test_contacts_saved_before_ids_get_one_per_role() -> None:

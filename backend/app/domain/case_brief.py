@@ -102,11 +102,7 @@ class BriefContact(BaseModel):
     email: str | None
     phone: str | None
     same_as_primary: bool
-    # Contact approval (demo feedback §3.5); None when it's off (flow v2, V7).
     contact_id: str | None = None
-    approval: Literal["pending", "approved", "rejected"] | None = "pending"
-    approval_remarks: str | None = None
-    approved_by: str | None = None
     added_by: str = "tenant"
 
 
@@ -242,9 +238,6 @@ def _checklist(
             elif kind == "missing_contact":
                 label = CONTACT_ROLE_LABELS.get(detail, detail)
                 items.append(f"{label} missing: request contacts before final approval.")
-            elif kind == "contact_not_approved":
-                label = CONTACT_ROLE_LABELS.get(detail, detail)
-                items.append(f"{label} waiting for the Leasing Admin's approval.")
         if not approval_blockers(case):
             items.append('Everything needed for the final "Approve Lead" is in.')
     if case.status == CaseStatus.APPROVED and case.yardi.needs_operations:
@@ -326,12 +319,9 @@ def format_case_brief_text(brief: CaseBrief) -> str:
         lines.extend(["", "Tenant contacts:"])
         for contact in brief.contacts:
             flag = " (same as primary)" if contact.same_as_primary else ""
-            approval = f" [{contact.approval}]" if contact.approval else ""
-            if contact.approval and contact.approval_remarks:
-                approval = f" [{contact.approval}: {contact.approval_remarks}]"
             lines.append(
                 f"  - {contact.label}{flag}: {contact.name or '—'}, "
-                f"{contact.email or '—'}, {contact.phone or '—'}{approval}"
+                f"{contact.email or '—'}, {contact.phone or '—'}"
             )
     if brief.requests:
         lines.extend(["", "Requests:"])
@@ -369,7 +359,6 @@ def build_case_brief(
 ) -> CaseBrief:
     draft = case.draft
     now = now or clock.now()
-    contact_approval = get_policy().contacts.approval_required
     fields: list[BriefField] = []
     for d in FIELD_BY_KEY.values():
         value = draft.fields[d.key]
@@ -467,9 +456,6 @@ def build_case_brief(
                 same_as_primary=c.same_as_primary,
                 contact_id=c.contact_id,
                 # Flow v2 (V7): no per-contact approval to show when it's off.
-                approval=c.approval if contact_approval else None,
-                approval_remarks=c.approval_remarks if contact_approval else None,
-                approved_by=c.approved_by if contact_approval else None,
                 added_by=c.added_by,
             )
             for c in case.tenant_contacts
