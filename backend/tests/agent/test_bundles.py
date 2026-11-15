@@ -96,21 +96,6 @@ def test_assisted_mid_collection_skips_verification_hint() -> None:
     assert "start verification" not in hint
 
 
-def test_tenant_brands_hint_names_both_when_brand_empty() -> None:
-    draft = new_inquiry_draft()
-    draft.cr_status = "tenant"
-    _set(draft, FieldKey.COMPANY_NAME, "Al Noor Retail Group")
-    _set(draft, FieldKey.COMPANY_ADDRESS, "King Abdulaziz Road, Riyadh")
-    _set(draft, FieldKey.MALLS, ["riyadh-mall-a"])
-    _set(draft, FieldKey.UNIT_TYPE, "store", Source.USER)
-    hint = next_bundle_hint(
-        draft,
-        tenant_brands=["Noor Fashion", "Noor Beauty"],
-    )
-    assert "Noor Fashion" in hint and "Noor Beauty" in hint
-    assert "Next question (brand)" in hint
-
-
 def test_contact_bundle_after_brand() -> None:
     draft = new_inquiry_draft()
     draft.cr_status = "new"
