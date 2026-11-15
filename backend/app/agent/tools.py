@@ -920,7 +920,10 @@ def show_mall_picker(
     return _tool_result(
         runtime,
         draft=state["draft"],
-        content=f"Mall picker shown for {city}.",
+        content=(
+            f"Mall picker shown for {city}. If their message also gave the area, budget or "
+            "lease length and you haven't saved it, call update_draft with it before replying."
+        ),
         cards_shown=cards_shown,
     )
 
