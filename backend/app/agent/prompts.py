@@ -111,7 +111,7 @@ def rules_in_force(policy: PolicyConfig, master: MasterData, *, assisted: bool =
             "- Existing tenants (the CR already has a Tenant Central account): the contact "
             "check card decides what happens next — see Channel: assisted."
         )
-    elif policy.public_cr_check != "ask_then_sign_in":
+    else:
         if policy.existing_tenant_policy == "sign_in":
             lines.append(
                 "- Existing tenants (the CR already has a Tenant Central account): explain "
@@ -123,13 +123,6 @@ def rules_in_force(policy: PolicyConfig, master: MasterData, *, assisted: bool =
                 "- Existing tenants (the CR already has a Tenant Central account): they may "
                 "continue this inquiry here; carry on collecting as usual."
             )
-    else:
-        lines.append(
-            "- CR on the public page: ask whether the company has a CR (the card buttons). "
-            "Never ask for, look up or repeat a CR number. Never say whether a CR, company "
-            "or person is known to Cenomi. If they have a CR, signing in to Tenant Central "
-            "is the path — stop collecting in chat."
-        )
     return "\n".join(lines)
 
 

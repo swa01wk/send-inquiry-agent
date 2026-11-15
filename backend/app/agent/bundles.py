@@ -135,14 +135,6 @@ def next_bundle_hint(
     if draft.intake_flow == "v2" and not assisted:
         return _v2_hint(draft)
     if draft.cr_status == "unknown":
-        if not assisted and get_policy().public_cr_check == "ask_then_sign_in":
-            # Demo feedback §3.1. Self-service and existing-tenant chats reach here with
-            # cr_status unknown only on the public page (tenants start as "tenant").
-            return (
-                "Next question: ask whether the company has a CR, pointing to the card's "
-                "buttons. Never ask for the CR number. If the user volunteers other details, "
-                "save them too."
-            )
         return (
             "Next question: ask for the CR number (or offer to continue without it). "
             "If the user volunteers other details, save them too."

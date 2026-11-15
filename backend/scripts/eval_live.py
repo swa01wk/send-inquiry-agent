@@ -33,7 +33,7 @@ if str(_BACKEND_ROOT) not in sys.path:
 
 import httpx
 from app.agent.case_graph import build_case_graph
-from app.agent.cr_question import contains_cr_number, cr_question_active
+from app.agent.cr_question import contains_cr_number
 from app.agent.eval_checks import off_topic_offers_continue
 from app.agent.graph import build_assisted_graph, build_graph
 from app.agent.invariants import (
@@ -1230,15 +1230,6 @@ async def _invariants_after_stream(
         case_status_after=_case_status(app, session),
         has_success_card=has_success,
         agent_kind=_agent_kind(scenario),  # type: ignore[arg-type]
-        public_cr_question=bool(
-            session
-            and session.mode != "case"
-            and cr_question_active(
-                assisted=session.assisted,
-                channel=session.channel,
-                test_scenario=session.test_scenario,
-            )
-        ),
         flow_v2_intake=bool(
             session
             and session.mode != "case"

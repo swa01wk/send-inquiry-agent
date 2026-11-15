@@ -13,12 +13,12 @@ product_lines: [store, media, specialty]
 #   allow_inquiry — the inquiry continues (requirements §7.1).
 existing_tenant_policy: sign_in
 
-# The public page and the CR (demo feedback §3.1, 4 Nov 2026):
-#   lookup           — a CR number typed in the public chat is checked in the registry.
-#   ask_then_sign_in — the agent asks "Do you have a CR?": Yes → sign in, No → carry on in
-#                      chat. The public page never takes or looks up a CR number.
-# Self-service channel only: call-centre staff keep the lookup (D3).
-public_cr_check: ask_then_sign_in
+# The CR in chat:
+#   lookup         — a CR number given in chat is checked in the registry (call centre, D3).
+#   verify_or_skip — the Company Registration card (Verify or Skip). Every new self-service
+#                    inquiry runs the flow v2 intake (flow_v2_intake below), which uses this.
+# The 4 Nov "Do you have a CR?" question (ask_then_sign_in) was removed with flow v2.
+public_cr_check: lookup
 
 # A tenant signed in to Tenant Central (Leasing Opportunities) is already verified by Azure
 # AD: the email link and SMS code are skipped (intake channels §3.5, assumption D4).

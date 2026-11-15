@@ -17,7 +17,6 @@ from app.agent.cr_check import (
     check_existing_customer,
     skip_customer_check,
 )
-from app.agent.cr_question import apply_cr_answer, cr_question_active
 from app.agent.events import SseEvent
 from app.agent.handoff import start_handoff
 from app.agent.pending import RESUME_PENDING_REPLY, normalise_email, note_verification
@@ -48,10 +47,8 @@ from app.api.channel_cards import (
     BASIC_INFO_CARD_ID,
     build_basic_info_card,
     build_contact_check_card,
-    build_cr_question_card,
     build_inform_tenant_card,
     build_send_link_card,
-    build_sign_in_prompt_card,
     confirm_basic_info,
 )
 from app.api.schemas import UiCard
@@ -139,7 +136,6 @@ async def handle_ui_action(
         "request_handoff": _request_handoff,
         "cr_check": _cr_check,
         "cr_skip": _cr_skip,
-        "cr_answer": _cr_answer,
         # Flow v2 (§3.3)
         "accept_terms": _accept_terms,
         "resume_pending": _resume_pending,
@@ -835,11 +831,6 @@ async def _cr_check(
         # A wrong number or a service error: the card shows it; no agent turn (S5).
         checked.quiet = check.note.startswith(("[ui_event] cr_invalid", "[ui_event] service_error"))
         return checked
-    if cr_question_active(
-        assisted=session.assisted, channel=session.channel, test_scenario=session.test_scenario
-    ):
-        # Demo feedback §3.1: the public page never looks a CR up.
-        return ActionResult(note=HumanMessage(content="[ui_event] cr_lookup_off"))
     validated = v.validate_cr_number(str(payload.get("cr_number", "")))
     if isinstance(validated, v.ValidationError):
         return ActionResult(note=HumanMessage(content=f"[ui_event] cr_invalid {validated.code}"))
@@ -979,48 +970,6 @@ def customer_check_result(
     return ActionResult(
         note=HumanMessage(content=check.note), events=events, changed_keys=check.changed
     )
-
-
-def cr_answer_result(session: Session, runtime: AgentRuntime, has_cr: bool) -> ActionResult:
-    """ "Do you have a CR?" answered (demo feedback §3.1). Yes: the sign-in card and no more
-    collection; No: carry on in chat. Shared by the `cr_answer` card action and a CR number
-    typed in the public chat (it's never saved or checked)."""
-    if not cr_question_active(
-        assisted=session.assisted, channel=session.channel, test_scenario=session.test_scenario
-    ):
-        return ActionResult(note=HumanMessage(content="[ui_event] cr_answer_off"))
-    answered = apply_cr_answer(session.draft, has_cr)
-    if answered is None:
-        return ActionResult(note=HumanMessage(content="[ui_event] cr_already_done"))
-    session.draft = answered.draft
-    card = build_cr_question_card(answered="yes" if has_cr else "no")
-    events: list[SseEvent] = [_card_event(session, card)]
-    if has_cr:
-        session.closed = "redirected_to_sign_in"
-        _audit(runtime, session, "inquiry_redirected", reason="has_cr", channel=session.channel)
-        events.append(
-            _card_event(
-                session,
-                build_sign_in_prompt_card(runtime.settings.public_base_url, reason="has_cr"),
-            )
-        )
-    events.append(_draft_event(answered.draft, runtime, answered.changed))
-    return ActionResult(
-        note=HumanMessage(content=answered.note),
-        events=events,
-        changed_keys=answered.changed,
-    )
-
-
-async def _cr_answer(
-    payload: dict[str, Any],
-    session: Session,
-    runtime: AgentRuntime,
-) -> ActionResult:
-    has_cr = payload.get("has_cr")
-    if not isinstance(has_cr, bool):
-        return ActionResult(note=HumanMessage(content="[ui_event] cr_answer_invalid"))
-    return cr_answer_result(session, runtime, has_cr)
 
 
 # ---- Case actions (after submission, L4 §3.5): the applicant answers a request -------

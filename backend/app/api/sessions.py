@@ -4,12 +4,11 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request
 
-from app.agent.cr_question import cr_question_active, flow_v2_intake_for
+from app.agent.cr_question import flow_v2_intake_for
 from app.agent.e2e_scripts import resolve_e2e_scenario
 from app.api.cards import (
     WELCOME_MESSAGE_1,
     WELCOME_MESSAGE_2,
-    WELCOME_MESSAGE_2_CR_QUESTION,
     WELCOME_MESSAGE_2_FLOW_V2,
     WELCOME_QUICK_REPLIES_FLOW_V2,
     build_quick_replies_card,
@@ -17,9 +16,7 @@ from app.api.cards import (
 )
 from app.api.channel_cards import (
     COMPANY_REGISTRATION_CARD_ID,
-    CR_QUESTION_CARD_ID,
     build_company_registration_card,
-    build_cr_question_card,
 )
 from app.api.deps import get_master_data, get_services, get_session_store
 from app.api.deps import get_settings as get_settings_dep
@@ -79,16 +76,6 @@ async def create_session(
         session.cards_shown.add(COMPANY_REGISTRATION_CARD_ID)
         record_flow_step_audit(services.audit, inquiry_id=session.id, node=FlowNode.START)
         record_flow_step_audit(services.audit, inquiry_id=session.id, node=FlowNode.RAISE_TP)
-    elif cr_question_active(
-        assisted=False, channel=session.channel, test_scenario=session.test_scenario
-    ):
-        # Demo feedback §3.1: ask whether they have a CR, never for the number.
-        messages = [
-            AssistantMessage(id=WELCOME_MSG_ID_1, text=WELCOME_MESSAGE_1),
-            AssistantMessage(id=WELCOME_MSG_ID_2, text=WELCOME_MESSAGE_2_CR_QUESTION),
-        ]
-        cards = [build_cr_question_card(message_id=WELCOME_MSG_ID_2)]
-        session.cards_shown.add(CR_QUESTION_CARD_ID)
     else:
         messages = [
             AssistantMessage(id=WELCOME_MSG_ID_1, text=WELCOME_MESSAGE_1),

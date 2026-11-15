@@ -15,7 +15,6 @@ import {
   sendLinkCardExample,
   companyRegistrationCardExample,
   termsCardExample,
-  crQuestionCardExample,
   signatoryQuestionCardExample,
   contactsApprovalCardExample,
   signInPromptCardExample,
@@ -336,10 +335,6 @@ export const feScenarioDefinitions: FeScenario[] = [
         ],
       },
     ],
-  },
-  {
-    name: 'cr-question',
-    session: cardSession(crQuestionCardExample, draftEmpty),
   },
   {
     name: 'company-registration',

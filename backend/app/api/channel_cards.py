@@ -11,7 +11,6 @@ from app.api.schemas import (
     BasicInfoRow,
     CompanyRegistrationPayload,
     ContactCheckPayload,
-    CrQuestionPayload,
     InformTenantPayload,
     SendLinkPayload,
     SignInPromptPayload,
@@ -34,9 +33,7 @@ INFORM_TENANT_SAY = (
     "Leasing Opportunities — your company details are already on file there."
 )
 SIGN_IN_CARD_ID = "sign_in_prompt"
-CR_QUESTION_CARD_ID = "cr_question"
 
-CR_QUESTION_PROMPT = "Does your company have a CR (commercial registration)?"
 # The tenant portal's sign-in; once signed in it opens Leasing Opportunities, where the
 # inquiry is raised (demo feedback I3).
 SIGN_IN_PATH = "/tenant"
@@ -263,25 +260,6 @@ def build_company_registration_card(
     return UiCard(
         card_id=COMPANY_REGISTRATION_CARD_ID,
         card_type="company_registration",
-        message_id=message_id,
-        payload=payload.model_dump(),
-    )
-
-
-def build_cr_question_card(
-    *, answered: Literal["yes", "no"] | None = None, message_id: str | None = None
-) -> UiCard:
-    """ "Do you have a CR?" with two buttons (demo feedback §3.1). The public page never
-    asks for the number itself."""
-    payload = CrQuestionPayload(
-        prompt=CR_QUESTION_PROMPT,
-        yes_label="Yes, we have a CR",
-        no_label="No, we don't",
-        answered=answered,
-    )
-    return UiCard(
-        card_id=CR_QUESTION_CARD_ID,
-        card_type="cr_question",
         message_id=message_id,
         payload=payload.model_dump(),
     )

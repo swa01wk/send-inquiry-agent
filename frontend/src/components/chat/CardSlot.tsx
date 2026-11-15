@@ -7,7 +7,6 @@ import { DocumentChecklistCard } from '../cards/DocumentChecklistCard'
 import { SalesDataUploadCard } from '../cards/SalesDataUploadCard'
 import { FormModeCard } from '../cards/FormModeCard'
 import { BasicInfoReviewCard } from '../cards/BasicInfoReviewCard'
-import { CrQuestionCard } from '../cards/CrQuestionCard'
 import { CompanyRegistrationCard } from '../cards/CompanyRegistrationCard'
 import { TermsCard } from '../cards/TermsCard'
 import { SignatoryQuestionCard } from '../cards/SignatoryQuestionCard'
@@ -146,12 +145,6 @@ export function CardSlot({
         <InformTenantCard
           payload={card.payload}
           onSendSignInLink={() => actions.sendAction('send_sign_in_link', {})}
-        />
-      ) : null}
-      {card.card_type === 'cr_question' ? (
-        <CrQuestionCard
-          payload={card.payload}
-          onAnswer={(hasCr) => actions.sendAction('cr_answer', { has_cr: hasCr })}
         />
       ) : null}
       {card.card_type === 'company_registration' ? (

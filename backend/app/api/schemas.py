@@ -27,8 +27,6 @@ CardType = Literal[
     "basic_info_review",
     "send_link",
     "sign_in_prompt",
-    # Demo feedback §3.1
-    "cr_question",
     # Demo feedback §3.5
     "signatory_question",
     # Flow v2 (§3.2, §3.3)
@@ -149,16 +147,6 @@ class SignInPromptPayload(BaseModel):
     message: str
     sign_in_url: str
     button_label: str
-
-
-class CrQuestionPayload(BaseModel):
-    """Public page, `public_cr_check: ask_then_sign_in` (demo feedback §3.1): the buttons
-    send `cr_answer {has_cr}`. `answered` is set once the applicant picks."""
-
-    prompt: str
-    yes_label: str
-    no_label: str
-    answered: Literal["yes", "no"] | None = None
 
 
 class SkipConfirm(BaseModel):
@@ -329,8 +317,6 @@ class FormModePayload(BaseModel):
     next_step: FormModeStep
     fields: list[FormModeField] = Field(default_factory=list)
     can_skip_cr: bool = False
-    # Demo feedback §3.1: the CR step is the `cr_question` card, not a CR number input.
-    cr_question: bool = False
 
 
 class CaseRequestRow(BaseModel):

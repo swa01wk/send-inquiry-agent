@@ -294,11 +294,10 @@ class ProactivePolicy(_Strict):
 class PolicyConfig(_Strict):
     product_lines: list[str] = Field(min_length=1)
     existing_tenant_policy: Literal["sign_in", "allow_inquiry"] = "sign_in"
-    # Public page (demo feedback §3.1): `lookup` checks a typed CR number in the registry
-    # (until 4 Nov 2026); `ask_then_sign_in` asks "Do you have a CR?" and never looks one
-    # up. Applies to the self-service channel only; staff channels keep the lookup.
-    # Flow v2 (§3.2): `verify_or_skip`, the Company Registration card (Verify or Skip).
-    public_cr_check: Literal["lookup", "ask_then_sign_in", "verify_or_skip"] = "lookup"
+    # `lookup`: a CR number given in chat is checked in the registry (staff channels).
+    # Flow v2 (§3.2): `verify_or_skip`, the Company Registration card (Verify or Skip), is
+    # what the v2 view gives every self-service inquiry.
+    public_cr_check: Literal["lookup", "verify_or_skip"] = "lookup"
     # A tenant signed in to Tenant Central is verified by Azure AD: no email link or OTP.
     signed_in_skips_verification: bool = True
     max_malls_per_inquiry: int = Field(default=1, ge=1, le=10)

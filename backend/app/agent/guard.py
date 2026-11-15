@@ -26,7 +26,7 @@ from app.agent.contact_infer import (
     message_has_contact_line,
     parse_contact_from_message,
 )
-from app.agent.cr_question import CR_NUMBER_IN_REPLY, contains_cr_number, cr_question_active
+from app.agent.cr_question import CR_NUMBER_IN_REPLY, contains_cr_number
 from app.agent.mall_match import (
     fill_mentioned_malls,
     mentioned_seed_mall_ids,
@@ -581,13 +581,11 @@ def _brand_reask_note(state: AgentState, ai_text: str) -> str | None:
 
 
 def _cr_number_in_reply_note(state: AgentState, ai_text: str) -> str | None:
-    if state.get("assisted") or not ai_text:
+    # Flow v2 (I8): the public chat never repeats a CR number.
+    draft = state.get("draft")
+    if state.get("assisted") or not ai_text or draft is None or draft.intake_flow != "v2":
         return None
-    if not cr_question_active(
-        assisted=False,
-        channel=state.get("channel"),
-        test_scenario=state.get("test_scenario"),
-    ):
+    if (state.get("channel") or "self_service") != "self_service":
         return None
     if contains_cr_number(ai_text):
         return CR_NUMBER_IN_REPLY
@@ -599,16 +597,7 @@ def _missed_capture_note(state: AgentState, phase: str) -> str | None:
     if not user_text or user_text.startswith("[ui_event]"):
         return None
     called = _tools_called(turn_messages)
-    if (
-        phase == "gate"
-        and _CR_NUMBER_RE.search(user_text)
-        and "verify_cr" not in called
-        and not cr_question_active(
-            assisted=bool(state.get("assisted")),
-            channel=state.get("channel"),
-            test_scenario=state.get("test_scenario"),
-        )
-    ):
+    if phase == "gate" and _CR_NUMBER_RE.search(user_text) and "verify_cr" not in called:
         return (
             f"{GUARD_PREFIX} The user's last message contains a CR number. "
             "Call verify_cr with it before replying."
