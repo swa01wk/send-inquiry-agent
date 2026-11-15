@@ -184,10 +184,10 @@ async def test_lead_goes_to_yardi_with_the_unit_after_contacts(life) -> None:
     # V7: no per-contact approval, so no approval state in the console or on the card.
     contacts = data["brief"]["contacts"]
     assert {c["role"] for c in contacts} == {"authorized_signatory", "billing_contact"}
-    assert all(c["approval"] is None and c["approved_by"] is None for c in contacts)
+    assert all("approval" not in c and "approved_by" not in c for c in contacts)
     reopened = await _open(client, outbox(app, APPLICANT, "contacts_request")[0]["links"][0])
     rows = _card(reopened, "contacts")[0]["payload"]["rows"]
-    assert rows and all(r["approval"] is None for r in rows)
+    assert rows and all("approval" not in r for r in rows)
     final = await act(client, STORE_CENTRAL, reference, "approve")
     assert final.status_code == 200, final.text
     case = app.state.services.cases.get(reference)
