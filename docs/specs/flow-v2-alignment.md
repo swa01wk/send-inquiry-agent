@@ -279,10 +279,10 @@ The full matrix (layers, live flags, eval checks) is in [`docs/testing/flow-v2-t
 
 | Story | Change |
 | --- | --- |
-| `rd-cr-question` | Replaced by S1–S5 (`verify_or_skip`); kept with `public_cr_check: ask_then_sign_in` set by its script header |
-| `rd-contact-approval` | Replaced by S23, S24 (no per-contact approval) |
-| `t1-lifecycle-to-yardi`, `a1-approvals`, `l4-reviewer-console`, `demo.spec.ts` | Updated to `lead_approved` and unit assignment |
-| `s1-happy-path`, `basics`, `edge-cases`, `mistakes-and-changes`, `confused-users`, `language-and-style` | Scripts re-recorded for the section order; expectations unchanged unless they asserted the old order |
+| `rd-cr-question`, `rd-type-or-upload` | Deleted (15 Nov): S1–S5 and S13 cover them; the CR question (`ask_then_sign_in`) was removed from the code |
+| `rd-contact-approval` | Deleted (15 Nov): S23, S24; per-contact approval was removed from the code |
+| `t1-lifecycle-to-yardi`, `a1-approvals`, `l4-reviewer-console`, `demo.spec.ts` | Updated to `lead_approved` and unit assignment; the after-submit stories submit through S2 (`e2e/support/intake.ts`) |
+| `s1-happy-path`, `s2-resume-second-device`, `s3-submit-timeout`, `s14-out-of-order`, `basics`, `edge-cases`, `mistakes-and-changes`, `confused-users`, `language-and-style`, `live`, `rd-live-flows` | Deleted (15 Nov) instead of re-recorded: they drove the pre-v2 public chat. S1–S17 cover the intake; the live eval's `conversation` group keeps small talk, FAQ, off topic, prompt injection, names, international mobile, chat during verification, an unknown mall and Arabic on the v2 order |
 | `a2-call-centre`, `a2-existing-cr` | Updated to the contact check (CC1–CC3) |
 
 ## 6. Evaluation
