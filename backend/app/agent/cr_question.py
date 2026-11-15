@@ -58,6 +58,8 @@ CR_QUESTION_SCRIPTS: frozenset[str] = frozenset(
 # Scripted e2e scenarios that run the flow v2 public intake (day F3), whatever the policy:
 # `flow-v2-s01` … `flow-v2-s17` (S18–S24 start after submit).
 FLOW_V2_INTAKE_SCRIPT_PREFIX = "flow-v2-s"
+# The demo script's intake (docs/demo-script.md beat 1, `demo` in docs/flow-v2/scenarios.json).
+FLOW_V2_DEMO_SCRIPT = "flow-v2-demo"
 _FLOW_V2_AFTER_SUBMIT = frozenset(f"flow-v2-s{n}" for n in range(18, 25))
 
 
@@ -68,6 +70,8 @@ def flow_v2_intake_for(session: Any) -> bool:
         return False
     scenario = session.test_scenario
     if scenario:
+        if scenario == FLOW_V2_DEMO_SCRIPT:
+            return True
         return scenario.startswith(FLOW_V2_INTAKE_SCRIPT_PREFIX) and (
             scenario not in _FLOW_V2_AFTER_SUBMIT
         )

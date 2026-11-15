@@ -23,11 +23,22 @@ export interface CatalogueEntry {
 const repoRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const catalogue = JSON.parse(
   readFileSync(path.join(repoRoot, 'docs/flow-v2/scenarios.json'), 'utf-8'),
-) as { scenarios: CatalogueEntry[]; personas?: Record<string, { email?: string }> }
+) as {
+  scenarios: CatalogueEntry[]
+  demo?: CatalogueEntry[]
+  personas?: Record<string, { email?: string }>
+}
 
 export function scenario(id: string): CatalogueEntry {
   const entry = catalogue.scenarios.find((s) => s.id === id)
   if (!entry) throw new Error(`scenario ${id} not in the catalogue`)
+  return entry
+}
+
+/** The demo script's intake (`demo` in the catalogue file; docs/demo-script.md beat 1). */
+export function demoPath(id = 'demo'): CatalogueEntry {
+  const entry = (catalogue.demo ?? []).find((s) => s.id === id)
+  if (!entry) throw new Error(`demo path ${id} not in the catalogue`)
   return entry
 }
 

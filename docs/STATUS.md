@@ -12,7 +12,7 @@ The single place to see what's built, what's next and how the agent maps to the 
 
 **Status values:** ✅ Done · 🟡 In progress, or built at demo depth during the breadth days · ⬜ Not started · ⛔ Blocked · ➖ Waived (with reason)
 
-**Last updated:** 14 Nov 2026 · flow v2 F0–F4 merged (#91–#100), F5 in progress (#101); earlier, 4 Nov 2026 · demo feedback planned (PRD v1.1, [spec](specs/demo-feedback.md), days R1–R5 in `prompts/feedback/`, re-demo Tue 10 Nov); earlier: step 12 done (parity suite, live-eval baseline 27/27), 11e out-of-order intake, 5-day close-out (30 Oct)
+**Last updated:** 15 Nov 2026 · flow v2 F0–F4 merged (#91–#100), F5 part 1 merged (#101), the demo on the v2 order in review; earlier, 4 Nov 2026 · demo feedback planned (PRD v1.1, [spec](specs/demo-feedback.md), days R1–R5 in `prompts/feedback/`, re-demo Tue 10 Nov); earlier: step 12 done (parity suite, live-eval baseline 27/27), 11e out-of-order intake, 5-day close-out (30 Oct)
 
 ## 0. Delivery plan
 
@@ -36,7 +36,7 @@ The single place to see what's built, what's next and how the agent maps to the 
 | Flow v2 F2 | Sat 14 Nov | Approve Lead? → contacts → Approve Lead; unit assignment; reminders; `FlowNode` (V6, V7, V11, E4) | #92/#93/#94 (backend) | #96 | ✅ | FV1, FV5–FV8; S21–S24 case agent, cards, scripts, `flow_v2` eval (S19–S24) |
 | Flow v2 F3 | Mon 16 Nov | Public intake in the app's order; Company Registration; Store and Office; pending inquiry (V1, V2, V10–V13, E1) | #97 (backend) | #98 | ✅ | Policy on; v2 prompt, cards, scripts s01–s17; FE Vitest + @fe flow-v2 cards. `flow_v2` eval 100% before merge |
 | Flow v2 F4 | Tue 17 Nov | Call-centre contact check; case agent and reviewer assistant (V3, E2, E3, E5) | #99 | #100 | ✅ | Contact check card (not an endpoint), Inform + Email sign-in link, one chart path across both chats, `assess_forecasted_sales_need`. `flow_v2` eval 28/28 (14 Nov), `channels` 5/5, `case` 4/4 |
-| Flow v2 F5 | Wed 18 Nov | Full Playwright and eval runs, demo script, docs | #101 | — | 🟡 | AGENT-DET catalogue runner (S1–S17, CC1–CC3) green in CI; Playwright catalogue spec; this file and POC-LIFECYCLE §2 redrawn. Gate runs below |
+| Flow v2 F5 | Wed 18 Nov | Full Playwright and eval runs, demo script, docs | #101; F5 demo PR | — | 🟡 | AGENT-DET catalogue runner (S1–S17, CC1–CC3, demo path) green in CI; Playwright catalogue spec and S18 spec; this file and POC-LIFECYCLE §2 redrawn; `docs/demo-script.md`, `docs/demo-queries.md` and `demo.spec.ts` on the v2 order (`make e2e-demo` green in Actions). Gate runs below |
 | Sprint 1 | 3–16 Nov (proposed to 20 Nov, Part C) | M0 and L3 gates (incl. E10, intake channels); full test harness | #48 (Day 5 leftovers); #49 (11d-a) | #50 (11d-b); #51 (11d-c) | 🟡 | **Started early, 30 Oct.** Steps 11d, 11e, 12 done; step 13 in progress; re-demo days R1–R5 (5–9 Nov, incl. the weekend) run inside this sprint |
 | Sprint 2 | 17–30 Nov | L4 gate; channels row C5 | | | ⬜ | |
 | Closing | 1 Dec – ~16 Dec | L5 to gate quality (thin L5 runs from Day 5); production readiness | | | ⬜ | |
@@ -243,10 +243,10 @@ Every catalogue scenario on every layer that can see it ([test plan](testing/flo
 | Layer | What runs | Command | Result |
 | --- | --- | --- | --- |
 | AGENT-DET | `tests/flow_v2/test_catalogue.py`: S1–S17, CC1–CC3 through the HTTP app with their scripts (`flow-v2-<id>.json`); path rule, `expect`, invariants | `make test-agent` (in `ci.yml`) | ✅ 20/20 on #101 |
-| INT | `e2e/tests/flow-v2/catalogue.spec.ts` (S1–S17, CC1–CC3, same scripts and steps as AGENT-DET) and `s19`–`s24` specs, desktop and mobile | `make e2e-int ARGS='--grep @flow-v2'` | ✅ Actions (#101, runs 43579711101 and 43620009941 after the eval fixes): full `@scripted` 150 passed, 2 skipped, including the 52 `@flow-v2` (26 × desktop Chrome and mobile WebKit). Swaroop's Mac run to record (FV19) |
+| INT | `e2e/tests/flow-v2/catalogue.spec.ts` (S1–S17, CC1–CC3, same scripts and steps as AGENT-DET) and `s18`–`s24` specs, desktop and mobile | `make e2e-int ARGS='--grep @flow-v2'` | ✅ Actions: full `@scripted` 150 passed, 2 skipped on #101 (runs 43579711101, 43620009941); with the S18 spec **152 passed, 2 skipped** (run 43652080245, F5 demo PR), including the 54 `@flow-v2` (27 × desktop Chrome and mobile WebKit). Swaroop's Mac run to record (FV19) |
 | AGENT-LIVE | `eval_live.py GROUP=flow_v2`: S1–S24, CC1–CC3 (+ S21 E2), ×3 | `make eval-live GROUP=flow_v2` | ✅ 28/28 (14 Nov, before #100); full `make eval-live` (all groups, ×3) **67/67** on 14 Nov (`20261114T222345Z`, gpt-5.4-mini, 19 retractions; S20 at 2/3) after the #101 eval fixes. Second `flow_v2` day to record (FV21) |
 | E2E-LIVE | the same specs, `@live`, real model | `make e2e-live ARGS='--grep @flow-v2'` | ⬜ to record twice (FV20: ≥ 22/24 + CC1–CC3) |
-| DEMO | `make e2e-demo` on Postgres | `make e2e-demo` | ⬜ after the demo script update |
+| DEMO | `e2e/tests/demo.spec.ts` on the v2 order (beats 0–14 of `docs/demo-script.md`; beat 1 is the catalogue's `demo` path) | `make e2e-demo`, `make e2e-demo-stack` | ✅ Actions: `demo` (run 43652078184) and `demo_stack` restart on the Docker stack (run 43652082267). Rehearsal from `/dev` with the live model: Swaroop |
 
 Coverage (from 11d): `app/domain` **93%** (target floor 95%) · `app/agent` **89%** (floor 85%, enforced) · `app` **92%** (floor 85%, enforced).
 

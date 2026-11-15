@@ -20,6 +20,14 @@ def _load_catalogue() -> list[dict[str, Any]]:
     return scenarios
 
 
+def _load_demo_paths() -> list[dict[str, Any]]:
+    """The demo script's intake (`demo` in the catalogue file; docs/demo-script.md beat 1)."""
+    data = json.loads(SCENARIOS.read_text(encoding="utf-8"))
+    demo = data.get("demo", [])
+    assert isinstance(demo, list)
+    return demo
+
+
 def _agent_turns_after_cr_registered() -> list[dict[str, Any]]:
     return [
         {
@@ -268,6 +276,10 @@ def write_intake_scripts(out_dir: Path) -> int:
         name = f"flow-v2-{sid.lower()}"
         path = out_dir / f"{name}.json"
         path.write_text(json.dumps(compile_scenario(scenario), indent=2) + "\n", encoding="utf-8")
+        written += 1
+    for demo in _load_demo_paths():
+        path = out_dir / f"flow-v2-{demo['id']}.json"
+        path.write_text(json.dumps(compile_scenario(demo), indent=2) + "\n", encoding="utf-8")
         written += 1
     return written
 

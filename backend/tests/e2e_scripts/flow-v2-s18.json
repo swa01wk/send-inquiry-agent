@@ -1,0 +1,19 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "get_case_status",
+        "args": {},
+        "id": "fv2s18-1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "The leasing team needs a new Brand Profile. Their note: Logo page missing. Upload it on the card below, then press Resubmit."
+  },
+  {
+    "content": "Thanks, your documents are back with the leasing team for first review."
+  }
+]

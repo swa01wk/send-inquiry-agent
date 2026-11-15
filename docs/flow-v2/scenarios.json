@@ -570,11 +570,12 @@
           "ref1"
         ],
         [
-          "ptc_create"
+          "ptc_create",
+          "az1"
         ]
       ],
       "not_path": [
-        "az1"
+        "reg_link1"
       ],
       "decisions": [
         "M19",
@@ -666,7 +667,8 @@
           "start",
           "raise_tp",
           "chk_tp",
-          "exist"
+          "exist",
+          "emv"
         ]
       ],
       "not_path": [
@@ -697,6 +699,12 @@
         },
         {
           "confirm_card": "unit_and_category"
+        },
+        {
+          "say": "Sara Ali, Bean Street Trading Co., King Fahd Road Al Olaya Riyadh, brand Bean Street / بين ستريت, sara@beanstreet.example, 0501234567"
+        },
+        {
+          "confirm_card": "basic_info"
         },
         {
           "say": "I'll come back later"
@@ -1267,7 +1275,8 @@
           "chk_tp",
           "exist",
           "emv",
-          "succ1"
+          "succ1",
+          "complete1"
         ]
       ],
       "not_path": [],
@@ -1329,6 +1338,9 @@
             "company_profile": "company_profile.pdf",
             "brand_profile": "brand_profile.pdf"
           }
+        },
+        {
+          "submit": true
         }
       ],
       "expect": {
@@ -2495,6 +2507,93 @@
         "unit_and_category": "A store — they sell specialty coffee and pastries.",
         "basic_info": "The brand is Bean Street. The caller is Sara Ali, sara@beanstreet.example, mobile 0501234567.",
         "property_details": "Riyadh Mall A, 40 to 80 square metres, budget 150,000 to 250,000 riyals a year."
+      }
+    }
+  ],
+  "demo": [
+    {
+      "id": "demo",
+      "title": "Demo: public path, Skip → Office → two malls",
+      "note": "docs/demo-script.md beat 1 and e2e/tests/demo.spec.ts; script tests/e2e_scripts/flow-v2-demo.json. Not a catalogue scenario: the catalogue runners skip it, AGENT-DET runs it once.",
+      "chart_paths": [
+        [
+          "start",
+          "raise_tp",
+          "chk_tp",
+          "exist",
+          "emv",
+          "succ1",
+          "complete1",
+          "vla"
+        ]
+      ],
+      "not_path": [],
+      "contexts": [
+        "applicant"
+      ],
+      "seed": null,
+      "steps": [
+        {
+          "cr_skip": true
+        },
+        {
+          "cr_skip_confirm": true
+        },
+        {
+          "say": "an office"
+        },
+        {
+          "say": "we sell specialty coffee and pastries"
+        },
+        {
+          "confirm_card": "unit_and_category"
+        },
+        {
+          "say": "Sara Ali, Bean Street Trading Co., King Fahd Road Al Olaya Riyadh, brand Bean Street / بين ستريت, sara@beanstreet.example, 0501234567"
+        },
+        {
+          "confirm_card": "basic_info"
+        },
+        {
+          "verify_email": true
+        },
+        {
+          "enter_code": "1234"
+        },
+        {
+          "say": "Riyadh Mall A and Jeddah Mall A, around 40 sqm"
+        },
+        {
+          "confirm_card": "property_details"
+        },
+        {
+          "accept_terms": true
+        },
+        {
+          "upload": {
+            "company_profile": "company_profile.pdf",
+            "brand_profile": "brand_profile.pdf"
+          }
+        },
+        {
+          "submit": true
+        }
+      ],
+      "expect": {
+        "draft": {
+          "unit_type": "office",
+          "malls": [
+            "riyadh-mall-a",
+            "jeddah-mall-a"
+          ]
+        },
+        "first_level_region": "central"
+      },
+      "layers": {
+        "agent_det": true,
+        "int": true,
+        "e2e_live": false,
+        "eval": false
       }
     }
   ]

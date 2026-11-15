@@ -51,6 +51,8 @@ _CATALOGUE = json.loads(
 )
 _IDS = [f"S{n}" for n in range(1, 18)] + ["CC1", "CC2", "CC3"]
 _ENTRIES = {e["id"]: e for e in _CATALOGUE["scenarios"] if e["id"] in _IDS}
+# The demo script's intake (docs/demo-script.md beat 1; `demo` in the catalogue file).
+_DEMO = {e["id"]: e for e in _CATALOGUE.get("demo", [])}
 
 
 def script_name(scenario_id: str) -> str:
@@ -89,10 +91,14 @@ def _transcript(turns: list[Any]) -> str:
     return "\n".join(lines)
 
 
-@pytest.mark.parametrize("scenario_id", _IDS)
+@pytest.mark.parametrize("scenario_id", [*_IDS, *[f"demo:{d}" for d in _DEMO]])
 async def test_catalogue_scenario(det: tuple[AsyncClient, Any], scenario_id: str) -> None:
     client, app = det
-    entry = _ENTRIES[scenario_id]
+    if scenario_id.startswith("demo:"):
+        scenario_id = scenario_id.removeprefix("demo:")
+        entry = _DEMO[scenario_id]
+    else:
+        entry = _ENTRIES[scenario_id]
     scenario = eval_live.LiveScenario(
         name=f"{scenario_id} {entry['title']}",
         user_turns=[],

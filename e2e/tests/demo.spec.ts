@@ -10,30 +10,32 @@ import {
   type Page,
 } from '@playwright/test'
 import { InquiryPage } from '../pages/inquiry'
-import { fetchDevAudit, readDoneEventCount } from '../support/events'
-import { fieldSource } from '../support/draft'
+import { fetchDevAudit } from '../support/events'
+import { fieldDisplay } from '../support/draft'
 import { beat, caption, demoTestTimeoutMs } from '../support/demoPace'
-import { fetchDevOutbox, smsOtpCode, type OutboxRow } from '../support/outbox'
+import { fetchDevOutbox, type OutboxRow } from '../support/outbox'
 import {
   assertDevPersonasOpenInOneClick,
   openCaseAs,
   resetDemoFromDevPage,
   raiseNewBrandFromOpportunities,
 } from '../support/stories'
+import { expectFlowPath } from '../support/flowV2'
+import { demoPath, scenario } from '../support/scenarios'
+import { openEntryChat, runStep } from '../support/steps'
 import { reviewerFor } from '../support/submit'
-import { afterTurnChecks } from '../support/turnChecks'
 
 /**
- * Day R5 (demo feedback §3.6, D10): the 10 Nov re-demo, beat by beat, with three browser
- * contexts: the applicant (`page`), the Lease Admin and the RLM.
+ * Flow v2 day F5: docs/demo-script.md, beat by beat, with browser contexts for the applicant
+ * (`page`), the Leasing Admin, the Regional Sales Manager and the applicant's case chat.
+ * Beat 1 is the catalogue's `demo` path (docs/flow-v2/scenarios.json, script `flow-v2-demo`);
+ * beats 12 and 13 run the catalogue's S3 and CC1 with their own scripts.
  *
  * Two tests:
- * - "runs the 10 Nov walkthrough": the scripted agent on the Playwright stack (`make e2e-demo`).
+ * - "runs the walkthrough": the scripted agent on the Playwright stack (`make e2e-demo`).
  *   The restart beat is skipped there, since Playwright owns that backend.
  * - "survives a backend restart": only against the Docker demo stack on Postgres
  *   (`make demo`, then `make e2e-demo-stack`). It uses the seeded Case B, so it needs no model.
- *
- * Step 11 continues from Leasing Opportunities into the signed-in new-brand flow (R4, F3).
  */
 
 const API = 'http://127.0.0.1:8000'
@@ -41,9 +43,6 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
 const DEMO_STACK = process.env.E2E_DEMO_STACK === '1'
 
 const APPLICANT_EMAIL = 'sara@beanstreet.example'
-const APPLICANT_MOBILE = '+966501234567'
-const BRAND_BUNDLE =
-  'Specialty coffee kiosk at Riyadh Mall A. Sara Ali, sara@beanstreet.example, 0501234567'
 const CASE_B_APPLICANT = 'khalid@desertbloom.example'
 
 test.use({ video: 'on', trace: 'on' })
@@ -122,22 +121,6 @@ function relative(link: string): string {
   return `${url.pathname}${url.search}`
 }
 
-async function answerCrNo(inquiry: InquiryPage): Promise<void> {
-  const doneBefore = await readDoneEventCount(inquiry.page)
-  await inquiry
-    .cards('cr_question')
-    .getByRole('button', { name: /no, we don't/i })
-    .click()
-  await inquiry.waitForTurnDone(doneBefore)
-  await afterTurnChecks(inquiry)
-}
-
-async function verifyContact(inquiry: InquiryPage, request: APIRequestContext): Promise<void> {
-  await expect(inquiry.cards('verification')).toBeVisible({ timeout: 60_000 })
-  await inquiry.verifyEmailFromInbox(APPLICANT_EMAIL)
-  await inquiry.enterCode(smsOtpCode(await fetchDevOutbox(request, APPLICANT_MOBILE)))
-}
-
 async function waitForHealth(request: APIRequestContext, timeoutMs = 180_000): Promise<void> {
   await expect
     .poll(
@@ -161,8 +144,8 @@ async function beatStep(title: string, body: () => Promise<void>): Promise<void>
   console.log(`[demo]   done in ${Math.round((Date.now() - started) / 1000)} s`)
 }
 
-test.describe('Demo script — 10 Nov @demo', () => {
-  test('runs the 10 Nov walkthrough', async ({ page, browser, request }, testInfo) => {
+test.describe('Demo script — flow v2 @demo', () => {
+  test('runs the walkthrough', async ({ page, browser, request }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop-chrome', 'Demo is desktop-only')
     test.skip(DEMO_STACK, 'The Docker demo stack runs the live model; this test is scripted')
     test.setTimeout(demoTestTimeoutMs())
@@ -194,47 +177,25 @@ test.describe('Demo script — 10 Nov @demo', () => {
         }
       })
 
-      const inquiry = new InquiryPage(page)
       await beatStep(
-        '1. New chat, turn by turn: CR? No → upload the profiles → submit (F1, F5, F6)',
+        "1. Public page in the app's order: CR? Skip → Office → two malls → submit (flow v2)",
         async () => {
-          await caption(page, '1. Turn by turn: CR? No → "I\'ll upload the profiles" → submit')
-          await inquiry.open('rd-type-or-upload')
-          await expect(inquiry.cards('cr_question')).toBeVisible({ timeout: 60_000 })
-          await beat(page)
-          await answerCrNo(inquiry)
-          await beat(page)
-          await inquiry.say("I'll upload the profiles")
-          await afterTurnChecks(inquiry)
-          await beat(page)
-          await inquiry.say(BRAND_BUNDLE)
-          await afterTurnChecks(inquiry)
-          await beat(page)
-          await inquiry.confirmCard()
-          await verifyContact(inquiry, request)
-          await beat(page)
-
-          await expect(inquiry.cards('document_upload')).toBeVisible({ timeout: 90_000 })
-          await inquiry.upload('Company Profile', 'company_profile_match.pdf')
-          const confirmCompany = page.getByTestId(/confirm-fields-/).last()
-          await expect(confirmCompany).toContainText('Bean Street Trading Co.')
-          await expect(confirmCompany).toContainText(
-            /from: Company Profile, company_profile_match\.pdf/i,
-          )
-          await beat(page)
-          await inquiry.confirmCard()
-          await inquiry.upload('Brand Profile', 'brand_profile_match.pdf')
-          await beat(page)
-          await inquiry.confirmCard()
-
-          const draft = await inquiry.draft()
-          expect(fieldSource(draft, 'company_name')).toBe('derived')
-          expect(fieldSource(draft, 'brand_name_en')).toBe('derived')
-          await expect(inquiry.cards('review')).toBeVisible({ timeout: 90_000 })
-          await beat(page)
-          await inquiry.acceptAndSubmit()
+          await caption(page, '1. Public page: Skip the CR → Office → two malls → submit')
+          const entry = demoPath()
+          const ctx = await openEntryChat(page, browser, request, entry, false)
+          for (const step of entry.steps ?? []) {
+            await test.step(JSON.stringify(step).slice(0, 80), () => runStep(ctx, step))
+            await beat(page)
+          }
+          const inquiry = ctx.chat
           reference = await inquiry.successReference()
           expect(reference).toMatch(/GEO-/)
+          await expectFlowPath(request, inquiry.sessionId!, entry.chart_paths)
+          // AGENT-DET checks the stored values; here, what the draft panel shows.
+          const draft = await inquiry.draft()
+          expect(fieldDisplay(draft, 'unit_type')).toMatch(/office/i)
+          expect(fieldDisplay(draft, 'malls')).toMatch(/Riyadh Mall A/)
+          expect(fieldDisplay(draft, 'malls')).toMatch(/Jeddah Mall A/)
           await beat(page)
         },
       )
@@ -243,13 +204,15 @@ test.describe('Demo script — 10 Nov @demo', () => {
       const rlm = await reviewerFor(request, reference, 'final')
 
       await beatStep(
-        '2. Lease Admin: open the case from "Inquiry for approval"; reject a profile, ask for it again (F7, F8)',
+        '2. Leasing Admin: open the case from "Inquiry for approval"; reject a profile, ask for it again (F7, F8, S18)',
         async () => {
           const assigned = await mailFor(request, 'review_assigned', reference)
           const consoleLink = assigned.links.find((l) => l.includes('/review/cases/'))!
           await leaseAdminPage.goto(relative(consoleLink))
-          await caption(leaseAdminPage, '2. Lease Admin: "Inquiry for approval" email → the case')
-          await expect(leaseAdminPage.getByTestId('case-stage')).toHaveText('With the Leasing Admin')
+          await caption(leaseAdminPage, '2. Leasing Admin: "Inquiry for approval" email → the case')
+          await expect(leaseAdminPage.getByTestId('case-stage')).toHaveText(
+            'With the Leasing Admin',
+          )
           await expect(
             leaseAdminPage.getByTestId('doc-expiry-status-company_profile'),
           ).toContainText('Valid until')
@@ -266,10 +229,10 @@ test.describe('Demo script — 10 Nov @demo', () => {
           await leaseAdminPage
             .getByTestId('doc-row-brand_profile')
             .getByLabel('Remarks (needed to reject)')
-            .fill('The logo page is missing')
+            .fill('Logo page missing')
           await leaseAdminPage.getByTestId('doc-reject-brand_profile').click()
           await expect(leaseAdminPage.getByTestId('doc-approval-brand_profile')).toContainText(
-            'Rejected: The logo page is missing',
+            'Rejected: Logo page missing',
           )
           await beat(leaseAdminPage)
           await leaseAdminPage
@@ -284,27 +247,33 @@ test.describe('Demo script — 10 Nov @demo', () => {
       )
 
       const caseChat = new InquiryPage(casePage)
-      await beatStep('3. Applicant: case link → re-upload → resubmit', async () => {
-        const mail = await latestMail(request, 'reupload_request', APPLICANT_EMAIL)
-        await casePage.goto(caseLink(mail, 't2-reupload'))
-        await caption(casePage, '3. Applicant: re-upload from the case link')
-        const uploadCard = caseChat.cards('document_upload')
-        await expect(uploadCard).toBeVisible({ timeout: 60_000 })
-        await expect(uploadCard).toHaveAttribute('data-mode', 'reupload')
-        await expect(uploadCard.getByText('The logo page is missing')).toBeVisible()
-        await beat(casePage)
-        await caseChat.upload('Brand Profile', 'brand_profile.pdf')
-        await caseChat.resubmitDocuments()
-        await expect(caseChat.cards('case_status').getByRole('heading', { level: 3 })).toHaveText(
-          'With the Leasing Admin',
-        )
-        await beat(casePage)
-      })
+      await beatStep(
+        '3. Applicant: case link → "what do you need from me?" → re-upload → resubmit (S18)',
+        async () => {
+          const mail = await latestMail(request, 'reupload_request', APPLICANT_EMAIL)
+          await casePage.goto(caseLink(mail, 'flow-v2-s18'))
+          await caption(casePage, '3. Applicant: re-upload from the case link')
+          await caseChat.waitForChatReady()
+          const uploadCard = caseChat.cards('document_upload')
+          await expect(uploadCard).toBeVisible({ timeout: 60_000 })
+          await expect(uploadCard).toHaveAttribute('data-mode', 'reupload')
+          await expect(uploadCard.getByText('Logo page missing')).toBeVisible()
+          await caseChat.say('what do you need from me?')
+          expect(await caseChat.lastReply()).toMatch(/Brand Profile/)
+          await beat(casePage)
+          await caseChat.upload('Brand Profile', 'brand_profile.pdf')
+          await caseChat.resubmitDocuments()
+          await expect(caseChat.cards('case_status').getByRole('heading', { level: 3 })).toHaveText(
+            'With the Leasing Admin',
+          )
+          await beat(casePage)
+        },
+      )
 
       await beatStep(
-        '4. Lease Admin: approve each document, then the first level (F8, F16)',
+        '4. Leasing Admin: approve the new file, then Approve Prospective Tenant? = Yes (F8, F16)',
         async () => {
-          await caption(leaseAdminPage, '4. Lease Admin: the new file needs approval again')
+          await caption(leaseAdminPage, '4. Leasing Admin: the new file needs approval again')
           await leaseAdminPage.reload()
           await expect(leaseAdminPage.getByTestId('doc-approval-brand_profile')).toHaveText(
             'Waiting for a decision',
@@ -327,18 +296,54 @@ test.describe('Demo script — 10 Nov @demo', () => {
         },
       )
 
-      await beatStep('4b. RSM: assign the unit, then "Approve Lead?" = Yes (flow v2)', async () => {
-        await openCaseAs(rlmPage, rlm, reference)
-        await caption(rlmPage, '4b. Regional Sales Manager: assign the unit, then Approve Lead?')
-        await expect(rlmPage.getByTestId('case-stage')).toHaveText('Tenant Qualified')
-        await expect(rlmPage.getByTestId('lead-approval-blockers')).toContainText(
-          'Assign the unit first',
-        )
-        await rlmPage.getByTestId('assign-unit-ref').fill('G-014')
-        await rlmPage.getByTestId('assign-unit-area').fill('95')
-        await rlmPage.getByTestId('assign-unit-submit').click()
-        await expect(rlmPage.getByTestId('assigned-unit')).toContainText('G-014')
-        await beat(rlmPage)
+      await beatStep(
+        '5. Regional Sales Manager: assign the unit, ask for Forecasted Sales Data (S21)',
+        async () => {
+          await openCaseAs(rlmPage, rlm, reference)
+          await caption(rlmPage, '5. Regional Sales Manager: unit, then Forecasted Sales Data')
+          await expect(rlmPage.getByTestId('case-stage')).toHaveText('Tenant Qualified')
+          await expect(rlmPage.getByTestId('lead-approval-blockers')).toContainText(
+            'Assign the unit first',
+          )
+          await rlmPage.getByTestId('assign-unit-ref').fill('G-014')
+          await rlmPage.getByTestId('assign-unit-area').fill('95')
+          await rlmPage.getByTestId('assign-unit-submit').click()
+          await expect(rlmPage.getByTestId('assigned-unit')).toContainText('G-014')
+          await beat(rlmPage)
+          const requests = rlmPage.getByTestId('action-requests')
+          await requests
+            .getByLabel('Note for the applicant (optional)')
+            .fill('Monthly, first year.')
+          await requests.getByRole('button', { name: 'Request Forecasted Sales Data' }).click()
+          await expect(rlmPage.getByTestId('lead-approval-blockers')).toContainText(
+            'Forecasted Sales Data not received yet',
+          )
+          await beat(rlmPage)
+        },
+      )
+
+      await beatStep(
+        '6. Applicant: sends the Forecasted Sales Data from the case chat',
+        async () => {
+          const mail = await latestMail(request, 'sales_data_request', APPLICANT_EMAIL)
+          await casePage.goto(caseLink(mail, 'flow-v2-s21'))
+          await caption(casePage, '6. Applicant: Forecasted Sales Data')
+          await caseChat.waitForChatReady()
+          await caseChat.say('here it is')
+          await expect(casePage.getByTestId('sales-data-upload-card')).toBeVisible({
+            timeout: 60_000,
+          })
+          await beat(casePage)
+          await caseChat.uploadForecastedSalesData('company_profile.pdf')
+          await caseChat.submitForecastedSalesData()
+          await beat(casePage)
+        },
+      )
+
+      await beatStep('7. Regional Sales Manager: "Approve Lead?" = Yes (flow v2)', async () => {
+        await caption(rlmPage, '7. Regional Sales Manager: Approve Lead? = Yes')
+        await rlmPage.reload()
+        await expect(rlmPage.getByTestId('lead-approval-blockers')).toHaveCount(0)
         await rlmPage.getByTestId('approve-lead-yes').click()
         await expect(rlmPage.getByTestId('case-stage')).toHaveText('Lead Approved')
         await expect(rlmPage.getByTestId('approve-lead-final')).toBeDisabled()
@@ -346,11 +351,11 @@ test.describe('Demo script — 10 Nov @demo', () => {
       })
 
       await beatStep(
-        '5. Applicant: "Yes, I\'m the authorised signatory" → billing contact (F19)',
+        '8. Applicant: "Yes, I\'m the authorised signatory" → billing contact (S24, F19)',
         async () => {
           const mail = await latestMail(request, 'contacts_request', APPLICANT_EMAIL)
-          await casePage.goto(caseLink(mail, 'rd-contact-approval'))
-          await caption(casePage, '5. Applicant: signatory question, then the billing contact')
+          await casePage.goto(caseLink(mail, 'flow-v2-s24'))
+          await caption(casePage, '8. Applicant: signatory question, then the billing contact')
           await caseChat.waitForChatReady()
           await expect(caseChat.cards('signatory_question')).toBeVisible({ timeout: 60_000 })
           await beat(casePage)
@@ -368,7 +373,7 @@ test.describe('Demo script — 10 Nov @demo', () => {
         },
       )
 
-      await beatStep('7. Restart the backend (Docker demo stack only)', async () => {
+      await beatStep('9. Restart the backend (Docker demo stack only)', async () => {
         testInfo.annotations.push({
           type: 'skipped step',
           description:
@@ -378,19 +383,23 @@ test.describe('Demo script — 10 Nov @demo', () => {
         await expect(rlmPage.getByTestId('case-stage')).toHaveText('Lead Approved')
       })
 
-      await beatStep('8. RSM: the final Approve Lead → Yardi', async () => {
+      await beatStep('10. Regional Sales Manager: the final Approve Lead → Yardi', async () => {
         await openCaseAs(rlmPage, rlm, reference)
-        await caption(rlmPage, '8. Regional Sales Manager: Approve Lead → Yardi')
+        await caption(rlmPage, '10. Regional Sales Manager: Approve Lead → Yardi')
         await expect(rlmPage.getByTestId('approval-blockers')).toHaveCount(0)
         await beat(rlmPage)
         await rlmPage.getByTestId('approve-lead-final').click()
         await expect(rlmPage.getByTestId('case-stage')).toHaveText('Approved and sent to Yardi')
         await beat(rlmPage)
         await latestMail(request, 'inquiry_accepted', APPLICANT_EMAIL)
+        await expectFlowPath(request, reference, [
+          ['qualified', 'prod2', 'rsm', 'fsd_q', 'fsd_notify', 'fsd_provide', 'approve_lead'],
+          ['approve_lead', 'req_contacts', 'contacts_notify', 'contacts_provide', 'approve_lead2'],
+        ])
       })
 
-      await beatStep('9. Applicant: the tracking page shows the outcome', async () => {
-        await caption(page, '9. Applicant: tracking page')
+      await beatStep('11. Applicant: the tracking page shows the outcome', async () => {
+        await caption(page, '11. Applicant: tracking page')
         const submitted = (await fetchDevOutbox(request, APPLICANT_EMAIL)).filter(
           (m) => m.template === 'submission_email',
         )
@@ -407,72 +416,18 @@ test.describe('Demo script — 10 Nov @demo', () => {
       })
 
       await beatStep(
-        '10. Second chat: typed company, mismatching profile → warning → flag in the brief (F6)',
+        '12. Registered CR → "already registered" → sign in → Leasing Opportunities → new brand (S3, F2, F3)',
         async () => {
-          await caption(page, '10. Typed company, then a profile that says otherwise')
-          const typedContext = await newContext(browser, page)
-          const typedPage = await typedContext.newPage()
-          const typed = new InquiryPage(typedPage)
-          try {
-            await typed.open('rd-type-or-upload-typed')
-            await expect(typed.cards('cr_question')).toBeVisible({ timeout: 60_000 })
-            await answerCrNo(typed)
-            await typed.say("I'll type them")
-            await typed.say('My Coffee Shop LLC, Olaya Street, Riyadh')
-            await afterTurnChecks(typed)
-            await typed.say(BRAND_BUNDLE)
-            await afterTurnChecks(typed)
-            await typed.confirmCard()
-            await verifyContact(typed, request)
-            await expect(typed.cards('document_upload')).toBeVisible({ timeout: 90_000 })
-            await typed.upload('Company Profile', 'company_profile_mismatch.pdf')
-            expect((await typed.lastReply()).toLowerCase()).toMatch(
-              /company name|different|profile/,
-            )
-            await beat(typedPage)
-            await typed.say('Keep my company name')
-            await typed.upload('Brand Profile', 'brand_profile_match.pdf')
-            // The Brand Profile agrees with what was typed, so there may be nothing to confirm:
-            // the upload waits for its turn, so a confirm card would already be showing.
-            const looksRight = typedPage.getByRole('button', { name: 'Looks right' }).last()
-            if (await looksRight.isVisible()) await typed.confirmCard()
-            await expect(typed.cards('review')).toBeVisible({ timeout: 90_000 })
-            await typed.acceptAndSubmit()
-            const typedReference = await typed.successReference()
-
-            await caption(leaseAdminPage, '10. Lease Admin: the profile check in the case brief')
-            await openCaseAs(leaseAdminPage, leaseAdmin, typedReference)
-            await expect(leaseAdminPage.getByTestId('document-check-company_name')).toBeVisible({
-              timeout: 30_000,
-            })
-            await beat(leaseAdminPage)
-          } catch (error) {
-            console.log('[demo] step 10 replies', JSON.stringify(await typed.allReplies(), null, 1))
-            throw error
-          } finally {
-            await typedContext.close()
-          }
-        },
-      )
-
-      await beatStep(
-        '11. "Yes, I have a CR" → sign in → Leasing Opportunities → new brand (F2, F3)',
-        async () => {
-          await caption(page, '11. CR? Yes → sign in → Leasing Opportunities')
+          await caption(page, '12. A registered CR → sign in → Leasing Opportunities')
           const crContext = await newContext(browser, page)
           const crPage = await crContext.newPage()
-          const cr = new InquiryPage(crPage)
           try {
-            await cr.open('rd-cr-question')
-            await expect(cr.cards('cr_question')).toBeVisible({ timeout: 60_000 })
-            const doneBefore = await readDoneEventCount(crPage)
-            await cr
-              .cards('cr_question')
-              .getByRole('button', { name: /yes, we have a cr/i })
-              .click()
-            await cr.waitForTurnDone(doneBefore)
-            const signIn = cr.cards('sign_in_prompt')
+            const entry = scenario('S3')
+            const ctx = await openEntryChat(crPage, browser, request, entry, false)
+            for (const step of entry.steps ?? []) await runStep(ctx, step)
+            const signIn = ctx.chat.cards('sign_in_prompt').last()
             await expect(signIn).toBeVisible({ timeout: 60_000 })
+            await expect(ctx.chat.cards('verification')).toHaveCount(0)
             await beat(crPage)
             const link = signIn.getByRole('link', { name: /sign in to tenant central/i })
             await expect(link).toHaveAttribute('href', /\/tenant\/?$/)
@@ -487,10 +442,10 @@ test.describe('Demo script — 10 Nov @demo', () => {
 
             // R4 (F3): the company from Yardi, the new brand from its Brand Profile, both
             // profiles, and the Company Profile checked against the Cenomi record.
-            await caption(crPage, '11. Leasing Opportunities → a new brand')
+            await caption(crPage, '12. Leasing Opportunities → a new brand')
             const { reference: newBrand } = await raiseNewBrandFromOpportunities(crPage, beat)
             await openCaseAs(leaseAdminPage, leaseAdmin, newBrand)
-            await caption(leaseAdminPage, '11. Lease Admin: Company Profile vs the Cenomi record')
+            await caption(leaseAdminPage, '12. Leasing Admin: Company Profile vs the Cenomi record')
             await expect(leaseAdminPage.getByTestId('document-check-company_name')).toBeVisible({
               timeout: 30_000,
             })
@@ -502,7 +457,28 @@ test.describe('Demo script — 10 Nov @demo', () => {
       )
 
       await beatStep(
-        '12. Seeded Case A: expired and expiring-soon profiles, the mismatch flag (F8, F6)',
+        '13. Call centre: existing CR and contact → Inform → Email sign-in link (CC1)',
+        async () => {
+          const ccContext = await newContext(browser, page)
+          const ccPage = await ccContext.newPage()
+          try {
+            const entry = scenario('CC1')
+            const ctx = await openEntryChat(ccPage, browser, request, entry, false)
+            await caption(ccPage, '13. Call centre: the caller already has a login')
+            for (const step of entry.steps ?? []) {
+              await runStep(ctx, step)
+              await beat(ccPage)
+            }
+            await latestMail(request, 'sign_in_link', 'layla.hassan@oasiscoffee.example')
+            await expectFlowPath(request, ctx.chat.sessionId!, entry.chart_paths, entry.not_path)
+          } finally {
+            await ccContext.close()
+          }
+        },
+      )
+
+      await beatStep(
+        '14. Seeded Case A: expired and expiring-soon profiles, the mismatch flag (F8, F6)',
         async () => {
           const caseA = seeded.find((c) => c.key === 'A')
           if (!caseA) {
@@ -513,7 +489,7 @@ test.describe('Demo script — 10 Nov @demo', () => {
             })
             return
           }
-          await caption(leaseAdminPage, '12. Case A (seeded): expiry chips and a profile check')
+          await caption(leaseAdminPage, '14. Case A (seeded): expiry chips and a profile check')
           await openCaseAs(
             leaseAdminPage,
             { id: caseA!.first_reviewer!, name: '' },
@@ -573,8 +549,8 @@ test.describe('Demo script — 10 Nov @demo', () => {
         await beat(page)
       })
 
-      await beatStep('7. Restart the backend and reload: nothing is lost', async () => {
-        await caption(page, '7. docker compose restart backend')
+      await beatStep('9. Restart the backend and reload: nothing is lost', async () => {
+        await caption(page, '9. docker compose restart backend')
         execFileSync(
           'docker',
           [
@@ -596,10 +572,10 @@ test.describe('Demo script — 10 Nov @demo', () => {
         await beat(page)
       })
 
-      await beatStep('8. RSM: the final Approve Lead → Yardi; the applicant is told', async () => {
+      await beatStep('10. RSM: the final Approve Lead → Yardi; the applicant is told', async () => {
         const rlmPage = await rlmContext.newPage()
         await openCaseAs(rlmPage, { id: caseB!.final_reviewer!, name: '' }, caseB!.reference)
-        await caption(rlmPage, '8. Regional Sales Manager: Approve Lead → Yardi')
+        await caption(rlmPage, '10. Regional Sales Manager: Approve Lead → Yardi')
         await expect(rlmPage.getByTestId('approval-blockers')).toHaveCount(0)
         await rlmPage.getByTestId('approve-lead-final').click()
         await expect(rlmPage.getByTestId('case-stage')).toHaveText('Approved and sent to Yardi')
