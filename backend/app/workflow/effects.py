@@ -11,11 +11,11 @@ from __future__ import annotations
 import functools
 import logging
 from collections.abc import Awaitable, Callable
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from app.agent.context import message_context
 from app.domain.fields import document_label
-from app.domain.models import FieldKey, FieldValue, Source
+from app.domain.models import FieldKey
 from app.domain.payload import lead_payload
 from app.gateway import GatewayError
 from app.policy.config import get_policy
@@ -23,11 +23,8 @@ from app.workflow.flow import FlowNode, record_flow_step
 from app.workflow.labels import rejection_label
 from app.workflow.machine import SYSTEM
 from app.workflow.models import (
-    CONTACT_ROLE_LABELS,
     Case,
-    ContactRole,
     ReviewLevel,
-    TenantContact,
     WorkflowEvent,
 )
 from app.workflow.service import apply_event, case_url, console_url
@@ -241,40 +238,6 @@ async def _first_level_email(runtime: AgentRuntime, case: Case, event: WorkflowE
     return case
 
 
-async def _prefill_tenant_contacts(runtime: AgentRuntime, case: Case, event: WorkflowEvent) -> Case:
-    """Existing tenants (intake channels §3.7): the contacts on their Tenant Central record
-    are filled in as `verified`, for the applicant to confirm, edit or add to; a reviewer
-    can remove one (`remove_contact`)."""
-    if case.tenant_id is None or case.tenant_contacts:
-        return case
-    tenant = runtime.services.tenants.get_by_id(case.tenant_id)
-    if tenant is None:
-        return case
-    known = set(CONTACT_ROLE_LABELS)
-
-    def field(value: str | None) -> FieldValue:
-        if not value:
-            return FieldValue()
-        return FieldValue(value=value, source=Source.VERIFIED, confirmed=False)
-
-    # Already on the tenant's record.
-    case.tenant_contacts = [
-        TenantContact(
-            role=cast(ContactRole, person.role),
-            first_name=field(person.first_name),
-            last_name=field(person.last_name),
-            email=field(person.email),
-            mobile=field(person.mobile),
-            contact_id=f"ct_{case.id}_{person.role}",
-            added_by="system",
-        )
-        for person in tenant.contacts
-        if person.role in known
-    ]
-    runtime.services.cases.save(case)
-    return case
-
-
 async def _auto_contacts_request(runtime: AgentRuntime, case: Case, event: WorkflowEvent) -> Case:
     """Requirements §7.1.1 b: "on contact creation", a request for more tenant contacts.
     Flow v2 (§3.7): opened on "Approve Lead?" = Yes; at first approval only with
@@ -373,14 +336,12 @@ EFFECTS: dict[str, list[tuple[str, Effect]]] = {
     "approved_first": [
         ("invite_primary", _invite_primary),
         ("first_level_approved", _first_level_email),
-        ("prefill_tenant_contacts", _prefill_tenant_contacts),
         ("auto_contacts_request", _auto_contacts_request),
         ("review_assigned_final", _final_review_assigned),
     ],
     # Flow v2 (§3.7): "Approve Lead?" = Yes opens the contacts request.
     "lead_approved": [
         ("lead_approved", _lead_approved_email),
-        ("prefill_tenant_contacts", _prefill_tenant_contacts),
         ("auto_contacts_request", _auto_contacts_request),
     ],
     "contacts_requested": [("contacts_request", _request_email("contacts_request", "contacts"))],

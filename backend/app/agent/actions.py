@@ -1460,10 +1460,7 @@ async def _proceed_basic_info(
     """The applicant accepts the basic info as shown: every staff, verified or derived
     value on the card is confirmed in one step (intake channels §3.3)."""
     del payload
-    new_brand = session.channel == "existing_tenant"  # R4: the brand is asked for in chat
-    card = build_basic_info_card(
-        session.draft, runtime.master, started_by=None, new_brand=new_brand
-    )
+    card = build_basic_info_card(session.draft, runtime.master, started_by=None)
     if not card.payload["can_proceed"]:
         missing = ", ".join(card.payload["missing"])
         return ActionResult(
@@ -1471,7 +1468,7 @@ async def _proceed_basic_info(
             events=[_card_event(session, card)],
         )
     previous = session.cards.get(BASIC_INFO_CARD_ID, {}).get("payload", {})
-    draft, keys = confirm_basic_info(session.draft, new_brand=new_brand)
+    draft, keys = confirm_basic_info(session.draft)
     session.draft = draft
     _audit(runtime, session, "field_confirmed", keys=keys, via="basic_info_review")
     origin = call_centre_flow_id(session)
@@ -1497,7 +1494,6 @@ async def _proceed_basic_info(
         runtime.master,
         started_by=previous.get("started_by"),
         proceeded=True,
-        new_brand=new_brand,
     )
     return ActionResult(
         note=HumanMessage(content=f"[ui_event] basic_info_confirmed {' '.join(keys)}".strip()),

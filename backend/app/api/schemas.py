@@ -141,8 +141,7 @@ class InformTenantPayload(BaseModel):
 
 
 class SignInPromptPayload(BaseModel):
-    """Public page, existing CR under `existing_tenant_policy: sign_in` (§3.6), or a Yes to
-    "Do you have a CR?" (demo feedback §3.1)."""
+    """Public page, a CR that already has a Tenant Central account (chart S3): sign in."""
 
     message: str
     sign_in_url: str

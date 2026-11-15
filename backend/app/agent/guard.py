@@ -39,7 +39,6 @@ from app.api.cards import (
     VERIFICATION_CARD_ID,
     build_document_upload_card,
     build_mall_picker_card,
-    build_quick_replies_card,
     build_review_card,
     build_terms_card,
 )
@@ -244,8 +243,8 @@ def _verification_after_proceed_note(
     model moved on to documents and the mobile was never verified."""
     if not user_text.startswith("[ui_event] basic_info_confirmed"):
         return None
-    if state.get("channel") == "existing_tenant" or state.get("assisted"):
-        return None  # a signed-in tenant's contact comes from the Cenomi record
+    if state.get("assisted"):
+        return None
     if VERIFICATION_CARD_ID in cards_shown or contact_verified(draft):
         return None
     if not contact_fields_ready(draft) or "send_verification" in _tools_called(turn_messages):
@@ -488,24 +487,6 @@ def _documents_card_due(state: AgentState, phase: str) -> bool:
     if phase == "documents":
         return True
     return phase in ("collecting", "verifying") and _profiles_coming(state)
-
-
-NEW_BRAND_CHOICES = ("I'll type it", "I'll upload the Brand Profile")
-
-
-def _new_brand_choice_due(
-    state: AgentState, draft: Any, user_text: str, turn_messages: list[BaseMessage]
-) -> bool:
-    """R4: after Proceed, a signed-in tenant is asked for the new brand, typed or filled from
-    the Brand Profile. The prompt asks for these chips; when the model skips them the tenant
-    has no visible way to choose the upload (re-demo flow 3, 10 Nov). "I'll upload the Brand
-    Profile" then brings the documents card (`_documents_card_due`)."""
-    return (
-        state.get("channel") == "existing_tenant"
-        and user_text.startswith("[ui_event] basic_info_confirmed")
-        and not _field_has_value(draft, FieldKey.BRAND_NAME_EN)
-        and "suggest_replies" not in _tools_called(turn_messages)
-    )
 
 
 def _incomplete_bulk_capture_note(state: AgentState, phase: str) -> str | None:
@@ -831,7 +812,7 @@ def _wrong_language_note(state: AgentState, ai_text: str) -> str | None:
     """The user writes in Arabic and the reply has no Arabic at all (F5 evals, "Arabic
     user": after «سارة علي، sara@…، 05…» the agent switched to English). Arabic means most
     of what they typed is Arabic and so is their last message; an Arabic brand name typed in
-    an English chat (rd-signed-in-new-brand) doesn't count. Emails and links are skipped."""
+    an English chat doesn't count. Emails and links are skipped."""
     if not ai_text or _ARABIC_LETTERS_RE.search(ai_text):
         return None
     typed = _typed_texts(state)
@@ -986,12 +967,6 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
         )
         _emit_card(card, writer)
         cards_shown.append("documents")
-
-    if _new_brand_choice_due(state, draft, user_text, turn_messages):
-        _emit_card(
-            build_quick_replies_card([(opt, opt, None, None) for opt in NEW_BRAND_CHOICES]),
-            writer,
-        )
 
     if phase == "review" and "review" not in cards_shown:
         card = build_review_card(draft, runtime.master)

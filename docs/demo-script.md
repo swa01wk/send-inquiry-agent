@@ -23,8 +23,6 @@
 | File | What the mock reads |
 | --- | --- |
 | `company_profile.pdf`, `brand_profile.pdf` | nothing to fill; valid for a year (plain uploads) |
-| `new_brand_profile.pdf` | Oasis Bakehouse, café (beat 12) |
-| `oasis_company_profile_mismatch.pdf` | Oasis Coffee **Trading Establishment** (differs from the Cenomi record) |
 | any file with `expired` or `soon` in its name | a profile expired 30 days ago, or expiring in 7 days |
 | any PDF or spreadsheet | Forecasted Sales Data (beat 6) |
 
@@ -54,7 +52,7 @@
 | 9 | Presenter | *(optional)* restart the backend, reload: nothing lost | — | I6 |
 | 10 | Regional Sales Manager | **Approve Lead** → *Approved and sent to Yardi* | S23 | F8 (levels), I8 |
 | 11 | Applicant | Tracking page shows the outcome | — | — |
-| 12 | Tenant + Leasing Admin | A registered CR → "Customer already registered. Please login" → sign in → Leasing Opportunities → new brand | S3 | F1, F2, F3, I3, I9 |
+| 12 | Tenant | A registered CR → "Customer already registered. Please login" → sign in → Leasing Opportunities | S3 | F1, F2, F3 |
 | 13 | Call centre | Existing CR, existing contact → **Inform** → **Email sign-in link** | CC1 | — |
 | 14 | Leasing Admin | Seeded Case A: expired and expiring soon | — | F8, I18 |
 
@@ -127,14 +125,10 @@ Reload the case → **Approve Lead** → **Approved and sent to Yardi**. `/dev/i
 ### 11. Tracking
 Open the tracking link from Sara's submission email. It reads *Approved — your details are with the leasing team for a proposal*.
 
-### 12. A registered CR, then signed in for a new brand (S3; F1, F2, F3, I3, I9)
+### 12. A registered CR → sign in → Leasing Opportunities (S3, M13; F1, F2, F3)
 Applicant tab → **Restart** (chat header).
-1. On the Company Registration card, type `1010000000` → **Verify**. The chat says **Customer already registered. Please login** with the sign-in card, and asks for nothing else.
-2. **Sign in to Tenant Central** → **Oasis Coffee Company — Layla Hassan**. This lands on **Leasing Opportunities** (F2).
-3. **Raise inquiry** on **OPP-101** (Riyadh Mall A). The greeting says the company details come from **your Cenomi record**; the card shows Oasis Coffee Company, filled from Yardi by CR (F3). Press **Proceed**.
-4. `I'll upload the Brand Profile` → the documents card asks for **both** profiles. Upload `new_brand_profile.pdf` → confirm **Oasis Bakehouse** → give the Arabic name `مخبز الواحة`.
-5. Upload `oasis_company_profile_mismatch.pdf`. The agent says the profile differs from **the Cenomi record**. Reply `Keep the record's name` → **Submit inquiry**.
-6. In the Leasing Admin tab, the new case's brief flags the company name against the record.
+1. On the Company Registration card, type `1010000000` → **Verify**. The chat says **Customer already registered. Please login** with the sign-in card, and asks for nothing else (F3: a registered company isn't asked again for what Cenomi holds).
+2. **Sign in to Tenant Central** → **Oasis Coffee Company — Layla Hassan**. This lands on **Leasing Opportunities** (F2), where the chart ends (connector A). There is no **Raise inquiry**: raising an inquiry from Tenant Central isn't on the client-approved chart.
 
 ### 13. Call centre: the caller already has a login (CC1)
 Call-centre tab (**Sami Al Anazi**) → **New inquiry**.
@@ -160,9 +154,9 @@ On `/dev` → **Demo cases** → Case A **as Leasing Admin**.
 | --- | --- | --- |
 | F1 — no CR lookup without the applicant's say-so | Company Registration card: Skip, or a CR checked once with the sign-in reply | 1, 12 |
 | F2 — registered → sign in → land where the inquiry is raised | Sign-in card → Leasing Opportunities | 12 |
-| F3 — don't ask registered companies for what Cenomi holds | Company from Yardi by CR; new brand with both profiles | 12 |
+| F3 — don't ask registered companies for what Cenomi holds | A registered CR is sent to sign in and asked for nothing else | 12 |
 | F5 — don't open with one all-fields message | The app's sections, one question at a time | 1 |
-| F6 — check documents against the answers | Company Profile vs the Cenomi record; Case A's profile check | 12, 14 |
+| F6 — check documents against the answers | Case A's profile check | 14 |
 | F7 — the reviewer starts from an "inquiry for approval" notification | `review_assigned` email opens the case | 2 |
 | F8 — approve documents before the first level; levels | Per-document approval; first level waits for it; expiry; Approve Lead? then Approve Lead | 2, 4, 7, 10, 14 |
 | F16 — re-uploads need approval again | The new Brand Profile is decided again | 4 |

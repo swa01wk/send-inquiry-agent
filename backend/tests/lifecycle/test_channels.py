@@ -13,8 +13,6 @@ from app.agent.channels import restamp_staff
 from app.agent.graph import build_assisted_graph, build_graph
 from app.agent.model import ScriptedChatModel
 from app.agent.tools import ASSISTED_TOOLS
-from app.domain.draft_ops import write_fields
-from app.domain.master import load_master_data
 from app.domain.models import FieldKey, Source, new_inquiry_draft
 from app.domain.rules import can_submit
 from app.main import create_app
@@ -24,7 +22,6 @@ from app.sessions import SessionStore
 from httpx import ASGITransport, AsyncClient
 from tests.lifecycle.conftest import (
     STORE_CENTRAL,
-    act,
     lifecycle_settings,
     outbox,
     token_from,
@@ -34,7 +31,6 @@ from tests.scenarios.helpers import (
     chat_message,
     ready_to_submit_draft,
     ui_cards,
-    upload_document,
 )
 
 STAFF = "customer-care-1"
@@ -385,23 +381,6 @@ async def test_application_link_e2e_script_on_applicant_session(life) -> None:
     assert applicant.test_scenario == "a2-applicant"
 
 
-async def test_existing_tenant_e2e_script_asks_for_the_new_brand_after_proceed(life) -> None:
-    client, app = life
-    raised = await client.post(
-        "/api/tenant/opportunities/OPP-103/inquiry",
-        json={},
-        headers={**tenant(OASIS), "X-Test-Scenario": "a1-existing-tenant"},
-    )
-    assert raised.status_code == 200, raised.text
-    session_id = raised.json()["session_id"]
-    session = await app.state.session_store.get(session_id)
-    assert session.test_scenario == "a1-existing-tenant"
-    # R4: no review yet — the new brand and both profiles come first
-    # (tests/lifecycle/test_signed_in_new_brand.py walks the whole script).
-    events = await chat_action(client, session_id, "proceed_basic_info")
-    assert not ui_cards(events, "review")
-
-
 async def test_link_needs_the_basic_info(life) -> None:
     client, app = life
     session_id = await new_assisted(client)
@@ -452,24 +431,6 @@ async def test_public_page_sign_in_policy_shows_the_button(tmp_path: Path) -> No
         )
 
 
-async def test_public_page_allow_inquiry_prefills_the_tenant_record(tmp_path: Path) -> None:
-    steps = [tool_call("verify_cr", {"cr_number": "1010000000"}, "v1"), {"content": "Check."}]
-    async with channel_app(tmp_path, steps) as (client, app):
-        # After create_app, which installs the policy file.
-        allow = get_policy().with_changes(existing_tenant_policy="allow_inquiry")
-        with use_policy(allow):
-            session_id = (await client.post("/api/sessions")).json()["session_id"]
-            events = await chat_message(client, session_id, "My CR is 1010000000")
-            assert ui_cards(events, "basic_info_review")
-            session = await app.state.session_store.get(session_id)
-            assert session.draft.cr_status == "tenant"
-            assert session.draft.fields[FieldKey.COMPANY_NAME].source == Source.VERIFIED
-            assert session.draft.email_verified is False  # the public page still verifies
-
-
-# ---- Tenant Central (existing tenant, signed in) ----------------------------------------
-
-
 def tenant(tenant_id: str) -> dict[str, str]:
     return {"X-Tenant-Id": tenant_id}
 
@@ -487,100 +448,12 @@ async def test_portal_needs_a_tenant_and_filters_opportunities(life) -> None:
         await client.get("/api/tenant/opportunities?unit_type=media", headers=tenant(OASIS))
     ).json()
     assert [o["id"] for o in media] == ["OPP-104"]
-
-
-async def test_raise_inquiry_prefills_verifies_and_preselects(life) -> None:
-    client, app = life
+    # Chart S3/M13: sign-in lands here; raising an inquiry from Tenant Central (R4) is gone.
     raised = await client.post(
-        "/api/tenant/opportunities/OPP-103/inquiry", json={}, headers=tenant(OASIS)
+        "/api/tenant/opportunities/OPP-101/inquiry", json={}, headers=tenant(OASIS)
     )
-    assert raised.status_code == 200, raised.text
-    body = raised.json()
-    assert "Welcome back, Layla" in body["messages"][0]["text"]
-    assert body["cards"][0]["card_type"] == "basic_info_review"
-    session = await app.state.session_store.get(body["session_id"])
-    draft = session.draft
-    assert session.channel == "existing_tenant" and session.tenant_id == OASIS
-    assert draft.fields[FieldKey.MALLS].value == ["jeddah-mall-b"]
-    assert draft.fields[FieldKey.UNIT_TYPE].source == Source.USER
-    assert (draft.fields[FieldKey.AREA_MIN].value, draft.fields[FieldKey.AREA_MAX].value) == (
-        150,
-        220,
-    )
-    assert draft.email_verified and draft.mobile_verified  # signed in
-    # R4: a new brand, so both profiles are uploaded afresh; the other documents on file stay.
-    on_file = {d.value for d in draft.documents}
-    assert on_file == {"cr_certificate", "vat_certificate"}
-
-
-async def test_raise_inquiry_asks_for_the_new_brand(life) -> None:
-    """R4 (demo feedback §3.8): every inquiry from Leasing Opportunities is a new brand. No
-    brand is prefilled, even for a one-brand account or with a `brand_id` (ignored)."""
-    client, app = life
-    for who, body in ((OASIS, {}), (AL_NOOR, {}), (AL_NOOR, {"brand_id": "TB-3"})):
-        raised = await client.post(
-            "/api/tenant/opportunities/OPP-101/inquiry", json=body, headers=tenant(who)
-        )
-        assert raised.status_code == 200, raised.text
-        assert "new brand" in raised.json()["messages"][0]["text"]
-        session = await app.state.session_store.get(raised.json()["session_id"])
-        for key in (FieldKey.BRAND_NAME_EN, FieldKey.BRAND_NAME_AR, FieldKey.SALES_CATEGORY):
-            assert session.draft.fields[key].value is None
-
-
-async def _new_brand_ready(client: AsyncClient, app: Any, session_id: str) -> None:
-    """The tenant gives the new brand and uploads both profiles (file names the mock review
-    service has no fields for)."""
-    store = app.state.session_store
-    session = await store.get(session_id)
-    session.draft, _written, errors = write_fields(
-        session.draft,
-        [
-            (FieldKey.BRAND_NAME_EN.value, "Oasis Bakehouse", Source.USER),
-            (FieldKey.BRAND_NAME_AR.value, "مخبز الواحة", Source.USER),
-            (FieldKey.SALES_CATEGORY.value, "fnb_cafe", Source.USER),
-        ],
-        master=load_master_data(),
-    )
-    assert not errors
-    await store.save(session)
-    for doc_type in ("company_profile", "brand_profile"):
-        uploaded = await upload_document(client, session_id, doc_type, f"{doc_type}.pdf", PDF)
-        assert uploaded["status_code"] == 200, uploaded
-
-
-async def test_existing_tenant_submits_and_gets_contacts_prefilled(life) -> None:
-    client, app = life
-    raised = (
-        await client.post(
-            "/api/tenant/opportunities/OPP-101/inquiry", json={}, headers=tenant(OASIS)
-        )
-    ).json()
-    session_id = raised["session_id"]
-    await chat_action(client, session_id, "proceed_basic_info")
-    await _new_brand_ready(client, app, session_id)
-    events = await chat_action(client, session_id, "accept_and_submit", {"terms_accepted": True})
-    success = ui_cards(events, "success")
-    assert success, events
-    reference = success[0]["payload"]["reference"]
-    case = app.state.services.cases.get(reference)
-    assert (case.channel, case.tenant_id, case.created_by) == ("existing_tenant", OASIS, OASIS)
-
-    mine = (await client.get("/api/tenant/inquiries", headers=tenant(OASIS))).json()
-    assert [m["reference"] for m in mine] == [reference]
-    assert "/inquiry/status/" in mine[0]["tracking_url"]
-    assert (await client.get("/api/tenant/inquiries", headers=tenant(AL_NOOR))).json() == []
-
-    queue = (await client.get("/api/review/cases", headers={"X-Reviewer-Id": STORE_CENTRAL})).json()
-    assert next(q for q in queue if q["reference"] == reference)["channel"] == "existing_tenant"
-    assert (await act(client, STORE_CENTRAL, reference, "approve_first")).status_code == 200
-    case = app.state.services.cases.get(reference)
-    roles = {c.role: c for c in case.tenant_contacts}
-    assert set(roles) == {"authorized_signatory", "billing_contact"}
-    assert roles["billing_contact"].email.source == Source.VERIFIED
-    assert roles["billing_contact"].email.confirmed is False
-    # Layla already has a Tenant Central account: no invitation for her.
-    assert outbox(app, "layla.hassan@oasiscoffee.example", "azure_ad_invitation") == []
+    assert raised.status_code in (404, 405)
+    assert (await client.get("/api/tenant/inquiries", headers=tenant(OASIS))).status_code == 404
 
 
 @pytest.mark.parametrize("flag", ["callcentre_console", "tenant_portal"])
@@ -590,16 +463,6 @@ async def test_channel_routes_are_off_without_their_flag(tmp_path: Path, flag: s
     path = "/api/callcentre/staff" if flag == "callcentre_console" else "/api/tenant/tenants"
     async with AsyncClient(transport=ASGITransport(app=application), base_url="http://t") as c:
         assert (await c.get(path)).status_code == 404
-
-
-def test_prefill_needs_no_agent() -> None:
-    from app.domain.tenant_prefill import prefill_from_tenant
-    from app.services.tenants import TenantDirectory
-
-    oasis = TenantDirectory().get_by_id(OASIS)
-    draft, written = prefill_from_tenant(new_inquiry_draft(), oasis, load_master_data())
-    assert draft.fields[FieldKey.MOBILE].value == "+966551110001"
-    assert {"company_name", "brand_name_ar", "sales_category", "email"} <= set(written)
 
 
 async def test_call_centre_inquiry_reads_as_one_chart_path(life) -> None:

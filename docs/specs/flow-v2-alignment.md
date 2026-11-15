@@ -208,7 +208,7 @@ All rows are Must and due by Wed 18 Nov (F5). A row's test must pass in CI, or f
 - Rows removed: `(second_review, contacts_requested | contacts_provided | contact_approved | contact_rejected | contact_removed)` and the per-contact rows; `approved` from `second_review`.
 - `lead_approved` blockers: `unit_not_assigned` (policy `lead_approval.require_unit_assigned: true`), `sales_data_pending` (an open sales-data request).
 - `approved` blockers: `missing_contact:authorized_signatory`, `missing_contact:billing_contact` (policy `second_level_contacts.required`). Contacts aren't verified or approved one by one (`contacts.approval_required: false`; M15, M26).
-- Effects on `lead_approved`: `prefill_tenant_contacts`; `auto_contacts_request` (system `contacts_requested` with every role, the signatory question first); `lead_approved_email` to the applicant. `auto_request_contacts_after_first_approval: false` removes them from `approved_first`.
+- Effects on `lead_approved`: `auto_contacts_request` (system `contacts_requested` with every role, the signatory question first); `lead_approved_email` to the applicant. `auto_request_contacts_after_first_approval: false` removes them from `approved_first`.
 - Effects on `approved`: unchanged (`invite_contacts`, `accepted_email`, `send_lead`). `send_lead` adds `assigned_unit` to the Yardi payload.
 - No reject from `lead_approved`: the chart's final box has no No branch (M26). A reviewer who must stop a lead there uses handoff to operations (out of scope).
 - **Console** (`ReviewCasePage`), final reviewer, `second_review`: **Assign unit** (mall from the inquiry, unit reference, area), **Request Forecasted Sales Data**, **Approve Lead?** with **Yes, approve lead** / **No, reject lead**. In `lead_approved`: contacts read-only with mandatory roles marked, missing ones listed, and **Approve Lead** disabled until both are in.
@@ -281,9 +281,10 @@ The full matrix (layers, live flags, eval checks) is in [`docs/testing/flow-v2-t
 | --- | --- |
 | `rd-cr-question`, `rd-type-or-upload` | Deleted (15 Nov): S1–S5 and S13 cover them; the CR question (`ask_then_sign_in`) was removed from the code |
 | `rd-contact-approval` | Deleted (15 Nov): S23, S24; per-contact approval was removed from the code |
-| `t1-lifecycle-to-yardi`, `a1-approvals`, `l4-reviewer-console`, `demo.spec.ts` | Updated to `lead_approved` and unit assignment; the after-submit stories submit through S2 (`e2e/support/intake.ts`) |
+| `t1-lifecycle-to-yardi`, `l4-reviewer-console`, `demo.spec.ts` | Updated to `lead_approved` and unit assignment; the after-submit stories submit through S2 (`e2e/support/intake.ts`) |
 | `s1-happy-path`, `s2-resume-second-device`, `s3-submit-timeout`, `s14-out-of-order`, `basics`, `edge-cases`, `mistakes-and-changes`, `confused-users`, `language-and-style`, `live`, `rd-live-flows` | Deleted (15 Nov) instead of re-recorded: they drove the pre-v2 public chat. S1–S17 cover the intake; the live eval's `conversation` group keeps small talk, FAQ, off topic, prompt injection, names, international mobile, chat during verification, an unknown mall and Arabic on the v2 order |
 | `a2-call-centre`, `a2-existing-cr` | Updated to the contact check (CC1–CC3) |
+| `rd-signed-in-new-brand`, `a1-existing-tenant`, `a1-approvals`, `16-existing-tenant` | Deleted (15 Nov): raising an inquiry from Tenant Central (R4) isn't on the chart, which ends at Leasing Opportunities after "Customer already registered. Please login" (S3, M13). Removed with it: the `existing_tenant` chat channel, the tenant prefill and documents on file, My inquiries, the brand pick, the contacts prefilled from the tenant record on `lead_approved`, and the policy switches `existing_tenant_policy` and `signed_in_skips_verification`. `tenant-portal` now checks sign-in and a read-only Leasing Opportunities; demo beat 12 ends there |
 
 ## 6. Evaluation
 

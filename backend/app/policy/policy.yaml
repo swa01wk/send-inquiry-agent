@@ -8,10 +8,8 @@
 # Product lines (unit type ids in master data). Requirements §1 and §7.1.1.
 product_lines: [store, media, specialty]
 
-# What happens when a CR already has a Tenant Central account (assumption 3).
-#   sign_in       — point the applicant to Sign In; no inquiry is created.
-#   allow_inquiry — the inquiry continues (requirements §7.1).
-existing_tenant_policy: sign_in
+# A CR that already has a Tenant Central account: the person signs in; no inquiry is created
+# (chart S3, M13, M18). The policy option to continue the inquiry was removed with flow v2.
 
 # The CR in chat:
 #   lookup         — a CR number given in chat is checked in the registry (call centre, D3).
@@ -19,10 +17,6 @@ existing_tenant_policy: sign_in
 #                    inquiry runs the flow v2 intake (flow_v2_intake below), which uses this.
 # The 4 Nov "Do you have a CR?" question (ask_then_sign_in) was removed with flow v2.
 public_cr_check: lookup
-
-# A tenant signed in to Tenant Central (Leasing Opportunities) is already verified by Azure
-# AD: the email link and SMS code are skipped (intake channels §3.5, assumption D4).
-signed_in_skips_verification: true
 
 # Malls one inquiry can cover (assumption 2). Another inquiry can follow for the rest.
 max_malls_per_inquiry: 1

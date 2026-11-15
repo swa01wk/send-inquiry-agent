@@ -1370,20 +1370,6 @@ async def _setup_callcentre_inquiry(
     return str(created.json()["session_id"])
 
 
-async def _setup_tenant_two_brands(
-    client: AsyncClient,
-    _session_id: str,
-    _app: AppState | None = None,
-) -> str:
-    created = await client.post(
-        "/api/tenant/opportunities/OPP-101/inquiry",
-        json={},
-        headers={"X-Tenant-Id": "T-1002"},
-    )
-    created.raise_for_status()
-    return str(created.json()["session_id"])
-
-
 def _assisted_forbidden_phrase(text: str) -> bool:
     lower = text.lower()
     banned = (
@@ -1458,98 +1444,6 @@ def _check_channels_dictated_caller(
             bool(_cards(last_events, "send_link")),
         ),
     ]
-
-
-def _check_channels_existing_tenant_brand_ask(
-    _session: Session,
-    turns: list[TurnResult],
-    _app: AppState | None = None,
-) -> list[tuple[str, bool]]:
-    if len(turns) < 1:
-        return [("first turn present", False)]
-    first = turns[0].assistant
-    lower = first.lower()
-    detail_asks = (
-        "company name",
-        "cr number",
-        "commercial registration",
-        "email address",
-        "phone number",
-        "mobile number",
-        "contact number",
-    )
-    # R4 (demo feedback §3.8): every inquiry from Leasing Opportunities is a new brand.
-    return [
-        ("asks for the brand", "brand" in lower),
-        ("frames it as a new brand", "new" in lower),
-        ("at most one question", first.count("?") <= 1),
-        ("no verification ask", "verification" not in lower and "otp" not in lower),
-        ("no company/contact re-ask", not any(phrase in lower for phrase in detail_asks)),
-    ]
-
-
-def _check_channels_existing_tenant_new_brand(
-    session: Session,
-    turns: list[TurnResult],
-    _app: AppState | None = None,
-) -> list[tuple[str, bool]]:
-    """R4: the new brand is saved as given, nothing is refused, and the tenant hears that a
-    new brand needs both profiles."""
-    checks = _check_channels_existing_tenant_brand_ask(_session=session, turns=turns[:1])
-    draft = session.draft
-    replies = " ".join(t.assistant.lower() for t in turns)
-    checks += [
-        ("brand_name_en is Noor Kids", draft.fields[FieldKey.BRAND_NAME_EN].value == "Noor Kids"),
-        ("brand_name_ar saved", draft.fields[FieldKey.BRAND_NAME_AR].value == "نور للأطفال"),
-        (
-            "company still from the record",
-            draft.fields[FieldKey.COMPANY_NAME].value == "Al Noor Retail Group",
-        ),
-        ("mentions the Brand Profile", "brand profile" in replies),
-        (
-            "never refuses",
-            not any(w in replies for w in ("can't help", "cannot help", "unable to")),
-        ),
-    ]
-    return checks
-
-
-def _check_channels_existing_tenant_brand_set(
-    session: Session,
-    turns: list[TurnResult],
-    _app: AppState | None = None,
-) -> list[tuple[str, bool]]:
-    brand = session.draft.fields[FieldKey.BRAND_NAME_EN].value
-    category = session.draft.fields[FieldKey.SALES_CATEGORY].value
-    checks = _check_channels_existing_tenant_brand_ask(_session=session, turns=turns[:1])
-    checks.append(("brand_name_en is Noor Beauty", brand == "Noor Beauty"))
-    checks.append(("sales_category from TB-3 (beauty)", category == "beauty"))
-    if len(turns) >= 2:
-        second = turns[1].assistant.lower()
-        mall_city_ask = any(
-            phrase in second
-            for phrase in (
-                "which mall",
-                "what mall",
-                "which city",
-                "what city",
-                "where would you",
-                "where do you want",
-            )
-        )
-        sell_ask = any(
-            phrase in second
-            for phrase in (
-                "what do you sell",
-                "what will you sell",
-                "what products",
-                "what kind of store",
-                "tell me about your brand",
-            )
-        )
-        checks.append(("turn 2 no mall or city ask", not mall_city_ask))
-        checks.append(("turn 2 no what-they-sell ask", not sell_ask))
-    return checks
 
 
 def _no_cr_digits_in_replies(turns: list[TurnResult]) -> bool:
@@ -1869,26 +1763,6 @@ SCENARIOS: list[LiveScenario] = [
         auto_otp=False,
         group="channels",
         setup=_setup_callcentre_inquiry,
-    ),
-    LiveScenario(
-        "channels: existing tenant, new brand typed",
-        [
-            "Thanks, the details look right.",
-            "It's a new brand: Noor Kids (نور للأطفال), children's fashion.",
-        ],
-        _check_channels_existing_tenant_new_brand,
-        group="channels",
-        setup=_setup_tenant_two_brands,
-    ),
-    LiveScenario(
-        "channels: existing tenant, two brands",
-        [
-            "Thanks, the details look right.",
-            "It's for Noor Beauty.",
-        ],
-        _check_channels_existing_tenant_brand_set,
-        group="channels",
-        setup=_setup_tenant_two_brands,
     ),
 ]
 

@@ -1,11 +1,9 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as api from '../api/tenant'
-import { draftEmpty } from '../mocks/fixtures'
 import { TenantHomePage } from './TenantHomePage'
-import { TenantInquiriesPage } from './TenantInquiriesPage'
 import { TenantOpportunitiesPage } from './TenantOpportunitiesPage'
 
 const oasis: api.TenantSummary = {
@@ -57,7 +55,6 @@ function renderAt(path: string) {
         <Route path="/" element={<div>Chat home</div>} />
         <Route path="/tenant" element={<TenantHomePage />} />
         <Route path="/tenant/opportunities" element={<TenantOpportunitiesPage />} />
-        <Route path="/tenant/inquiries" element={<TenantInquiriesPage />} />
       </Routes>
     </MemoryRouter>,
   )
@@ -94,65 +91,12 @@ describe('Tenant Central (simulated)', () => {
     await user.selectOptions(screen.getByLabelText('City'), 'jeddah')
     expect(screen.queryByTestId('opportunity-OPP-101')).not.toBeInTheDocument()
     expect(screen.getByTestId('opportunity-OPP-103')).toBeInTheDocument()
-  })
-
-  it('raises an inquiry and opens the chat', async () => {
-    const user = userEvent.setup()
-    window.sessionStorage.setItem('cenomi.tenantId', 'T-1001')
-    const raise = vi.spyOn(api, 'raiseInquiry').mockResolvedValue({
-      session_id: 'tenant-session',
-      messages: [{ id: 'tenant-1', role: 'assistant', text: 'Welcome back, Layla.' }],
-      cards: [],
-      draft: draftEmpty,
-    })
-    renderAt('/tenant/opportunities')
-    const card = await screen.findByTestId('opportunity-OPP-103')
-    await user.click(within(card).getByRole('button', { name: 'Raise inquiry' }))
-    expect(raise).toHaveBeenCalledWith('T-1001', 'OPP-103')
-    expect(await screen.findByText('Chat home')).toBeInTheDocument()
-  })
-
-  it('has no brand picker: the new brand is asked for in the chat (R4)', async () => {
-    const user = userEvent.setup()
-    window.sessionStorage.setItem('cenomi.tenantId', 'T-1002')
-    const raise = vi.spyOn(api, 'raiseInquiry').mockResolvedValue({
-      session_id: 's',
-      messages: [],
-      cards: [],
-      draft: draftEmpty,
-    })
-    renderAt('/tenant/opportunities')
-    const card = await screen.findByTestId('opportunity-OPP-101')
-    expect(screen.queryByLabelText('For brand')).not.toBeInTheDocument()
-    await user.click(within(card).getByRole('button', { name: 'Raise inquiry' }))
-    expect(raise).toHaveBeenCalledWith('T-1002', 'OPP-101')
-  })
-
-  it('lists My inquiries with tracking links', async () => {
-    window.sessionStorage.setItem('cenomi.tenantId', 'T-1001')
-    vi.spyOn(api, 'listMyInquiries').mockResolvedValue([
-      {
-        reference: 'GEO-STR-123456',
-        brand: 'Oasis Coffee',
-        mall: 'Riyadh Mall A',
-        product_line: 'Store',
-        stage_label: 'First review',
-        submitted_at: '2026-11-02T07:00:00.000Z',
-        last_change: '2026-11-02T07:00:00.000Z',
-        tracking_url: 'http://localhost:5173/inquiry/status/GEO-STR-123456?t=x',
-      },
-    ])
-    renderAt('/tenant/inquiries')
-    const table = await screen.findByTestId('my-inquiries')
-    expect(within(table).getByRole('link', { name: 'GEO-STR-123456' })).toHaveAttribute(
-      'href',
-      'http://localhost:5173/inquiry/status/GEO-STR-123456?t=x',
-    )
-    expect(within(table).getByText('First review')).toBeInTheDocument()
+    // Chart S3: Leasing Opportunities is where sign-in lands; no inquiry is raised here.
+    expect(screen.queryByRole('button', { name: 'Raise inquiry' })).not.toBeInTheDocument()
   })
 
   it('asks for sign-in on a signed-in page', () => {
-    renderAt('/tenant/inquiries')
+    renderAt('/tenant/opportunities')
     expect(screen.getByRole('link', { name: 'Sign in to Tenant Central' })).toBeInTheDocument()
   })
 })

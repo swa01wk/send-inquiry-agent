@@ -18,7 +18,6 @@ from app.agent.runtime import AgentRuntime
 from app.domain.models import Phase
 from app.domain.rules import compute_phase
 from app.domain.validation import normalise_digits
-from app.policy.config import get_policy
 from app.sessions import Session
 
 REFERENCE_RE = re.compile(r"\bGEO-(?:STR|MED|SPC|OFF)-\d{6}\b", re.IGNORECASE)
@@ -95,14 +94,13 @@ def _rule_intent(text: str, session: Session) -> Intent | None:
         return Intent.INQUIRY_STATUS
     if _HUMAN_HELP_RE.search(normalised):
         return Intent.HUMAN_HELP
-    policy = get_policy()
     draft = session.draft
-    if policy.existing_tenant_policy == "sign_in":
-        if not draft.reference and not draft.follow_on_of and compute_phase(draft) == Phase.GATE:
-            if _EXISTING_TENANT_LANG_RE.search(normalised):
-                return Intent.EXISTING_TENANT_NEW_SPACE
-            if draft.cr_status == "existing":
-                return Intent.EXISTING_TENANT_NEW_SPACE
+    # A registered company signs in (chart S3, M18).
+    if not draft.reference and not draft.follow_on_of and compute_phase(draft) == Phase.GATE:
+        if _EXISTING_TENANT_LANG_RE.search(normalised):
+            return Intent.EXISTING_TENANT_NEW_SPACE
+        if draft.cr_status == "existing":
+            return Intent.EXISTING_TENANT_NEW_SPACE
     return None
 
 

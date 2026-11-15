@@ -1,6 +1,4 @@
-import { API_BASE, E2E_MODE } from '../config'
-import { e2eScenarioFromUrl } from './client'
-import type { CreateSessionResponse } from '../types/contracts'
+import { API_BASE } from '../config'
 
 /** Simulated Tenant Central (spec §15): every call carries the mock tenant identity. */
 
@@ -22,17 +20,6 @@ export interface Opportunity {
   unit_ref: string
   area_min: number
   area_max: number
-}
-
-export interface MyInquiry {
-  reference: string
-  brand: string | null
-  mall: string | null
-  product_line: string | null
-  stage_label: string
-  submitted_at: string
-  last_change: string
-  tracking_url: string
 }
 
 export class TenantApiError extends Error {
@@ -66,31 +53,4 @@ export async function listTenants(): Promise<TenantSummary[]> {
 
 export async function listOpportunities(tenantId: string): Promise<Opportunity[]> {
   return (await request('/api/tenant/opportunities', tenantId)).json() as Promise<Opportunity[]>
-}
-
-/** Every inquiry raised from Leasing Opportunities is for a new brand (demo feedback §3.8). */
-export async function raiseInquiry(
-  tenantId: string,
-  opportunityId: string,
-): Promise<CreateSessionResponse> {
-  const extraHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (E2E_MODE) {
-    const scenario = e2eScenarioFromUrl()
-    if (scenario) extraHeaders['X-Test-Scenario'] = scenario
-  }
-
-  const res = await request(
-    `/api/tenant/opportunities/${encodeURIComponent(opportunityId)}/inquiry`,
-    tenantId,
-    {
-      method: 'POST',
-      headers: extraHeaders,
-      body: JSON.stringify({}),
-    },
-  )
-  return res.json() as Promise<CreateSessionResponse>
-}
-
-export async function listMyInquiries(tenantId: string): Promise<MyInquiry[]> {
-  return (await request('/api/tenant/inquiries', tenantId)).json() as Promise<MyInquiry[]>
 }

@@ -39,11 +39,9 @@ from app.api.cards import (
     confirm_card_id_for_keys,
 )
 from app.api.channel_cards import (
-    BASIC_INFO_CARD_ID,
     CONTACT_CHECK_CARD_ID,
     SEND_LINK_CARD_ID,
     SIGN_IN_CARD_ID,
-    build_basic_info_card,
     build_company_registration_card,
     build_contact_check_card,
     build_send_link_card,
@@ -429,42 +427,8 @@ def verify_cr(
             changed_keys=["cr_number", *written],
             cards_shown=cards_shown,
         )
-    outcome = apply_cr_result(state["draft"], validated, result, rt.master, tenant=tenant)
+    outcome = apply_cr_result(state["draft"], validated, result, rt.master)
     updated = outcome.draft
-
-    if outcome.kind == "existing_allowed":
-        if tenant is None:
-            return _tool_result(
-                runtime,
-                draft=updated,
-                content=(
-                    "CR number belongs to an existing Tenant Central account. Policy allows "
-                    "the inquiry to continue: collect company name and address as usual."
-                ),
-                changed_keys=outcome.changed,
-                cards_shown=cards_shown,
-            )
-        # Intake channels §3.6: prefilled from the tenant record, reviewed in one card.
-        card = build_basic_info_card(updated, rt.master, started_by="your Tenant Central record")
-        _emit_card(card, runtime)
-        if BASIC_INFO_CARD_ID not in cards_shown:
-            cards_shown.append(BASIC_INFO_CARD_ID)
-        brand_note = (
-            " The tenant has several brands: ask which one this inquiry is for (or a new one)."
-            if len(tenant.brands) > 1
-            else ""
-        )
-        return _tool_result(
-            runtime,
-            draft=updated,
-            content=(
-                f"Existing tenant {tenant.company_name}: details prefilled from their Tenant "
-                "Central record and shown on a review card. Ask them to check it and press "
-                "Proceed (or edit a field); then continue with what's still missing." + brand_note
-            ),
-            changed_keys=outcome.changed,
-            cards_shown=cards_shown,
-        )
 
     if outcome.kind == "existing":
         # Intake channels §3.6 (sign_in): a button to Tenant Central; no inquiry here.

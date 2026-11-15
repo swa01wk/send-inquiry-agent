@@ -13,7 +13,6 @@ from app.domain.master import MasterData
 from app.domain.models import InquiryDraft
 from app.domain.summary import prompt_summary
 from app.policy.config import PolicyConfig, get_policy
-from app.services.tenants import Tenant
 
 _PROMPT_PATH = Path(__file__).resolve().parent / "system_prompt.md"
 _PROMPT_V2_PATH = Path(__file__).resolve().parent / "system_prompt_v2.md"
@@ -112,17 +111,11 @@ def rules_in_force(policy: PolicyConfig, master: MasterData, *, assisted: bool =
             "check card decides what happens next — see Channel: assisted."
         )
     else:
-        if policy.existing_tenant_policy == "sign_in":
-            lines.append(
-                "- Existing tenants (the CR already has a Tenant Central account): explain "
-                "kindly that they can sign in with that account, point them to Sign In, and "
-                "stop collecting."
-            )
-        else:
-            lines.append(
-                "- Existing tenants (the CR already has a Tenant Central account): they may "
-                "continue this inquiry here; carry on collecting as usual."
-            )
+        lines.append(
+            "- Existing tenants (the CR already has a Tenant Central account): explain "
+            "kindly that they can sign in with that account, point them to Sign In, and "
+            "stop collecting."
+        )
     return "\n".join(lines)
 
 
@@ -132,7 +125,6 @@ def build_system_message(
     cards_shown: list[str] | None = None,
     *,
     assisted: bool = False,
-    tenant_brands: list[str] | None = None,
 ) -> SystemMessage:
     rules = rules_in_force(get_policy(), master, assisted=assisted)
     dynamic = prompt_summary(draft, master)
@@ -140,7 +132,6 @@ def build_system_message(
         draft,
         cards_shown,
         assisted=assisted,
-        tenant_brands=tenant_brands,
     )
     content = f"{_static_for_draft(draft)}\n\n{rules}\n\n## Current state\n{dynamic}\n{hint}"
     return SystemMessage(content=content)
@@ -183,45 +174,8 @@ ASSISTED_NOTES = """## Channel: assisted (call centre or Guest Service)
 - `[ui_event] link_blocked existing_contact`: the application link isn't available for an
   existing contact; repeat the sign-in words in one line."""
 
-EXISTING_TENANT_NOTES = """## Channel: existing tenant (signed in to Tenant Central)
-- Greet by first name only if you have not already (the opening greeting is sent by the server
-  and says the company details came from their Cenomi record).
-- Company and contact are on the review card — ask them to press Proceed or Edit there, not
-  to repeat the details in chat. Never ask for the company name or address.
-- This inquiry is for a new brand. Ask what it is, offering once to fill it from the Brand
-  Profile or have them type it; call `suggest_replies` with "I'll type it" and "I'll upload
-  the Brand Profile". Either is fine. Once the brand name is known, don't ask what they sell.
-- If the brand they give matches one listed under This account, ask once whether this inquiry
-  is for that brand or a new one. Never refuse either answer.
-- Say in one line, when the documents come up, that a new brand needs both the Company Profile
-  and the Brand Profile, even if they sent them before. Their other documents on file can be
-  kept or replaced.
-- You may ask for space or budget. Never ask for verification."""
-
-
-def tenant_account_notes(tenant: Tenant) -> str:
-    """Account context for existing-tenant mode (brands the model cannot infer from the draft)."""
-    brand_labels: list[str] = []
-    for brand in tenant.brands:
-        if brand.name_ar:
-            brand_labels.append(f"{brand.name_en} ({brand.name_ar})")
-        else:
-            brand_labels.append(brand.name_en)
-    brands_line = "; ".join(brand_labels)
-    return "\n".join(
-        [
-            "## This account",
-            f"- Company: {tenant.company_name}",
-            f"- Brands already on the account: {brands_line} (this inquiry is for a new brand)",
-            "- The mall and space type come from the unit they chose; don't ask about mall, "
-            "city or space type.",
-        ]
-    )
-
 
 def channel_notes(channel: str | None, assisted: bool) -> str:
     if assisted:
         return ASSISTED_NOTES
-    if channel == "existing_tenant":
-        return EXISTING_TENANT_NOTES
     return ""
