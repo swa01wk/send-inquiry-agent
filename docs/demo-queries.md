@@ -4,6 +4,8 @@ These are the exact messages for [demo-script.md](./demo-script.md). Send **one 
 
 Use with `make demo`: the SMS code is **`1234`**, and the email link is a demo button on the verification card. Files are listed in demo-script.md under "Before the call". The mock reads them by file name.
 
+To test every scenario on the chart one by one (S1–S24, CC1–CC3), use [scenario-queries.md](./scenario-queries.md).
+
 The same lines drive the scripted rehearsal: beat 1 is the `demo` path in [`docs/flow-v2/scenarios.json`](flow-v2/scenarios.json), and the other beats use the catalogue's scenarios (S3, S18, S21, S24, CC1).
 
 ---
