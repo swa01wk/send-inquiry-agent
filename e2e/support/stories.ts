@@ -17,7 +17,6 @@ import {
   approveLeadViaApi,
   completeApplicationLinkFlow,
   reviewerFor,
-  submitScriptedInquiry,
   type ContactOutbox,
 } from './submit'
 
@@ -336,7 +335,10 @@ export async function runL5AttentionFlow(
   beat?: DemoBeat,
 ): Promise<void> {
   await request.post(`${API}/api/dev/reset`)
-  const reference = await submitScriptedInquiry(page, request, 's1-happy-path', beat)
+  // Imported here: ./intake imports ./steps, which imports this module.
+  const { submitInquiry } = await import('./intake')
+  const reference = await submitInquiry(page, request)
+  if (beat) await beat(page)
   const reviewer = await reviewerFor(request, reference)
 
   const emailsForRef = async (template: string) =>

@@ -1,6 +1,6 @@
 import { expect, type APIRequestContext, type Page } from '@playwright/test'
 import { InquiryPage } from '../pages/inquiry'
-import { fetchDevOutbox, latestByTemplate, referenceFromReviewAssigned, smsOtpCode } from './outbox'
+import { fetchDevOutbox, smsOtpCode } from './outbox'
 
 const API = 'http://127.0.0.1:8000'
 
@@ -18,49 +18,6 @@ export const APPLICANT_EMAIL = 'sara@beanstreet.example'
 export const APPLICANT_MOBILE = '+966501234567'
 
 export type ContactOutbox = { email: string; mobile: string }
-
-/** The S1 scripted path (`scenario` must be a script in `backend/tests/e2e_scripts/`, e.g.
- * `s1-happy-path`) to a submitted inquiry, without per-turn checks. Returns the reference.
- * `files` picks the profile fixtures: the mock document review reads the expiry from the
- * file name (`company_expired.pdf`, `brand_soon.pdf`; demo feedback §3.3). */
-export async function submitScriptedInquiry(
-  page: Page,
-  request: APIRequestContext,
-  scenario: string,
-  beat?: (page: Page) => Promise<void>,
-  files: { company?: string; brand?: string } = {},
-): Promise<string> {
-  const inquiry = new InquiryPage(page)
-  await inquiry.open(scenario)
-  await inquiry.say('1010123456')
-  if (beat) await beat(page)
-  await inquiry.confirmCard()
-  if (beat) await beat(page)
-  await inquiry.say(
-    'Bean Street kiosk Riyadh Mall A 30 sqm Sara Ali sara@beanstreet.example 0501234567',
-  )
-  if (beat) await beat(page)
-  await inquiry.confirmCard()
-  if (beat) await beat(page)
-  await expect(inquiry.cards('verification')).toBeVisible({ timeout: 60_000 })
-  if (beat) await beat(page)
-  await inquiry.verifyEmailFromInbox(APPLICANT_EMAIL)
-  await inquiry.enterCode(smsOtpCode(await fetchDevOutbox(request, APPLICANT_MOBILE)))
-  if (beat) await beat(page)
-  await expect(inquiry.cards('document_upload')).toBeVisible({
-    timeout: 90_000,
-  })
-  if (beat) await beat(page)
-  await inquiry.upload('Company Profile', files.company ?? 'company_profile.pdf')
-  await inquiry.upload('Brand Profile', files.brand ?? 'brand_profile.pdf')
-  await expect(inquiry.cards('review')).toBeVisible({ timeout: 60_000 })
-  if (beat) await beat(page)
-  await inquiry.acceptAndSubmit()
-  await expect(inquiry.cards('success')).toBeVisible({ timeout: 60_000 })
-  if (beat) await beat(page)
-
-  return referenceFromReviewAssigned(await fetchDevOutbox(request))
-}
 
 /** Applicant path after opening the call-centre `complete_application` link (scripted `a2-applicant`). */
 export async function completeApplicationLinkFlow(

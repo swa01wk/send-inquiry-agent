@@ -1,8 +1,9 @@
+import { submitInquiry } from '../support/intake'
 import { expect, test } from '@playwright/test'
 import { InquiryPage } from '../pages/inquiry'
 import { clearDevOutbox, fetchDevOutbox, latestByTemplate } from '../support/outbox'
 import { openCaseAs } from '../support/stories'
-import { APPLICANT_EMAIL, reviewerFor, submitScriptedInquiry } from '../support/submit'
+import { APPLICANT_EMAIL, reviewerFor } from '../support/submit'
 
 /**
  * Re-demo story rd-document-approval (demo feedback §3.4, D5, D7): the Lease Admin approves
@@ -17,7 +18,7 @@ test.describe('Story rd-document-approval @scripted', () => {
   }) => {
     test.setTimeout(240_000)
     await clearDevOutbox(request)
-    const reference = await submitScriptedInquiry(page, request, 's1-happy-path')
+    const reference = await submitInquiry(page, request)
     const leaseAdmin = await reviewerFor(request, reference, 'first')
 
     const viewport = page.viewportSize()
@@ -106,7 +107,7 @@ test.describe('Story rd-document-approval @scripted', () => {
   test('the final reviewer sees the document decisions read-only', async ({ page, request }) => {
     test.setTimeout(180_000)
     await clearDevOutbox(request)
-    const reference = await submitScriptedInquiry(page, request, 's1-happy-path')
+    const reference = await submitInquiry(page, request)
     const finalReviewer = await reviewerFor(request, reference, 'final')
     await openCaseAs(page, finalReviewer, reference)
     await expect(page.getByTestId('doc-approval-company_profile')).toHaveText(
