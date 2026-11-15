@@ -74,8 +74,6 @@ class TurnContext:
     case_status_after: str | None = None
     has_success_card: bool = False
     agent_kind: Literal["intake", "case", "reviewer"] = "intake"
-    # I8 (demo feedback §6): a self-service chat under `public_cr_check: ask_then_sign_in`.
-    public_cr_question: bool = False
     # I8 (flow v2 §6) and I9: a self-service chat on the flow v2 public intake, before submit.
     flow_v2_intake: bool = False
     # Text of the cards shown this turn (I8 checks card payloads too).
@@ -421,7 +419,7 @@ def _applicant_gave(draft: InquiryDraft | None, value: str) -> bool:
 
 def _check_i8(ctx: TurnContext) -> InvariantViolation | None:
     """The public page never shows a CR number, or company details from a CR lookup."""
-    if not (ctx.public_cr_question or ctx.flow_v2_intake):
+    if not ctx.flow_v2_intake:
         return None
     for label, text in (("reply", ctx.assistant_text), ("card", ctx.card_text)):
         if contains_cr_number(text):

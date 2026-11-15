@@ -646,18 +646,6 @@ export const termsCardExample: UiCard = {
   },
 }
 
-export const crQuestionCardExample: UiCard = {
-  card_id: 'cr_question',
-  card_type: 'cr_question',
-  message_id: 'm-channel-cr',
-  payload: {
-    prompt: 'Does your company have a commercial registration (CR)?',
-    yes_label: 'Yes, we have a CR',
-    no_label: "No, we don't",
-    answered: null,
-  },
-}
-
 export const signatoryQuestionCardExample: UiCard = {
   card_id: 'signatory_question',
   card_type: 'signatory_question',

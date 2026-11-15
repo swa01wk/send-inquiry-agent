@@ -100,12 +100,7 @@ export interface BriefContact {
   email: string | null
   phone: string | null
   same_as_primary: boolean
-  // Demo feedback §3.5: the first-level reviewer approves each contact.
   contact_id?: string | null
-  /** Absent or null when per-contact approval is off (flow v2, V7). */
-  approval?: ApprovalStatus | null
-  approval_remarks?: string | null
-  approved_by?: string | null
   added_by?: string
 }
 
@@ -176,8 +171,6 @@ export type ReviewAction =
   | 'confirm_document_expiry'
   | 'approve_document'
   | 'reject_document'
-  | 'approve_contact'
-  | 'reject_contact'
   | 'assign_unit'
   | 'approve_lead'
 

@@ -51,7 +51,7 @@ def test_default_mall_picker_selects_one() -> None:
     assert card.payload["max_select"] == 1
 
 
-# ---- existing_tenant_policy -------------------------------------------------------------
+# ---- a registered CR signs in (chart S3) --------------------------------------------------
 
 
 def _verify_existing_cr(agent_runtime, base_state, stream_events):
@@ -65,22 +65,6 @@ def test_sign_in_policy_stops_an_existing_cr(agent_runtime, base_state, stream_e
     draft = result.update["draft"]
     assert draft.cr_status == "existing"
     assert [b.token for b in can_submit(draft)][0] == "cr_existing"
-
-
-def test_allow_inquiry_lets_an_existing_cr_continue(
-    agent_runtime, base_state, stream_events
-) -> None:
-    with use_policy(
-        _policy(existing_tenant_policy="allow_inquiry", public_cr_check="lookup"),
-    ):
-        result = _verify_existing_cr(agent_runtime, base_state, stream_events)
-    draft = result.update["draft"]
-    # The CR has a Tenant Central record (intake channels §3.6): prefilled, not blocked.
-    assert draft.cr_status == "tenant"
-    assert draft.fields[FieldKey.CR_NUMBER].value == "1010000000"
-    assert draft.fields[FieldKey.COMPANY_NAME].value == "Oasis Coffee Company"
-    assert "cr_existing" not in [b.token for b in can_submit(draft)]
-    assert "Tenant Central record" in result.update["messages"][0].content
 
 
 # ---- phone.allowed_countries --------------------------------------------------------------
@@ -179,7 +163,6 @@ def test_rules_in_force_follow_the_policy() -> None:
     flipped = rules_in_force(
         _policy(
             max_malls_per_inquiry=2,
-            existing_tenant_policy="allow_inquiry",
             public_cr_check="lookup",
             phone={"allowed_countries": ["971", "973"]},
         ),
@@ -187,7 +170,6 @@ def test_rules_in_force_follow_the_policy() -> None:
     )
     assert "up to 2 malls per inquiry" in flipped
     assert "+971, +973" in flipped
-    assert "they may continue this inquiry here" in flipped
 
 
 def test_system_message_carries_the_rules_block() -> None:

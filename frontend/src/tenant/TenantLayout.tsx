@@ -66,12 +66,6 @@ export function TenantLayout({
             >
               Leasing Opportunities
             </NavLink>
-            <NavLink
-              className={({ isActive }) => (isActive ? styles.navActive : styles.navLink)}
-              to="/tenant/inquiries"
-            >
-              My inquiries
-            </NavLink>
             <button
               type="button"
               className={styles.secondaryBtn}

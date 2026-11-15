@@ -1,3 +1,4 @@
+import { submitInquiry } from '../support/intake'
 import { expect, test } from '@playwright/test'
 import { InquiryPage } from '../pages/inquiry'
 import { clearDevOutbox, fetchDevOutbox, latestByTemplate } from '../support/outbox'
@@ -7,7 +8,6 @@ import {
   approveDocumentsViaApi,
   approveLeadViaApi,
   reviewerFor,
-  submitScriptedInquiry,
 } from '../support/submit'
 
 const OMAR_EMAIL = 'omar@beanstreet.example'
@@ -24,7 +24,7 @@ test.describe('Story T1 @scripted', () => {
   }) => {
     test.setTimeout(240_000)
     await clearDevOutbox(request)
-    const reference = await submitScriptedInquiry(page, request, 's1-happy-path')
+    const reference = await submitInquiry(page, request)
     const reviewer = await reviewerFor(request, reference)
 
     const submissionMail = latestByTemplate(

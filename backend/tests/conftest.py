@@ -64,8 +64,8 @@ def _restore_policy(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPa
     reviewer role doing both levels (`first_level_review_role: null`), as they were
     written; tests marked `lease_admin` run with the shipped policy (Lease Admin first).
     Likewise tests written for the CR lookup run with `public_cr_check: lookup` unless
-    marked `cr_question`, and tests written before per-document and per-contact approval
-    (demo feedback §3.4, §3.5, day R2) run without it unless marked `approvals`.
+    marked `cr_question`, and tests written before per-document approval (demo feedback
+    §3.4, day R2) run without it unless marked `approvals`.
     `create_app` installs the policy file it loads, so the loader it calls is wrapped too.
     """
     overrides: dict[str, object] = {}
@@ -77,20 +77,13 @@ def _restore_policy(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPa
         overrides["public_cr_check"] = "lookup"
     if request.node.get_closest_marker("approvals") is None:
         overrides["document_approval"] = False
-        overrides["contacts"] = {
-            "approval_required": False,
-            "ask_signatory": False,
-            "applicant_signatory_needs_approval": False,
-        }
+        overrides["contacts"] = {"ask_signatory": False}
     if request.node.get_closest_marker("lead_approval") is None:
         # Flow v2 §3.7 (day F2): tests written for one final approval after the contacts
-        # (contacts opening at first approval, per-contact approval under `approvals`) keep
-        # that flow; tests marked `lead_approval` run with the shipped second level.
+        # (contacts opening at first approval) keep that flow; tests marked `lead_approval`
+        # run with the shipped second level.
         overrides["lead_approval"] = {"enabled": False, "require_unit_assigned": False}
         overrides["auto_request_contacts_after_first_approval"] = True
-        if request.node.get_closest_marker("approvals") is not None:
-            contacts = get_policy().contacts.model_dump(mode="json")
-            overrides["contacts"] = {**contacts, "approval_required": True}
     intake = get_policy().flow_v2_intake.model_dump(mode="json")
     if request.node.get_closest_marker("intake_v2") is not None:
         # Flow v2 §3.3 (day F3): new self-service inquiries run the v2 public intake.

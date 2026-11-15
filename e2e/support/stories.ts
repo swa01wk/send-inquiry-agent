@@ -2,14 +2,7 @@ import { expect, type APIRequestContext, type Browser, type Page } from '@playwr
 import { InquiryPage } from '../pages/inquiry'
 import { A2_CALL_CENTRE_TURNS, C1_EXISTING_CR_TURN } from './channelScripts'
 import type { DemoBeat } from './demoPace'
-import { fieldDisplay, fieldSource } from './draft'
-import {
-  clearDevOutbox,
-  completeVerifyLink,
-  fetchDevOutbox,
-  latestByTemplate,
-  withE2eScenario,
-} from './outbox'
+import { completeVerifyLink, fetchDevOutbox, latestByTemplate, withE2eScenario } from './outbox'
 import {
   APPLICANT_EMAIL,
   APPLICANT_MOBILE,
@@ -17,7 +10,6 @@ import {
   approveLeadViaApi,
   completeApplicationLinkFlow,
   reviewerFor,
-  submitScriptedInquiry,
   type ContactOutbox,
 } from './submit'
 
@@ -146,133 +138,6 @@ export async function openCaseAs(
   await expect(page.getByTestId('case-stage')).toBeVisible()
 }
 
-/**
- * R4 (demo feedback §3.8, D13), script rd-signed-in-new-brand: a signed-in Oasis raises on
- * OPP-101. The company comes from the Cenomi record (Yardi) and is confirmed; the new brand is
- * filled from the Brand Profile; the Company Profile disagrees with the record (warned, kept).
- * Returns the reference.
- */
-export async function raiseNewBrandFromOpportunities(
-  page: Page,
-  beat?: DemoBeat,
-): Promise<{ inquiry: InquiryPage; reference: string }> {
-  // Same origin as the sign-in: the sign-in card's link is absolute (PUBLIC_BASE_URL), and the
-  // mock sign-in lives in that origin's sessionStorage.
-  const path = '/tenant/opportunities?e2eScenario=rd-signed-in-new-brand'
-  await page.goto(page.url().startsWith('http') ? new URL(path, page.url()).toString() : path)
-  const opportunity = page.getByTestId('opportunity-OPP-101')
-  await expect(opportunity).toBeVisible({ timeout: 30_000 })
-  await expect(page.getByLabel('For brand')).toHaveCount(0)
-  if (beat) await beat(page)
-  await opportunity.getByRole('button', { name: 'Raise inquiry' }).click()
-
-  const inquiry = new InquiryPage(page)
-  await inquiry.waitForChatReady()
-  await expect(
-    page.getByTestId('bot-bubble-text').filter({ hasText: /from your Cenomi record/ }),
-  ).toBeVisible({ timeout: 30_000 })
-  await expect(inquiry.cards('basic_info_review')).toContainText('Oasis Coffee Company')
-  const draft = await inquiry.draft()
-  expect(fieldSource(draft, 'company_name')).toBe('verified')
-  expect(fieldDisplay(draft, 'brand_name_en') ?? '').toBeFalsy()
-  if (beat) await beat(page)
-  await inquiry.proceedBasicInfo()
-
-  await inquiry.say("I'll upload the Brand Profile")
-  const documents = inquiry.cards('document_upload')
-  await expect(documents).toBeVisible({ timeout: 60_000 })
-  await expect(documents.getByTestId('doc-row-company_profile')).toBeVisible()
-  await expect(documents.getByTestId('doc-row-brand_profile')).toBeVisible()
-  if (beat) await beat(page)
-
-  await inquiry.upload('Brand Profile', 'new_brand_profile.pdf')
-  await expect(page.getByTestId(/confirm-fields-/).last()).toContainText('Oasis Bakehouse', {
-    timeout: 60_000,
-  })
-  if (beat) await beat(page)
-  await inquiry.confirmCard()
-  await inquiry.say('مخبز الواحة')
-
-  await inquiry.upload('Company Profile', 'oasis_company_profile_mismatch.pdf')
-  expect((await inquiry.lastReply()).toLowerCase()).toMatch(/cenomi record/)
-  if (beat) await beat(page)
-  await inquiry.say("Keep the record's name")
-  await expect(inquiry.cards('review')).toBeVisible({ timeout: 60_000 })
-  const reviewed = await inquiry.draft()
-  expect(fieldDisplay(reviewed, 'company_name')).toBe('Oasis Coffee Company')
-  expect(fieldSource(reviewed, 'brand_name_en')).toBe('derived')
-  if (beat) await beat(page)
-  await inquiry.acceptAndSubmit()
-  const reference = await inquiry.successReference()
-  if (beat) await beat(page)
-  return { inquiry, reference }
-}
-
-/** The new brand as an existing tenant types it (scripts a1-existing-tenant). */
-export const NEW_BRAND_TYPED = 'Oasis Bakehouse (مخبز الواحة), a café'
-
-/** Existing tenant: sign in, raise on an opportunity, confirm the company from the Cenomi
- * record, type the new brand, upload both profiles, submit. */
-export async function raiseTenantInquiry(
-  page: Page,
-  tenantName: RegExp | string,
-  opportunityId: string,
-  scenario: string,
-  welcomePattern?: RegExp,
-  beat?: DemoBeat,
-): Promise<{ inquiry: InquiryPage; reference: string }> {
-  await clearDevOutbox(page.request)
-
-  await page.goto('/dev')
-  await page.getByTestId('dev-tenants').getByRole('link', { name: tenantName }).click()
-  await expect(page.getByTestId('tenant-signed-in')).toBeVisible()
-
-  await page.goto(`/tenant/opportunities?e2eScenario=${encodeURIComponent(scenario)}`)
-  await expect(page.getByTestId(`opportunity-${opportunityId}`)).toBeVisible({
-    timeout: 30_000,
-  })
-  await page
-    .getByTestId(`opportunity-${opportunityId}`)
-    .getByRole('button', { name: 'Raise inquiry' })
-    .click()
-  await expect(page.getByRole('region', { name: /leasing assistant chat/i })).toBeVisible({
-    timeout: 60_000,
-  })
-
-  const inquiry = new InquiryPage(page)
-  await inquiry.waitForChatReady()
-  if (welcomePattern) {
-    await expect(
-      page.getByTestId('bot-bubble-text').filter({ hasText: welcomePattern }),
-    ).toBeVisible({ timeout: 30_000 })
-    if (beat) await beat(page)
-  }
-
-  await expect(inquiry.cards('basic_info_review')).toBeVisible({
-    timeout: 60_000,
-  })
-  if (beat) await beat(page)
-  await inquiry.proceedBasicInfo()
-  await expect(
-    inquiry.cards('basic_info_review').getByText('Basic information confirmed'),
-  ).toBeVisible()
-  if (beat) await beat(page)
-  // R4 (demo feedback §3.8): every inquiry raised here is a new brand, and both profiles
-  // are uploaded afresh (the a1-existing-tenant script types the brand).
-  await inquiry.say(NEW_BRAND_TYPED)
-  await expect(inquiry.cards('document_upload')).toBeVisible({ timeout: 60_000 })
-  if (beat) await beat(page)
-  await inquiry.upload('Company Profile', 'company_profile.pdf')
-  await inquiry.upload('Brand Profile', 'brand_profile.pdf')
-  await expect(inquiry.cards('review')).toBeVisible({ timeout: 60_000 })
-  if (beat) await beat(page)
-  await inquiry.acceptAndSubmit()
-  await expect(inquiry.cards('success')).toBeVisible({ timeout: 60_000 })
-  if (beat) await beat(page)
-  const reference = await inquiry.successReference()
-  return { inquiry, reference }
-}
-
 const API = 'http://127.0.0.1:8000'
 
 /** Advance the simulated clock until local time in `timezone` is `targetHour` (0–23). */
@@ -336,7 +201,10 @@ export async function runL5AttentionFlow(
   beat?: DemoBeat,
 ): Promise<void> {
   await request.post(`${API}/api/dev/reset`)
-  const reference = await submitScriptedInquiry(page, request, 's1-happy-path', beat)
+  // Imported here: ./intake imports ./steps, which imports this module.
+  const { submitInquiry } = await import('./intake')
+  const reference = await submitInquiry(page, request)
+  if (beat) await beat(page)
   const reviewer = await reviewerFor(request, reference)
 
   const emailsForRef = async (template: string) =>
@@ -464,7 +332,7 @@ export async function resetDemoFromDevPage(page: Page): Promise<void> {
   await expect(page.getByTestId('dev-message')).toContainText(/reset/i)
 }
 
-/** After reset: empty queue, attention, tenant inquiries and dev inbox. */
+/** After reset: empty queue, attention and dev inbox. */
 export async function assertCleanAfterDemoReset(page: Page): Promise<void> {
   await page.goto('/dev/inbox')
   await expect(page.getByText('No messages yet.')).toBeVisible()
@@ -475,12 +343,4 @@ export async function assertCleanAfterDemoReset(page: Page): Promise<void> {
   await expect(page.getByTestId('queue-empty')).toBeVisible()
   await page.getByTestId('attention-link').click()
   await expect(page.getByTestId('attention-empty')).toBeVisible()
-
-  await page.goto('/dev')
-  await page
-    .getByTestId('dev-tenants')
-    .getByRole('link', { name: /Oasis Coffee Company/ })
-    .click()
-  await page.goto('/tenant/inquiries')
-  await expect(page.getByTestId('my-inquiries-empty')).toBeVisible()
 }

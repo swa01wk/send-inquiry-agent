@@ -1,7 +1,8 @@
+import { submitInquiry } from '../support/intake'
 import { expect, test } from '@playwright/test'
 import { InquiryPage } from '../pages/inquiry'
 import { clearDevOutbox, fetchDevOutbox, latestByTemplate } from '../support/outbox'
-import { APPLICANT_EMAIL, reviewerFor, submitScriptedInquiry } from '../support/submit'
+import { APPLICANT_EMAIL, reviewerFor } from '../support/submit'
 
 /** Day 4 story T2: reviewer requests a re-upload; applicant answers from the case link. */
 test.describe('Story T2 @scripted', () => {
@@ -12,7 +13,7 @@ test.describe('Story T2 @scripted', () => {
   }) => {
     test.setTimeout(240_000)
     await clearDevOutbox(request)
-    const reference = await submitScriptedInquiry(page, request, 's1-happy-path')
+    const reference = await submitInquiry(page, request)
     const reviewer = await reviewerFor(request, reference)
 
     const viewport = page.viewportSize()

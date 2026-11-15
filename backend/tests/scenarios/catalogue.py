@@ -15,7 +15,6 @@ _SHARED_PATH = _CATALOGUE_DIR / "_shared.yaml"
 
 HAND_WRITTEN_E2E_SCRIPTS = frozenset(
     {
-        "a1-existing-tenant",
         "a2-applicant",
         "a2-call-centre",
         "c1-existing-cr",

@@ -27,7 +27,6 @@ from app.policy.config import get_policy
 from app.workflow.documents import current_decisions, document_blockers
 from app.workflow.expiry import expiry_status, expiry_tracked
 from app.workflow.models import (
-    CONTACT_ROLE_LABELS,
     FIRST_LEVEL_STATES,
     AssignedUnit,
     Case,
@@ -101,9 +100,6 @@ TABLE: dict[tuple[CaseStatus, str], tuple[CaseStatus, frozenset[ActorKind]]] = {
     (S.SECOND_REVIEW, "contacts_requested"): (S.SECOND_REVIEW, frozenset({"reviewer", "system"})),
     (S.SECOND_REVIEW, "sales_data_requested"): (S.SECOND_REVIEW, frozenset({"reviewer"})),
     (S.SECOND_REVIEW, "contact_removed"): (S.SECOND_REVIEW, frozenset({"reviewer"})),
-    # Per-contact decisions (demo feedback §3.5): the first-level reviewer, at second review.
-    (S.SECOND_REVIEW, "contact_approved"): (S.SECOND_REVIEW, frozenset({"reviewer"})),
-    (S.SECOND_REVIEW, "contact_rejected"): (S.SECOND_REVIEW, frozenset({"reviewer"})),
     (S.SECOND_REVIEW, "contacts_provided"): (S.SECOND_REVIEW, frozenset({"user"})),
     (S.SECOND_REVIEW, "sales_data_provided"): (S.SECOND_REVIEW, frozenset({"user"})),
     (S.SECOND_REVIEW, "request_withdrawn"): (S.SECOND_REVIEW, frozenset({"reviewer"})),
@@ -135,15 +131,10 @@ REVIEWER_EVENTS = frozenset(
 
 # Which review level acts on each reviewer row (demo feedback §3.2, ADR-R2): declared data,
 # read by `_check_actor`; no role names in the rules. Rows from the first-review states are
-# first level; the rest are final unless listed in FIRST_LEVEL_EVENTS: the contact
-# approvals at second review (demo feedback §3.5).
-FIRST_LEVEL_EVENTS: frozenset[str] = frozenset({"contact_approved", "contact_rejected"})
+# first level; the rest are final.
 DOCUMENT_EVENTS = frozenset({"document_expiry_confirmed", "document_approved", "document_rejected"})
-CONTACT_DECISION_EVENTS = frozenset({"contact_approved", "contact_rejected"})
 REVIEW_LEVEL: dict[tuple[CaseStatus, str], ReviewLevel] = {
-    (from_status, event): (
-        "first" if from_status in FIRST_LEVEL_STATES or event in FIRST_LEVEL_EVENTS else "final"
-    )
+    (from_status, event): ("first" if from_status in FIRST_LEVEL_STATES else "final")
     for (from_status, event), (_to, who) in TABLE.items()
     if "reviewer" in who
 }
@@ -158,8 +149,6 @@ _OLD_SECOND_LEVEL_EVENTS = frozenset(
         "approved",
         "contacts_requested",
         "contacts_provided",
-        "contact_approved",
-        "contact_rejected",
         "contact_removed",
     }
 )
@@ -244,11 +233,6 @@ def legal_events(case: Case, actor: Actor) -> list[str]:
             not get_policy().document_approval or not current_decisions(case)
         ):
             continue
-        if event in CONTACT_DECISION_EVENTS and (
-            not get_policy().contacts.approval_required
-            or not any(c.approval == "pending" for c in case.tenant_contacts)
-        ):
-            continue
         events.append(event)
     return events
 
@@ -262,8 +246,6 @@ def _approval_blockers(case: Case) -> list[str]:
             contact = by_role.get(role)
             if contact is None:
                 blockers.append(f"missing_contact:{role}")
-            elif policy.contacts.approval_required and contact.approval != "approved":
-                blockers.append(f"contact_not_approved:{role}")
     return blockers
 
 
@@ -503,84 +485,17 @@ def _new_contact_id() -> str:
     return f"ct_{uuid.uuid4().hex[:10]}"
 
 
-def _pending_contact(case: Case, event: WorkflowEvent) -> TenantContact:
-    contact_id = str(event.payload.get("contact_id") or "")
-    if not contact_id:
-        raise _invalid("The contact id is required.")
-    contact = case.contact_by_id(contact_id)
-    if contact is None:
-        raise IllegalTransition(
-            "stale_contact", "This contact has changed since you opened it. Reload the case."
-        )
-    if contact.approval != "pending":
-        raise _invalid(f"This contact is already {contact.approval}.")
-    return contact
-
-
-def _contact_approved(case: Case, event: WorkflowEvent, actor: Actor, now: datetime) -> None:
-    contact = _pending_contact(case, event)
-    contact.approval = "approved"
-    contact.approval_remarks = None
-    contact.approved_by = actor.id or actor.kind
-
-
-def _contact_rejected(case: Case, event: WorkflowEvent, actor: Actor, now: datetime) -> None:
-    """Rejected: a contacts request for that role opens (or the open one gains the role)."""
-    contact = _pending_contact(case, event)
-    remarks = _remarks(event.payload, required=True)
-    contact.approval = "rejected"
-    contact.approval_remarks = remarks
-    contact.approved_by = actor.id or actor.kind
-    line = f"{CONTACT_ROLE_LABELS[contact.role]}: {remarks}"
-    request = case.open_request("contacts")
-    if request is None:
-        case.requests.append(
-            CaseRequest(
-                id=f"req_{uuid.uuid4().hex[:10]}",
-                kind="contacts",
-                roles=[contact.role],
-                remarks=line,
-                requested_by=actor.id or actor.kind,
-                requested_at=now,
-            )
-        )
-    elif request.roles and contact.role not in request.roles:
-        request.roles.append(contact.role)
-        request.remarks = f"{request.remarks}\n{line}" if request.remarks else line
-
-
 def _with_approval(case: Case, contact: TenantContact) -> TenantContact:
-    """The approval a submitted contact carries (§3.5). Whatever the payload said about
-    approval is replaced: an unchanged approved or pending contact keeps its id and state;
-    a new, changed or previously rejected one is pending under a new id, except the
-    applicant as signatory (the verified primary contact), approved on entry."""
-    policy = get_policy()
+    """The id a submitted contact carries: an unchanged contact keeps its id, a new or
+    changed one gets a new id. Contacts aren't approved one by one (flow v2 V7, M15): the
+    final reviewer sees them inside "Approve Lead"."""
     previous = next((c for c in case.tenant_contacts if c.role == contact.role), None)
-    if (
-        previous is not None
-        and previous.values() == contact.values()
-        and previous.approval != "rejected"
-    ):
+    if previous is not None and previous.values() == contact.values():
         contact.contact_id = previous.contact_id
-        contact.approval = previous.approval
-        contact.approval_remarks = previous.approval_remarks
-        contact.approved_by = previous.approved_by
         contact.added_by = previous.added_by
         return contact
     contact.contact_id = _new_contact_id()
-    contact.approval_remarks = None
     contact.added_by = "tenant"
-    signatory_is_applicant = (
-        contact.role == "authorized_signatory"
-        and contact.same_as_primary
-        and not policy.contacts.applicant_signatory_needs_approval
-    )
-    if signatory_is_applicant:
-        contact.approval = "approved"
-        contact.approved_by = "system:verified_primary"
-    else:
-        contact.approval = "pending"
-        contact.approved_by = None
     return contact
 
 
@@ -739,8 +654,6 @@ APPLY: dict[str, Callable[[Case, WorkflowEvent, Actor, datetime], None]] = {
     "document_expiry_confirmed": _document_expiry_confirmed,
     "document_approved": _document_approved,
     "document_rejected": _document_rejected,
-    "contact_approved": _contact_approved,
-    "contact_rejected": _contact_rejected,
     "contacts_requested": _request("contacts"),
     "sales_data_requested": _request("sales_data"),
     "contact_removed": _contact_removed,

@@ -73,8 +73,6 @@ ACTIONS: dict[str, str] = {
     "confirm_document_expiry": "document_expiry_confirmed",
     "approve_document": "document_approved",
     "reject_document": "document_rejected",
-    "approve_contact": "contact_approved",
-    "reject_contact": "contact_rejected",
 }
 EVENT_TO_ACTION = {event: action for action, event in ACTIONS.items()}
 # stale_file / stale_contact (the decision names a replaced upload or a changed contact) and

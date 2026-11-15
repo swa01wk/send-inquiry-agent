@@ -71,7 +71,9 @@ Scripted model scripts: `backend/tests/e2e_scripts/flow-v2-s01.json` … `flow-v
 
 `scripts/eval_live.py`, `GROUP=flow_v2`. One eval scenario per catalogue entry (27). Each turn is driven from `steps`: UI actions go through the HTTP app, typed turns go to the real model. After-submit scenarios seed with `POST /api/dev/flow/seed`, then talk to the case agent or the reviewer assistant.
 
-**Pass rule.** Each scenario runs 3 times (`EVAL_REPEATS=3`) and passes at 3/3. The gate (FV21) is two consecutive days at 27/27. The existing groups must stay within `EVAL_TOLERANCE` of `docs/eval-notes.md`. Results: `backend/eval-results/flow_v2-<date>.json` and a row in `docs/eval-notes.md`.
+**Pass rule.** Each scenario runs 3 times (`EVAL_REPEATS=3`) and passes at 3/3. The gate (FV21) is two consecutive days at 27/27. The existing groups must stay within `EVAL_TOLERANCE` of `docs/eval-notes.md`.
+
+**Other groups (15 Nov).** Only the chart's flows are evaluated. `conversation` (9 scenarios, intake v2, catalogue-style steps in `eval_live.conversation_scenarios`) keeps what the catalogue doesn't test on its own: small talk, a process question, off topic, prompt injection, a three-part name, an international mobile, chat during verification, an unknown mall, and an Arabic user. `case`, `signatory` and `channels` stay. The pre-v2 public-chat groups (`intake`, `cr_privacy`, `document_extract`) were removed; their cases are S1–S17. The scenario count changed, so the baseline in `docs/eval-notes.md` is recorded again. Results: `backend/eval-results/flow_v2-<date>.json` and a row in `docs/eval-notes.md`.
 
 **Checks.** Deterministic where possible (state, cards, regex); none uses a model to judge.
 

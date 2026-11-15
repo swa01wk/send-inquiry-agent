@@ -271,16 +271,6 @@ async def _send_contacts(runtime: AgentRuntime, store: SessionStore, case: Case)
     return updated
 
 
-async def _approve_contacts(runtime: AgentRuntime, case: Case) -> Case:
-    for contact in list(case.tenant_contacts):
-        if contact.approval != "pending":
-            continue
-        case = await _act(
-            runtime, case, "first", "contact_approved", {"contact_id": contact.contact_id}
-        )
-    return case
-
-
 async def _lead_approve(runtime: AgentRuntime, case: Case) -> Case:
     """Flow v2 (§3.7): the final reviewer assigns the unit, then "Approve Lead?" = Yes."""
     malls = case.draft.fields[FieldKey.MALLS].value
@@ -359,8 +349,6 @@ async def seed_demo(runtime: AgentRuntime, store: SessionStore) -> list[DemoCase
                     case = await _lead_approve(runtime, case)
                 case = await _send_contacts(runtime, store, case)
             if key == "C":
-                if get_policy().contacts.approval_required:
-                    case = await _approve_contacts(runtime, case)
                 case = await _act(runtime, case, "final", "approved", {})
         except (IllegalTransition, RuntimeError, ValueError):
             logger.exception("demo seed: case %s failed", key)

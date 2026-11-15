@@ -22,7 +22,6 @@ export type CardType =
   | 'contact_check'
   | 'inform_tenant'
   | 'sign_in_prompt'
-  | 'cr_question'
   | 'company_registration'
   | 'terms'
   | 'signatory_question'
@@ -105,13 +104,6 @@ export interface SignInPromptPayload {
   message: string
   sign_in_url: string
   button_label: string
-}
-
-export interface CrQuestionPayload {
-  prompt: string
-  yes_label: string
-  no_label: string
-  answered: 'yes' | 'no' | null
 }
 
 export interface SkipConfirmPayload {
@@ -497,12 +489,6 @@ export type UiCard =
     }
   | {
       card_id: string
-      card_type: 'cr_question'
-      message_id: string | null
-      payload: CrQuestionPayload
-    }
-  | {
-      card_id: string
       card_type: 'company_registration'
       message_id: string | null
       payload: CompanyRegistrationPayload
@@ -541,8 +527,6 @@ export interface FormModePayload {
   next_step: FormModeStep
   fields: FormModeField[]
   can_skip_cr: boolean
-  /** Demo feedback §3.1: the CR step is the `cr_question` card, not a number input. */
-  cr_question?: boolean
 }
 
 export interface DraftFieldRow {

@@ -18,7 +18,6 @@ import {
   assertDevPersonasOpenInOneClick,
   openCaseAs,
   resetDemoFromDevPage,
-  raiseNewBrandFromOpportunities,
 } from '../support/stories'
 import { expectFlowPath } from '../support/flowV2'
 import { demoPath, scenario } from '../support/scenarios'
@@ -200,7 +199,6 @@ test.describe('Demo script — flow v2 @demo', () => {
         },
       )
 
-      const leaseAdmin = await reviewerFor(request, reference, 'first')
       const rlm = await reviewerFor(request, reference, 'final')
 
       await beatStep(
@@ -416,7 +414,7 @@ test.describe('Demo script — flow v2 @demo', () => {
       })
 
       await beatStep(
-        '12. Registered CR → "already registered" → sign in → Leasing Opportunities → new brand (S3, F2, F3)',
+        '12. Registered CR → "already registered" → sign in → Leasing Opportunities (S3, M13)',
         async () => {
           await caption(page, '12. A registered CR → sign in → Leasing Opportunities')
           const crContext = await newContext(browser, page)
@@ -438,18 +436,8 @@ test.describe('Demo script — flow v2 @demo', () => {
             await expect(
               crPage.getByRole('heading', { name: /leasing opportunities/i }),
             ).toBeVisible()
+            await expect(crPage.getByRole('button', { name: 'Raise inquiry' })).toHaveCount(0)
             await beat(crPage)
-
-            // R4 (F3): the company from Yardi, the new brand from its Brand Profile, both
-            // profiles, and the Company Profile checked against the Cenomi record.
-            await caption(crPage, '12. Leasing Opportunities → a new brand')
-            const { reference: newBrand } = await raiseNewBrandFromOpportunities(crPage, beat)
-            await openCaseAs(leaseAdminPage, leaseAdmin, newBrand)
-            await caption(leaseAdminPage, '12. Leasing Admin: Company Profile vs the Cenomi record')
-            await expect(leaseAdminPage.getByTestId('document-check-company_name')).toBeVisible({
-              timeout: 30_000,
-            })
-            await beat(leaseAdminPage)
           } finally {
             await crContext.close()
           }

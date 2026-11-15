@@ -20,7 +20,6 @@ from app.agent.confirm_policy import (
     keys_blocked_from_confirmation,
 )
 from app.agent.cr_check import apply_cr_result
-from app.agent.cr_question import apply_cr_answer, cr_question_active
 from app.agent.mall_match import (
     fill_mentioned_malls,
     filter_mall_ids,
@@ -40,15 +39,11 @@ from app.api.cards import (
     confirm_card_id_for_keys,
 )
 from app.api.channel_cards import (
-    BASIC_INFO_CARD_ID,
     CONTACT_CHECK_CARD_ID,
-    CR_QUESTION_CARD_ID,
     SEND_LINK_CARD_ID,
     SIGN_IN_CARD_ID,
-    build_basic_info_card,
     build_company_registration_card,
     build_contact_check_card,
-    build_cr_question_card,
     build_send_link_card,
     build_sign_in_prompt_card,
 )
@@ -208,25 +203,6 @@ def _contact_not_given(item: DraftFieldUpdate, said: str) -> bool:
         return False
     words = re.findall(r"[a-z]+", value)
     return any(not re.search(rf"(?<![a-z]){re.escape(word)}(?![a-z])", said) for word in words)
-
-
-_HAS_CR_YES_RE = re.compile(
-    r"\b(yes|yeah|yep|yup|sure|of course|we do|we have|i have|have one|have a cr|got one)\b"
-    r"|نعم|ايوه|أيوه|إيه|ايه|اي نعم|عندنا|لدينا|عندي|لدي|موجود",
-    re.IGNORECASE,
-)
-_HAS_CR_NO_RE = re.compile(
-    r"\b(no|nope|not|don't|dont|haven't|without)\b"
-    r"|ما عندنا|ما عندي|ليس لدينا|لا يوجد|ما فيه|لا\b|بدون",
-    re.IGNORECASE,
-)
-
-
-def _says_has_cr(text: str) -> bool:
-    """The user's words say yes to "Do you have a CR?" (and don't say no)."""
-    if not text or text.startswith("[ui_event]"):
-        return False
-    return bool(_HAS_CR_YES_RE.search(text)) and not _HAS_CR_NO_RE.search(text)
 
 
 def _category_from_brand_only(
@@ -394,20 +370,6 @@ def verify_cr(
                 "they can Skip. Nothing was checked or saved; never repeat a number."
             ),
         )
-    if cr_question_active(
-        assisted=bool(state.get("assisted")),
-        channel=state.get("channel"),
-        test_scenario=state.get("test_scenario"),
-    ):
-        # Demo feedback §3.1: the public page never looks a CR up or repeats one.
-        return _tool_result(
-            runtime,
-            draft=state["draft"],
-            content=(
-                "CR lookups are off on this page: nothing was checked or saved. Ask whether "
-                "the company has a CR (the card), never for the number, and don't repeat it."
-            ),
-        )
     validated = validate_cr_number(cr_number)
     if isinstance(validated, v.ValidationError):
         return _tool_result(
@@ -465,42 +427,8 @@ def verify_cr(
             changed_keys=["cr_number", *written],
             cards_shown=cards_shown,
         )
-    outcome = apply_cr_result(state["draft"], validated, result, rt.master, tenant=tenant)
+    outcome = apply_cr_result(state["draft"], validated, result, rt.master)
     updated = outcome.draft
-
-    if outcome.kind == "existing_allowed":
-        if tenant is None:
-            return _tool_result(
-                runtime,
-                draft=updated,
-                content=(
-                    "CR number belongs to an existing Tenant Central account. Policy allows "
-                    "the inquiry to continue: collect company name and address as usual."
-                ),
-                changed_keys=outcome.changed,
-                cards_shown=cards_shown,
-            )
-        # Intake channels §3.6: prefilled from the tenant record, reviewed in one card.
-        card = build_basic_info_card(updated, rt.master, started_by="your Tenant Central record")
-        _emit_card(card, runtime)
-        if BASIC_INFO_CARD_ID not in cards_shown:
-            cards_shown.append(BASIC_INFO_CARD_ID)
-        brand_note = (
-            " The tenant has several brands: ask which one this inquiry is for (or a new one)."
-            if len(tenant.brands) > 1
-            else ""
-        )
-        return _tool_result(
-            runtime,
-            draft=updated,
-            content=(
-                f"Existing tenant {tenant.company_name}: details prefilled from their Tenant "
-                "Central record and shown on a review card. Ask them to check it and press "
-                "Proceed (or edit a field); then continue with what's still missing." + brand_note
-            ),
-            changed_keys=outcome.changed,
-            cards_shown=cards_shown,
-        )
 
     if outcome.kind == "existing":
         # Intake channels §3.6 (sign_in): a button to Tenant Central; no inquiry here.
@@ -614,70 +542,6 @@ def _v2_skip_cr(state: AgentState, runtime: ToolRuntime, *, confirmed: bool) -> 
         draft=updated,
         content="Company Registration skipped.",
         changed_keys=["cr_status"],
-    )
-
-
-@tool
-def record_cr_answer(
-    has_cr: bool,
-    state: Annotated[AgentState, InjectedState],
-    runtime: ToolRuntime,
-) -> Command[Any]:
-    """Record the user's answer to "Do you have a CR?" when they answer in words (the card's
-    buttons do the same). has_cr=true: they have one, so they sign in instead; false: no CR.
-    Never ask for, pass or repeat the CR number."""
-    draft = state["draft"]
-    if not cr_question_active(
-        assisted=bool(state.get("assisted")),
-        channel=state.get("channel"),
-        test_scenario=state.get("test_scenario"),
-    ):
-        return _tool_result(runtime, draft=draft, content="Not used in this chat.")
-    if has_cr and not _says_has_cr(_last_user_text(state)):
-        # Arabic user: "نريد افتتاح كشك قهوة" (we want to open a coffee kiosk) was recorded
-        # as "has a CR", which sends them to sign in and ends the chat. Yes needs a yes.
-        return _tool_result(
-            runtime,
-            draft=draft,
-            content=(
-                "Not recorded: their message doesn't say they have a CR. Ask whether the "
-                "company has a CR, pointing to the Yes / No buttons on the card."
-            ),
-        )
-    answered = apply_cr_answer(draft, has_cr)
-    if answered is None:
-        return _tool_result(runtime, draft=draft, content="The CR question is already answered.")
-    cards_shown = list(state["cards_shown"])
-    _emit_card(build_cr_question_card(answered="yes" if has_cr else "no"), runtime)
-    if CR_QUESTION_CARD_ID not in cards_shown:
-        cards_shown.append(CR_QUESTION_CARD_ID)
-    if has_cr:
-        rt = runtime_from_config(runtime.config)
-        _emit_card(build_sign_in_prompt_card(rt.settings.public_base_url, reason="has_cr"), runtime)
-        if SIGN_IN_CARD_ID not in cards_shown:
-            cards_shown.append(SIGN_IN_CARD_ID)
-        rt.services.audit.record(
-            state["session_id"],
-            "inquiry_redirected",
-            actor="system",
-            payload={"reason": "has_cr", "channel": state.get("channel", "self_service")},
-        )
-        content = (
-            "Recorded: the company has a CR. A Sign in to Tenant Central card is shown. In one "
-            "or two warm sentences, say signing in is quickest (their details are on file) "
-            "and stop collecting."
-        )
-    else:
-        content = (
-            "Recorded: no CR. Carry on: ask for the company name and address together, then "
-            "the brand and space."
-        )
-    return _tool_result(
-        runtime,
-        draft=answered.draft,
-        content=content,
-        changed_keys=answered.changed,
-        cards_shown=cards_shown,
     )
 
 
@@ -1401,7 +1265,6 @@ def show_application_link(
 TOOLS = [
     verify_cr,
     skip_cr,
-    record_cr_answer,
     get_master_data,
     update_draft,
     confirm_fields,
@@ -1419,6 +1282,6 @@ TOOLS = [
 # Assisted mode (intake channels §3.2): no verification, documents or review for the
 # executive; the applicant does those from the application link.
 ASSISTED_EXCLUDED = frozenset(
-    {"send_verification", "request_documents", "show_review", "start_follow_on", "record_cr_answer"}
+    {"send_verification", "request_documents", "show_review", "start_follow_on"}
 )
 ASSISTED_TOOLS = [t for t in TOOLS if t.name not in ASSISTED_EXCLUDED] + [show_application_link]

@@ -4,15 +4,12 @@ from __future__ import annotations
 
 from app.agent.runtime import AgentRuntime
 from app.domain.models import (
-    NON_INTAKE_DOC_TYPES,
-    DocType,
     FieldKey,
     FieldValue,
     InquiryDraft,
     Source,
 )
 from app.services.reviewers import ReviewerDirectory
-from app.services.tenants import Tenant
 
 STAFF_ROLE_LABELS = {
     "customer_care": "The Cenomi call centre",
@@ -55,36 +52,3 @@ def restamp_staff(before: InquiryDraft, after: InquiryDraft) -> tuple[InquiryDra
             )
             changed.append(key.value)
     return updated, changed
-
-
-# A new brand needs both profiles uploaded afresh, even when the tenant has them on file
-# (demo feedback §3.8, R4; assumption "Signed-in tenants").
-NEW_BRAND_UPLOADS = frozenset({DocType.COMPANY_PROFILE, DocType.BRAND_PROFILE})
-
-
-def attach_documents_on_file(
-    runtime: AgentRuntime,
-    session_id: str,
-    draft: InquiryDraft,
-    tenant: Tenant,
-    *,
-    skip: frozenset[DocType] = frozenset(),
-) -> tuple[InquiryDraft, list[str]]:
-    """Copy the tenant's documents on file into the inquiry, marked "On file"; the tenant
-    can keep or replace each (intake channels §3.4). `skip`: types the tenant must upload
-    afresh (the two profiles for a new brand, demo feedback §3.8)."""
-    updated = draft.model_copy(deep=True)
-    attached: list[str] = []
-    for document in tenant.documents:
-        try:
-            doc_type = DocType(document.doc_type)
-        except ValueError:
-            continue
-        if doc_type in NON_INTAKE_DOC_TYPES or doc_type in updated.documents or doc_type in skip:
-            continue
-        ref = runtime.services.storage.save(
-            session_id, doc_type, document.file_name, iter([ON_FILE_PDF]), len(ON_FILE_PDF)
-        )
-        updated.documents[doc_type] = ref.model_copy(update={"on_file": True})
-        attached.append(doc_type.value)
-    return updated, attached

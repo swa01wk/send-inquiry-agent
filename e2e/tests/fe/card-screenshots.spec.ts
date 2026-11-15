@@ -13,7 +13,6 @@ const cardScenarios: Array<{ scenario: string; card: string }> = [
   { scenario: 'contact-check', card: 'contact_check' },
   { scenario: 'inform-tenant', card: 'inform_tenant' },
   { scenario: 'sign-in-prompt', card: 'sign_in_prompt' },
-  { scenario: 'cr-question', card: 'cr_question' },
   { scenario: 'signatory-question', card: 'signatory_question' },
 ]
 

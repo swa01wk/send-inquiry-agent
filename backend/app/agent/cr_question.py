@@ -1,32 +1,22 @@
-"""The public page's CR question (demo feedback §3.1, day R1).
+"""CR numbers in the public chat, and which intake a new chat runs (flow v2 §3.2).
 
-Under `public_cr_check: ask_then_sign_in` the self-service chat asks "Do you have a CR?"
-and never takes, looks up or repeats a CR number:
-- **Yes** → sign in to Tenant Central (Leasing Opportunities); nothing more is collected.
-- **No** → the inquiry carries on in chat; company name and address are asked for.
-
-Shared by the `cr_answer` UI action, the `record_cr_answer` tool and the scrubber that runs
-on every self-service message before it reaches the history, the audit trail or the model.
+On the public page the Company Registration card takes the CR (Verify) or Skip. A CR number
+typed in the chat is removed before it reaches the transcript, the audit trail or the model
+(`scrub_cr_numbers`), and checked like the card's Verify. The demo-feedback CR question
+("Do you have a CR?", `public_cr_check: ask_then_sign_in`) was removed with flow v2: it isn't
+on the chart.
 """
 
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
 from typing import Any
 
-from app.domain.models import InquiryDraft
 from app.domain.validation import normalise_digits
-from app.policy.config import get_policy, intake_flow
+from app.policy.config import get_policy
 
 SELF_SERVICE = "self_service"
 CR_REMOVED = "[CR number removed]"
-CR_TYPED_NOTE = (
-    "[guard] cr_number_typed: the user typed a CR number. It was not saved or checked, and "
-    "must not be repeated. Reply in one or two warm sentences that signing in is the "
-    "quickest way when the company already has a CR (its details are on file there), and "
-    "point to the Sign in button. Don't ask for any other details."
-)
 CR_NUMBER_IN_REPLY = (
     "[guard] cr_number_in_reply: your reply contained a CR number. Remove it and reply again "
     "without any CR number — point to Sign in if they have a CR, and never repeat or look up "
@@ -38,21 +28,6 @@ CR_NUMBER_IN_REPLY = (
 # and Eastern Arabic digits are normalised first. A ten-digit National ID typed in the chat
 # matches too; it isn't needed in chat (the documents card takes it), so that's accepted.
 _CR_RE = re.compile(r"(?<![\d+])[1-9]\d{9}(?!\d)")
-
-
-# Scripted e2e scenarios (AGENT_MODE=scripted, `X-Test-Scenario`) that run the CR question.
-# Every other scripted scenario keeps the CR lookup it was written for, whatever the policy
-# says, so flipping `public_cr_check` doesn't rewrite the older Playwright scripts and
-# goldens. Add a script's name here when it moves to the question.
-CR_QUESTION_SCRIPTS: frozenset[str] = frozenset(
-    {
-        "rd-cr-question",
-        "rd-cr-question-no",
-        "rd-type-or-upload",
-        "rd-type-or-upload-typed",
-        "rd-type-or-upload-reupload",
-    }
-)
 
 
 # Scripted e2e scenarios that run the flow v2 public intake (day F3), whatever the policy:
@@ -76,19 +51,6 @@ def flow_v2_intake_for(session: Any) -> bool:
             scenario not in _FLOW_V2_AFTER_SUBMIT
         )
     return get_policy().flow_v2_intake.enabled
-
-
-def cr_question_active(
-    *, assisted: bool, channel: str | None, test_scenario: str | None = None
-) -> bool:
-    """The public page asks the CR question instead of looking a CR up."""
-    if assisted or (channel or SELF_SERVICE) != SELF_SERVICE:
-        return False
-    if intake_flow() == "v2":
-        return False
-    if test_scenario:
-        return test_scenario in CR_QUESTION_SCRIPTS
-    return get_policy().public_cr_check == "ask_then_sign_in"
 
 
 def scrub_cr_numbers(text: str) -> tuple[str, bool]:
@@ -116,23 +78,3 @@ def first_cr_number(text: str) -> str | None:
 
 def contains_cr_number(text: str) -> bool:
     return bool(_CR_RE.search(normalise_digits(text)))
-
-
-@dataclass
-class CrAnswer:
-    draft: InquiryDraft
-    changed: list[str]
-    note: str  # the [ui_event] note for the agent
-
-
-def apply_cr_answer(draft: InquiryDraft, has_cr: bool) -> CrAnswer | None:
-    """The draft after the applicant's answer, or None if the CR step is already done.
-
-    Yes uses `cr_status: existing` (stop collecting, sign in) without a CR number; No uses
-    `skipped` (company name and address are collected as on the skip path)."""
-    if draft.cr_status != "unknown":
-        return None
-    updated = draft.model_copy(deep=True)
-    updated.cr_status = "existing" if has_cr else "skipped"
-    note = "[ui_event] cr_answer yes" if has_cr else "[ui_event] cr_answer no"
-    return CrAnswer(draft=updated, changed=["cr_status"], note=note)

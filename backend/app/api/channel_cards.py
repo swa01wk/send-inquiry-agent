@@ -11,7 +11,6 @@ from app.api.schemas import (
     BasicInfoRow,
     CompanyRegistrationPayload,
     ContactCheckPayload,
-    CrQuestionPayload,
     InformTenantPayload,
     SendLinkPayload,
     SignInPromptPayload,
@@ -34,9 +33,7 @@ INFORM_TENANT_SAY = (
     "Leasing Opportunities — your company details are already on file there."
 )
 SIGN_IN_CARD_ID = "sign_in_prompt"
-CR_QUESTION_CARD_ID = "cr_question"
 
-CR_QUESTION_PROMPT = "Does your company have a CR (commercial registration)?"
 # The tenant portal's sign-in; once signed in it opens Leasing Opportunities, where the
 # inquiry is raised (demo feedback I3).
 SIGN_IN_PATH = "/tenant"
@@ -48,19 +45,7 @@ BASIC_KEYS: tuple[FieldKey, ...] = tuple(
 )
 
 
-# A signed-in tenant's inquiry is for a new brand (demo feedback §3.8, R4): the basic-info
-# card covers the company and contact from Cenomi's records; the brand is asked for in the
-# chat (typed or from the Brand Profile) and confirmed on its own card.
-NEW_BRAND_KEYS: frozenset[FieldKey] = frozenset(
-    {FieldKey.BRAND_NAME_EN, FieldKey.BRAND_NAME_AR, FieldKey.SALES_CATEGORY}
-)
-
-
-def _card_keys(new_brand: bool) -> tuple[FieldKey, ...]:
-    return tuple(k for k in BASIC_KEYS if not (new_brand and k in NEW_BRAND_KEYS))
-
-
-def basic_info_missing(draft: InquiryDraft, *, new_brand: bool = False) -> list[str]:
+def basic_info_missing(draft: InquiryDraft) -> list[str]:
     """Labels of required basic-info fields still empty (contact = mobile or landline)."""
     missing: list[str] = []
     for blocker in can_submit(draft):
@@ -71,20 +56,16 @@ def basic_info_missing(draft: InquiryDraft, *, new_brand: bool = False) -> list[
             missing.append("Mobile or landline")
             continue
         definition = FIELD_BY_KEY.get(FieldKey(key))
-        if new_brand and FieldKey(key) in NEW_BRAND_KEYS:
-            continue
         if definition is not None and definition.group in BASIC_GROUPS:
             missing.append(definition.label)
     return missing
 
 
-def confirm_basic_info(
-    draft: InquiryDraft, *, new_brand: bool = False
-) -> tuple[InquiryDraft, list[str]]:
+def confirm_basic_info(draft: InquiryDraft) -> tuple[InquiryDraft, list[str]]:
     """Proceed: confirm every derived, verified or staff basic-info value in one step."""
     keys = [
         key.value
-        for key in _card_keys(new_brand)
+        for key in BASIC_KEYS
         if draft.fields[key].value not in (None, "", [])
         and draft.fields[key].source in NEEDS_CONFIRMATION
         and not draft.fields[key].confirmed
@@ -100,10 +81,9 @@ def build_basic_info_card(
     title: str = "Please check your details",
     proceeded: bool = False,
     message_id: str | None = None,
-    new_brand: bool = False,
 ) -> UiCard:
     rows: list[BasicInfoRow] = []
-    for key in _card_keys(new_brand):
+    for key in BASIC_KEYS:
         definition = FIELD_BY_KEY[key]
         field = draft.fields[key]
         display = definition.display(draft, master)
@@ -121,7 +101,7 @@ def build_basic_info_card(
                 required=definition.required,
             )
         )
-    missing = basic_info_missing(draft, new_brand=new_brand)
+    missing = basic_info_missing(draft)
     payload = BasicInfoReviewPayload(
         title=title,
         started_by=started_by,
@@ -263,25 +243,6 @@ def build_company_registration_card(
     return UiCard(
         card_id=COMPANY_REGISTRATION_CARD_ID,
         card_type="company_registration",
-        message_id=message_id,
-        payload=payload.model_dump(),
-    )
-
-
-def build_cr_question_card(
-    *, answered: Literal["yes", "no"] | None = None, message_id: str | None = None
-) -> UiCard:
-    """ "Do you have a CR?" with two buttons (demo feedback §3.1). The public page never
-    asks for the number itself."""
-    payload = CrQuestionPayload(
-        prompt=CR_QUESTION_PROMPT,
-        yes_label="Yes, we have a CR",
-        no_label="No, we don't",
-        answered=answered,
-    )
-    return UiCard(
-        card_id=CR_QUESTION_CARD_ID,
-        card_type="cr_question",
         message_id=message_id,
         payload=payload.model_dump(),
     )

@@ -1,17 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { listOpportunities, raiseInquiry, type Opportunity } from '../api/tenant'
+import { listOpportunities, type Opportunity } from '../api/tenant'
 import { TenantLayout } from './TenantLayout'
 import { useTenantId } from './tenantSession'
 import styles from './tenant.module.css'
 
 function OpportunityList() {
   const [tenantId] = useTenantId()
-  const navigate = useNavigate()
   const [items, setItems] = useState<Opportunity[] | null>(null)
   const [city, setCity] = useState('')
   const [unitType, setUnitType] = useState('')
-  const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -40,21 +37,6 @@ function OpportunityList() {
   const shown = (items ?? []).filter(
     (o) => (!city || o.city_id === city) && (!unitType || o.unit_type === unitType),
   )
-
-  const raise = async (opportunity: Opportunity) => {
-    if (!tenantId) return
-    setBusy(opportunity.id)
-    setError(null)
-    try {
-      // Every inquiry raised here is for a new brand (demo feedback §3.8): the assistant
-      // asks for it in the chat.
-      const session = await raiseInquiry(tenantId, opportunity.id)
-      navigate('/', { state: { resumed: session } })
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not start the inquiry.')
-      setBusy(null)
-    }
-  }
 
   return (
     <>
@@ -113,14 +95,6 @@ function OpportunityList() {
             <span className={styles.muted}>
               {o.area_min === o.area_max ? `${o.area_min}` : `${o.area_min}–${o.area_max}`} sqm
             </span>
-            <button
-              type="button"
-              className={styles.primaryBtn}
-              disabled={busy !== null}
-              onClick={() => void raise(o)}
-            >
-              {busy === o.id ? 'Opening…' : 'Raise inquiry'}
-            </button>
           </li>
         ))}
       </ul>
@@ -128,7 +102,8 @@ function OpportunityList() {
   )
 }
 
-/** `/tenant/opportunities`: Raise inquiry opens the chat in existing-tenant mode (§3.5). */
+/** `/tenant/opportunities`: where a registered company lands after signing in (chart S3,
+ * M13). Read-only: raising an inquiry here (R4) isn't on the chart. */
 export function TenantOpportunitiesPage() {
   return <TenantLayout title="Leasing Opportunities">{() => <OpportunityList />}</TenantLayout>
 }

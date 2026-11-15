@@ -12,7 +12,7 @@ The same lines drive the scripted rehearsal: beat 1 is the `demo` path in [`docs
 
 **Sara Ali** runs **Bean Street**, a specialty coffee brand, and wants office space at **Riyadh Mall A** and **Jeddah Mall A**. She has no CR to hand, so she skips it on the public page, verifies her email and mobile in the chat, and submits. The Leasing Admin asks for a better Brand Profile; the Regional Sales Manager assigns the unit, asks for Forecasted Sales Data, approves the lead and, once the contacts are in, sends it to Yardi.
 
-Later, **Layla Hassan** of **Oasis Coffee Company**, an existing tenant, types her CR on the public page, is sent to sign in, and raises an inquiry for a new brand, **Oasis Bakehouse**. Then she calls the call centre, which recognises her login and emails her a sign-in link.
+Later, **Layla Hassan** of **Oasis Coffee Company**, an existing tenant, types her CR on the public page, is sent to sign in, and lands on Leasing Opportunities. Then she calls the call centre, which recognises her login and emails her a sign-in link.
 
 ---
 
@@ -79,7 +79,7 @@ Open the link in Sara's submission email → *Approved — your details are with
 
 ---
 
-## Beat 12 — a registered CR, then signed in for a new brand (S3)
+## Beat 12 — a registered CR → sign in → Leasing Opportunities (S3, M13)
 
 Press **Restart** in the chat header first.
 
@@ -87,14 +87,7 @@ Press **Restart** in the chat header first.
 | --- | --- | --- |
 | 1 | Type `1010000000` on the Company Registration card → **Verify** | **Customer already registered. Please login**, and the sign-in card. Nothing else is asked |
 | 2 | `ok what now?` | Signing in is the way; it doesn't start the inquiry here |
-| 3 | **Sign in to Tenant Central** → **Oasis Coffee Company — Layla Hassan** → **Sign in** | **Leasing Opportunities** |
-| 4 | **Raise inquiry** on **OPP-101** | "Welcome back, Layla. I've filled in Oasis Coffee Company's details from your Cenomi record…", then the details card |
-| 5 | **Proceed** | It asks what the new brand is: type it, or upload its Brand Profile |
-| 6 | `I'll upload the Brand Profile` | Documents card. A new brand needs **both** profiles, even if sent before |
-| 7 | Upload `new_brand_profile.pdf` → **Looks right** | Oasis Bakehouse, café |
-| 8 | `مخبز الواحة` (when it asks for the Arabic name) | It asks for the Company Profile |
-| 9 | Upload `oasis_company_profile_mismatch.pdf` | The profile differs from **your Cenomi record**. Keep the record's name, or tell it the right one |
-| 10 | `Keep the record's name` → **Submit inquiry** | Submits; the Leasing Admin's brief flags the company name |
+| 3 | **Sign in to Tenant Central** → **Oasis Coffee Company — Layla Hassan** → **Sign in** | **Leasing Opportunities**, read-only: the chart ends here (connector A) |
 
 ---
 
@@ -135,7 +128,6 @@ On **/callcentre** as **Sami Al Anazi** → **New inquiry**.
 | `company_profile.pdf`, `brand_profile.pdf` | Plain uploads: nothing filled; valid for a year |
 | `company_profile_match.pdf` / `_mismatch.pdf` | Bean Street Trading Co. / Bean Street Holding Company (differs from a typed name) |
 | `brand_profile_match.pdf` | Bean Street, café |
-| `new_brand_profile.pdf` | Oasis Bakehouse, café |
 | `oasis_company_profile.pdf` / `_mismatch.pdf` | Oasis Coffee Company (matches Yardi) / Oasis Coffee Trading Establishment (differs) |
 | A file name with `expired` or `soon` | Profile expiry 30 days ago / 7 days ahead; otherwise valid |
 | CR `1010000000` | Registered: Oasis Coffee Company, Yardi company `YC-1301`; Layla Hassan has a login |

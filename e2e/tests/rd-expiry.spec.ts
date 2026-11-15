@@ -1,7 +1,8 @@
+import { submitInquiry } from '../support/intake'
 import { expect, test } from '@playwright/test'
 import { clearDevOutbox } from '../support/outbox'
 import { openCaseAs } from '../support/stories'
-import { reviewerFor, submitScriptedInquiry } from '../support/submit'
+import { reviewerFor } from '../support/submit'
 
 /** `YYYY-MM-DD` a year from today. */
 function aYearAhead(): string {
@@ -19,9 +20,8 @@ test.describe('Story rd-expiry @scripted', () => {
   test('expired, expiring soon, and a corrected date', async ({ page, request }) => {
     test.setTimeout(240_000)
     await clearDevOutbox(request)
-    const reference = await submitScriptedInquiry(page, request, 's1-happy-path', undefined, {
-      company: 'company_expired.pdf',
-      brand: 'brand_soon.pdf',
+    const reference = await submitInquiry(page, request, {
+      files: { company: 'company_expired.pdf', brand: 'brand_soon.pdf' },
     })
     const leaseAdmin = await reviewerFor(request, reference, 'first')
     await openCaseAs(page, leaseAdmin, reference)

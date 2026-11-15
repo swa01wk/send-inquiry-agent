@@ -12,7 +12,7 @@ import {
 } from '../api/review'
 import { PageShell } from '../components/layout/PageShell'
 import { ActionsPanel, type ActionsPrefill } from './ActionsPanel'
-import { ContactDecisions } from './ContactDecisions'
+import { ContactList } from './ContactList'
 import { DocumentDecisions } from './DocumentDecisions'
 import { prefillFromSuggestion } from './prefillFromSuggestion'
 import { ReviewerAssistantPanel } from './ReviewerAssistantPanel'
@@ -309,12 +309,7 @@ export function ReviewCasePage() {
               {brief.contacts.length > 0 ? (
                 <>
                   <h3 className={styles.actionTitle}>Tenant contacts</h3>
-                  <ContactDecisions
-                    contacts={brief.contacts}
-                    canDecide={detail.legal_actions.includes('approve_contact')}
-                    busy={busy}
-                    onAct={(action, payload) => void onAct(action, payload)}
-                  />
+                  <ContactList contacts={brief.contacts} />
                 </>
               ) : null}
               {brief.yardi.lead_ref ? (
