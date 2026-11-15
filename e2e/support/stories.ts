@@ -2,14 +2,7 @@ import { expect, type APIRequestContext, type Browser, type Page } from '@playwr
 import { InquiryPage } from '../pages/inquiry'
 import { A2_CALL_CENTRE_TURNS, C1_EXISTING_CR_TURN } from './channelScripts'
 import type { DemoBeat } from './demoPace'
-import { fieldDisplay, fieldSource } from './draft'
-import {
-  clearDevOutbox,
-  completeVerifyLink,
-  fetchDevOutbox,
-  latestByTemplate,
-  withE2eScenario,
-} from './outbox'
+import { completeVerifyLink, fetchDevOutbox, latestByTemplate, withE2eScenario } from './outbox'
 import {
   APPLICANT_EMAIL,
   APPLICANT_MOBILE,
@@ -144,6 +137,8 @@ export async function openCaseAs(
   )
   await expect(page.getByTestId('case-stage')).toBeVisible()
 }
+
+const API = 'http://127.0.0.1:8000'
 
 /** Advance the simulated clock until local time in `timezone` is `targetHour` (0–23). */
 export async function advanceClockToLocalHour(
