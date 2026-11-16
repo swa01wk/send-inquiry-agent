@@ -168,6 +168,6 @@ Run after every build day (`make e2e-int`), not only `@flow-v2`. The stories thi
 | F2 | F2 files + catalogue S21–S24 | S21–S24, S18 + regression | `case` group | — |
 | F3 | F3 files + catalogue S1–S17 | S1–S17 + regression | `flow_v2` S1–S17 ×3 | smoke S1, S3 |
 | F4 | F4 files + catalogue CC1–CC3, S16 | CC1–CC3, S16 + regression | `flow_v2` all ×3 | smoke CC1 |
-| F5 | whole suite | all 27 on desktop and mobile | `flow_v2` 27/27 on two days; all groups | `@live @flow-v2` ≥ 22/24 + CC, twice |
+| F5 | whole suite | all 27 on desktop and mobile | `flow_v2` 27/27 on two days; all groups | `@live @flow-v2`: the 19 `e2e_live` scenarios + CC, twice; `@qa-live` 23/24 |
 
 Each PR's Testing section lists what ran and what didn't, per layer.
