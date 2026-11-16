@@ -11,13 +11,13 @@ import { APPLICANT_EMAIL, approveDocumentsViaApi, reviewerFor } from '../../supp
  * Tenant? = No → "Tenant Not Qualified" → rejection email, and no Azure AD invitation.
  * F1 checks the chart names and the outbox; `expectFlowPath` joins on F2.
  */
-test.describe('S19 Not qualified @flow-v2 @scripted', () => {
+test.describe('S19 Not qualified @flow-v2 @scripted @live', () => {
   test('first-level rejection is named Tenant Not Qualified', async ({
     page,
     browser,
     request,
   }) => {
-    test.setTimeout(180_000)
+    test.setTimeout(process.env.E2E_LIVE ? 900_000 : 180_000)
     const reference = await submitInquiry(page, request)
     await approveDocumentsViaApi(request, reference)
     const leasingAdmin = await reviewerFor(request, reference, 'first')

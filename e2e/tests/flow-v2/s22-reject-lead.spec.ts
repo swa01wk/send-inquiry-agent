@@ -8,13 +8,13 @@ import { openCaseAs } from '../../support/stories'
  * S22 Reject Lead (flow v2 §3.6, §3.7, V9; docs/flow-v2/scenarios.json): "Approve Lead?" = No →
  * Reject Lead → "Lead Rejected", the first-approval invitation revoked, the rejection email.
  */
-test.describe('S22 Reject Lead @flow-v2 @scripted', () => {
+test.describe('S22 Reject Lead @flow-v2 @scripted @live', () => {
   test('No, reject lead revokes the invitation and says Lead Rejected', async ({
     page,
     browser,
     request,
   }) => {
-    test.setTimeout(180_000)
+    test.setTimeout(process.env.E2E_LIVE ? 900_000 : 180_000)
     const seeded = await seedFlowCase(request, 'qualified')
     const reference = seeded.reference
 

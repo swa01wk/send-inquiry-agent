@@ -791,7 +791,12 @@ def _check_case_rejection(
 def _offers_new_inquiry(turns: list[TurnResult]) -> bool:
     text = _reply_text(turns).lower()
     after = get_policy().after_rejection.lower()
-    return "new inquiry" in text or any(
+    # "raise a new one", "start another inquiry": eval 16 Nov (S19 2/3) failed a reply that
+    # offered a new inquiry in other words.
+    offered = re.search(
+        r"\b(new|another) (inquiry|one|application)\b|\b(raise|start|send|submit) (a )?new\b", text
+    )
+    return offered is not None or any(
         chunk.strip() and chunk.strip() in text for chunk in after.split(",")
     )
 
