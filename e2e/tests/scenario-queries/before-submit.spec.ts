@@ -156,8 +156,15 @@ test.describe('Scenario queries: before submit', () => {
         await expect(t.page.getByRole('button', { name: 'Store', exact: true })).toHaveCount(0)
       })
       await t.row('2 oops', [{ say: 'oops' }], async () => {
-        await expect(t.crCard().getByRole('button', { name: /^verify$/i })).toBeVisible()
+        // Still on Company Registration: the CR box, or the agent offering to skip (the
+        // chart's "asks again or offers to skip"), never moved on.
+        await expect(t.crCard()).not.toContainText('Continuing without a CR number.')
         await expect(t.page.getByRole('button', { name: 'Store', exact: true })).toHaveCount(0)
+        const confirm = t.crCard().getByTestId('skip-confirm')
+        if (await confirm.isVisible()) {
+          await confirm.getByRole('button', { name: "No, I'll enter it" }).click()
+        }
+        await expect(t.crCard().getByRole('button', { name: /^verify$/i })).toBeVisible()
       })
       await t.row('3 Type 1010123456 → Verify', [{ cr_verify: '1010123456' }], async () => {
         await expect(t.crCard()).toContainText('not registered yet')

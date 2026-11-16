@@ -495,8 +495,9 @@ def skip_cr(
     runtime: ToolRuntime,
     confirmed: bool = False,
 ) -> Command[Any]:
-    """Skip CR verification after the user agreed. On the Company Registration card the
-    first call shows "Are you sure you want to proceed without CR ID?"; call again with
+    """Skip CR verification, only when the user asked to skip or said they have no CR (a
+    typo, "oops" or a question isn't asking). On the Company Registration card the first
+    call shows "Are you sure you want to proceed without CR ID?"; call again with
     confirmed=true only after the user said yes to that question."""
     draft = state["draft"]
     if draft.cr_status != "unknown":
