@@ -230,6 +230,7 @@ def test_the_inquiry_reopens_once_they_continue() -> None:
         created_at=now,
         updated_at=now,
         last_seen_at=now,
+        expires_at=now,
     )
     assert apply_session_to_inquiry(session, inquiry).status == InquiryStatus.DRAFT
 
