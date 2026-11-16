@@ -27,6 +27,7 @@ from app.api.cards import (
     allocate_confirm_card_id,
     build_confirm_fields_card,
     build_document_upload_card,
+    build_duplicate_notice_card,
     build_review_card,
     build_success_card,
     build_terms_card,
@@ -65,6 +66,7 @@ from app.policy.config import get_policy
 from app.security import tokens
 from app.sessions import Session
 from app.workflow.contacts import apply_signatory_answer, confirm_contacts, contacts_blockers
+from app.workflow.duplicates import open_duplicate
 from app.workflow.flow import FlowNode, call_centre_flow_id, record_flow_step
 from app.workflow.machine import USER, IllegalTransition
 from app.workflow.models import Case, TenantContact, WorkflowEvent
@@ -732,6 +734,26 @@ async def _accept_and_submit(
 
     draft = session.draft.model_copy(deep=True)
     draft.terms_accepted = True
+    if get_policy().duplicate_policy == "block":
+        duplicate = open_duplicate(runtime.services.cases.all(), draft)
+        if duplicate is not None:
+            # Chart S15 with duplicate_policy: block. Nothing is sent; the notice says why.
+            session.draft = draft
+            notice = build_duplicate_notice_card(duplicate, runtime.master)
+            session.cards_shown.add(notice.card_id)
+            _audit(runtime, session, "submit_attempt", submit_key=submit_key, outcome="duplicate")
+            return ActionResult(
+                note=HumanMessage(
+                    content="[ui_event] submit_blocked duplicate_open_inquiry "
+                    f"{duplicate.reference}"
+                ),
+                events=[
+                    _card_event(session, notice),
+                    _draft_event(draft, runtime, ["terms_accepted"]),
+                ],
+                changed_keys=["terms_accepted"],
+            )
+
     blockers = can_submit(draft)
     if blockers:
         session.draft = draft

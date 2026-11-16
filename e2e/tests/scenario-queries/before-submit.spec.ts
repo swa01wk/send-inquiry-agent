@@ -555,31 +555,36 @@ test.describe('Scenario queries: before submit', () => {
   })
 
   test(`S15 Same CR and mall as an open inquiry ${BOTH}`, async ({ page, browser, request }) => {
-    // Live run 16 Nov: no warning. duplicate_policy (policy.yaml) has no code behind it yet,
-    // and the eval's warns_once_neutrally check is a stub. Remove this line once it warns.
-    test.fail(LIVE, 'known gap: the duplicate warning (duplicate_policy: warn) is not built')
     const t = await Tester.open(page, browser, request, 'S15')
     try {
+      let open = ''
       await t.row('1 An open inquiry for 1010222222 at Riyadh Mall A (seed)', [], async () => {
-        await seedCase(request, {
+        const seeded = await seedCase(request, {
           stage: 'submitted',
           cr_number: '1010222222',
           malls: ['riyadh-mall-a'],
         })
+        open = seeded.reference
       })
       await t.blockA({ cr: '1010222222' })
-      const reference = await t.blockB()
-      // duplicate_policy: warn — it still submits.
+      await t.blockB({ until: 'B3' })
+      await t.row(
+        'It warns once, neutrally, once the mall is in (duplicate_policy: warn)',
+        [],
+        async () => {
+          const notice = t.chat.cards('duplicate_notice')
+          await expect(notice).toHaveCount(1)
+          await expect(notice).toContainText(open)
+          await expect(notice).toContainText('Riyadh Mall A')
+          await expect(notice).toContainText('You can still send this one')
+          await neverSaysLive(t.chat, /mistake|not allowed|duplicate/i, 'neutral')
+        },
+      )
+      const reference = await t.blockB({ from: 'B4' })
+      // It still submits, and the notice wasn't repeated.
       expect(reference).toMatch(/^GEO-/)
-      if (LIVE) {
-        const warned = (await t.chat.allReplies()).filter((r) =>
-          /(already|open|existing|another).{0,40}inquir|inquir.{0,40}(already|open|existing)/i.test(
-            r,
-          ),
-        )
-        expect(warned.length, 'warns once, neutrally').toBeGreaterThan(0)
-        expect(warned.length, 'warns once').toBeLessThanOrEqual(2)
-      }
+      expect(reference).not.toBe(open)
+      await expect(t.chat.cards('duplicate_notice')).toHaveCount(1)
     } finally {
       await t.close()
     }

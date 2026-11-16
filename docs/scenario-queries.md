@@ -216,7 +216,7 @@ Block A, then Block B to B3, then:
    - Or seed one: `curl -s -X POST localhost:8000/api/dev/flow/seed -H 'content-type: application/json' -d '{"stage":"submitted","cr_number":"1010222222","malls":["riyadh-mall-a"]}'`.
 2. **Restart**, then run S2 again with `1010222222` and `Riyadh Mall A, 30 to 50 sqm, up to 250k a year, 3 years`.
 
-- **Check:** it warns once, neutrally, that an open inquiry exists for the same CR and mall.
+- **Check:** once the mall is in, one notice card: *There's already an open inquiry for this CR at Riyadh Mall A (GEO-…). You can still send this one; the leasing team will see both.* It isn't shown again, and no reply calls it a mistake.
 - **Check:** **Submit inquiry** still works (`duplicate_policy: warn`).
 
 ### S16 — Asks something else mid-flow

@@ -175,6 +175,21 @@ ASSISTED_NOTES = """## Channel: assisted (call centre or Guest Service)
   existing contact; repeat the sign-in words in one line."""
 
 
+def duplicate_notes(reference: str, policy: str) -> str:
+    """Chart S15: a notice card already told them about the open inquiry (once, from code)."""
+    after = (
+        "they can still send this one"
+        if policy == "warn"
+        else "this one can't be sent while that one is open; they can choose another mall"
+    )
+    return (
+        "## Open inquiry with the same CR and mall\n"
+        f"A notice on screen already told them an open inquiry ({reference}) has the same CR "
+        f"and mall, and that {after}. Don't repeat it unless they ask; if they do, say that "
+        "plainly and neutrally. Never suggest they did something wrong."
+    )
+
+
 def channel_notes(channel: str | None, assisted: bool) -> str:
     if assisted:
         return ASSISTED_NOTES

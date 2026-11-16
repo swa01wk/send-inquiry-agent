@@ -18,13 +18,15 @@ from app.agent.checkpointer import memory_checkpointer
 from app.agent.guard import after_guard, guard_node
 from app.agent.history import trim_messages_for_model
 from app.agent.model import ModelUnavailable, get_chat_model, model_error_kind
-from app.agent.prompts import build_system_message, channel_notes
+from app.agent.prompts import build_system_message, channel_notes, duplicate_notes
 from app.agent.runtime import AgentRuntime, runtime_from_config
 from app.agent.sequential_tool_node import build_sequential_tool_node
 from app.agent.state import AgentState
 from app.agent.tools import ASSISTED_TOOLS, TOOLS
 from app.domain.rules import compute_phase
 from app.gateway import GatewayError
+from app.policy.config import get_policy
+from app.workflow.duplicates import notice_card_id, open_duplicate
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +110,7 @@ def build_agent_graph(
 
 
 def system_for_turn(state: AgentState, config: RunnableConfig) -> SystemMessage:
-    """The intake prompt, plus the channel's notes (assisted)."""
+    """The intake prompt, plus the channel's notes (assisted) and the S15 duplicate note."""
     runtime = runtime_from_config(config)
     message = build_system_message(
         state["draft"],
@@ -121,6 +123,11 @@ def system_for_turn(state: AgentState, config: RunnableConfig) -> SystemMessage:
     notes = channel_notes(state.get("channel"), bool(state.get("assisted")))
     if notes:
         parts.append(notes)
+    draft = state["draft"]
+    if draft.reference is None:
+        duplicate = open_duplicate(runtime.services.cases.all(), draft)
+        if duplicate is not None and notice_card_id(duplicate) in state["cards_shown"]:
+            parts.append(duplicate_notes(duplicate.reference, get_policy().duplicate_policy))
     return SystemMessage(content="\n\n".join(p for p in parts if p))
 
 

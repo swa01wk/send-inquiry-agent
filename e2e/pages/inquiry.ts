@@ -432,6 +432,7 @@ export class InquiryPage {
     if (type === 'send_link') return this.page.getByTestId('send-link-card')
     if (type === 'contact_check') return this.page.getByTestId('contact-check-card')
     if (type === 'inform_tenant') return this.page.getByTestId('inform-tenant-card')
+    if (type === 'duplicate_notice') return this.page.getByTestId('duplicate-notice-card')
     if (type === 'sign_in_prompt') return this.page.getByTestId('sign-in-prompt-card')
     if (type === 'company_registration') return this.page.getByTestId('company-registration-card')
     if (type === 'terms') return this.page.getByTestId('terms-card')

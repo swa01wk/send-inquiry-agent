@@ -355,7 +355,7 @@ Business rules, validated at start-up into `PolicyConfig` (`app/policy/config.py
 | `verification` | `{email: link, mobile: otp}` (the only supported values) | Prompt block |
 | `resend` | `{cooldown_seconds: 60, max_per_hour: 5}` | Step 19 |
 | `documents.required` / `optional` | Company and Brand Profile required; the rest optional; every type listed once | `can_submit`, `documents_updated`, document card, review, draft checks |
-| `duplicate_policy` | `warn` | Step 21b |
+| `duplicate_policy` | `warn` | Chart S15: same CR and at least one mall as an open case (`workflow/duplicates.open_duplicate`; open = submitted to lead approved). `warn`: the guard shows one `duplicate_notice` card and they can still submit; `block`: `accept_and_submit` returns the notice and `submit_blocked duplicate_open_inquiry <reference>`. A skipped CR never matches |
 | `follow_on_reuse_hours` | `24` | Step 21b |
 
 `faq.json`: `[{id, question, keywords:[...], answer}]`, 8–10 entries (answers are placeholders marked `[to be confirmed]` where facts are unknown):
@@ -477,7 +477,7 @@ Contracts for [L4](specs/l4-outcome-assistance.md) at Day 4 depth. Code: `backen
 | `submit_sales_data` | `{}` | A `sales_data` file uploaded after the request → `sales_data_provided` | `sales_data_submitted`, or `sales_data_blocked missing_file` |
 | `signatory_answer` | `{is_signatory: bool}` | "Are you the authorised signatory?" (§13.1). Yes: `authorized_signatory` = the verified primary contact (`same_as_primary`); No: a same-as-primary signatory is cleared. Stores `Session.signatory_answer`, audits `signatory_answered {answer}`, returns the answered `signatory_question` card and the refreshed contacts card | `signatory_answer yes` / `signatory_answer no`, or `signatory_answer no_request` / `signatory_answer_invalid` |
 
-Contacts being collected live on the case session (`Session.contacts_draft`); `workflow/contacts.write_contacts(current, entries, primary_draft)` is the deterministic writer for the case agent's `update_contacts` tool (entries `{role, first_name?, last_name?, email?, contact_number?, same_as_primary?, source?}`; "that's me" copies the primary contact as `verified`, unconfirmed; Arabic digits normalised). `contacts_blockers` lists `missing_contact:<role>`, `incomplete_contact:<role>`, `unconfirmed_contact:<role>`.
+Contacts being collected live on the case session (`Session.contacts_draft`); `workflow/contacts.write_contacts(current, entries, primary_draft)` is the deterministic writer for the case agent's `update_contacts` tool (entries `{role, first_name?, last_name?, email?, contact_number?, same_as_primary?, source?}`; `role` is read through `normalize_role`, so the label or the UK spelling (`authorised_signatory`) works, and an unknown role's error lists the valid ones; a successful `update_contacts` re-sends the contacts card, same id, so it always shows what's saved; "that's me" copies the primary contact as `verified`, unconfirmed; Arabic digits normalised). `contacts_blockers` lists `missing_contact:<role>`, `incomplete_contact:<role>`, `unconfirmed_contact:<role>`.
 
 **Case links:** token purpose `case` (subject the reference, `data.r` the request id, `CASE_TTL_DAYS`); links `<PUBLIC_BASE_URL>/inquiry/case?t=…`. `POST /api/cases/open {token}` accepts a `case` or `track` token, reopens the case's chat (`Session.mode = "case"`, `case_id`) or starts one seeded with the submitted inquiry, adds a short assistant message, and returns the `POST /api/sessions` shape with a `case_status` card and the card for each open request. 400 `token_invalid` / `token_expired`; 404 `inquiry_not_found`.
 
@@ -624,6 +624,7 @@ Spec: `docs/specs/intake-channels.md`. Every channel ends in the same draft, rul
 | `contact_check` | `{prompt, company_name, input_placeholder, check_label, state: open \| existing \| new, email_masked, error}` | **Check contact** = `contact_check {email}` (§17) |
 | `inform_tenant` | `{title, say, email_masked, sign_in_label, offer_sign_in_link, sent, error}` | **Email sign-in link** = `send_sign_in_link {}` (§17) |
 | `sign_in_prompt` | `{message, sign_in_url, button_label}` | A link to `/tenant` |
+| `duplicate_notice` | `{reference, malls, policy: warn \| block, message}` | None. Chart S15: card id `duplicate-<reference>`, shown once from code; the model's turn context says it was shown, so the reply doesn't repeat it |
 
 **Assisted mode** (call centre and Guest Service, `CALLCENTRE_CONSOLE=true`):
 

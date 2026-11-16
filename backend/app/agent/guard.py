@@ -38,6 +38,7 @@ from app.api.cards import (
     TERMS_CARD_ID,
     VERIFICATION_CARD_ID,
     build_document_upload_card,
+    build_duplicate_notice_card,
     build_mall_picker_card,
     build_review_card,
     build_terms_card,
@@ -58,6 +59,7 @@ from app.domain.sections import (
 from app.domain.summary import build_draft_summary
 from app.domain.validation import normalise_digits
 from app.policy.config import get_policy
+from app.workflow.duplicates import OpenDuplicate, notice_card_id, open_duplicate
 
 GUARD_PREFIX = "[ui_event] guard:"
 
@@ -604,6 +606,18 @@ def _emit_draft(state: AgentState, runtime: AgentRuntime, changed_keys: list[str
     writer({"type": "draft", "data": summary.model_dump()})
 
 
+def _duplicate_notice_due(
+    draft: InquiryDraft, cards_shown: list[str], runtime: Any
+) -> OpenDuplicate | None:
+    """Same CR and mall as an open inquiry, not yet told (chart S15), or None."""
+    if draft.reference is not None:
+        return None
+    duplicate = open_duplicate(runtime.services.cases.all(), draft)
+    if duplicate is None or notice_card_id(duplicate) in cards_shown:
+        return None
+    return duplicate
+
+
 def _emit_card(card: UiCard, writer: Any) -> None:
     if writer is None:
         return
@@ -953,6 +967,12 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
     if picker_city is not None:
         _emit_card(build_mall_picker_card(draft, runtime.master, picker_city), writer)
         cards_shown.append("malls")
+
+    duplicate = _duplicate_notice_due(draft, cards_shown, runtime)
+    if duplicate is not None:
+        # Chart S15: one neutral notice per open inquiry, from code (duplicate_policy).
+        _emit_card(build_duplicate_notice_card(duplicate, runtime.master), writer)
+        cards_shown.append(notice_card_id(duplicate))
 
     documents_due = (
         _v2_documents_card_due(state, draft)

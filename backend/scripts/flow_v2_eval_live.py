@@ -922,6 +922,9 @@ def _expect_checks(
         )
     if expect.get("no_inquiry"):
         checks.append(("no reference", not draft.reference))
+    if expect.get("duplicate_warning"):
+        # Chart S15 (deterministic, so AGENT-DET checks it too): one notice card, from code.
+        checks.append(("duplicate notice shown once", len(_cards(turns, "duplicate_notice")) == 1))
     if call_centre and (templates := expect.get("outbox")):
         sent = {m.get("template") for m in app.state.services.notifications.messages()}
         for template in templates:
@@ -1532,7 +1535,11 @@ _CHECKS: dict[str, Callable[..., list[tuple[str, bool]]]] = {
     "never_reasks_value_from_document": lambda s, t, a, e: [("never_reasks", True)],
     "gives_refusal_reason_plainly": lambda s, t, a, e: [("refusal plain", True)],
     "names_the_right_document": lambda s, t, a, e: [("names document", True)],
-    "warns_once_neutrally": lambda s, t, a, e: [("warns once", True)],
+    # Chart S15: the notice card is shown once, from code; no reply calls it a mistake.
+    "warns_once_neutrally": lambda s, t, a, e: [
+        ("duplicate notice shown once", len(_cards(t, "duplicate_notice")) == 1),
+        ("neutral", not re.search(r"mistake|not allowed|duplicate", _reply_text(t), re.I)),
+    ],
     "friendly_retry": _wrong_code_on_card,
     "e5_gives_words_to_say": _e5_words_to_say,
     "no_inquiry_created": _no_inquiry_created,

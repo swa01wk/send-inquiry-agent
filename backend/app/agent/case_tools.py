@@ -9,7 +9,7 @@ from langchain_core.messages import HumanMessage, ToolMessage
 from langchain_core.tools import tool
 from langgraph.prebuilt.tool_node import InjectedState, ToolRuntime
 from langgraph.types import Command
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.agent.handoff import start_handoff
 from app.agent.runtime import runtime_from_config
@@ -100,6 +100,15 @@ def _status_summary(case: Case) -> str:
         parts.append(f"After rejection: {get_policy().after_rejection}")
     elif label := final_approval_label(status.status):
         parts.append(f"Outcome: {label}")
+    else:
+        # Live run 16 Nov: a reply called "Tenant Qualified" the outcome while the case
+        # waited for a re-upload; the status card lists the stages still ahead.
+        keys = list(_STAGE_LABELS)
+        ahead = keys[keys.index(status.current_stage) + 1 :] if status.current_stage in keys else []
+        parts.append("No outcome yet.")
+        if ahead:
+            names = ", ".join(_STAGE_LABELS[k] for k in ahead)
+            parts.append(f"Not reached yet: {names}.")
     open_any = False
     for request in case.requests:
         if request.status != "open":
@@ -134,7 +143,12 @@ def missing_contacts(case: Case) -> list[str]:
 
 
 class ContactEntry(BaseModel):
-    role: str
+    role: str = Field(
+        description=(
+            "One of: authorized_signatory, billing_contact, leasing_manager, "
+            "financial_controller, company_admin."
+        )
+    )
     first_name: str | None = None
     last_name: str | None = None
     email: str | None = None
@@ -195,6 +209,20 @@ def update_contacts(
             runtime,
             f"Contact validation errors: {parts}",
             contacts_draft=serialized,
+        )
+    # Keep the contacts card on screen in step with what was saved (same card id, updated
+    # in place); it used to wait for show_contacts_review and read "Not added yet".
+    case = _case(state, runtime)
+    request = case.open_request("contacts") if case is not None else None
+    if request is not None:
+        _emit_card(
+            build_contacts_card(
+                contacts,
+                request,
+                case=case,
+                signatory_answer=as_signatory_answer(state.get("signatory_answer")),
+            ),
+            runtime,
         )
     return _tool_message(
         runtime,

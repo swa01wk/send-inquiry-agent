@@ -11,6 +11,7 @@ from app.api.schemas import (
     ConfirmFieldsPayload,
     DocumentNumberRow,
     DocumentUploadPayload,
+    DuplicateNoticePayload,
     HandoffPayload,
     MallPickerCity,
     MallPickerMall,
@@ -36,6 +37,7 @@ from app.domain.summary import build_draft_summary
 from app.domain.validation import ALLOWED_EXTENSIONS
 from app.policy.config import get_policy
 from app.sessions import Session
+from app.workflow.duplicates import OpenDuplicate, notice_card_id
 
 WELCOME_MESSAGE_1 = "Marhaba, and welcome to Cenomi Tenant Central! I'm your leasing assistant."
 WELCOME_MESSAGE_2 = (
@@ -298,6 +300,32 @@ def build_confirm_fields_card(
         card_id=card_id,
         card_type="confirm_fields",
         message_id=message_id,
+        payload=payload.model_dump(),
+    )
+
+
+def build_duplicate_notice_card(duplicate: OpenDuplicate, master: MasterData) -> UiCard:
+    """Chart S15: one neutral notice; the wording is the same for every applicant."""
+    policy = get_policy().duplicate_policy
+    names = [master.label_for("malls", m) or m for m in duplicate.mall_ids]
+    where = " and ".join(names)
+    if policy == "block":
+        message = (
+            f"There's already an open inquiry for this CR at {where} ({duplicate.reference}). "
+            "A second one can't be sent while it's open; you can choose another mall, or "
+            "follow the open one from its tracking link."
+        )
+    else:
+        message = (
+            f"There's already an open inquiry for this CR at {where} ({duplicate.reference}). "
+            "You can still send this one; the leasing team will see both."
+        )
+    payload = DuplicateNoticePayload(
+        reference=duplicate.reference, malls=names, policy=policy, message=message
+    )
+    return UiCard(
+        card_id=notice_card_id(duplicate),
+        card_type="duplicate_notice",
         payload=payload.model_dump(),
     )
 

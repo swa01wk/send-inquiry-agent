@@ -40,6 +40,30 @@ def _put(contact: TenantContact, name: str, value: Any, source: Source) -> None:
     setattr(contact, name, FieldValue(value=value, source=source, confirmed=source == Source.USER))
 
 
+# What the model (or a person) may call a role; the ids stay as in CONTACT_ROLE_LABELS. Live
+# run 16 Nov: "authorised" (UK spelling) was refused and the agent asked the applicant to
+# type the signatory again on the card.
+_ROLE_ALIASES: dict[str, str] = {
+    "signatory": "authorized_signatory",
+    "authorised_signatory": "authorized_signatory",
+    "authorized_signatory": "authorized_signatory",
+    "billing": "billing_contact",
+    "billing_contact": "billing_contact",
+    "leasing": "leasing_manager",
+    "leasing_manager": "leasing_manager",
+    "finance": "financial_controller",
+    "financial_controller": "financial_controller",
+    "admin": "company_admin",
+    "company_admin": "company_admin",
+}
+
+
+def normalize_role(raw: object) -> str:
+    """A contact role id from what was written: the id, its label, or a close alias."""
+    key = "_".join(str(raw or "").strip().lower().replace("-", " ").split())
+    return _ROLE_ALIASES.get(key, key)
+
+
 def write_contacts(
     current: list[TenantContact],
     entries: list[dict[str, Any]],
@@ -50,9 +74,11 @@ def write_contacts(
     contacts = {c.role: c.model_copy(deep=True) for c in current}
     errors: dict[str, str] = {}
     for entry in entries:
-        role = str(entry.get("role", ""))
+        role = normalize_role(entry.get("role", ""))
         if role not in CONTACT_ROLE_LABELS:
-            errors[f"{role}.role"] = "Unknown contact role."
+            errors[f"{role}.role"] = (
+                f"Unknown contact role; use one of: {', '.join(CONTACT_ROLE_LABELS)}."
+            )
             continue
         if entry.get("same_as_primary"):
             contacts[cast(ContactRole, role)] = _copy_primary(primary, role)
