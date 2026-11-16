@@ -254,3 +254,12 @@ def test_the_leasing_admin_sees_the_flag() -> None:
     brief = build_case_brief(case, load_master_data(), now=datetime(2026, 11, 17, 10, tzinfo=UTC))
     assert brief.cr_status == "registered, no login"
     assert any("contact without a login" in item for item in brief.next_decision_checklist)
+
+
+def test_the_s4_continue_script_runs_the_v2_intake() -> None:
+    from types import SimpleNamespace
+
+    from app.agent.cr_question import flow_v2_intake_for
+
+    session = SimpleNamespace(assisted=False, channel=None, test_scenario="qa-s4-continue")
+    assert flow_v2_intake_for(session) is True
