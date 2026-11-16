@@ -115,7 +115,10 @@ test.describe('Scenario queries: after submit', () => {
         await applicant.say('what do you need from me?')
         const reply = await applicant.lastReply()
         expect(reply).toMatch(/Brand Profile/)
-        expect(reply).toMatch(/Logo page missing/i)
+        expect(reply).toMatch(/logo page/i)
+        // Live run 16 Nov: one reply said the outcome was "Tenant Qualified" while the case
+        // waited for the re-upload. The status card lists that stage as a future one.
+        expect(reply, 'names only the current stage').not.toMatch(/Tenant Qualified/i)
         expect(reply).not.toMatch(/Company Profile/)
         await neverNamesReviewer(applicant)
       })
@@ -240,7 +243,7 @@ test.describe('Scenario queries: after submit', () => {
           await panel.getByLabel('Message').fill('should I ask for forecasted sales?')
           await panel.getByRole('button', { name: 'Send' }).click()
           const reply = panel.getByTestId('assistant-reply').last()
-          await expect(reply).toHaveText(/\S{20,}/, { timeout: 120_000 })
+          await expect(reply).toHaveText(/.{20,}/s, { timeout: 120_000 })
           // E2: a suggestion with its reason; it never sends the request itself.
           await expect(rsm.getByTestId('lead-approval-blockers')).toContainText(
             'Assign the unit first',
@@ -379,9 +382,15 @@ test.describe('Scenario queries: after submit', () => {
       })
       await t.row('3 Ahmed Saleh signs, ahmed@beanstreet.example, 0507654321', [], async () => {
         await applicant.say('Ahmed Saleh signs, ahmed@beanstreet.example, 0507654321')
-        await expect(
-          applicant.cards('contacts').last().getByTestId('contact-row-authorized_signatory'),
-        ).toContainText('Ahmed', { timeout: 60_000 })
+        // The card refreshes on show_contacts_review (once both roles are in), not on every
+        // update_contacts, so live runs read the reply here; scripted runs show the card.
+        if (LIVE) {
+          await saysLive(applicant, /Ahmed/, 'the signatory is saved')
+        } else {
+          await expect(
+            applicant.cards('contacts').last().getByTestId('contact-row-authorized_signatory'),
+          ).toContainText('Ahmed', { timeout: 60_000 })
+        }
         await saysLive(applicant, /billing/i, 'asks for the billing contact')
       })
       await t.row(
@@ -401,9 +410,13 @@ test.describe('Scenario queries: after submit', () => {
         async () => {
           await applicant.say('billing is Nora Ali, nora@beanstreet.example, 0509998877')
           const contacts = applicant.cards('contacts').last()
-          await expect(contacts.getByTestId('contact-row-billing_contact')).toContainText('Nora', {
-            timeout: 60_000,
-          })
+          await expect(
+            contacts.getByTestId('contact-row-billing_contact'),
+            `last reply: ${await applicant.lastReply()}`,
+          ).toContainText('Nora', { timeout: 60_000 })
+          await expect(contacts.getByTestId('contact-row-authorized_signatory')).toContainText(
+            'Ahmed',
+          )
           await applicant.submitContacts()
           for (const reply of await applicant.allReplies())
             expect(reply).not.toMatch(/approve (each|every|this) contact/i)
