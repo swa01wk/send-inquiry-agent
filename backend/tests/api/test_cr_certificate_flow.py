@@ -221,8 +221,8 @@ def test_the_inquiry_reopens_once_they_continue() -> None:
     draft.registered_no_login = True
     from uuid import uuid4
 
-    session = Session(id="s1", draft=draft)
     now = datetime(2026, 11, 17, 9, tzinfo=UTC)
+    session = Session(id="s1", draft=draft, created_at=now, last_seen=now)
     inquiry = Inquiry(
         id=uuid4(),
         status=InquiryStatus.REDIRECTED,

@@ -18,7 +18,7 @@ describe('SignInPromptCard', () => {
     expect(link).toHaveAttribute('href', '/tenant')
   })
 
-  it("M2: offers \"I don't have a login\" and sends it", async () => {
+  it('M2: offers "I don\'t have a login" and sends it', async () => {
     const user = userEvent.setup()
     const onNoLogin = vi.fn()
     render(

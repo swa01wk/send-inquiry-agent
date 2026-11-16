@@ -126,12 +126,7 @@ export interface SkipConfirmPayload {
 }
 
 export type CompanyRegistrationState =
-  | 'open'
-  | 'confirm_skip'
-  | 'registered'
-  | 'not_registered'
-  | 'skipped'
-  | 'continued_no_login'
+  'open' | 'confirm_skip' | 'registered' | 'not_registered' | 'skipped' | 'continued_no_login'
 
 export interface CompanyRegistrationPayload {
   prompt: string
