@@ -225,7 +225,7 @@ Block A to A5, then:
 | # | Type | What should happen |
 | --- | --- | --- |
 | 1 | `how long does the review take?` | Answers without promises, then back to basic info |
-| 2 | `GEO-STR-000123 status?` | A status answer (or "not found"), then back to basic info |
+| 2 | `GEO-STR-000123 status?` | A status answer, or that another inquiry is tracked from its own emailed link (privacy); then back to basic info |
 | 3 | `can I talk to a person?` | The handoff card with the call-centre details; the draft is kept |
 | 4 | `السلام عليكم، نكمل؟` | Replies in Arabic and carries on with basic info |
 

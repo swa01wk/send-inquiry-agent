@@ -631,7 +631,7 @@ test.describe('Scenario queries: before submit', () => {
         },
       )
       await t.row('2 GEO-STR-000123 status?', [{ say: 'GEO-STR-000123 status?' }], () =>
-        saysLive(t.chat, /GEO-STR-000123|find|status|reference/i, 'a status answer'),
+        saysLive(t.chat, /GEO-STR-000123|find|status|reference|track|link/i, 'a status answer'),
       )
       await t.row('3 can I talk to a person?', [{ say: 'can I talk to a person?' }], async () => {
         if (LIVE) await expect(t.page.getByTestId('handoff-card').last()).toBeVisible()
