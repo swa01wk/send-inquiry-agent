@@ -210,6 +210,74 @@ def test_update_draft_asks_for_a_proposed_arabic_brand(
     assert ("propose an Arabic spelling" in content) is nudged
 
 
+def _profile_filled_draft():
+    from datetime import UTC, datetime
+
+    from app.domain.document_fill import document_evidence
+    from app.domain.models import DocType, DocumentRef, Source
+
+    draft = new_inquiry_draft()
+    ref = DocumentRef(
+        doc_type=DocType.COMPANY_PROFILE,
+        file_id="f1",
+        file_name="company_profile_mismatch.pdf",
+        size_bytes=10,
+        uploaded_at=datetime(2026, 11, 16, 9, 0, tzinfo=UTC),
+        filled_fields=[FieldKey.COMPANY_NAME.value],
+    )
+    draft.documents[DocType.COMPANY_PROFILE] = ref
+    draft.fields[FieldKey.COMPANY_NAME] = FieldValue(
+        value="Bean Street Holding Company",
+        source=Source.DERIVED,
+        evidence=document_evidence(ref),
+    )
+    return draft
+
+
+@pytest.mark.parametrize(
+    ("value", "source", "kept", "note"),
+    [
+        # Eval 16 Nov (S13): the model wrote the literal "from documents" over the profile.
+        ("from documents", "derived", True, "placeholder_value"),
+        ("Bean Street Co", "derived", True, "filled_from_document"),
+        # The applicant typing a correction still wins.
+        ("Bean Street Trading Co", "user", False, None),
+    ],
+)
+def test_update_draft_keeps_values_a_document_filled(
+    agent_runtime, stream_events, value, source, kept, note
+):
+    draft = _profile_filled_draft()
+    state = initial_agent_state(session_id="sess-1", draft=draft, phase="collecting")
+    state["messages"] = [HumanMessage(content="The company is Bean Street Trading Co")]
+    events, writer = stream_events
+    runtime = make_tool_runtime(state=state, agent_runtime=agent_runtime, writer=writer)
+    fields = [{"key": "company_name", "value": value, "source": source}]
+    if source == "derived":
+        fields[0]["evidence"] = "The company is Bean Street Trading Co"
+    result = update_draft.invoke({"fields": fields, "state": state, "runtime": runtime})
+    saved = result.update["draft"].fields[FieldKey.COMPANY_NAME].value
+    assert (saved == "Bean Street Holding Company") is kept
+    if note:
+        assert note in result.update["messages"][0].content
+
+
+def test_update_draft_refuses_a_placeholder_for_an_empty_field(agent_runtime, stream_events):
+    state = initial_agent_state(session_id="sess-1", draft=new_inquiry_draft(), phase="collecting")
+    state["messages"] = [HumanMessage(content="can I just upload our profiles?")]
+    events, writer = stream_events
+    runtime = make_tool_runtime(state=state, agent_runtime=agent_runtime, writer=writer)
+    result = update_draft.invoke(
+        {
+            "fields": [{"key": "brand_name_ar", "value": "from documents", "source": "derived"}],
+            "state": state,
+            "runtime": runtime,
+        }
+    )
+    assert result.update["draft"].fields[FieldKey.BRAND_NAME_AR].value is None
+    assert "placeholder_value" in result.update["messages"][0].content
+
+
 def test_arabic_brand_redirect_keeps_the_derived_source(agent_runtime, stream_events):
     # A product word written as the brand («قهوة») must stay unconfirmed, not become `user`.
     state = initial_agent_state(session_id="sess-1", draft=new_inquiry_draft(), phase="collecting")

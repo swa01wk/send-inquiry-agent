@@ -58,7 +58,10 @@ test.describe('S23 Approve Lead to Yardi @flow-v2 @scripted @live', () => {
     await expect(page.getByTestId('case-stage')).toHaveText('Approved and sent to Yardi')
     await expect
       .poll(async () =>
-        latestByTemplate(await fetchDevOutbox(request, 'omar@beanstreet.example'), 'azure_ad_invitation'),
+        latestByTemplate(
+          await fetchDevOutbox(request, 'omar@beanstreet.example'),
+          'azure_ad_invitation',
+        ),
       )
       .toBeTruthy()
 
