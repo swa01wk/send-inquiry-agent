@@ -627,7 +627,7 @@ test.describe('Scenario queries: before submit', () => {
         [{ say: 'how long does the review take?' }],
         async () => {
           await neverSaysLive(t.chat, /\b(guarantee|definitely|within 24 hours)\b/i, 'no promises')
-          await saysLive(t.chat, /name|email|company|brand|basic/i, 'back to basic info')
+          await saysLive(t.chat, /name|email|company|brand|basic|contact/i, 'back to basic info')
         },
       )
       await t.row('2 GEO-STR-000123 status?', [{ say: 'GEO-STR-000123 status?' }], () =>
