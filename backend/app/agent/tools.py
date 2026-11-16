@@ -792,6 +792,18 @@ def update_draft(
             "Arabic brand saved as brand_name_ar; now save a Latin spelling as "
             "brand_name_en (source derived).",
         )
+    elif (
+        FieldKey.BRAND_NAME_EN.value in written
+        and updated.fields[FieldKey.BRAND_NAME_EN].value
+        and not updated.fields[FieldKey.BRAND_NAME_AR].value
+    ):
+        # Eval 16 Nov (dictated caller): given "Brand Bean Street", the model asked for the
+        # Arabic name instead of proposing one, so the send-link card never came.
+        parts.append(
+            "brand_name_ar is empty: propose an Arabic spelling now with update_draft "
+            "(source derived, evidence = the brand name) and ask them to check it on the "
+            "card; don't ask them to type it."
+        )
     return _tool_result(
         runtime,
         draft=updated,

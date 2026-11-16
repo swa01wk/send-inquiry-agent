@@ -179,6 +179,37 @@ def test_update_draft_redirects_arabic_brand_name_en(agent_runtime, stream_event
     assert "Latin spelling as brand_name_en" in content
 
 
+@pytest.mark.parametrize(
+    ("fields", "nudged"),
+    [
+        ([{"key": "brand_name_en", "value": "Bean Street", "source": "user"}], True),
+        (
+            [
+                {"key": "brand_name_en", "value": "Bean Street", "source": "user"},
+                {
+                    "key": "brand_name_ar",
+                    "value": "بين ستريت",
+                    "source": "derived",
+                    "evidence": "Bean Street",
+                },
+            ],
+            False,
+        ),
+    ],
+)
+def test_update_draft_asks_for_a_proposed_arabic_brand(
+    agent_runtime, stream_events, fields, nudged
+):
+    """Eval 16 Nov (dictated caller): the model asked for the Arabic name instead."""
+    state = initial_agent_state(session_id="sess-1", draft=new_inquiry_draft(), phase="collecting")
+    state["messages"] = [HumanMessage(content="Brand Bean Street")]
+    events, writer = stream_events
+    runtime = make_tool_runtime(state=state, agent_runtime=agent_runtime, writer=writer)
+    result = update_draft.invoke({"fields": fields, "state": state, "runtime": runtime})
+    content = result.update["messages"][0].content
+    assert ("propose an Arabic spelling" in content) is nudged
+
+
 def test_arabic_brand_redirect_keeps_the_derived_source(agent_runtime, stream_events):
     # A product word written as the brand («قهوة») must stay unconfirmed, not become `user`.
     state = initial_agent_state(session_id="sess-1", draft=new_inquiry_draft(), phase="collecting")
