@@ -390,6 +390,6 @@ Each step in the test report is named after a row here (`A6 basic info in one me
 - **Scripted runs** use the catalogue's scripts (`backend/tests/e2e_scripts/flow-v2-*.json`), plus `qa-s23` and `qa-s24` for this page's contacts.
 - **Live only:** the S11 and S24 variations, the off-script checks, and the S18 → S20 → S21 → S23 chain on one inquiry. They have no script.
 - **Scripted only:** S17, because live runs can't inject the submit failure for one chat (`MOCK_FAULTS` covers the whole backend).
-- **In GitHub:** Actions → e2e → Run workflow → suite **qa** runs `make e2e-qa`.
+- **In GitHub:** Actions → e2e → Run workflow → suite **qa** runs `make e2e-qa`; suite **qa_live** runs `make e2e-qa-live` with the repository's model settings (`LLM_PROVIDER`, `LLM_MODEL`, `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_VERSION`, secret `AZURE_OPENAI_API_KEY`).
 - **One scenario:** `make e2e-qa ARGS='-g S23'`.
 
