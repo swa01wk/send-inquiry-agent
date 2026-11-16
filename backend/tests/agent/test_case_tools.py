@@ -215,6 +215,27 @@ def test_update_contacts_same_as_primary(agent_runtime, case_state, seeded_case,
     assert _snapshot(after) == before
 
 
+def test_update_contacts_refuses_primary_as_signatory_after_no(
+    agent_runtime, case_state, stream_events
+):
+    """Eval 16 Nov: "No, my partner Ahmed signs" was saved as the primary contact signing."""
+    state = {**case_state, "signatory_answer": "no"}
+    events, writer = stream_events
+    runtime = make_tool_runtime(state=state, agent_runtime=agent_runtime, writer=writer)
+    result = update_contacts.invoke(
+        {
+            "entries": [
+                {"role": "Authorised Signatory", "first_name": "Ahmed", "same_as_primary": True}
+            ],
+            "state": state,
+            "runtime": runtime,
+        }
+    )
+    content = result.update["messages"][0].content
+    assert "not the signatory" in content
+    assert result.update["contacts_draft"] == list(case_state.get("contacts_draft") or [])
+
+
 def test_update_contacts_reads_the_uk_spelling_and_labels(
     agent_runtime, case_state, seeded_case, stream_events
 ):

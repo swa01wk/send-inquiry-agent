@@ -28,7 +28,7 @@ from app.domain.fields import document_label
 from app.policy.config import get_policy
 from app.services.status import REQUEST_LABELS, _from_case, final_approval_label
 from app.sessions import Session
-from app.workflow.contacts import write_contacts
+from app.workflow.contacts import normalize_role, write_contacts
 from app.workflow.labels import status_label
 from app.workflow.models import CONTACT_ROLE_LABELS, Case, CaseStatus, TenantContact
 
@@ -201,6 +201,18 @@ def update_contacts(
     """Apply contact entries to the session contacts draft; return validation errors."""
     current = [TenantContact.model_validate(c) for c in state.get("contacts_draft") or []]
     payload = [e.model_dump(exclude_none=True) for e in entries]
+    if state.get("signatory_answer") == "no" and any(
+        normalize_role(e.role) == "authorized_signatory" and e.same_as_primary for e in entries
+    ):
+        # Eval 16 Nov: "No, my partner Ahmed signs" was saved as the primary contact signing,
+        # and Ahmed's details then went to billing. "No" means someone else signs.
+        return _tool_message(
+            runtime,
+            "Contact validation errors: authorized_signatory: they said they are not the "
+            "signatory, so it can't be the primary contact. Save the signatory's own name, "
+            "email and phone (same_as_primary false) and ask only for what's missing.",
+            contacts_draft=list(state.get("contacts_draft") or []),
+        )
     contacts, errors = write_contacts(current, payload, state["draft"])
     serialized = [c.model_dump(mode="json") for c in contacts]
     if errors:
