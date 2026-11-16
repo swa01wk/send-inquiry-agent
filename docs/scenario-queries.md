@@ -153,7 +153,7 @@ Block A (verified), then:
 | 4 | — | It says what's done and asks for the next section: the mall |
 | 5 | Block B | Reference |
 
-- **Expiry:** a pending inquiry expires 2 hours after the last activity, in real time (M24, A2). The `/dev` clock doesn't move it, so check it by waiting, or leave it to the backend tests (`tests/api/test_pending_resume.py`).
+- **Expiry:** repeat, but advance more than 2 hours (the clock helper with `{"hours":3}`, or `/dev` **+24 h**) before step 2. The reply is the same, but no `resume_link` arrives: the pending inquiry expired (M24, A2).
 
 ### S10 — Unit type and what the business sells
 | # | Type or press | What should happen |

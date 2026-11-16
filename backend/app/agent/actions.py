@@ -921,12 +921,15 @@ async def _resume_pending(
     model. A pending inquiry for it (verified, not submitted, within the TTL) gets a
     `resume_link` email that re-verifies the address and resumes that chat. The reply is the
     same either way, so the answer says nothing about who has an inquiry."""
+    from app import clock
     from app.store.purge import expire_pending_inquiries
 
     email = normalise_email(payload.get("email"))
     found = None
     if email and runtime.repo is not None:
-        await expire_pending_inquiries(runtime.repo)
+        # The app's clock, like `pending.pending_expired` and `verified_at`: the 2-hour
+        # window (M24, A2) is a business rule, so `/dev` can show S9's expiry in a demo.
+        await expire_pending_inquiries(runtime.repo, now=clock.now())
         found = await runtime.repo.pending_by_email(email)
     if found is not None:
         pending_id = str(found.id)

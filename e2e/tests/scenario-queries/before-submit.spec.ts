@@ -309,6 +309,27 @@ test.describe('Scenario queries: before submit', () => {
     }
   })
 
+  test(`S9 Expiry: back after more than 2 hours ${BOTH}`, async ({ page, browser, request }) => {
+    const t = await Tester.open(page, browser, request, 'S9')
+    try {
+      await t.blockA()
+      await t.row('Close the tab; advance 3 hours', [{ leave: true }], () =>
+        advanceHours(request, 3),
+      )
+      await t.row('Continue my inquiry → sara@beanstreet.example', [], async () => {
+        await t.chat.open()
+        await t.chat.continueMyInquiry(SARA.email)
+        // The same reply either way: it says nothing about who has an inquiry.
+        expect(await t.chat.lastReply()).toContain("we've sent you a link to continue")
+      })
+      await t.row('No resume_link: the pending inquiry expired (M24, A2)', [], () =>
+        expectNoInboxMessage(t.page, { to: SARA.email, template: 'resume_link' }),
+      )
+    } finally {
+      await t.close()
+    }
+  })
+
   test(`S10 Unit type and what the business sells ${BOTH}`, async ({ page, browser, request }) => {
     const t = await Tester.open(page, browser, request, 'S10')
     try {
