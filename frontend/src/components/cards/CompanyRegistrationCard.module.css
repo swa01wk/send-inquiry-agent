@@ -69,3 +69,19 @@
   flex-direction: column;
   gap: 8px;
 }
+
+.uploadRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.orLine {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.hiddenInput {
+  display: none;
+}

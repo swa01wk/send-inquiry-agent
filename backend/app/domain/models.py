@@ -197,6 +197,10 @@ class InquiryDraft(BaseModel):
     # created and kept for its life. "v2": Company Registration, the app's section order,
     # terms before documents, the pending inquiry.
     intake_flow: Literal["v1", "v2"] = "v1"
+    # M2 (decided 16 Nov, docs/assumptions.md): the CR is registered in Tenant Central but
+    # this person has no login, and chose to raise the inquiry anyway. `cr_status` is `new`
+    # from then on; this flag tells the Leasing Admin.
+    registered_no_login: bool = False
 
 
 def new_inquiry_draft() -> InquiryDraft:

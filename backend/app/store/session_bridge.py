@@ -76,6 +76,13 @@ def apply_session_to_inquiry(session: Session, inquiry: Inquiry) -> Inquiry:
     ):
         # Sent to sign in (registered CR, or a call-centre caller with a login, §3.4).
         updated.status = InquiryStatus.REDIRECTED
+    elif (
+        not session.closed
+        and session.draft.registered_no_login
+        and updated.status == InquiryStatus.REDIRECTED
+    ):
+        # S4, M2: a registered CR without a login chose to go on; the inquiry is open again.
+        updated.status = InquiryStatus.DRAFT
     return updated
 
 

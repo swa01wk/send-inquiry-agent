@@ -3,11 +3,13 @@ import {
   B,
   BOTH,
   LIVE,
+  LIVE_ONLY,
   SARA,
   Tester,
   expectNoInboxMessage,
   inboxMessage,
   neverSaysLive,
+  saysLive,
 } from '../../support/qa'
 
 /**
@@ -132,6 +134,70 @@ test.describe('Scenario queries: call centre', () => {
       await t.row('6 Code, terms, documents', [{ enter_code: '1234' }, ...B.terms, ...B.upload])
       let reference = ''
       await t.row('6 Submit', B.submit, async () => {
+        reference = await t.chat.successReference()
+      })
+      expect(reference).toMatch(/^GEO-/)
+    } finally {
+      await t.close()
+    }
+  })
+
+  // M1: in the call-centre flows the CR certificate is optional on the application link; the
+  // executive's CR stays the inquiry's CR, and a certificate that disagrees is flagged.
+  test(`CC3 The caller adds a matching CR certificate ${BOTH}`, async ({
+    page,
+    browser,
+    request,
+  }) => {
+    const t = await Tester.open(page, browser, request, 'CC3')
+    try {
+      await t.row("1 The caller's CR number is 1010123456.", [{ cc_cr: '1010123456' }])
+      await t.row('2–4 Dictate the three sections', [
+        { cc_capture: 'unit_and_category,basic_info,property_details' },
+      ])
+      await t.row('5 Send application link', [{ cc_submit: true }])
+      await t.row('6 Open the link', [], () => t.openApplicationLinkFromInbox(SARA.email))
+      await t.row('6 Basic Info Change? Yes: last name Al-Ali', [
+        { edit_field: ['last_name', 'Al-Ali'] },
+      ])
+      await t.row('6 Code and terms', [{ enter_code: '1234' }, ...B.terms])
+      await t.row('6 CR certificate (optional, same number as the call)', [], async () => {
+        await t.chat.upload('CR certificate', 'cr_certificate_new.pdf')
+        await neverSaysLive(t.chat, /differ|doesn'?t match/i, 'nothing to flag')
+      })
+      await t.row('6 Both profiles', B.upload)
+      let reference = ''
+      await t.row('6 Submit', B.submit, async () => {
+        reference = await t.chat.successReference()
+      })
+      expect(reference).toMatch(/^GEO-/)
+    } finally {
+      await t.close()
+    }
+  })
+
+  test(`CC3 A CR certificate that disagrees is flagged, not blocking ${LIVE_ONLY}`, async ({
+    page,
+    browser,
+    request,
+  }) => {
+    const t = await Tester.open(page, browser, request, 'CC3')
+    try {
+      await t.row("1 The caller's CR number is 1010123456.", [{ cc_cr: '1010123456' }])
+      await t.row('2–4 Dictate the three sections', [
+        { cc_capture: 'unit_and_category,basic_info,property_details' },
+      ])
+      await t.row('5 Send application link', [{ cc_submit: true }])
+      await t.row('6 Open the link', [], () => t.openApplicationLinkFromInbox(SARA.email))
+      await t.row('6 Code and terms', [{ enter_code: '1234' }, ...B.terms])
+      await t.row('6 A CR certificate with another number', [], async () => {
+        await t.chat.upload('CR certificate', 'cr_certificate_mismatch.pdf')
+        await saysLive(t.chat, /differ|doesn'?t match|check/i, 'says the CR differs')
+        await neverSaysLive(t.chat, /1010333333|1010123456/, 'no CR number in the reply')
+      })
+      await t.row('6 Both profiles', B.upload)
+      let reference = ''
+      await t.row('6 Submit still works', B.submit, async () => {
         reference = await t.chat.successReference()
       })
       expect(reference).toMatch(/^GEO-/)

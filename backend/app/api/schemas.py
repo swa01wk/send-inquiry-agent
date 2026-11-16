@@ -148,6 +148,11 @@ class SignInPromptPayload(BaseModel):
     message: str
     sign_in_url: str
     button_label: str
+    # S4, M2 (policy `registered_cr_without_login: continue`): "I don't have a login" sends
+    # `continue_without_login {}`; the inquiry goes on as new, flagged for the Leasing Admin.
+    no_login_label: str | None = None
+    # Set once they chose it: the card shows the line instead of the buttons.
+    continued_without_login: bool = False
 
 
 class SkipConfirm(BaseModel):
@@ -159,16 +164,26 @@ class SkipConfirm(BaseModel):
 class CompanyRegistrationPayload(BaseModel):
     """Flow v2 Company Registration (§3.2): Verify sends `cr_check {cr_number}`; Skip sends
     `cr_skip {}` (shows the confirm), then `cr_skip {confirmed: true}`. The CR is never in
-    the payload in full (`cr_masked`, I8)."""
+    the payload in full (`cr_masked`, I8).
+
+    M1 (16 Nov): instead of typing, the applicant may upload the CR certificate (optional):
+    the file goes to `POST /documents` as `cr_certificate`, then `cr_check {source:
+    "certificate"}` checks the number the document review service read from it."""
 
     prompt: str
     input_placeholder: str
     verify_label: str
     skip_label: str
     skip_confirm: SkipConfirm
-    state: Literal["open", "confirm_skip", "registered", "not_registered", "skipped"]
+    state: Literal[
+        "open", "confirm_skip", "registered", "not_registered", "skipped", "continued_no_login"
+    ]
     cr_masked: str | None = None
     error: str | None = None
+    upload_label: str = "Upload CR certificate"
+    allowed_extensions: list[str] = Field(default_factory=list)
+    # The uploaded certificate's file name, once there is one.
+    certificate_name: str | None = None
 
 
 class TermsPayload(BaseModel):

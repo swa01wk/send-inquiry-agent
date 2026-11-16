@@ -52,4 +52,72 @@ describe('CompanyRegistrationCard', () => {
     await user.click(screen.getByRole('button', { name: /yes, continue without it/i }))
     expect(onConfirmSkip).toHaveBeenCalled()
   })
+
+  it('M1: uploads the CR certificate instead of typing', async () => {
+    const user = userEvent.setup()
+    const onUpload = vi.fn().mockResolvedValue(undefined)
+    render(
+      <CompanyRegistrationCard
+        payload={{ ...basePayload, allowed_extensions: ['.pdf'] }}
+        onVerify={() => undefined}
+        onSkip={() => undefined}
+        onConfirmSkip={() => undefined}
+        onDismissSkipConfirm={() => undefined}
+        onUploadCertificate={onUpload}
+      />,
+    )
+    expect(screen.getByRole('button', { name: 'Upload CR certificate' })).toBeInTheDocument()
+    const file = new File(['%PDF'], 'cr_certificate_new.pdf', { type: 'application/pdf' })
+    await user.upload(screen.getByTestId('cr-certificate-input'), file)
+    expect(onUpload).toHaveBeenCalledWith(file)
+  })
+
+  it('M1: refuses a file type the server would refuse, without uploading', async () => {
+    const onUpload = vi.fn()
+    render(
+      <CompanyRegistrationCard
+        payload={{ ...basePayload, allowed_extensions: ['.pdf'] }}
+        onVerify={() => undefined}
+        onSkip={() => undefined}
+        onConfirmSkip={() => undefined}
+        onDismissSkipConfirm={() => undefined}
+        onUploadCertificate={onUpload}
+      />,
+    )
+    const input = screen.getByTestId('cr-certificate-input') as HTMLInputElement
+    const file = new File(['x'], 'notes.txt', { type: 'text/plain' })
+    const user = userEvent.setup({ applyAccept: false })
+    await user.upload(input, file)
+    expect(onUpload).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert')).toHaveTextContent("That file type isn't supported.")
+  })
+
+  it('M1: shows the certificate name once uploaded', () => {
+    render(
+      <CompanyRegistrationCard
+        payload={{ ...basePayload, certificate_name: 'cr_certificate_new.pdf' }}
+        onVerify={() => undefined}
+        onSkip={() => undefined}
+        onConfirmSkip={() => undefined}
+        onDismissSkipConfirm={() => undefined}
+      />,
+    )
+    expect(screen.getByTestId('cr-certificate-name')).toHaveTextContent(
+      'CR certificate: cr_certificate_new.pdf',
+    )
+  })
+
+  it('M2: locks the card once they continue without a login', () => {
+    render(
+      <CompanyRegistrationCard
+        payload={{ ...basePayload, state: 'continued_no_login', cr_masked: '••••••0000' }}
+        onVerify={() => undefined}
+        onSkip={() => undefined}
+        onConfirmSkip={() => undefined}
+        onDismissSkipConfirm={() => undefined}
+      />,
+    )
+    expect(screen.getByText(/continuing as a new inquiry without a login/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Verify' })).not.toBeInTheDocument()
+  })
 })

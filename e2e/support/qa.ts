@@ -98,10 +98,11 @@ export class Tester {
     browser: Browser,
     request: APIRequestContext,
     id: string,
+    opts: { script?: string } = {},
   ): Promise<Tester> {
     await test.step('Setup: Reset demo on /dev', () => resetDemoFromDevPage(page))
     const entry = scenario(id)
-    const ctx = await openEntryChat(page, browser, request, entry, LIVE)
+    const ctx = await openEntryChat(page, browser, request, entry, LIVE, opts.script)
     return new Tester(ctx, entry)
   }
 
@@ -174,6 +175,10 @@ export class Tester {
     options: {
       basic?: string
       cr?: 'skip' | string
+      /** M1: upload this CR certificate instead of typing `cr`. */
+      certificate?: string
+      /** M2: the CR is registered; press "I don't have a login" and carry on. */
+      noLogin?: boolean
       /** Extra checks after a row, by its doc id. */
       after?: Partial<Record<'A2' | 'A4' | 'A5' | 'A6' | 'A7', () => Promise<void>>>
       /** Stop after this row (S6, S8 carry on by hand). */
@@ -194,11 +199,36 @@ export class Tester {
         await after.A2?.()
       })
     } else {
-      await this.row(`Type ${cr} → Verify`, [{ cr_verify: cr }], async () => {
+      const label = options.certificate
+        ? `Upload CR certificate ${options.certificate}`
+        : `Type ${cr} → Verify`
+      const step = options.certificate ? { cr_certificate: options.certificate } : { cr_verify: cr }
+      await this.row(label, [step], async () => {
+        if (options.certificate) {
+          await expect(this.crCard().getByTestId('cr-certificate-name')).toContainText(
+            options.certificate,
+          )
+        }
+        if (options.noLogin) {
+          await expect(this.crCard()).toContainText('Already registered — sign in below.')
+          const signIn = this.chat.cards('sign_in_prompt').last()
+          await expect(signIn.getByRole('button', { name: "I don't have a login" })).toBeVisible()
+          return
+        }
         await expect(this.crCard()).toContainText('not registered yet')
         await saysLive(this.chat, /store|office/i, 'moves on to Store or Office')
         await after.A2?.()
       })
+      if (options.noLogin) {
+        await this.row("I don't have a login", [{ continue_without_login: true }], async () => {
+          await expect(this.crCard()).toContainText('continuing as a new inquiry without a login')
+          await expect(
+            this.chat.cards('sign_in_prompt').last().getByTestId('continued-without-login'),
+          ).toBeVisible()
+          await saysLive(this.chat, /store|office/i, 'moves on to Store or Office')
+          await after.A2?.()
+        })
+      }
     }
     await this.row('A3 a store', A.store)
     await this.row('A4 we sell specialty coffee and pastries', A.sells, async () => {

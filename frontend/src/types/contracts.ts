@@ -114,6 +114,9 @@ export interface SignInPromptPayload {
   message: string
   sign_in_url: string
   button_label: string
+  /** S4, M2: "I don't have a login" → `continue_without_login {}`. */
+  no_login_label?: string | null
+  continued_without_login?: boolean
 }
 
 export interface SkipConfirmPayload {
@@ -123,7 +126,12 @@ export interface SkipConfirmPayload {
 }
 
 export type CompanyRegistrationState =
-  'open' | 'confirm_skip' | 'registered' | 'not_registered' | 'skipped'
+  | 'open'
+  | 'confirm_skip'
+  | 'registered'
+  | 'not_registered'
+  | 'skipped'
+  | 'continued_no_login'
 
 export interface CompanyRegistrationPayload {
   prompt: string
@@ -134,6 +142,10 @@ export interface CompanyRegistrationPayload {
   state: CompanyRegistrationState
   cr_masked: string | null
   error: string | null
+  /** M1: upload the CR certificate instead of typing (optional). */
+  upload_label?: string
+  allowed_extensions?: string[]
+  certificate_name?: string | null
 }
 
 export interface TermsPayload {

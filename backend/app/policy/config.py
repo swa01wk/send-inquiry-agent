@@ -298,6 +298,10 @@ class PolicyConfig(_Strict):
     resend: ResendPolicy = ResendPolicy()
     documents: DocumentsPolicy
     duplicate_policy: Literal["warn", "block"] = "warn"
+    # A registered CR on the public page (flow v2 S4, M2): `sign_in_only` as on the chart,
+    # or `continue`, where the sign-in card also offers "I don't have a login" and the
+    # inquiry goes on as new, flagged for the Leasing Admin.
+    registered_cr_without_login: Literal["sign_in_only", "continue"] = "sign_in_only"
     follow_on_reuse_hours: int = Field(default=24, ge=0, le=24 * 30)
     # ---- Review lifecycle (L4) ---------------------------------------------------------
     # Product line → reviewer role; the queue's region is the mall's region.

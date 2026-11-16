@@ -335,6 +335,30 @@ export class InquiryPage {
     await this.waitForTurnDone(doneBefore)
   }
 
+  /** M1: upload the CR certificate on the Company Registration card instead of typing. */
+  async uploadCrCertificate(fileName: string) {
+    const card = this.cards('company_registration')
+    const confirm = card.getByTestId('skip-confirm')
+    if (await confirm.isVisible()) {
+      await confirm.getByRole('button', { name: "No, I'll enter it" }).click()
+    }
+    const doneBefore = await readDoneEventCount(this.page)
+    const [chooser] = await Promise.all([
+      this.page.waitForEvent('filechooser'),
+      card.getByRole('button', { name: 'Upload CR certificate' }).click(),
+    ])
+    await chooser.setFiles(path.join(fixtures, fileName))
+    await this.waitForTurnDone(doneBefore)
+  }
+
+  /** M2: "I don't have a login" on the sign-in card. */
+  async continueWithoutLogin() {
+    const card = this.cards('sign_in_prompt').last()
+    const doneBefore = await readDoneEventCount(this.page)
+    await card.getByRole('button', { name: "I don't have a login" }).click()
+    await this.waitForTurnDone(doneBefore)
+  }
+
   async skipCr(confirm = true) {
     const card = this.cards('company_registration')
     const doneBefore = await readDoneEventCount(this.page)

@@ -127,7 +127,7 @@ def test_a_profile_that_disagrees_is_flagged_for_the_lease_admin() -> None:
         "Bean Street Holding Company",
     )
     assert any(
-        "The profiles differ from what was typed: Company name" in item
+        "The documents differ from what was typed: Company name" in item
         for item in (brief.next_decision_checklist)
     )
     text = format_case_brief_text(brief)

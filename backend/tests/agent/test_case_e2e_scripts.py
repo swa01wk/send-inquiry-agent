@@ -15,6 +15,8 @@ def test_resolve_e2e_scenario_accepts_known_script() -> None:
     # docs/scenario-queries.md S23, S24 (e2e/tests/scenario-queries): the doc's contacts.
     assert resolve_e2e_scenario("qa-s23") == "qa-s23"
     assert resolve_e2e_scenario("qa-s24") == "qa-s24"
+    # M2 (16 Nov): S4 where the applicant presses "I don't have a login" and carries on.
+    assert resolve_e2e_scenario("qa-s4-continue") == "qa-s4-continue"
 
 
 def test_resolve_e2e_scenario_rejects_unknown_or_blank() -> None:

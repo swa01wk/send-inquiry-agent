@@ -41,10 +41,13 @@ export interface StepCtx {
   live: boolean
   staffSessionId?: string
   contexts: BrowserContext[]
+  /** A scripted run's script when it isn't the scenario's own (the qa variants). */
+  scriptName?: string
 }
 
 function script(ctx: StepCtx, suffix = ''): string | undefined {
-  return ctx.live ? undefined : `${scriptFor(ctx.entry.id)}${suffix}`
+  if (ctx.live) return undefined
+  return ctx.scriptName ?? `${scriptFor(ctx.entry.id)}${suffix}`
 }
 
 /** Opens the entry's first chat: the public page, or the call-centre console for CC1–CC3. */
@@ -54,6 +57,7 @@ export async function openEntryChat(
   request: APIRequestContext,
   entry: CatalogueEntry,
   live: boolean,
+  scriptName?: string,
 ): Promise<StepCtx> {
   const ctx: StepCtx = {
     page,
@@ -63,6 +67,7 @@ export async function openEntryChat(
     chat: new InquiryPage(page),
     live,
     contexts: [],
+    scriptName,
   }
   if ((entry.contexts ?? []).includes('call_centre')) {
     ctx.chat = await openCallCentreChat(page, STAFF_NAME, script(ctx) ?? '')
@@ -193,6 +198,8 @@ export async function runStep(ctx: StepCtx, step: CatalogueStep): Promise<void> 
     return
   }
   if (typeof step.cr_verify === 'string') return chat.verifyCr(step.cr_verify)
+  if (typeof step.cr_certificate === 'string') return chat.uploadCrCertificate(step.cr_certificate)
+  if (step.continue_without_login === true) return chat.continueWithoutLogin()
   if (typeof step.say === 'string') return chat.say(step.say)
   if (typeof step.confirm_card === 'string') return confirmSection(ctx, step.confirm_card)
   if (step.verify_email === true) {

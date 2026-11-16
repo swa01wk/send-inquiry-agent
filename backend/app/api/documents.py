@@ -7,6 +7,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Form, Request, UploadFile
 
 from app import clock
+from app.agent.cr_check import company_registration_card
 from app.api.cards import build_document_upload_card, parse_doc_type, scope_card_data
 from app.api.case_cards import build_reupload_card, build_sales_data_card
 from app.api.deps import get_master_data, get_services, get_session_store, get_settings
@@ -34,7 +35,7 @@ from app.domain.summary import build_draft_summary
 from app.domain.validation import validate_document_extension, validate_document_size
 from app.gateway import GatewayError
 from app.services.container import ServiceContainer
-from app.services.document_review import REVIEWED_DOC_TYPES
+from app.services.document_review import READ_DOC_TYPES, REVIEWED_DOC_TYPES
 from app.services.errors import UploadTooLargeError, UploadValidationError
 from app.sessions import Session, SessionStore
 
@@ -141,14 +142,20 @@ async def _upload_document(
         raise ApiError(400, val_err.code, val_err.message)
 
     filled: list[str] = []
-    if parsed in REVIEWED_DOC_TYPES:
+    if parsed in READ_DOC_TYPES:
         updated = _with_review(updated, parsed, content, services, session_id)
         if fills:
             updated, filled = fill_from_review(updated, parsed, master)
     mismatches = [m.field for m in document_mismatches(updated, master, doc_type=parsed)]
     session.draft = updated
-    card = _scoped(_card_for(session, services, master, settings, parsed), session)
-    _remember(session, card)
+    if _on_company_registration_card(session, parsed):
+        # M1: uploaded on the Company Registration card, before the CR check. The card
+        # answers (it shows the file name); the client then sends `cr_check {source:
+        # "certificate"}`. The documents checklist isn't shown yet.
+        card = company_registration_card(session.draft)
+    else:
+        card = _scoped(_card_for(session, services, master, settings, parsed), session)
+        _remember(session, card)
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
     services.audit.record(
         session_id,
@@ -288,6 +295,16 @@ async def _delete_document(
     await store.save(session)
     draft = build_draft_summary(session.draft, master, changed_keys=[])
     return DeleteDocumentResponse(card=card, draft=draft)
+
+
+def _on_company_registration_card(session: Session, doc_type: DocType) -> bool:
+    return (
+        doc_type == DocType.CR_CERTIFICATE
+        and session.mode != "case"
+        and not session.assisted
+        and session.draft.intake_flow == "v2"
+        and session.draft.cr_status == "unknown"
+    )
 
 
 def _card_for(

@@ -206,9 +206,16 @@ def _checklist(
             items.append(f"Not confirmed by the applicant: {', '.join(unconfirmed)}.")
         if case.draft.cr_status == "skipped":
             items.append("CR was skipped: check the company details against the documents.")
+        if case.draft.registered_no_login:
+            # S4, M2: decided 16 Nov, see docs/assumptions.md.
+            items.append(
+                "Registered company, contact without a login: the CR is already in Tenant "
+                "Central, but this person has no login and raised the inquiry as new. Check "
+                "they belong to the company."
+            )
         if document_checks:
             labels = ", ".join(check.label for check in document_checks)
-            items.append(f"The profiles differ from what was typed: {labels}.")
+            items.append(f"The documents differ from what was typed: {labels}.")
         document_items = _document_items(case, today)
         items.extend(document_items)
         if not get_policy().document_approval:
@@ -436,7 +443,7 @@ def build_case_brief(
         product_line=draft.fields[FieldKey.UNIT_TYPE].value,
         mall=master.label_for("malls", mall_id) if mall_id else None,
         region=queue.region if queue else None,
-        cr_status=draft.cr_status,
+        cr_status="registered, no login" if draft.registered_no_login else draft.cr_status,
         submitted_at=case.submitted_at,
         fields=fields,
         verification={

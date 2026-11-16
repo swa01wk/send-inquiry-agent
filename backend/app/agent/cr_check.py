@@ -15,8 +15,9 @@ from app.api.schemas import UiCard
 from app.domain import draft_ops
 from app.domain import validation as v
 from app.domain.master import MasterData
-from app.domain.models import FieldKey, InquiryDraft, Source
+from app.domain.models import DocType, FieldKey, InquiryDraft, Source
 from app.gateway import GatewayError
+from app.policy import get_policy
 from app.services.cr import CrResult
 from app.workflow.flow import FlowNode, record_flow_step
 
@@ -76,6 +77,10 @@ def apply_cr_result(
 
 CR_INVALID_MESSAGE = "That doesn't look like a 10-digit CR number. Please check it and try again."
 CR_SERVICE_MESSAGE = "We couldn't check the CR just now. Please try again in a moment, or skip it."
+CR_CERTIFICATE_UNREADABLE = (
+    "We couldn't read a CR number from that certificate. Please type the number instead, "
+    "or skip it."
+)
 
 
 @dataclass
@@ -89,14 +94,45 @@ class CustomerCheck:
     changed: list[str] = field(default_factory=list)
 
 
+def _certificate_name(draft: InquiryDraft) -> str | None:
+    ref = draft.documents.get(DocType.CR_CERTIFICATE)
+    return ref.file_name if ref is not None else None
+
+
+def _offers_no_login() -> bool:
+    return get_policy().registered_cr_without_login == "continue"
+
+
+def certificate_customer_check(session: Session, runtime: AgentRuntime) -> CustomerCheck:
+    """M1 (16 Nov): the CR certificate uploaded on the Company Registration card. The number
+    the document review service read from it is checked like a typed one; it never reaches
+    the model (FV9)."""
+    name = _certificate_name(session.draft)
+    if session.draft.cr_status != "unknown":
+        return CustomerCheck(note="[ui_event] cr_already_done", card=_current_card(session.draft))
+    ref = session.draft.documents.get(DocType.CR_CERTIFICATE)
+    read = ref.review.fields.get(FieldKey.CR_NUMBER.value) if ref and ref.review else None
+    if read is None or not isinstance(v.validate_cr_number(read.value), str):
+        return CustomerCheck(
+            note="[ui_event] cr_certificate_unreadable",
+            card=build_company_registration_card(
+                state="open", error=CR_CERTIFICATE_UNREADABLE, certificate_name=name
+            ),
+        )
+    return check_existing_customer(session, runtime, read.value)
+
+
 def check_existing_customer(session: Session, runtime: AgentRuntime, raw: str) -> CustomerCheck:
     """Verify on the Company Registration card, or a CR typed in the public chat."""
     record_flow_step(runtime, inquiry_id=session.id, node=FlowNode.CHK_TP, actor="user")
+    certificate = _certificate_name(session.draft)
     validated = v.validate_cr_number(raw)
     if isinstance(validated, v.ValidationError):
         return CustomerCheck(
             note=f"[ui_event] cr_invalid {validated.code}",
-            card=build_company_registration_card(state="open", error=CR_INVALID_MESSAGE),
+            card=build_company_registration_card(
+                state="open", error=CR_INVALID_MESSAGE, certificate_name=certificate
+            ),
         )
     if session.draft.cr_status != "unknown":
         return CustomerCheck(note="[ui_event] cr_already_done", card=_current_card(session.draft))
@@ -108,7 +144,9 @@ def check_existing_customer(session: Session, runtime: AgentRuntime, raw: str) -
     except GatewayError as err:
         return CustomerCheck(
             note=f"[ui_event] {err.note}",
-            card=build_company_registration_card(state="open", error=CR_SERVICE_MESSAGE),
+            card=build_company_registration_card(
+                state="open", error=CR_SERVICE_MESSAGE, certificate_name=certificate
+            ),
         )
     masked = mask_cr(validated)
     draft, written, _errors = draft_ops.write_fields(
@@ -129,10 +167,15 @@ def check_existing_customer(session: Session, runtime: AgentRuntime, raw: str) -
             payload={"reason": "registered_cr", "channel": session.channel},
         )
         return CustomerCheck(
-            note="[ui_event] cr_checked registered",
-            card=build_company_registration_card(state="registered", cr_masked=masked),
+            note="[ui_event] cr_checked registered"
+            + (" no_login_offered" if _offers_no_login() else ""),
+            card=build_company_registration_card(
+                state="registered", cr_masked=masked, certificate_name=certificate
+            ),
             sign_in=build_sign_in_prompt_card(
-                runtime.settings.public_base_url, reason="registered_cr"
+                runtime.settings.public_base_url,
+                reason="registered_cr",
+                offer_no_login=_offers_no_login(),
             ),
             changed=["cr_status", *written],
         )
@@ -143,8 +186,45 @@ def check_existing_customer(session: Session, runtime: AgentRuntime, raw: str) -
     record_flow_step(runtime, inquiry_id=session.id, node=FlowNode.EXIST, outcome="no")
     return CustomerCheck(
         note="[ui_event] cr_checked not_registered",
-        card=build_company_registration_card(state="not_registered", cr_masked=masked),
+        card=build_company_registration_card(
+            state="not_registered", cr_masked=masked, certificate_name=certificate
+        ),
         changed=["cr_status", *written],
+    )
+
+
+def continue_without_login(session: Session, runtime: AgentRuntime) -> CustomerCheck:
+    """S4, M2 (decided 16 Nov; policy `registered_cr_without_login: continue`): "I don't have
+    a login" on the sign-in card. The chat opens again and the inquiry goes on as new, with
+    the CR kept and `registered_no_login` set for the Leasing Admin."""
+    draft = session.draft
+    if (
+        not _offers_no_login()
+        or draft.intake_flow != "v2"
+        or draft.cr_status != "existing"
+        or draft.reference
+    ):
+        return CustomerCheck(note="[ui_event] no_login_unavailable", card=_current_card(draft))
+    updated = draft.model_copy(deep=True)
+    updated.cr_status = "new"
+    updated.registered_no_login = True
+    session.draft = updated
+    session.closed = None
+    runtime.services.audit.record(
+        session.id,
+        "inquiry_continued_without_login",
+        actor="user",
+        payload={"channel": session.channel},
+    )
+    return CustomerCheck(
+        note="[ui_event] continued_without_login",
+        card=_current_card(updated),
+        sign_in=build_sign_in_prompt_card(
+            runtime.settings.public_base_url,
+            reason="registered_cr",
+            continued_without_login=True,
+        ),
+        changed=["cr_status"],
     )
 
 
@@ -180,4 +260,17 @@ def _current_card(draft: InquiryDraft) -> UiCard:
         "new": "not_registered",
         "skipped": "skipped",
     }.get(draft.cr_status, "open")  # type: ignore[assignment]
-    return build_company_registration_card(state=state, cr_masked=masked)
+    if draft.registered_no_login:
+        state = "continued_no_login"
+    return build_company_registration_card(
+        state=state, cr_masked=masked, certificate_name=_certificate_name(draft)
+    )
+
+
+def company_registration_card(draft: InquiryDraft, *, error: str | None = None) -> UiCard:
+    """The card as the draft now stands (after a certificate upload, say)."""
+    if error is None:
+        return _current_card(draft)
+    return build_company_registration_card(
+        state="open", error=error, certificate_name=_certificate_name(draft)
+    )
