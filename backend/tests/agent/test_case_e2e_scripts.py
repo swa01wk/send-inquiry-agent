@@ -12,6 +12,9 @@ def test_resolve_e2e_scenario_accepts_known_script() -> None:
     assert resolve_e2e_scenario("flow-v2-s22") == "flow-v2-s22"
     assert resolve_e2e_scenario("flow-v2-s23") == "flow-v2-s23"
     assert resolve_e2e_scenario("flow-v2-s24") == "flow-v2-s24"
+    # docs/scenario-queries.md S23, S24 (e2e/tests/scenario-queries): the doc's contacts.
+    assert resolve_e2e_scenario("qa-s23") == "qa-s23"
+    assert resolve_e2e_scenario("qa-s24") == "qa-s24"
 
 
 def test_resolve_e2e_scenario_rejects_unknown_or_blank() -> None:

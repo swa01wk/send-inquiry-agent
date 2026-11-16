@@ -141,6 +141,21 @@ Projects: `desktop-chrome` and `mobile` (WebKit), as today. Reviewer contexts ru
 
 **Live rules.** `retries: 1`; a scenario passes if either attempt passes. The gate (FV20) is at least 22/24 on two runs, plus CC1–CC3. Results go to `e2e/results/live-flow-v2-<date>.json` and a row in `docs/eval-notes.md`.
 
+### 6.1 Scenario queries (QA layer)
+
+`e2e/tests/scenario-queries/` automates [scenario-queries.md](../scenario-queries.md), the manual test page, the way a tester works through it.
+- **How it moves:** `/dev` (Reset demo, the clock buttons), the chat's cards, `/dev/inbox` for every email link, and the reviewer console.
+- **What it checks:** the page's "what should happen", not the chart path. `expectFlowPath` stays with the specs above.
+- **Helpers:** `e2e/support/qa.ts` (`Tester`, blocks A and B, the inbox and console helpers).
+
+| Command | Tag | Notes |
+| --- | --- | --- |
+| `make e2e-qa` | `@qa-scripted` | Scripted model. Desktop only; not part of `make e2e-int`. CI: e2e workflow, suite `qa` |
+| `make e2e-qa-live` | `@qa-live` | Real model. Adds the agent-reply checks (`saysLive`), the variations, the off-script checks and the one-inquiry chain |
+
+- **Scripts:** the catalogue's own, plus `qa-s23` and `qa-s24` for the page's contacts (No → Ahmed → Nora; Yes → Nora).
+- **S17** is scripted only (`X-Mock-Faults`).
+
 ## 7. Regression
 
 Run after every build day (`make e2e-int`), not only `@flow-v2`. The stories this spec replaces or changes are listed in the spec §5.3. Their scripts change in the same PR as the behaviour. `make golden` re-records the intake goldens whose order changes, with the reason in the PR.

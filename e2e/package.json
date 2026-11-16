@@ -8,6 +8,8 @@
     "test:fe": "playwright test --config=playwright.fe.config.ts --grep @fe",
     "test:scripted": "playwright test --grep @scripted",
     "test:live": "playwright test --grep @live",
+    "test:qa": "playwright test --grep @qa-scripted --project=desktop-chrome",
+    "test:qa-live": "playwright test --grep @qa-live --project=desktop-chrome",
     "report": "playwright show-report"
   },
   "devDependencies": {

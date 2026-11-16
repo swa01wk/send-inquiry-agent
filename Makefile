@@ -5,7 +5,7 @@
 .PHONY: dev demo dev-backend dev-frontend \
 	check check-be check-fe lint \
 	test test-be test-fe test-agent golden \
-	e2e e2e-fe e2e-int e2e-demo e2e-demo-headed e2e-demo-step e2e-demo-stack e2e-live e2e-report eval-live \
+	e2e e2e-fe e2e-int e2e-qa e2e-qa-live e2e-demo e2e-demo-headed e2e-demo-step e2e-demo-stack e2e-live e2e-report eval-live \
 	ci ci-remote gate
 
 SLOW_MO ?= 800
@@ -91,6 +91,11 @@ e2e-demo-step:
 e2e-demo-stack:
 	$(E2E_DEPS) && CI=1 E2E_DEMO_STACK=1 npm run test:demo -- $(ARGS)
 
+# docs/scenario-queries.md, automated the way a tester works through it (@qa-scripted;
+# desktop only; not part of e2e-int). The live run is `make e2e-qa-live` below.
+e2e-qa:
+	$(E2E_DEPS) && CI=1 npm run test:qa -- $(ARGS)
+
 e2e: e2e-int
 
 # ---- Live layers (need an LLM provider: OpenAI or Azure) --------------------
@@ -106,6 +111,10 @@ LOAD_ENV = if [ -f backend/.env ]; then set -a; . ./backend/.env; set +a; fi
 # E2E-LIVE: Playwright with the real model (@live suites).
 e2e-live:
 	$(LOAD_ENV); $(E2E_DEPS) && CI=1 E2E_LIVE=1 npm run test:live -- $(ARGS)
+
+# The same scenario queries with the real model (@qa-live), agent replies checked too.
+e2e-qa-live:
+	$(LOAD_ENV); $(E2E_DEPS) && CI=1 E2E_LIVE=1 npm run test:qa-live -- $(ARGS)
 
 e2e-report:
 	cd e2e && npx playwright show-report
