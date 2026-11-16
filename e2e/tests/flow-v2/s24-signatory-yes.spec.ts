@@ -42,7 +42,8 @@ test.describe('S24 Signatory is the primary contact @flow-v2 @scripted @live', (
       )
       const contacts = applicant.cards('contacts')
       await expect(contacts.getByText('Same as primary contact')).toBeVisible({ timeout: 60_000 })
-      await applicant.say('Ready for billing details.')
+      // Real details, so a live model can save them (the scripted model ignores the words).
+      await applicant.say('Billing contact is Omar Saleh, omar@beanstreet.example, +966551234567')
       await expect(contacts.getByTestId('contact-row-billing_contact')).toContainText('@', {
         timeout: 60_000,
       })
