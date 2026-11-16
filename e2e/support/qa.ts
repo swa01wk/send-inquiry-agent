@@ -196,7 +196,7 @@ export class Tester {
     } else {
       await this.row(`Type ${cr} → Verify`, [{ cr_verify: cr }], async () => {
         await expect(this.crCard()).toContainText('not registered yet')
-        await expectUnitChoices(this.page)
+        await saysLive(this.chat, /store|office/i, 'moves on to Store or Office')
         await after.A2?.()
       })
     }
@@ -230,7 +230,7 @@ export class Tester {
     const from = options.from ?? 'B1'
     if (from === 'B1') {
       await this.row('B1 mall, area, budget, lease', B.property(options.property), async () => {
-        await expect(this.chat.cards('confirm_fields').last()).toBeVisible()
+        await expect(draftPanel(this.page)).toContainText(/Mall/)
       })
       await this.row('B2 Looks right', B.confirmProperty, async () => {
         await expect(this.chat.cards('terms').last()).toBeVisible()
@@ -276,6 +276,11 @@ export class Tester {
 }
 
 // ---- What should happen: the app (both modes) -------------------------------------------
+
+/** The "Your inquiry" panel beside the chat (desktop): every value saved so far. */
+export function draftPanel(page: Page): Locator {
+  return page.getByTestId('draft-scroll-body')
+}
 
 export async function expectUnitChoices(page: Page): Promise<void> {
   await expect(page.getByRole('button', { name: 'Store', exact: true }).last()).toBeVisible()

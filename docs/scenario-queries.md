@@ -70,8 +70,8 @@ curl -s -X POST localhost:8000/api/dev/clock/advance -H 'content-type: applicati
 
 | # | Type or press | What should happen |
 | --- | --- | --- |
-| B1 | `Riyadh Mall A, 30 to 50 sqm, up to 250k a year, 3 years` | The property details card with everything typed |
-| B2 | **Looks right** | The terms card |
+| B1 | `Riyadh Mall A, 30 to 50 sqm, up to 250k a year, 3 years` | Everything typed shows in the **Your inquiry** panel. A card asks to confirm only what it worked out |
+| B2 | **Looks right**, if a card asks | The terms card |
 | B3 | Tick the terms | The documents card: Company Profile and Brand Profile required |
 | B4 | Upload `company_profile.pdf` and `brand_profile.pdf` | The review card |
 | B5 | **Submit inquiry** | Reference **GEO-STR-…**. `/dev/inbox` has `submission_email` and `submission_sms` to Sara |
@@ -90,7 +90,7 @@ Block A, then Block B.
 ### S2 — New prospect, CR not in Tenant Central
 | # | Type or press | What should happen |
 | --- | --- | --- |
-| 1 | On the Company Registration card, type `1010123456` → **Verify** | Moves straight to "Store or Office?" |
+| 1 | On the Company Registration card, type `1010123456` → **Verify** | The card reads *CR checked — not registered yet*; it asks Store or Office |
 | 2 | Block A from A3, then Block B | As in S1 |
 
 - **Check:** the reply never repeats the CR number.
@@ -153,7 +153,7 @@ Block A (verified), then:
 | 4 | — | It says what's done and asks for the next section: the mall |
 | 5 | Block B | Reference |
 
-- **Expiry:** repeat, but advance more than 2 hours before step 2. The pending inquiry has expired (M24, A2).
+- **Expiry:** a pending inquiry expires 2 hours after the last activity, in real time (M24, A2). The `/dev` clock doesn't move it, so check it by waiting, or leave it to the backend tests (`tests/api/test_pending_resume.py`).
 
 ### S10 — Unit type and what the business sells
 | # | Type or press | What should happen |
@@ -161,7 +161,7 @@ Block A (verified), then:
 | 1 | **Skip** → **Yes, continue without it** | "Store or Office?" |
 | 2 | `an office` | Asks what the business sells |
 | 3 | `Max` | Asks again what they sell: it doesn't guess a category from a brand name |
-| 4 | `we sell clothes for the whole family` | The unit and category card: Office and a fashion category |
+| 4 | `we sell clothes for the whole family` | The category card (Fashion & Apparel) to confirm; Office in the **Your inquiry** panel |
 | 5 | **Looks right**, then Block A from A6, then Block B | Reference **GEO-OFF-…** |
 
 - **Check:** only Store and Office are offered. Media and Specialty are off this round (A3).

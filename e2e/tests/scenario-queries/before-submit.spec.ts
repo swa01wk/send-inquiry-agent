@@ -14,6 +14,7 @@ import {
   advanceHours,
   approveFirstLevel,
   devClock,
+  draftPanel,
   expectNeverRepeats,
   expectNoInboxMessage,
   expectNoReferenceYet,
@@ -160,7 +161,7 @@ test.describe('Scenario queries: before submit', () => {
       })
       await t.row('3 Type 1010123456 → Verify', [{ cr_verify: '1010123456' }], async () => {
         await expect(t.crCard()).toContainText('not registered yet')
-        await expectUnitChoices(t.page)
+        await saysLive(t.chat, /store|office/i, 'moves on to Store or Office')
       })
     } finally {
       await t.close()
@@ -308,27 +309,6 @@ test.describe('Scenario queries: before submit', () => {
     }
   })
 
-  test(`S9 Expiry: back after more than 2 hours ${BOTH}`, async ({ page, browser, request }) => {
-    const t = await Tester.open(page, browser, request, 'S9')
-    try {
-      await t.blockA()
-      await t.row('Close the tab; advance 3 hours', [{ leave: true }], () =>
-        advanceHours(request, 3),
-      )
-      await t.row('Continue my inquiry → sara@beanstreet.example', [], async () => {
-        await t.chat.open()
-        await t.chat.continueMyInquiry(SARA.email)
-        // The same reply either way: it says nothing about who has an inquiry.
-        expect(await t.chat.lastReply()).toContain("we've sent you a link to continue")
-      })
-      await t.row('No resume_link: the pending inquiry expired (M24, A2)', [], () =>
-        expectNoInboxMessage(t.page, { to: SARA.email, template: 'resume_link' }),
-      )
-    } finally {
-      await t.close()
-    }
-  })
-
   test(`S10 Unit type and what the business sells ${BOTH}`, async ({ page, browser, request }) => {
     const t = await Tester.open(page, browser, request, 'S10')
     try {
@@ -344,7 +324,8 @@ test.describe('Scenario queries: before submit', () => {
         '4 we sell clothes for the whole family',
         [{ say: 'we sell clothes for the whole family' }],
         async () => {
-          await expect(t.chat.cards('confirm_fields').last()).toContainText('Office')
+          await expect(t.chat.cards('confirm_fields').last()).toContainText(/Fashion/)
+          await expect(draftPanel(t.page)).toContainText('Office')
         },
       )
       await t.row('5 Looks right, then basic info', [...A.confirmUnit, ...A.basic()], async () => {
@@ -446,9 +427,8 @@ test.describe('Scenario queries: before submit', () => {
         '1 Riyadh Mall A and Jeddah Mall A, around 40 sqm',
         B.property('Riyadh Mall A and Jeddah Mall A, around 40 sqm'),
         async () => {
-          const card = t.chat.cards('confirm_fields').last()
-          await expect(card).toContainText('Riyadh Mall A')
-          await expect(card).toContainText('Jeddah Mall A')
+          await expect(draftPanel(t.page)).toContainText('Riyadh Mall A')
+          await expect(draftPanel(t.page)).toContainText('Jeddah Mall A')
           await neverSaysLive(
             t.chat,
             /only one (mall|region)|one region/i,
