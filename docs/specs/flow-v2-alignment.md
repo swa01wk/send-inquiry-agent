@@ -63,7 +63,7 @@ All rows are Must and due by Wed 18 Nov (F5). A row's test must pass in CI, or f
 | FV17 | E2: the reviewer assistant suggests whether to ask for forecasted sales data, with a reason from the case facts; it never sends the request itself. | `tests/agent/test_reviewer_fsd_suggestion.py`; eval S21; S21 | F4 |
 | FV18 | E3: in `lead_approved` the case agent says which mandatory contacts are missing, asks the signatory question first, and never mentions per-contact approval. | eval S23, S24; S23, S24 | F4 |
 | FV19 | All 24 scenarios and CC1–CC3 pass on INT (`@scripted @flow-v2`) on desktop Chrome and mobile WebKit. | `make e2e-int ARGS='--grep @flow-v2'` | F5 |
-| FV20 | `@live @flow-v2` passes at least 22 of 24 scenarios, and every CC story, on two runs. | `make e2e-live ARGS='--grep @flow-v2'` | F5 |
+| FV20 | `@live @flow-v2` passes every scenario marked `e2e_live` in `scenarios.json` (19 of 24: all but the code-only S6, S7, S8, S14, S17) and every CC story, on two runs. With the scenario queries (`@qa-live`), 23 of 24 scenarios run live; S17 (Submit fails) is a mock fault and runs scripted only. *(Amended 16 Nov: "22 of 24" counted the five code-only scenarios, which have no live Playwright layer.)* | `make e2e-live ARGS='--grep @flow-v2'` | F5 |
 | FV21 | `GROUP=flow_v2` passes 3/3 per scenario on two consecutive days on Azure `gpt-5.4-mini`; the existing groups stay within `EVAL_TOLERANCE` of `docs/eval-notes.md`. | `make eval-live GROUP=flow_v2`; `make eval-live` | F5 |
 | FV22 | No regression in the R1–R5 stories that this spec doesn't replace (§5.3). | `make e2e-int` | F5 |
 

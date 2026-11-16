@@ -16,13 +16,13 @@ import { openCaseAs } from '../../support/stories'
  * Forecasted Sales Data (Approve Lead? waits), a reminder is drafted after 72 h, the tenant
  * sends it, and "Yes, approve lead" moves the case to "Lead Approved".
  */
-test.describe('S21 Forecasted Sales Data @flow-v2 @scripted', () => {
+test.describe('S21 Forecasted Sales Data @flow-v2 @scripted @live', () => {
   test('unit, Forecasted Sales Data, reminder, then Yes, approve lead', async ({
     page,
     browser,
     request,
   }) => {
-    test.setTimeout(180_000)
+    test.setTimeout(process.env.E2E_LIVE ? 900_000 : 180_000)
     const seeded = await seedFlowCase(request, 'qualified', { unit_type: 'store' })
     const reference = seeded.reference
     const rsm = { id: seeded.final_reviewer!, name: '' }

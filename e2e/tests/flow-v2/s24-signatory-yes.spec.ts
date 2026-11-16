@@ -9,13 +9,13 @@ import { openCaseAs } from '../../support/stories'
  * signatory question comes first; Yes copies the primary contact as the Authorized Signatory,
  * the tenant adds the Billing Contact, and the final Approve Lead opens.
  */
-test.describe('S24 Signatory is the primary contact @flow-v2 @scripted', () => {
+test.describe('S24 Signatory is the primary contact @flow-v2 @scripted @live', () => {
   test('Yes copies the primary contact; billing; Approve Lead', async ({
     page,
     browser,
     request,
   }) => {
-    test.setTimeout(240_000)
+    test.setTimeout(process.env.E2E_LIVE ? 900_000 : 240_000)
     const seeded = await seedFlowCase(request, 'lead_approved')
     expect(seeded.status).toBe('lead_approved')
     const reference = seeded.reference
@@ -42,7 +42,8 @@ test.describe('S24 Signatory is the primary contact @flow-v2 @scripted', () => {
       )
       const contacts = applicant.cards('contacts')
       await expect(contacts.getByText('Same as primary contact')).toBeVisible({ timeout: 60_000 })
-      await applicant.say('Ready for billing details.')
+      // Real details, so a live model can save them (the scripted model ignores the words).
+      await applicant.say('Billing contact is Omar Saleh, omar@beanstreet.example, +966551234567')
       await expect(contacts.getByTestId('contact-row-billing_contact')).toContainText('@', {
         timeout: 60_000,
       })

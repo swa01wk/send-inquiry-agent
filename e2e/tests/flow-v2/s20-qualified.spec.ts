@@ -11,13 +11,13 @@ import { APPLICANT_EMAIL, approveDocumentsViaApi, reviewerFor } from '../../supp
  * = Yes → Primary Tenant Contact Creation (Azure AD invitation) → "Tenant Qualified", with the
  * Regional Sales Manager next. F2: the chart path, and no contacts request until Approve Lead.
  */
-test.describe('S20 Qualified @flow-v2 @scripted', () => {
+test.describe('S20 Qualified @flow-v2 @scripted @live', () => {
   test('first approval is named Tenant Qualified and invites the primary contact', async ({
     page,
     browser,
     request,
   }) => {
-    test.setTimeout(180_000)
+    test.setTimeout(process.env.E2E_LIVE ? 900_000 : 180_000)
     const reference = await submitInquiry(page, request)
     await approveDocumentsViaApi(request, reference)
     const leasingAdmin = await reviewerFor(request, reference, 'first')

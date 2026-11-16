@@ -50,6 +50,7 @@ from app.api.channel_cards import (
 from app.api.schemas import UiCard
 from app.domain import draft_ops
 from app.domain import validation as v
+from app.domain.document_fill import document_evidence
 from app.domain.faq import search_faq as faq_search
 from app.domain.models import (
     EVIDENCE_MAX_CHARS,
@@ -695,6 +696,20 @@ def update_draft(
                     )
                 arabic_brand_en_redirect = True
                 continue
+        if isinstance(item.value, str) and _PLACEHOLDER_RE.match(item.value.strip()):
+            # Eval 16 Nov (S13): "from documents" was written over the values the profiles
+            # filled, and later as the Arabic brand name.
+            rejected.append(
+                f"{item.key}: placeholder_value; write a real value, or leave a value a "
+                "document filled as it is"
+            )
+            continue
+        if item.source != "user" and (doc := _filled_by_document(draft, item.key)):
+            rejected.append(
+                f"{item.key}: filled_from_document ({doc}); keep it and ask them to check it "
+                "on the card"
+            )
+            continue
         entries.append((item.key, item.value, _write_source(item.source, state)))
 
     if not entries and rejected:
@@ -837,6 +852,28 @@ def _last_user_text(state: AgentState) -> str:
             continue
         return v.normalise_digits(text)
     return ""
+
+
+# A value standing in for one read from a file ("from documents", "see profile").
+_PLACEHOLDER_RE = re.compile(
+    r"^\W*(from|see|per|in|as in|via)\s+(the\s+)?(uploaded\s+)?"
+    r"(documents?|files?|profiles?|company profile|brand profile)\W*$",
+    re.IGNORECASE,
+)
+
+
+def _filled_by_document(draft: InquiryDraft, key: str) -> str | None:
+    """The document label when `key` still holds the value a document filled, else None."""
+    try:
+        field = draft.fields.get(FieldKey(key))
+    except ValueError:  # pseudo keys such as contact_number
+        return None
+    if field is None or field.source != Source.DERIVED or not field.evidence:
+        return None
+    for ref in draft.documents.values():
+        if key in ref.filled_fields and field.evidence == document_evidence(ref):
+            return field.evidence.split(":", 1)[0]
+    return None
 
 
 @tool

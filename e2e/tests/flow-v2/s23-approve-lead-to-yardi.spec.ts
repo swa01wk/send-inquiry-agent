@@ -9,9 +9,9 @@ import { openCaseAs } from '../../support/stories'
  * docs/flow-v2/scenarios.json): Yes opens the contacts; the final Approve Lead is disabled
  * until the Authorized Signatory and Billing Contact are in; then accounts and Yardi.
  */
-test.describe('S23 Approve Lead to Yardi @flow-v2 @scripted', () => {
+test.describe('S23 Approve Lead to Yardi @flow-v2 @scripted @live', () => {
   test('Yes → contacts → the final Approve Lead → Yardi', async ({ page, browser, request }) => {
-    test.setTimeout(240_000)
+    test.setTimeout(process.env.E2E_LIVE ? 900_000 : 240_000)
     const seeded = await seedFlowCase(request, 'qualified')
     const reference = seeded.reference
 
@@ -58,7 +58,10 @@ test.describe('S23 Approve Lead to Yardi @flow-v2 @scripted', () => {
     await expect(page.getByTestId('case-stage')).toHaveText('Approved and sent to Yardi')
     await expect
       .poll(async () =>
-        latestByTemplate(await fetchDevOutbox(request, 'omar@beanstreet.example'), 'azure_ad_invitation'),
+        latestByTemplate(
+          await fetchDevOutbox(request, 'omar@beanstreet.example'),
+          'azure_ad_invitation',
+        ),
       )
       .toBeTruthy()
 

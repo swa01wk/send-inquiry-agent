@@ -10,13 +10,13 @@ import { openCaseAs } from '../../support/stories'
  * what's needed (only that document and the remark), re-uploads and resubmits; the new file
  * needs a decision again, both profiles are approved, and the first level goes through.
  */
-test.describe('S18 A document is rejected @flow-v2 @scripted', () => {
+test.describe('S18 A document is rejected @flow-v2 @scripted @live', () => {
   test('reject, re-upload from the case chat, approve again', async ({
     page,
     browser,
     request,
   }) => {
-    test.setTimeout(180_000)
+    test.setTimeout(process.env.E2E_LIVE ? 900_000 : 180_000)
     const seeded = await seedFlowCase(request, 'submitted', {
       unit_type: 'store',
       malls: ['riyadh-mall-a'],

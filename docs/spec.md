@@ -692,6 +692,7 @@ The chat cards above, the `/callcentre` page and the assisted prompt are Day 5 p
 - `DraftSummary.section` (current section key) and `checks.sections: [{key, label, done}]` for the step tabs; both empty or null on `v1`.
 - The bundle hint and `still_needed_line` name the current section only; the guard adds a note when the reply asks about a later section (rule 8) and nudges verification once Basic Info is done.
 - `update_draft` refuses a derived `sales_category` whose evidence is empty or only the brand name: `category_needs_what_you_sell`.
+- `update_draft` refuses a placeholder value ("from documents", "see profile"): `placeholder_value`; and a write that isn't `source: user` over a value a profile filled that nobody has changed since (still `derived`, with that document's evidence): `filled_from_document`. The applicant typing a correction replaces it. When it writes `brand_name_en` and `brand_name_ar` is still empty, its result asks the model to propose the Arabic spelling (derived) for the card.
 
 **Terms before documents** (`terms_before_documents`). Once Property Details and verification are done, the guard shows the `terms` card before the documents card; `accept_terms` sets `terms_accepted`. The review card carries `terms_on_own_card: true` and shows "Terms accepted" instead of the checkbox; `accept_and_submit` accepts the draft's `terms_accepted`.
 
