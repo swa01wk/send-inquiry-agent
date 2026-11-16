@@ -13,6 +13,7 @@ from datetime import UTC, datetime, timedelta
 from urllib.parse import parse_qs, urlparse
 
 import pytest
+from app import clock
 from app.agent.model import ScriptedChatModel
 from app.agent.pending import RESUME_PENDING_REPLY
 from app.domain.models import FieldKey
@@ -130,6 +131,26 @@ async def test_an_expired_pending_inquiry_is_abandoned_not_resumed(
     assert token_text(events) == RESUME_PENDING_REPLY
     assert _resume_mail(app, email) == []
     assert (await repo.get(inquiry.id)).status == InquiryStatus.ABANDONED
+
+
+@pytest.mark.parametrize(("hours", "resumed"), [(1, True), (3, False)])
+async def test_the_window_follows_the_apps_clock(
+    client: AsyncClient, app, hours: int, resumed: bool
+) -> None:
+    """S9 on /dev: moving the simulated clock past 2 hours expires the pending inquiry."""
+    previous = clock.get_clock()
+    simulated = clock.SimulatedClock()
+    clock.install_clock(simulated)
+    try:
+        email = _email()
+        await _pending_session(client, app, email)
+        simulated.advance(timedelta(hours=hours))
+        visitor = await _new_session_id(client)
+        events = await chat_action(client, visitor, "resume_pending", {"email": email})
+        assert token_text(events) == RESUME_PENDING_REPLY
+        assert bool(_resume_mail(app, email)) is resumed
+    finally:
+        clock.install_clock(previous)
 
 
 async def test_not_an_email_is_handled_like_no_match(client: AsyncClient, app) -> None:

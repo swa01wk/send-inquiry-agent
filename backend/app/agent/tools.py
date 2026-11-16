@@ -495,8 +495,9 @@ def skip_cr(
     runtime: ToolRuntime,
     confirmed: bool = False,
 ) -> Command[Any]:
-    """Skip CR verification after the user agreed. On the Company Registration card the
-    first call shows "Are you sure you want to proceed without CR ID?"; call again with
+    """Skip CR verification, only when the user asked to skip or said they have no CR (a
+    typo, "oops" or a question isn't asking). On the Company Registration card the first
+    call shows "Are you sure you want to proceed without CR ID?"; call again with
     confirmed=true only after the user said yes to that question."""
     draft = state["draft"]
     if draft.cr_status != "unknown":
@@ -517,9 +518,28 @@ def skip_cr(
     )
 
 
+# The applicant asked to skip, or said they have no CR (English or Arabic).
+_SKIP_INTENT_RE = re.compile(
+    r"\b(skip|no cr|without (a |the )?cr|don'?t have|do not have|haven'?t got|no commercial"
+    r"|not registered|later)\b|تخط|بدون|ما عندي|ما عندنا|ليس لدي|ليس لدينا|لا يوجد|لا أملك",
+    re.IGNORECASE,
+)
+
+
 def _v2_skip_cr(state: AgentState, runtime: ToolRuntime, *, confirmed: bool) -> Command[Any]:
     """Flow v2 (§3.2): Skip needs the confirmation, as on the card."""
     draft = state["draft"]
+    if not confirmed and not _SKIP_INTENT_RE.search(_last_user_text(state)):
+        # Live runs 16 Nov: after a mistyped CR and "oops", the model called skip_cr and the
+        # card asked "Are you sure you want to proceed without CR ID?" unprompted.
+        return _tool_result(
+            runtime,
+            draft=draft,
+            content=(
+                "Not skipped: they didn't ask to skip or say they have no CR. Ask them to "
+                "check the number and enter it on the card, or mention the Skip button."
+            ),
+        )
     if not confirmed:
         _emit_card(build_company_registration_card(state="confirm_skip"), runtime)
         return _tool_result(
@@ -771,6 +791,18 @@ def update_draft(
         parts.append(
             "Arabic brand saved as brand_name_ar; now save a Latin spelling as "
             "brand_name_en (source derived).",
+        )
+    elif (
+        FieldKey.BRAND_NAME_EN.value in written
+        and updated.fields[FieldKey.BRAND_NAME_EN].value
+        and not updated.fields[FieldKey.BRAND_NAME_AR].value
+    ):
+        # Eval 16 Nov (dictated caller): given "Brand Bean Street", the model asked for the
+        # Arabic name instead of proposing one, so the send-link card never came.
+        parts.append(
+            "brand_name_ar is empty: propose an Arabic spelling now with update_draft "
+            "(source derived, evidence = the brand name) and ask them to check it on the "
+            "card; don't ask them to type it."
         )
     return _tool_result(
         runtime,

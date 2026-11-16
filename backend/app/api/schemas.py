@@ -35,6 +35,8 @@ CardType = Literal[
     # Flow v2 (§3.4, F4): call centre, existing CR
     "contact_check",
     "inform_tenant",
+    # Chart S15: same CR and mall as an open inquiry (duplicate_policy)
+    "duplicate_notice",
 ]
 
 StepState = Literal["done", "current", "upcoming"]
@@ -186,6 +188,16 @@ class MallPickerCity(BaseModel):
 class MallPickerMall(BaseModel):
     id: str
     name: str
+
+
+class DuplicateNoticePayload(BaseModel):
+    """Chart S15: an open inquiry has the same CR and at least one of the same malls."""
+
+    reference: str
+    malls: list[str]
+    # warn: they can still submit; block: Submit is refused (policy.yaml duplicate_policy).
+    policy: Literal["warn", "block"]
+    message: str
 
 
 class MallPickerPayload(BaseModel):

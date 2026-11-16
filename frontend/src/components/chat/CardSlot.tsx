@@ -12,6 +12,7 @@ import { TermsCard } from '../cards/TermsCard'
 import { SignatoryQuestionCard } from '../cards/SignatoryQuestionCard'
 import { ContactCheckCard } from '../cards/ContactCheckCard'
 import { InformTenantCard } from '../cards/InformTenantCard'
+import { DuplicateNoticeCard } from '../cards/DuplicateNoticeCard'
 import { HandoffCard } from '../cards/HandoffCard'
 import { SendLinkCard } from '../cards/SendLinkCard'
 import { SignInPromptCard } from '../cards/SignInPromptCard'
@@ -146,6 +147,9 @@ export function CardSlot({
           payload={card.payload}
           onSendSignInLink={() => actions.sendAction('send_sign_in_link', {})}
         />
+      ) : null}
+      {card.card_type === 'duplicate_notice' ? (
+        <DuplicateNoticeCard payload={card.payload} />
       ) : null}
       {card.card_type === 'company_registration' ? (
         <CompanyRegistrationCard

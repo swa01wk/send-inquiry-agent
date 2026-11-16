@@ -9,7 +9,6 @@ from app.agent.case_guard import (
     _APPROVAL_CLAIM_RE,
     _CONTACTS_SENT_RE,
     _DOC_RESUBMITTED_RE,
-    _contacts_card_missing_note,
     _contacts_not_saved_note,
     _false_outcome_note,
 )
@@ -173,9 +172,6 @@ def _contacts_request_case(agent_runtime: AgentRuntime) -> Case:
     return case
 
 
-_BOTH_ROLES = [{"role": "authorized_signatory"}, {"role": "billing_contact"}]
-
-
 def _contacts_turn(*tool_names: str, result: str = "Contacts draft updated (2 role(s)).") -> list:
     calls = [{"name": n, "args": {}, "id": f"call-{i}"} for i, n in enumerate(tool_names)]
     turn: list = [
@@ -189,48 +185,8 @@ def _contacts_turn(*tool_names: str, result: str = "Contacts draft updated (2 ro
     return turn
 
 
-def test_contacts_card_missing_note_when_saved_without_card(agent_runtime: AgentRuntime) -> None:
-    case = _contacts_request_case(agent_runtime)
-    note = _contacts_card_missing_note(_contacts_turn("update_contacts"), case, _BOTH_ROLES)
-    assert note is not None
-    assert "show_contacts_review" in note
-
-
-def test_contacts_card_missing_note_quiet_when_card_shown(agent_runtime: AgentRuntime) -> None:
-    case = _contacts_request_case(agent_runtime)
-    turn = _contacts_turn("update_contacts", "show_contacts_review")
-    assert _contacts_card_missing_note(turn, case, _BOTH_ROLES) is None
-
-
-def test_contacts_card_missing_note_quiet_on_validation_errors(agent_runtime: AgentRuntime) -> None:
-    case = _contacts_request_case(agent_runtime)
-    turn = _contacts_turn("update_contacts", result="Contact validation errors: billing: email")
-    assert _contacts_card_missing_note(turn, case, _BOTH_ROLES) is None
-
-
-def test_contacts_card_missing_note_quiet_until_required_roles(agent_runtime: AgentRuntime) -> None:
-    case = _contacts_request_case(agent_runtime)
-    turn = _contacts_turn("update_contacts")
-    assert _contacts_card_missing_note(turn, case, [{"role": "authorized_signatory"}]) is None
-
-
-def test_contacts_card_missing_note_quiet_without_open_request(agent_runtime: AgentRuntime) -> None:
-    case = _second_review_case(agent_runtime)
-    note = _contacts_card_missing_note(_contacts_turn("update_contacts"), case, _BOTH_ROLES)
-    assert note is None
-
-
-def test_contacts_card_missing_note_for_a_fix_request(agent_runtime: AgentRuntime) -> None:
-    # Live run 10 Nov, flow 1: after the billing contact was rejected, the fix request asks
-    # only for billing; the corrected email was saved but the card kept the old one.
-    case = _contacts_request_case(agent_runtime)
-    request = case.open_request("contacts")
-    assert request is not None
-    request.roles = ["billing_contact"]  # type: ignore[list-item]
-    turn = _contacts_turn("update_contacts", result="Contacts draft updated (1 role(s)).")
-    note = _contacts_card_missing_note(turn, case, [{"role": "billing_contact"}])
-    assert note is not None
-    assert "show_contacts_review" in note
+# `_contacts_card_missing_note` is gone (16 Nov): `update_contacts` refreshes the contacts
+# card itself, so a turn that saves contacts can't leave the card behind.
 
 
 _FIX = "The billing email is finance@beanstreet.example"

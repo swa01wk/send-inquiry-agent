@@ -38,12 +38,14 @@ from app.api.cards import (
     TERMS_CARD_ID,
     VERIFICATION_CARD_ID,
     build_document_upload_card,
+    build_duplicate_notice_card,
     build_mall_picker_card,
     build_review_card,
     build_terms_card,
 )
 from app.api.channel_cards import basic_info_missing, build_send_link_card
 from app.api.schemas import UiCard
+from app.domain import draft_ops
 from app.domain.fields import document_label
 from app.domain.models import NEEDS_CONFIRMATION, DocType, FieldKey, InquiryDraft, Source
 from app.domain.rules import compute_phase, contact_verified, remaining_steps
@@ -58,6 +60,7 @@ from app.domain.sections import (
 from app.domain.summary import build_draft_summary
 from app.domain.validation import normalise_digits
 from app.policy.config import get_policy
+from app.workflow.duplicates import OpenDuplicate, notice_card_id, open_duplicate
 
 GUARD_PREFIX = "[ui_event] guard:"
 
@@ -162,6 +165,41 @@ def _tools_called(messages: list[BaseMessage]) -> set[str]:
             for call in message.tool_calls or []:
                 names.add(str(call.get("name", "")))
     return names
+
+
+# A bare answer to "Store or Office?" (the chips, or typed, in English or Arabic). Live eval
+# 16 Nov (Arabic user): "متجر" was answered but not saved, or was already saved, and the
+# missed-capture rule took the reply back.
+_UNIT_CHOICES = {
+    "store": "store",
+    "a store": "store",
+    "office": "office",
+    "an office": "office",
+    "متجر": "store",
+    "محل": "store",
+    "مكتب": "office",
+}
+
+
+def bare_unit_choice(text: str) -> str | None:
+    """`store` / `office` when the whole message is that choice, else None."""
+    key = " ".join(text.strip().strip(".!،,").lower().split())
+    if key.startswith("ال") and key[2:] in _UNIT_CHOICES:
+        key = key[2:]
+    return _UNIT_CHOICES.get(key)
+
+
+def fill_unit_choice(draft: InquiryDraft, user_text: str, master: Any) -> tuple[InquiryDraft, bool]:
+    """Save a bare Store / Office answer (source user) when the unit type isn't that yet."""
+    choice = bare_unit_choice(user_text)
+    if choice is None or draft.fields[FieldKey.UNIT_TYPE].value == choice:
+        return draft, False
+    updated, written, errors = draft_ops.write_fields(
+        draft, [(FieldKey.UNIT_TYPE.value, choice, Source.USER)], master=master
+    )
+    if FieldKey.UNIT_TYPE.value in written and FieldKey.UNIT_TYPE.value not in errors:
+        return updated, True
+    return draft, False
 
 
 def message_likely_has_inquiry_data(text: str) -> bool:
@@ -578,6 +616,9 @@ def _missed_capture_note(state: AgentState, phase: str) -> str | None:
     if not user_text or user_text.startswith("[ui_event]"):
         return None
     called = _tools_called(turn_messages)
+    choice = bare_unit_choice(user_text)
+    if choice is not None and state["draft"].fields[FieldKey.UNIT_TYPE].value == choice:
+        return None  # a Store / Office answer that is saved (fill_unit_choice)
     if phase == "gate" and _CR_NUMBER_RE.search(user_text) and "verify_cr" not in called:
         return (
             f"{GUARD_PREFIX} The user's last message contains a CR number. "
@@ -602,6 +643,18 @@ def _emit_draft(state: AgentState, runtime: AgentRuntime, changed_keys: list[str
         return
     summary = build_draft_summary(state["draft"], runtime.master, changed_keys)
     writer({"type": "draft", "data": summary.model_dump()})
+
+
+def _duplicate_notice_due(
+    draft: InquiryDraft, cards_shown: list[str], runtime: Any
+) -> OpenDuplicate | None:
+    """Same CR and mall as an open inquiry, not yet told (chart S15), or None."""
+    if draft.reference is not None:
+        return None
+    duplicate = open_duplicate(runtime.services.cases.all(), draft)
+    if duplicate is None or notice_card_id(duplicate) in cards_shown:
+        return None
+    return duplicate
 
 
 def _emit_card(card: UiCard, writer: Any) -> None:
@@ -851,10 +904,13 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
     user_text, turn_messages = _current_turn({**state, "draft": draft})
     draft, brands_filled = fill_brands_from_user_message(draft, user_text)
     draft, malls_filled = fill_mentioned_malls(draft, user_text, runtime.master)
+    draft, unit_filled = fill_unit_choice(draft, user_text, runtime.master)
     draft_changed = list(doubt_unconfirmed)
     draft_changed.extend(brands_filled)
     if malls_filled:
         draft_changed.append(FieldKey.MALLS.value)
+    if unit_filled:
+        draft_changed.append(FieldKey.UNIT_TYPE.value)
     phase = compute_phase(draft).value
     cards_shown = list(state["cards_shown"])
     guard_retries = state["guard_retries"]
@@ -953,6 +1009,12 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
     if picker_city is not None:
         _emit_card(build_mall_picker_card(draft, runtime.master, picker_city), writer)
         cards_shown.append("malls")
+
+    duplicate = _duplicate_notice_due(draft, cards_shown, runtime)
+    if duplicate is not None:
+        # Chart S15: one neutral notice per open inquiry, from code (duplicate_policy).
+        _emit_card(build_duplicate_notice_card(duplicate, runtime.master), writer)
+        cards_shown.append(notice_card_id(duplicate))
 
     documents_due = (
         _v2_documents_card_due(state, draft)

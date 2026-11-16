@@ -4,6 +4,8 @@ Each section below is one scenario from the client-approved [Prospective Tenant 
 
 For the client demo order, use [demo-queries.md](./demo-queries.md) instead. It strings a few of these scenarios into one story.
 
+**Automated:** every section below is also a Playwright test in `e2e/tests/scenario-queries/`, done the way a tester does it (see [Automated runs](#automated-runs) at the end).
+
 ---
 
 ## Setup
@@ -68,8 +70,8 @@ curl -s -X POST localhost:8000/api/dev/clock/advance -H 'content-type: applicati
 
 | # | Type or press | What should happen |
 | --- | --- | --- |
-| B1 | `Riyadh Mall A, 30 to 50 sqm, up to 250k a year, 3 years` | The property details card with everything typed |
-| B2 | **Looks right** | The terms card |
+| B1 | `Riyadh Mall A, 30 to 50 sqm, up to 250k a year, 3 years` | Everything typed shows in the **Your inquiry** panel. A card asks to confirm only what it worked out |
+| B2 | **Looks right**, if a card asks | The terms card |
 | B3 | Tick the terms | The documents card: Company Profile and Brand Profile required |
 | B4 | Upload `company_profile.pdf` and `brand_profile.pdf` | The review card |
 | B5 | **Submit inquiry** | Reference **GEO-STR-…**. `/dev/inbox` has `submission_email` and `submission_sms` to Sara |
@@ -88,7 +90,7 @@ Block A, then Block B.
 ### S2 — New prospect, CR not in Tenant Central
 | # | Type or press | What should happen |
 | --- | --- | --- |
-| 1 | On the Company Registration card, type `1010123456` → **Verify** | Moves straight to "Store or Office?" |
+| 1 | On the Company Registration card, type `1010123456` → **Verify** | The card reads *CR checked — not registered yet*; it asks Store or Office |
 | 2 | Block A from A3, then Block B | As in S1 |
 
 - **Check:** the reply never repeats the CR number.
@@ -151,7 +153,7 @@ Block A (verified), then:
 | 4 | — | It says what's done and asks for the next section: the mall |
 | 5 | Block B | Reference |
 
-- **Expiry:** repeat, but advance more than 2 hours before step 2. The pending inquiry has expired (M24, A2).
+- **Expiry:** repeat, but advance more than 2 hours (the clock helper with `{"hours":3}`, or `/dev` **+24 h**) before step 2. The reply is the same, but no `resume_link` arrives: the pending inquiry expired (M24, A2).
 
 ### S10 — Unit type and what the business sells
 | # | Type or press | What should happen |
@@ -159,7 +161,7 @@ Block A (verified), then:
 | 1 | **Skip** → **Yes, continue without it** | "Store or Office?" |
 | 2 | `an office` | Asks what the business sells |
 | 3 | `Max` | Asks again what they sell: it doesn't guess a category from a brand name |
-| 4 | `we sell clothes for the whole family` | The unit and category card: Office and a fashion category |
+| 4 | `we sell clothes for the whole family` | The category card (Fashion & Apparel) to confirm; Office in the **Your inquiry** panel |
 | 5 | **Looks right**, then Block A from A6, then Block B | Reference **GEO-OFF-…** |
 
 - **Check:** only Store and Office are offered. Media and Specialty are off this round (A3).
@@ -214,7 +216,7 @@ Block A, then Block B to B3, then:
    - Or seed one: `curl -s -X POST localhost:8000/api/dev/flow/seed -H 'content-type: application/json' -d '{"stage":"submitted","cr_number":"1010222222","malls":["riyadh-mall-a"]}'`.
 2. **Restart**, then run S2 again with `1010222222` and `Riyadh Mall A, 30 to 50 sqm, up to 250k a year, 3 years`.
 
-- **Check:** it warns once, neutrally, that an open inquiry exists for the same CR and mall.
+- **Check:** once the mall is in, one notice card: *There's already an open inquiry for this CR at Riyadh Mall A (GEO-…). You can still send this one; the leasing team will see both.* It isn't shown again, and no reply calls it a mistake.
 - **Check:** **Submit inquiry** still works (`duplicate_policy: warn`).
 
 ### S16 — Asks something else mid-flow
@@ -223,7 +225,7 @@ Block A to A5, then:
 | # | Type | What should happen |
 | --- | --- | --- |
 | 1 | `how long does the review take?` | Answers without promises, then back to basic info |
-| 2 | `GEO-STR-000123 status?` | A status answer (or "not found"), then back to basic info |
+| 2 | `GEO-STR-000123 status?` | A status answer, or that another inquiry is tracked from its own emailed link (privacy); then back to basic info |
 | 3 | `can I talk to a person?` | The handoff card with the call-centre details; the draft is kept |
 | 4 | `السلام عليكم، نكمل؟` | Replies in Arabic and carries on with basic info |
 
@@ -291,7 +293,7 @@ Seed a `qualified` case.
 
 | # | Who | Type or press | What should happen |
 | --- | --- | --- | --- |
-| 1 | RSM | Assign the unit (as S21 step 3) → **No, reject lead** → Reason **No space**, remarks `No space in the requested size` → **Reject** | Stage: rejected. Behind the scenes, the Azure AD account made at first approval is revoked (V9) |
+| 1 | RSM | Assign the unit (as S21 step 3) → **No, reject lead** → Reason **No space**, remarks `No space in the requested size` → **Reject** | Stage **Lead Rejected**. Behind the scenes, the Azure AD account made at first approval is revoked (V9) |
 | 2 | Applicant | `/dev/inbox` → `inquiry_rejected` → case link → `what happened?` | Explains the outcome and offers a new inquiry |
 
 ### S23 — Lead approved, contacts, final approval
@@ -302,8 +304,8 @@ Continue from S21 step 7 (or seed `qualified`, assign the unit, then **Yes, appr
 | 1 | Applicant | `/dev/inbox` → `contacts_request` → case link | First, **Are you the authorised signatory for your company?** It lists what's missing (E3) |
 | 2 | Applicant | **No, someone else is** | Asks for the signatory |
 | 3 | Applicant | `Ahmed Saleh signs, ahmed@beanstreet.example, 0507654321` | Signatory saved; asks for the billing contact |
-| 4 | RSM | Reload | The final **Approve Lead** is disabled: the Billing Contact is missing (M26) |
-| 5 | Applicant | `billing is Nora Ali, nora@beanstreet.example, 0509998877` | Contacts received. Nothing about approving contacts one by one |
+| 4 | RSM | Reload | The final **Approve Lead** is disabled: *Billing Contact still needed* (M26) |
+| 5 | Applicant | `billing is Nora Ali, nora@beanstreet.example, 0509998877` → **Send contacts** | Both contacts on the card, then sent. Nothing about approving contacts one by one |
 | 6 | RSM | Reload → **Approve Lead** | **Approved and sent to Yardi** |
 | 7 | — | `/dev/inbox` | `inquiry_accepted` to Sara, and Tenant Central invitations for the contacts without a login |
 
@@ -314,7 +316,7 @@ Seed a `lead_approved` case (or use S23 on a fresh case).
 | --- | --- | --- | --- |
 | 1 | Applicant | `/dev/inbox` → `contacts_request` → case link | The signatory question first |
 | 2 | Applicant | `yes that's me` (or **Yes, I'm the authorised signatory**) | Sara is copied as the signatory; asks for the billing contact |
-| 3 | Applicant | `billing is Nora Ali, nora@beanstreet.example, 0509998877` | Contacts received |
+| 3 | Applicant | `billing is Nora Ali, nora@beanstreet.example, 0509998877` → **Send contacts** | Nora on the card as the Billing Contact, then sent |
 | 4 | RSM | Reload → **Approve Lead** | Approved and sent to Yardi |
 
 **Variations:**
@@ -367,3 +369,27 @@ These are the live eval's `conversation` group.
 | Chat during verification | `How long does the review take?` with the verification card open | Answers, then points back to the verification card |
 | Arabic | `السلام عليكم، نريد افتتاح متجر قهوة`, skip the CR, then `نبيع القهوة المختصة والمعجنات` | Arabic throughout, same order |
 | Jump ahead | `Can I submit now?` | Says what's left; Submit stays on the review card |
+
+---
+
+## Automated runs
+
+`e2e/tests/scenario-queries/` follows this page section by section, the way a tester works through it:
+- **Reset demo** on `/dev` before each scenario, and the `/dev` clock buttons.
+- The chat's own cards and buttons.
+- Every email link opened from `/dev/inbox`.
+- The Leasing Admin and the Regional Sales Manager in the reviewer console.
+
+Each step in the test report is named after a row here (`A6 basic info in one message`, `3 Ahmed Saleh signs, …`).
+
+| Command | Model | What it checks |
+| --- | --- | --- |
+| `make e2e-qa` | Scripted (no API key) | What the app shows: cards, states, emails, the console. The agent's wording isn't checked, because the script wrote it |
+| `make e2e-qa-live` | Real (`backend/.env`) | The same, plus the agent's replies against "what should happen", as tolerant patterns |
+
+- **Scripted runs** use the catalogue's scripts (`backend/tests/e2e_scripts/flow-v2-*.json`), plus `qa-s23` and `qa-s24` for this page's contacts.
+- **Live only:** the S11 and S24 variations, the off-script checks, and the S18 → S20 → S21 → S23 chain on one inquiry. They have no script.
+- **Scripted only:** S17, because live runs can't inject the submit failure for one chat (`MOCK_FAULTS` covers the whole backend).
+- **In GitHub:** Actions → e2e → Run workflow → suite **qa** runs `make e2e-qa`; suite **qa_live** runs `make e2e-qa-live` with the repository's model settings (`LLM_PROVIDER`, `LLM_MODEL`, `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_VERSION`, secret `AZURE_OPENAI_API_KEY`).
+- **One scenario:** `make e2e-qa ARGS='-g S23'`.
+

@@ -5,13 +5,12 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 
 from app.agent.guard import GUARD_PREFIX, after_guard
 from app.agent.runtime import AgentRuntime
 from app.agent.state import AgentState
 from app.domain.rules import compute_phase
-from app.policy.config import get_policy
 from app.workflow.models import Case, CaseStatus
 
 _DOC_RESUBMITTED_RE = re.compile(
@@ -100,44 +99,6 @@ def _false_outcome_note(ai_text: str, turn: list[BaseMessage], case: Case | None
     )
 
 
-def _contacts_card_missing_note(
-    turn: list[BaseMessage], case: Case | None, contacts_draft: list[dict[str, Any]]
-) -> str | None:
-    """Contacts saved this turn for an open request, every required role there, but no card.
-
-    The applicant sends contacts from the review card, so a turn that captures them must show
-    it (case prompt, "Contacts"). Live eval "Case: contacts bundle" missed it about 1 run in 3.
-    """
-    request = case.open_request("contacts") if case is not None else None
-    if request is None:
-        return None
-    called: set[str] = set()
-    update_ids: set[str] = set()
-    for message in turn:
-        if isinstance(message, AIMessage):
-            for call in message.tool_calls or []:
-                called.add(call["name"])
-                if call["name"] == "update_contacts" and call.get("id"):
-                    update_ids.add(str(call["id"]))
-    if "update_contacts" not in called or "show_contacts_review" in called:
-        return None
-    results = [m for m in turn if isinstance(m, ToolMessage) and m.tool_call_id in update_ids]
-    last = results[-1].content if results else ""
-    if not (isinstance(last, str) and last.startswith("Contacts draft updated")):
-        return None
-    roles = {c.get("role") for c in contacts_draft}
-    # A request opened by a rejected contact asks only for those roles (demo feedback §3.5):
-    # live run 10 Nov, flow 1, the billing fix was saved but the card kept the old email.
-    needed = {str(r) for r in request.roles} or set(get_policy().second_level_contacts.required)
-    if not needed <= roles:
-        return None
-    return (
-        f"{GUARD_PREFIX} The contacts are saved but the applicant can't see them yet. Call "
-        "`show_contacts_review` now, then say in one line what you captured and point them to "
-        "**Send contacts** on the card."
-    )
-
-
 # An email address or a phone number in the applicant's own words.
 _CONTACT_DETAIL_RE = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+|\+?\d[\d\s-]{7,}\d")
 
@@ -179,8 +140,6 @@ def case_guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, An
     case_id = state.get("case_id")
     case = runtime.services.cases.get(case_id) if case_id else None
     note = _false_outcome_note(ai_text, turn, case) if ai_text else None
-    if note is None:
-        note = _contacts_card_missing_note(turn, case, list(state.get("contacts_draft") or []))
     if note is None:
         note = _contacts_not_saved_note(user_text, turn, case)
     if note is not None and not user_text.startswith("[ui_event] guard:"):

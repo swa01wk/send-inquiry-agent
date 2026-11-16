@@ -114,6 +114,9 @@ def test_get_case_status_emits_card(agent_runtime, case_state, seeded_case, stre
     assert "Current stage:" in summary
     assert "Brand Profile" in summary
     assert "Please send an updated brand profile." in summary
+    # Live run 16 Nov: a reply called a later stage the outcome while the case waited.
+    assert "Current stage: With the Leasing Admin." in summary
+    assert "No outcome yet. Not reached yet: Tenant Qualified, Outcome." in summary
     after = agent_runtime.services.cases.get(seeded_case.id)
     assert after is not None
     assert _snapshot(after) == before
@@ -210,6 +213,93 @@ def test_update_contacts_same_as_primary(agent_runtime, case_state, seeded_case,
     after = agent_runtime.services.cases.get(seeded_case.id)
     assert after is not None
     assert _snapshot(after) == before
+
+
+def test_update_contacts_refuses_primary_as_signatory_after_no(
+    agent_runtime, case_state, stream_events
+):
+    """Eval 16 Nov: "No, my partner Ahmed signs" was saved as the primary contact signing."""
+    state = {**case_state, "signatory_answer": "no"}
+    events, writer = stream_events
+    runtime = make_tool_runtime(state=state, agent_runtime=agent_runtime, writer=writer)
+    result = update_contacts.invoke(
+        {
+            "entries": [
+                {"role": "Authorised Signatory", "first_name": "Ahmed", "same_as_primary": True}
+            ],
+            "state": state,
+            "runtime": runtime,
+        }
+    )
+    content = result.update["messages"][0].content
+    assert "not the signatory" in content
+    assert result.update["contacts_draft"] == list(case_state.get("contacts_draft") or [])
+
+
+def test_update_contacts_reads_the_uk_spelling_and_labels(
+    agent_runtime, case_state, seeded_case, stream_events
+):
+    # Live run 16 Nov: "authorised" was refused and the agent asked the applicant to type
+    # the signatory again on the card.
+    _events, writer = stream_events
+    runtime = make_tool_runtime(state=case_state, agent_runtime=agent_runtime, writer=writer)
+    result = update_contacts.invoke(
+        {
+            "entries": [
+                {"role": "authorised_signatory", "first_name": "Ahmed", "last_name": "Saleh"},
+                {"role": "Billing Contact", "first_name": "Nora", "last_name": "Ali"},
+            ],
+            "state": case_state,
+            "runtime": runtime,
+        }
+    )
+    assert "errors" not in result.update["messages"][0].content.lower()
+    roles = {c["role"] for c in result.update["contacts_draft"]}
+    assert roles == {"authorized_signatory", "billing_contact"}
+
+
+def test_update_contacts_names_the_roles_when_one_is_unknown(
+    agent_runtime, case_state, seeded_case, stream_events
+):
+    _events, writer = stream_events
+    runtime = make_tool_runtime(state=case_state, agent_runtime=agent_runtime, writer=writer)
+    result = update_contacts.invoke(
+        {
+            "entries": [{"role": "owner", "first_name": "Ahmed"}],
+            "state": case_state,
+            "runtime": runtime,
+        }
+    )
+    message = result.update["messages"][0].content
+    assert "owner.role" in message and "authorized_signatory" in message
+
+
+def test_update_contacts_refreshes_the_contacts_card(agent_runtime, stream_events) -> None:
+    """The card on screen shows what was saved, not "Not added yet" (live run 16 Nov)."""
+    case = _second_review_case(agent_runtime)
+    case = transition(
+        case,
+        WorkflowEvent(name="contacts_requested", payload={"remarks": ""}),
+        actor=REVIEWER,
+        now=T0 + timedelta(minutes=2),
+    )
+    agent_runtime.services.cases.save(case)
+    state = _case_state(agent_runtime, case)
+    events, writer = stream_events
+    runtime = make_tool_runtime(state=state, agent_runtime=agent_runtime, writer=writer)
+    update_contacts.invoke(
+        {
+            "entries": [
+                {"role": "authorized_signatory", "first_name": "Ahmed", "last_name": "Saleh"}
+            ],
+            "state": state,
+            "runtime": runtime,
+        }
+    )
+    cards = [e["data"] for e in events if e.get("type") == "ui_card"]
+    assert [c["card_type"] for c in cards] == ["contacts"]
+    rows = {row["role"]: row for row in cards[0]["payload"]["rows"]}
+    assert "Ahmed" in str(rows["authorized_signatory"])
 
 
 def _second_review_case(agent_runtime: AgentRuntime) -> Case:

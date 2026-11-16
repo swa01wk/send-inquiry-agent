@@ -3,6 +3,8 @@ name: e2e
 # Playwright in CI, on demand only (docs/specs/testing-strategy.md §6). Every PR runs these
 # suites locally instead (installing browsers in CI took most of each run).
 #   Run workflow → suite "scripted": the INT layer (@scripted), desktop Chrome + mobile WebKit.
+#   Run workflow → suite "qa": docs/scenario-queries.md automated (`make e2e-qa`, @qa-scripted).
+#   Run workflow → suite "qa_live": the same with the real model (`make e2e-qa-live`, @qa-live).
 #   Run workflow → suite "live": the E2E-LIVE layer (@live), real model.
 #   Run workflow → suite "eval": AGENT-LIVE (`make eval-live`).
 #   Run workflow → suite "fe": the FE layer (@fe), frontend mock only (`make e2e-fe`).
@@ -20,19 +22,19 @@ on:
       suite:
         description: Which suite to run
         type: choice
-        options: [scripted, live, eval, fe, demo, demo_stack]
+        options: [scripted, qa, qa_live, live, eval, fe, demo, demo_stack]
         default: scripted
       group:
         description: eval-live scenario group (eval suite only)
         type: choice
-        options: [intake, case, channels, cr_privacy, signatory, document_extract, all]
-        default: intake
+        options: [conversation, case, channels, signatory, flow_v2, all]
+        default: all
       scenario:
         description: eval-live scenarios whose name contains this text (eval suite only; empty = all)
         type: string
         default: ''
       args:
-        description: Extra Playwright arguments (scripted suite only), e.g. --grep @flow-v2
+        description: Extra Playwright arguments (scripted, qa and qa_live suites), e.g. --grep @flow-v2
         type: string
         default: ''
       update_snapshots:
@@ -221,6 +223,39 @@ jobs:
           name: playwright-report
           path: e2e/playwright-report/
 
+  playwright-qa:
+    if: github.event_name == 'workflow_dispatch' && inputs.suite == 'qa'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            e2e/package-lock.json
+      - name: Install deps
+        run: |
+          (cd backend && uv sync)
+          (cd frontend && npm ci)
+          (cd e2e && npm ci && npx playwright install --with-deps chromium)
+      - name: Scenario queries Playwright (@qa-scripted)
+        env:
+          PW_ARGS: ${{ inputs.args }}
+        run: set -o pipefail; make e2e-qa ARGS="$PW_ARGS" 2>&1 | tee /tmp/playwright.log
+      - name: Show the end of the Playwright output
+        if: failure()
+        run: tail -n 120 /tmp/playwright.log
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-qa-report
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+
   playwright-live:
     if: >-
       (github.event_name == 'workflow_dispatch' && inputs.suite == 'live') ||
@@ -292,6 +327,81 @@ jobs:
         if: always()
         with:
           name: playwright-live-report
+          path: |
+            e2e/playwright-report/
+            e2e/results/
+
+  playwright-qa-live:
+    if: github.event_name == 'workflow_dispatch' && inputs.suite == 'qa_live'
+    runs-on: ubuntu-latest
+    env:
+      LLM_PROVIDER: ${{ vars.LLM_PROVIDER }}
+      LLM_MODEL: ${{ vars.LLM_MODEL || secrets.LLM_MODEL }}
+      LLM_TEMPERATURE: ${{ vars.LLM_TEMPERATURE }}
+      LLM_REASONING_EFFORT: ${{ vars.LLM_REASONING_EFFORT }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_MODEL: ${{ vars.OPENAI_MODEL || secrets.OPENAI_MODEL }}
+      AZURE_OPENAI_ENDPOINT: ${{ vars.AZURE_OPENAI_ENDPOINT || secrets.AZURE_OPENAI_ENDPOINT }}
+      AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+      AZURE_OPENAI_API_VERSION: ${{ vars.AZURE_OPENAI_API_VERSION }}
+    steps:
+      - name: Check LLM settings
+        run: |
+          missing=0
+          model="${LLM_MODEL:-$OPENAI_MODEL}"
+          use_azure=0
+          if [ "$LLM_PROVIDER" = "azure" ]; then use_azure=1; fi
+          if [ -z "$LLM_PROVIDER" ] && [ -n "$AZURE_OPENAI_ENDPOINT" ]; then use_azure=1; fi
+          if [ "$use_azure" = "1" ]; then
+            if [ -z "$AZURE_OPENAI_ENDPOINT" ]; then
+              echo "::error::AZURE_OPENAI_ENDPOINT is empty."
+              missing=1
+            fi
+            if [ -z "$AZURE_OPENAI_API_KEY" ]; then
+              echo "::error::AZURE_OPENAI_API_KEY is empty. Add it as a repository secret."
+              missing=1
+            fi
+          elif [ -n "$OPENAI_API_KEY" ]; then
+            :
+          elif [ -n "$AZURE_OPENAI_API_KEY" ]; then
+            use_azure=1
+            if [ -z "$AZURE_OPENAI_ENDPOINT" ]; then
+              echo "::error::AZURE_OPENAI_ENDPOINT is empty."
+              missing=1
+            fi
+          else
+            echo "::error::Set OPENAI_API_KEY or AZURE_OPENAI_API_KEY (and matching endpoint for Azure)."
+            missing=1
+          fi
+          if [ -z "$model" ]; then
+            echo "::error::LLM_MODEL or OPENAI_MODEL is empty. Add LLM_MODEL as a repository variable or secret."
+            missing=1
+          fi
+          exit $missing
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install deps
+        run: |
+          (cd backend && uv sync)
+          (cd frontend && npm ci)
+          (cd e2e && npm ci && npx playwright install --with-deps chromium)
+      - name: Scenario queries, real model (@qa-live)
+        env:
+          PW_ARGS: ${{ inputs.args }}
+        run: |
+          # Empty repository variables would fail the backend's Settings (see eval-live).
+          for v in LLM_PROVIDER LLM_MODEL LLM_TEMPERATURE LLM_REASONING_EFFORT OPENAI_MODEL \
+                   AZURE_OPENAI_ENDPOINT AZURE_OPENAI_API_VERSION; do
+            if [ -z "${!v}" ]; then unset "$v"; fi
+          done
+          make e2e-qa-live ARGS="$PW_ARGS"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-qa-live-report
           path: |
             e2e/playwright-report/
             e2e/results/

@@ -25,6 +25,7 @@ export type CardType =
   | 'company_registration'
   | 'terms'
   | 'signatory_question'
+  | 'duplicate_notice'
 
 export type StepState = 'done' | 'current' | 'upcoming'
 
@@ -89,6 +90,15 @@ export interface ContactCheckPayload {
 }
 
 /** Flow v2 (§3.4, E5): the caller already has a login — `send_sign_in_link {}`. */
+/** Chart S15: an open inquiry has the same CR and at least one of the same malls. */
+export interface DuplicateNoticePayload {
+  reference: string
+  malls: string[]
+  /** policy.yaml `duplicate_policy`: warn → they can still submit; block → Submit is refused. */
+  policy: 'warn' | 'block'
+  message: string
+}
+
 export interface InformTenantPayload {
   title: string
   say: string
@@ -504,6 +514,12 @@ export type UiCard =
       card_type: 'signatory_question'
       message_id: string | null
       payload: SignatoryQuestionPayload
+    }
+  | {
+      card_id: string
+      card_type: 'duplicate_notice'
+      message_id: string | null
+      payload: DuplicateNoticePayload
     }
 
 export type FormModeStep =

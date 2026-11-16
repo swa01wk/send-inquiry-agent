@@ -1,0 +1,75 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_contacts",
+        "args": {
+          "entries": [
+            {
+              "role": "authorized_signatory",
+              "first_name": "Ahmed",
+              "last_name": "Saleh",
+              "email": "ahmed@beanstreet.example",
+              "contact_number": "+966507654321"
+            }
+          ]
+        },
+        "id": "qas23-1",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "show_contacts_review",
+        "args": {},
+        "id": "qas23-2",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "I've put Ahmed Saleh down as your Authorized Signatory. Who's your Billing Contact? Their name, email and mobile."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_contacts",
+        "args": {
+          "entries": [
+            {
+              "role": "billing_contact",
+              "first_name": "Nora",
+              "last_name": "Ali",
+              "email": "nora@beanstreet.example",
+              "contact_number": "+966509998877"
+            }
+          ]
+        },
+        "id": "qas23-3",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "show_contacts_review",
+        "args": {},
+        "id": "qas23-4",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Ahmed Saleh is your Authorized Signatory and Nora Ali your Billing Contact — press Send contacts when you're ready."
+  },
+  {
+    "content": "Thanks — the leasing team will give the final approval once they have what they need."
+  }
+]

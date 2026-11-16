@@ -45,6 +45,21 @@ def _agent_turns_after_cr_registered() -> list[dict[str, Any]]:
     ]
 
 
+def _registered_crs() -> frozenset[str]:
+    tenants = ROOT / "backend" / "app" / "data" / "mock_world" / "tenants.json"
+    data = json.loads(tenants.read_text(encoding="utf-8"))
+    return frozenset(str(t.get("cr_number", "")) for t in data["tenants"])
+
+
+def _agent_turns_after_cr_new() -> list[dict[str, Any]]:
+    """A valid CR that isn't in Tenant Central (S2, S15): one reply, then Store or Office.
+
+    The unit answer ("a store") is saved by the guard and by the next turn's update_draft;
+    no second reply is consumed here (the guard no longer retries a saved Store answer).
+    """
+    return [{"content": "Thanks — let's continue. Are you looking for a store or an office?"}]
+
+
 def _agent_turns_after_cr_skipped() -> list[dict[str, Any]]:
     return [
         {
@@ -246,8 +261,13 @@ def compile_scenario(scenario: dict[str, Any]) -> list[dict[str, Any]]:
             steps.extend(_agent_turns_after_cr_skipped())
             continue
         if "cr_verify" in step:
-            after_cr = "registered"
-            steps.extend(_agent_turns_after_cr_registered())
+            cr = str(step["cr_verify"])
+            if re.fullmatch(r"\d{10}", cr) and cr not in _registered_crs():
+                after_cr = "new"
+                steps.extend(_agent_turns_after_cr_new())
+            else:
+                after_cr = "registered"
+                steps.extend(_agent_turns_after_cr_registered())
             continue
         if step.get("cr_skip"):
             continue

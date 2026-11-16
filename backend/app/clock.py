@@ -2,8 +2,10 @@
 
 Everything that stamps a business record (case transitions, requests, document uploads,
 invitations, audit events, notifications) reads `now()`, so moving a `SimulatedClock`
-forward makes cases look older without touching any record. Session idle timeouts and
-signed-link expiry keep real time: they protect the applicant, not the demo.
+forward makes cases look older without touching any record. So does the pending-inquiry
+window (2 hours from verification, M24): a resume after `/dev` moves the clock past it finds
+nothing. Session idle timeouts and signed-link expiry keep real time: they protect the
+applicant, not the demo.
 
 `build_services` installs `SimulatedClock` when DEV_TOOLS is on (moved by
 `POST /api/dev/clock/advance`), and `SystemClock` otherwise.

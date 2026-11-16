@@ -37,7 +37,7 @@ export function TenantHomePage() {
   return (
     <PageShell
       title="Tenant Central"
-      intro="Sign in to raise an inquiry from Leasing Opportunities (simulated sign-in)."
+      intro="Sign in to see Leasing Opportunities (simulated sign-in)."
       showPanels={false}
     >
       <div className={styles.page}>

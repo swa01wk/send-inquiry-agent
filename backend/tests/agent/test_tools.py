@@ -62,6 +62,34 @@ def test_skip_cr_after_unknown(agent_runtime, base_state, stream_events):
     assert result.update["draft"].cr_status == "skipped"
 
 
+@pytest.mark.parametrize(
+    ("said", "skips"),
+    [
+        ("oops", False),
+        ("let me check the number", False),
+        ("skip it please", True),
+        ("we don't have a CR yet", True),
+        ("ما عندي سجل تجاري", True),
+    ],
+)
+def test_v2_skip_cr_only_when_they_asked(agent_runtime, stream_events, said, skips):
+    """Live runs 16 Nov: "oops" after a mistyped CR made the model offer to skip."""
+    draft = new_inquiry_draft()
+    draft.intake_flow = "v2"
+    state = _state_with_draft(draft)
+    state["messages"] = [HumanMessage(content=said)]
+    events, writer = stream_events
+    runtime = make_tool_runtime(state=state, agent_runtime=agent_runtime, writer=writer)
+    result = skip_cr.invoke({"state": state, "runtime": runtime})
+    cards = [e for e in events if e.get("type") == "ui_card"]
+    if skips:
+        assert [c["data"]["payload"]["state"] for c in cards] == ["confirm_skip"]
+    else:
+        assert cards == []
+        assert "Not skipped" in result.update["messages"][0].content
+    assert result.update["draft"].cr_status == "unknown"
+
+
 def test_skip_cr_rejects_when_not_unknown(agent_runtime, base_state, stream_events):
     draft = base_state["draft"].model_copy(deep=True)
     draft.cr_status = "skipped"
@@ -149,6 +177,37 @@ def test_update_draft_redirects_arabic_brand_name_en(agent_runtime, stream_event
     assert draft.fields[FieldKey.BRAND_NAME_AR].value == "بين ستريت"
     assert "Arabic brand saved as brand_name_ar" in content
     assert "Latin spelling as brand_name_en" in content
+
+
+@pytest.mark.parametrize(
+    ("fields", "nudged"),
+    [
+        ([{"key": "brand_name_en", "value": "Bean Street", "source": "user"}], True),
+        (
+            [
+                {"key": "brand_name_en", "value": "Bean Street", "source": "user"},
+                {
+                    "key": "brand_name_ar",
+                    "value": "بين ستريت",
+                    "source": "derived",
+                    "evidence": "Bean Street",
+                },
+            ],
+            False,
+        ),
+    ],
+)
+def test_update_draft_asks_for_a_proposed_arabic_brand(
+    agent_runtime, stream_events, fields, nudged
+):
+    """Eval 16 Nov (dictated caller): the model asked for the Arabic name instead."""
+    state = initial_agent_state(session_id="sess-1", draft=new_inquiry_draft(), phase="collecting")
+    state["messages"] = [HumanMessage(content="Brand Bean Street")]
+    events, writer = stream_events
+    runtime = make_tool_runtime(state=state, agent_runtime=agent_runtime, writer=writer)
+    result = update_draft.invoke({"fields": fields, "state": state, "runtime": runtime})
+    content = result.update["messages"][0].content
+    assert ("propose an Arabic spelling" in content) is nudged
 
 
 def test_arabic_brand_redirect_keeps_the_derived_source(agent_runtime, stream_events):
