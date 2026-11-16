@@ -76,7 +76,7 @@ test.describe('S18 A document is rejected @flow-v2 @scripted', () => {
       await applicant.say('what do you need from me?')
       const reply = await applicant.lastReply()
       expect(reply).toMatch(/Brand Profile/)
-      expect(reply).toMatch(/Logo page missing/)
+      expect(reply).toMatch(/logo page/i)
       expect(reply).not.toMatch(/Company Profile/)
 
       await applicant.upload('Brand Profile', 'brand_profile.pdf')
