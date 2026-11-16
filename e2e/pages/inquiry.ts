@@ -324,6 +324,11 @@ export class InquiryPage {
 
   async verifyCr(cr: string) {
     const card = this.cards('company_registration')
+    // A live model may offer to skip ("Are you sure…?"); a tester answers No and types the CR.
+    const confirm = card.getByTestId('skip-confirm')
+    if (await confirm.isVisible()) {
+      await confirm.getByRole('button', { name: "No, I'll enter it" }).click()
+    }
     await card.getByLabel(/10-digit/i).fill(cr)
     const doneBefore = await readDoneEventCount(this.page)
     await card.getByRole('button', { name: /^verify$/i }).click()

@@ -62,6 +62,34 @@ def test_skip_cr_after_unknown(agent_runtime, base_state, stream_events):
     assert result.update["draft"].cr_status == "skipped"
 
 
+@pytest.mark.parametrize(
+    ("said", "skips"),
+    [
+        ("oops", False),
+        ("let me check the number", False),
+        ("skip it please", True),
+        ("we don't have a CR yet", True),
+        ("ما عندي سجل تجاري", True),
+    ],
+)
+def test_v2_skip_cr_only_when_they_asked(agent_runtime, stream_events, said, skips):
+    """Live runs 16 Nov: "oops" after a mistyped CR made the model offer to skip."""
+    draft = new_inquiry_draft()
+    draft.intake_flow = "v2"
+    state = _state_with_draft(draft)
+    state["messages"] = [HumanMessage(content=said)]
+    events, writer = stream_events
+    runtime = make_tool_runtime(state=state, agent_runtime=agent_runtime, writer=writer)
+    result = skip_cr.invoke({"state": state, "runtime": runtime})
+    cards = [e for e in events if e.get("type") == "ui_card"]
+    if skips:
+        assert [c["data"]["payload"]["state"] for c in cards] == ["confirm_skip"]
+    else:
+        assert cards == []
+        assert "Not skipped" in result.update["messages"][0].content
+    assert result.update["draft"].cr_status == "unknown"
+
+
 def test_skip_cr_rejects_when_not_unknown(agent_runtime, base_state, stream_events):
     draft = base_state["draft"].model_copy(deep=True)
     draft.cr_status = "skipped"

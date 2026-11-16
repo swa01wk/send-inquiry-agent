@@ -518,9 +518,28 @@ def skip_cr(
     )
 
 
+# The applicant asked to skip, or said they have no CR (English or Arabic).
+_SKIP_INTENT_RE = re.compile(
+    r"\b(skip|no cr|without (a |the )?cr|don'?t have|do not have|haven'?t got|no commercial"
+    r"|not registered|later)\b|تخط|بدون|ما عندي|ما عندنا|ليس لدي|ليس لدينا|لا يوجد|لا أملك",
+    re.IGNORECASE,
+)
+
+
 def _v2_skip_cr(state: AgentState, runtime: ToolRuntime, *, confirmed: bool) -> Command[Any]:
     """Flow v2 (§3.2): Skip needs the confirmation, as on the card."""
     draft = state["draft"]
+    if not confirmed and not _SKIP_INTENT_RE.search(_last_user_text(state)):
+        # Live runs 16 Nov: after a mistyped CR and "oops", the model called skip_cr and the
+        # card asked "Are you sure you want to proceed without CR ID?" unprompted.
+        return _tool_result(
+            runtime,
+            draft=draft,
+            content=(
+                "Not skipped: they didn't ask to skip or say they have no CR. Ask them to "
+                "check the number and enter it on the card, or mention the Skip button."
+            ),
+        )
     if not confirmed:
         _emit_card(build_company_registration_card(state="confirm_skip"), runtime)
         return _tool_result(
