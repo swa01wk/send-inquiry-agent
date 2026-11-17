@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { readDoneEventCount } from '../../support/events'
 import {
   B,
   BOTH,
@@ -191,7 +192,10 @@ test.describe('Scenario queries: call centre', () => {
       await t.row('6 Open the link', [], () => t.openApplicationLinkFromInbox(SARA.email))
       await t.row('6 Code and terms', [{ enter_code: '1234' }, ...B.terms])
       await t.row('6 A CR certificate with another number', [], async () => {
+        // A mismatch gets an agent turn of its own (documents_updated): wait for it.
+        const doneBefore = await readDoneEventCount(t.page)
         await t.chat.upload('CR certificate', 'cr_certificate_mismatch.pdf')
+        await t.chat.waitForTurnDone(doneBefore)
         await saysLive(t.chat, /differ|doesn'?t match|check/i, 'says the CR differs')
         await neverSaysLive(t.chat, /1010333333|1010123456/, 'no CR number in the reply')
       })
