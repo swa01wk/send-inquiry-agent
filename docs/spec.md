@@ -40,6 +40,7 @@ class DocumentRef(BaseModel):
 class InquiryDraft(BaseModel):
     fields: dict[FieldKey, FieldValue]      # every FieldKey present; empty FieldValue when unknown
     cr_status: Literal["unknown", "new", "existing", "skipped"] = "unknown"
+    registered_no_login: bool = False       # M2: registered CR, no login, raised as new (§16)
     documents: dict[DocType, DocumentRef] = {}
     email_verified: bool = False            # one-time link
     mobile_verified: bool = False           # SMS code; only needed when a mobile is given
@@ -173,6 +174,7 @@ There is no submit tool and no verify tool: both happen through UI actions, so t
 | `set_document_number` | `{key, value}` | Validate and write the document number field as user, confirmed. Note: `document_number_set <key>` or `document_number_invalid <key> <code>` |
 | `cr_check` | `{cr_number}` | The CR check from a card (form mode): same rules as `verify_cr` (existing account → sign in, or new with the company name and address prefilled on a confirm card). Note: `cr_checked existing\|new`, `cr_invalid <code>`, `cr_already_done` or `service_error cr <kind>` |
 | `cr_skip` | `{}` | Skip the CR (form mode). Note: `cr_skipped` or `cr_already_done` |
+| `continue_without_login` | `{}` | Flow v2 (§16, M2): "I don't have a login" on the `sign_in_prompt` card, only with policy `registered_cr_without_login: continue`. A registered CR's person raises the inquiry as new: `cr_status="new"`, `registered_no_login=true`, the CR kept, `Session.closed` cleared, audit `inquiry_continued_without_login {channel}`. Re-sends `company_registration` (`continued_no_login`) and `sign_in_prompt` (`continued_without_login: true`). Note: `continued_without_login`, or `no_login_unavailable` (quiet) when the policy is off, the CR isn't registered, or it was already done |
 | `accept_terms` | `{terms_accepted: true}` | Flow v2 (§16): the `terms` card's checkbox. Sets `terms_accepted`, audit `terms_accepted`, re-sends the `terms` card (`accepted: true`) and the review card if shown. Note: `terms_accepted` or `terms_not_accepted` |
 | `resume_pending` | `{email}` | Flow v2 (§16): "Continue my inquiry". The email never reaches the model or the transcript. A pending inquiry for it gets a `resume_link` email (within the resend limits). **No agent turn:** the reply is always `RESUME_PENDING_REPLY`, found or not; audit `pending_resume_requested {found}` |
 | `request_handoff` | `{reason?: "user_asked" \| "model_unavailable"}` | Human handoff (L3 §3.6): `CallCentreService.create_case` with the inquiry, the reason and a summary built from the draft and the last three user messages (no model call); emit the `handoff` card. One open case per inquiry: asking again shows the same case. Needs no model, so form mode uses it. The router's `human_help` intent calls the same handler. Note: `handoff_created <reason>`, `handoff_created <reason> (repeat)`, or `handoff_created <reason> service_error call_centre <kind>` (the card still shows the phone number and hours) |
@@ -265,10 +267,10 @@ At the start of each turn the frontend clears the previous `quick_replies` chips
 | `review` | `{groups:[{title, rows:[{key,label,display,source,confirmed,required}]}], documents:[...], checks:Checks, can_submit, terms_accepted, blockers:[str]}` |
 | `success` | `{reference, tracking_url, steps:[{label, detail, state}]}` (`tracking_url` = `<PUBLIC_BASE_URL>/inquiry/status/<reference>?t=<track token>`, the private tracking page) |
 | `quick_replies` | `{options:[{label, text, action?: "send" \| "focus_input" \| "resume_pending", placeholder?: string}]}` — default `action` is `send`; `resume_pending` (flow v2, §16): ask for the email in place and post the `resume_pending` action, not a chat message |
-| `company_registration` | Flow v2 (§16), card id `company_registration`, updated in place: `{prompt, input_placeholder, verify_label, skip_label, skip_confirm:{prompt, yes_label, no_label}, state: "open"\|"confirm_skip"\|"skipped"\|"not_registered"\|"registered", cr_masked, error}`. Verify sends `cr_check {cr_number}`; Skip sends `cr_skip {}`, then `cr_skip {confirmed: true}` from the inline confirm. The CR is never in the payload in full (`cr_masked` = `•••••• 1234`) |
+| `company_registration` | Flow v2 (§16), card id `company_registration`, updated in place: `{prompt, input_placeholder, verify_label, skip_label, skip_confirm:{prompt, yes_label, no_label}, state: "open"\|"confirm_skip"\|"skipped"\|"not_registered"\|"registered"\|"continued_no_login", cr_masked, error, upload_label, allowed_extensions, certificate_name}`. Verify sends `cr_check {cr_number}`; Skip sends `cr_skip {}`, then `cr_skip {confirmed: true}` from the inline confirm. **M1:** "Upload CR certificate" sends the file to `POST /documents` as `cr_certificate` (the response's card is this card, with `certificate_name`), then `cr_check {source: "certificate"}`. The CR is never in the payload in full (`cr_masked` = `•••••• 1234`) |
 | `terms` | Flow v2 (§16), card id `terms`: `{text, privacy_url, accepted}`; the checkbox sends `accept_terms {terms_accepted: true}` |
 | `form_mode` | `{active, message, next_step: "existing_account"\|"cr"\|"details"\|"verification"\|"documents"\|"review"\|"submitted", fields:[{key, label, kind: "text"\|"select", master_kind}], can_skip_cr}` (card id `form_mode`; `fields` are the required values still empty, saved with `edit_field`, `contact_number` saved as mobile or landline; `active: false` once the assistant is back) |
-| `sign_in_prompt` | `{message, sign_in_url, button_label}` — `sign_in_url` is `<PUBLIC_BASE_URL>/tenant` (sign in, then Leasing Opportunities). The message depends on why it's shown: an existing CR found by a lookup, or a Yes to "Do you have a CR?" |
+| `sign_in_prompt` | `{message, sign_in_url, button_label, no_login_label, continued_without_login}` — `sign_in_url` is `<PUBLIC_BASE_URL>/tenant` (sign in, then Leasing Opportunities). The message depends on why it's shown: an existing CR found by a lookup, or a Yes to "Do you have a CR?". **M2:** `no_login_label` ("I don't have a login", sends `continue_without_login {}`) only with policy `registered_cr_without_login: continue`; once chosen, `continued_without_login: true` and the card shows a line instead of the buttons |
 | `handoff` | `{phone, email, hours, short_ref, case_id, reason}` (call-centre details from `CALL_CENTRE_*`; `short_ref` is the reference, or `INQ-XXXXXX` before submit; `case_id` is empty when the case system was down) |
 
 ### `DraftSummary`
@@ -356,6 +358,7 @@ Business rules, validated at start-up into `PolicyConfig` (`app/policy/config.py
 | `resend` | `{cooldown_seconds: 60, max_per_hour: 5}` | Step 19 |
 | `documents.required` / `optional` | Company and Brand Profile required; the rest optional; every type listed once | `can_submit`, `documents_updated`, document card, review, draft checks |
 | `duplicate_policy` | `warn` | Chart S15: same CR and at least one mall as an open case (`workflow/duplicates.open_duplicate`; open = submitted to lead approved). `warn`: the guard shows one `duplicate_notice` card and they can still submit; `block`: `accept_and_submit` returns the notice and `submit_blocked duplicate_open_inquiry <reference>`. A skipped CR never matches |
+| `registered_cr_without_login` | `continue` | M2 (decided 16 Nov), chart S4: a registered CR's person with no Tenant Central login. `sign_in_only`: as on the chart, sign in only. `continue`: the `sign_in_prompt` card also offers "I don't have a login" (`continue_without_login`); the inquiry goes on as new with `registered_no_login` for the Leasing Admin |
 | `follow_on_reuse_hours` | `24` | Step 21b |
 
 `faq.json`: `[{id, question, keywords:[...], answer}]`, 8–10 entries (answers are placeholders marked `[to be confirmed]` where facts are unknown):
@@ -528,7 +531,7 @@ Contacts being collected live on the case session (`Session.contacts_draft`); `w
 
 ### 13.1 Per-document and per-contact approval (demo feedback §3.4, §3.5; day R2)
 
-**Profile checks** (demo feedback §3.7, D12): `CaseBrief.document_checks = [{field, label, typed, document_value, doc_type, doc_label}]`, computed from the case's draft (`domain/document_checks.document_mismatches`) rather than stored, so a value the applicant later corrects stops being flagged: a typed or chat-derived value that an uploaded profile disagrees with (case, spacing and punctuation ignored, Arabic normalised, categories by master-data id). The text brief lists them under "Profile checks"; at first review the checklist adds "The profiles differ from what was typed: <labels>." Never a blocker.
+**Profile checks** (demo feedback §3.7, D12): `CaseBrief.document_checks = [{field, label, typed, document_value, doc_type, doc_label}]`, computed from the case's draft (`domain/document_checks.document_mismatches`) rather than stored, so a value the applicant later corrects stops being flagged: a typed or chat-derived value that an uploaded profile disagrees with (case, spacing and punctuation ignored, Arabic normalised, categories by master-data id). The text brief lists them under "Profile checks"; at first review the checklist adds "The documents differ from what was typed: <labels>." (the profiles, and since M1 the CR certificate's `cr_number` against the inquiry's CR). Never a blocker.
 
 **Document decisions** (`workflow/models.DocumentDecision`, `workflow/documents.py`): `Case.document_decisions[doc_type] = {doc_type, file_id, status: pending|approved|rejected, remarks, review_status, expiry_extracted, expiry_confirmed, expiry_confirmed_by, by, at}`, one per intake document, created at submit from the upload's `DocumentRef.review`. A decision names the upload it was made on: when the case's document is replaced (`documents_resubmitted`), the decision for that type starts again as pending with the new file and review result. `current_decisions(case)` fills in any that are missing (cases saved before 5 Nov 2026).
 
@@ -656,7 +659,7 @@ There is no route to raise an inquiry or list My inquiries.
 
 **Public page with an existing CR.** `verify_cr` (and `cr_check`) on a CR with a Tenant Central account shows `sign_in_prompt` (button to `/tenant`) and audits `inquiry_redirected`; no inquiry is made (chart S3, M13, M18). The router's `existing_tenant_new_space` intent gives the same sign-in answer. There is no policy switch for this.
 
-**Audit:** `application_link_sent`, `inquiry_redirected` (`tenant_prefill` is only in audit logs saved before flow v2). **Templates:** `complete_application`. **Token purpose:** `complete`.
+**Audit:** `application_link_sent`, `inquiry_redirected`, `inquiry_continued_without_login {channel}` (M2) (`tenant_prefill` is only in audit logs saved before flow v2). **Templates:** `complete_application`. **Token purpose:** `complete`.
 
 **Frontend (this PR):**
 - `/tenant`: mock sign-in;
@@ -679,12 +682,18 @@ The chat cards above, the `/callcentre` page and the assisted prompt are Day 5 p
 | --- | --- | --- | --- |
 | Invalid format | unchanged | `open` + `error` (quiet, no agent turn) | `cr_invalid <code>` |
 | Registry error | unchanged | `open` + `error` (quiet) | `service_error cr <kind>` |
-| Registered | `cr_status="existing"`, `cr_number` (user); `Session.closed="redirected_to_sign_in"`; audit `inquiry_redirected {reason: registered_cr}` | `registered` + `sign_in_prompt` ("Customer already registered. Please login") | `cr_checked registered` |
+| Registered | `cr_status="existing"`, `cr_number` (user); `Session.closed="redirected_to_sign_in"`; audit `inquiry_redirected {reason: registered_cr}` | `registered` + `sign_in_prompt` ("Customer already registered. Please login"; with M2 also "I don't have a login") | `cr_checked registered` (+ ` no_login_offered` with M2) |
+| No login, continues (M2) | `cr_status="new"`, `registered_no_login=true`, `cr_number` kept; `Session.closed=None`; the inquiry's `redirected` status goes back to `draft` on save; audit `inquiry_continued_without_login` | `continued_no_login` + `sign_in_prompt` (`continued_without_login`) | `continued_without_login` |
+| Certificate unreadable (M1) | unchanged | `open` + `error` "type the number instead" (quiet) | `cr_certificate_unreadable` |
 | Not registered | `cr_status="new"`, `cr_number` (user). The registry's company name and address are **not** written: Basic Info asks for them | `not_registered` | `cr_checked not_registered` |
 | Skip | — | `confirm_skip` (quiet) | `cr_skip_confirm_shown` |
 | Skip confirmed | `cr_status="skipped"` | `skipped` | `cr_skipped` |
 
 `verify_cr` on a v2 inquiry checks nothing ("checked on the card"); `skip_cr(confirmed)` follows the same two steps.
+
+**CR certificate (M1, decided 17 Nov; `docs/assumptions.md`).** Optional everywhere: never in `documents.required`. On the Company Registration card (`cr_status` `unknown`, public, v2) it stands in for typing: the upload stores it and the document review service reads `cr_number` (mock: `mock_world/document_review.json`, `cr_certificate_*.pdf`); `cr_check {source: "certificate"}` (`certificate_customer_check`) checks that number exactly like a typed one (registered, not registered, duplicate CR for S15). The number is never filled into the draft by the upload and never reaches the model. Uploaded later (the documents step, or the call-centre application link), the certificate is compared with the inquiry's CR by `document_mismatches`: a difference is a `cr_number` mismatch (note `document_mismatch cr_number`, case brief "The documents differ from what was typed"), never a blocker, and the inquiry's CR is not overwritten.
+
+**Registered CR without a login (M2, decided 16 Nov).** Policy `registered_cr_without_login`: `sign_in_only` (the chart, S4 ends at sign in) or `continue` (shipped). With `continue`, the `sign_in_prompt` card offers "I don't have a login" (`continue_without_login`), and the inquiry goes on as new. The case brief shows `cr_status` "registered, no login" and the checklist item "Registered company, contact without a login … Check they belong to the company."
 
 **Sections** (`domain/sections.py`). In the app's order: `company_registration`, `unit_and_category` (unit type, sales category), `basic_info` (names, company, brand EN/AR, email, a mobile or landline), `verification`, `property_details` (malls; lease, area and rent when given), `terms`, `documents`, `review`. A value given early is saved and never asked again; the agent asks one section at a time.
 - `can_submit` sorts blockers by section; `remaining_steps` lists `cr`, `unit_and_category`, `basic_info`, `verify_email`, `verify_mobile`, `property_details`, `terms`, `documents`.

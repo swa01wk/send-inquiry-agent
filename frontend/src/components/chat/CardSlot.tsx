@@ -158,6 +158,10 @@ export function CardSlot({
           onSkip={() => actions.sendAction('cr_skip', {})}
           onConfirmSkip={() => actions.sendAction('cr_skip', { confirmed: true })}
           onDismissSkipConfirm={() => undefined}
+          onUploadCertificate={async (file) => {
+            await actions.uploadDocument('cr_certificate', file)
+            actions.sendAction('cr_check', { source: 'certificate' })
+          }}
         />
       ) : null}
       {card.card_type === 'terms' ? (
@@ -174,7 +178,12 @@ export function CardSlot({
           }
         />
       ) : null}
-      {card.card_type === 'sign_in_prompt' ? <SignInPromptCard payload={card.payload} /> : null}
+      {card.card_type === 'sign_in_prompt' ? (
+        <SignInPromptCard
+          payload={card.payload}
+          onNoLogin={() => actions.sendAction('continue_without_login', {})}
+        />
+      ) : null}
       {card.card_type === 'quick_replies' ? null : null}
     </div>
   )

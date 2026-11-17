@@ -78,6 +78,23 @@ test.describe('Scenario queries: before submit', () => {
     }
   })
 
+  // M1 (17 Nov): the CR certificate is optional, and on the card it can stand in for typing.
+  test(`S2 New prospect, uploads the CR certificate instead of typing ${BOTH}`, async ({
+    page,
+    browser,
+    request,
+  }) => {
+    const t = await Tester.open(page, browser, request, 'S2')
+    try {
+      await t.blockA({ cr: '1010123456', certificate: 'cr_certificate_new.pdf' })
+      await t.blockB()
+      // The number came from the file and never reached the chat.
+      await expectNeverRepeats(t.chat, '1010123456')
+    } finally {
+      await t.close()
+    }
+  })
+
   test(`S3 Registered customer (CR in Tenant Central) ${BOTH}`, async ({
     page,
     browser,
@@ -143,6 +160,39 @@ test.describe('Scenario queries: before submit', () => {
           await expect(t.chat.cards('verification')).toHaveCount(0)
         },
       )
+    } finally {
+      await t.close()
+    }
+  })
+
+  // M2 (decided 16 Nov, docs/assumptions.md): a registered CR without a login may raise the
+  // inquiry anyway; it goes in as new and the Leasing Admin sees the flag.
+  test(`S4 No login: raises the inquiry anyway ${BOTH}`, async ({ page, browser, request }) => {
+    const t = await Tester.open(page, browser, request, 'S4', { script: 'qa-s4-continue' })
+    try {
+      await t.blockA({ cr: '1010000000', noLogin: true })
+      const reference = await t.blockB()
+      expect(reference).toMatch(/^GEO-/)
+      await neverSaysLive(
+        t.chat,
+        /\b(I'?ll|I will|we'?ll|we will) (create|set up|request)\b/i,
+        'promises no access',
+      )
+    } finally {
+      await t.close()
+    }
+  })
+
+  test(`S4 No login, with the CR certificate ${BOTH}`, async ({ page, browser, request }) => {
+    const t = await Tester.open(page, browser, request, 'S4', { script: 'qa-s4-continue' })
+    try {
+      await t.blockA({
+        cr: '1010000000',
+        certificate: 'cr_certificate_registered.pdf',
+        noLogin: true,
+      })
+      await t.blockB()
+      await expectNeverRepeats(t.chat, '1010000000')
     } finally {
       await t.close()
     }
@@ -613,6 +663,36 @@ test.describe('Scenario queries: before submit', () => {
       expect(reference).toMatch(/^GEO-/)
       expect(reference).not.toBe(open)
       await expect(t.chat.cards('duplicate_notice')).toHaveCount(1)
+    } finally {
+      await t.close()
+    }
+  })
+
+  test(`S15 Same CR and mall, the CR from the certificate ${BOTH}`, async ({
+    page,
+    browser,
+    request,
+  }) => {
+    const t = await Tester.open(page, browser, request, 'S15')
+    try {
+      let open = ''
+      await t.row('1 An open inquiry for 1010222222 at Riyadh Mall A (seed)', [], async () => {
+        const seeded = await seedCase(request, {
+          stage: 'submitted',
+          cr_number: '1010222222',
+          malls: ['riyadh-mall-a'],
+        })
+        open = seeded.reference
+      })
+      await t.blockA({ cr: '1010222222', certificate: 'cr_certificate_duplicate.pdf' })
+      await t.blockB({ until: 'B3' })
+      await t.row('It warns once, as when the number is typed', [], async () => {
+        const notice = t.chat.cards('duplicate_notice')
+        await expect(notice).toHaveCount(1)
+        await expect(notice).toContainText(open)
+      })
+      const reference = await t.blockB({ from: 'B4' })
+      expect(reference).not.toBe(open)
     } finally {
       await t.close()
     }

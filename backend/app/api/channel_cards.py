@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from app.api.cards import _mask_email
+from app.api.cards import _mask_email, dotted_allowed_extensions
 from app.api.schemas import (
     BasicInfoReviewPayload,
     BasicInfoRow,
@@ -175,7 +175,16 @@ def build_inform_tenant_card(
     )
 
 
-def build_sign_in_prompt_card(public_base_url: str, *, reason: str = "existing_cr") -> UiCard:
+NO_LOGIN_LABEL = "I don't have a login"
+
+
+def build_sign_in_prompt_card(
+    public_base_url: str,
+    *,
+    reason: str = "existing_cr",
+    offer_no_login: bool = False,
+    continued_without_login: bool = False,
+) -> UiCard:
     """Sign in to Tenant Central, landing on Leasing Opportunities to raise the inquiry
     there (demo feedback §3.1, F2). `reason`: `existing_cr` (a CR lookup found an
     account) or `has_cr` (the applicant answered Yes to "Do you have a CR?")."""
@@ -197,18 +206,21 @@ def build_sign_in_prompt_card(public_base_url: str, *, reason: str = "existing_c
         message=message,
         sign_in_url=f"{public_base_url.rstrip('/')}{SIGN_IN_PATH}",
         button_label="Sign in to Tenant Central",
+        no_login_label=NO_LOGIN_LABEL if offer_no_login else None,
+        continued_without_login=continued_without_login,
     )
     return UiCard(card_id=SIGN_IN_CARD_ID, card_type="sign_in_prompt", payload=payload.model_dump())
 
 
 COMPANY_REGISTRATION_CARD_ID = "company_registration"
 COMPANY_REGISTRATION_PROMPT = (
-    "Company Registration: enter your 10-digit CR number to check whether your company is "
-    "already registered with us, or skip it."
+    "Company Registration: enter your 10-digit CR number, or upload your CR certificate, to "
+    "check whether your company is already registered with us. Both are optional: you can "
+    "skip it."
 )
 SKIP_CONFIRM_PROMPT = "Are you sure you want to proceed without CR ID?"
 CompanyRegistrationState = Literal[
-    "open", "confirm_skip", "registered", "not_registered", "skipped"
+    "open", "confirm_skip", "registered", "not_registered", "skipped", "continued_no_login"
 ]
 
 
@@ -223,6 +235,7 @@ def build_company_registration_card(
     cr_masked: str | None = None,
     error: str | None = None,
     message_id: str | None = None,
+    certificate_name: str | None = None,
 ) -> UiCard:
     """Flow v2 Check for Existing Customer (§3.2): Verify or Skip, one card updated in
     place. The CR is never in the payload in full."""
@@ -239,6 +252,8 @@ def build_company_registration_card(
         state=state,
         cr_masked=cr_masked,
         error=error,
+        certificate_name=certificate_name,
+        allowed_extensions=dotted_allowed_extensions(),
     )
     return UiCard(
         card_id=COMPANY_REGISTRATION_CARD_ID,

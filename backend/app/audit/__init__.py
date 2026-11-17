@@ -71,6 +71,7 @@ ALLOWED_KEYS: dict[str, frozenset[str]] = {
     # Intake channels (spec §15)
     "application_link_sent": frozenset({"by", "resend"}),
     "inquiry_redirected": frozenset({"reason", "channel"}),
+    "inquiry_continued_without_login": frozenset({"channel"}),
     # Demo feedback §3.5: "Are you the authorised signatory?" answered (yes | no).
     "signatory_answered": frozenset({"answer"}),
     "tenant_prefill": frozenset(

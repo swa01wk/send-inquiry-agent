@@ -14,7 +14,9 @@ from app.agent.context import message_context
 from app.agent.cr_check import (
     CustomerCheck,
     apply_cr_result,
+    certificate_customer_check,
     check_existing_customer,
+    continue_without_login,
     skip_customer_check,
 )
 from app.agent.events import SseEvent
@@ -138,6 +140,8 @@ async def handle_ui_action(
         "request_handoff": _request_handoff,
         "cr_check": _cr_check,
         "cr_skip": _cr_skip,
+        # S4, M2: "I don't have a login" on the sign-in card
+        "continue_without_login": _continue_without_login,
         # Flow v2 (§3.3)
         "accept_terms": _accept_terms,
         "resume_pending": _resume_pending,
@@ -848,10 +852,21 @@ async def _cr_check(
     """The CR check from a card (form mode, L3 §3.14): same rules as the `verify_cr` tool.
     Flow v2 (§3.2): the Company Registration card's Verify."""
     if session.draft.intake_flow == "v2" and not session.assisted:
-        check = check_existing_customer(session, runtime, str(payload.get("cr_number", "")))
+        if payload.get("source") == "certificate":
+            # M1: the CR certificate uploaded on the card; its number never reaches the model.
+            check = certificate_customer_check(session, runtime)
+        else:
+            check = check_existing_customer(session, runtime, str(payload.get("cr_number", "")))
         checked = customer_check_result(session, runtime, check)
-        # A wrong number or a service error: the card shows it; no agent turn (S5).
-        checked.quiet = check.note.startswith(("[ui_event] cr_invalid", "[ui_event] service_error"))
+        # A wrong number, an unreadable certificate or a service error: the card shows it;
+        # no agent turn (S5).
+        checked.quiet = check.note.startswith(
+            (
+                "[ui_event] cr_invalid",
+                "[ui_event] service_error",
+                "[ui_event] cr_certificate_unreadable",
+            )
+        )
         return checked
     validated = v.validate_cr_number(str(payload.get("cr_number", "")))
     if isinstance(validated, v.ValidationError):
@@ -885,6 +900,18 @@ async def _cr_check(
         events=events,
         changed_keys=outcome.changed,
     )
+
+
+async def _continue_without_login(
+    payload: dict[str, Any],
+    session: Session,
+    runtime: AgentRuntime,
+) -> ActionResult:
+    """S4, M2: the registered CR's person has no login and raises the inquiry anyway."""
+    del payload
+    checked = customer_check_result(session, runtime, continue_without_login(session, runtime))
+    checked.quiet = checked.note.content == "[ui_event] no_login_unavailable"
+    return checked
 
 
 async def _cr_skip(

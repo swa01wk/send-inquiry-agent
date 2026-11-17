@@ -372,7 +372,8 @@
         "complete1"
       ],
       "decisions": [
-        "M18"
+        "M18",
+        "M2"
       ],
       "changes": [
         "V1",
@@ -409,7 +410,8 @@
         "checks": [
           "sign_in_is_the_way_in",
           "no_access_promise",
-          "asks_nothing_else"
+          "asks_nothing_else",
+          "offers_no_login_button"
         ]
       }
     },

@@ -96,6 +96,8 @@ Block A, then Block B.
 - **Check:** the reply never repeats the CR number.
 - **Check:** it doesn't look up or announce a company name. The company name and address are asked for in basic info (M23).
 
+**S2 with the CR certificate (M1, optional).** Instead of typing, press **Upload CR certificate** and choose `cr_certificate_new.pdf` (from `e2e/fixtures/files/`). The card shows *CR certificate: cr_certificate_new.pdf* and *CR checked — not registered yet*; then as above. Any other file name can't be read: the card asks you to type the number instead.
+
 ### S3 — Registered customer (CR in Tenant Central)
 | # | Type or press | What should happen |
 | --- | --- | --- |
@@ -107,7 +109,12 @@ Block A, then Block B.
 | # | Type or press | What should happen |
 | --- | --- | --- |
 | 1 | Type `1010000000` → **Verify** | **Customer already registered. Please login** |
-| 2 | `I don't have a login though, can you create one for me?` | Sign-in is the only way in this round (M18). It promises no access and asks for nothing else |
+| 2 | `I don't have a login though, can you create one for me?` | It points to **I don't have a login** on the sign-in card (M2). It promises no login and asks for nothing else |
+| 3 | **I don't have a login** | The sign-in card reads *Continuing without a login*; the CR card *Registered company — continuing as a new inquiry without a login*; it asks Store or Office |
+| 4 | Block A from A3, then Block B | As in S1. The Leasing Admin's case brief shows **registered, no login** and asks them to check the person belongs to the company |
+
+- **M2 (decided 16 Nov, `docs/assumptions.md`).** This departs from the chart (S4 ends at sign in). Policy `registered_cr_without_login: sign_in_only` puts the chart back: no **I don't have a login** button.
+- **With the certificate:** upload `cr_certificate_registered.pdf` instead of typing in row 1; the rest is the same.
 
 ### S5 — CR typed wrong
 | # | Type or press | What should happen |
@@ -218,6 +225,7 @@ Block A, then Block B to B3, then:
 
 - **Check:** once the mall is in, one notice card: *There's already an open inquiry for this CR at Riyadh Mall A (GEO-…). You can still send this one; the leasing team will see both.* It isn't shown again, and no reply calls it a mistake.
 - **Check:** **Submit inquiry** still works (`duplicate_policy: warn`).
+- **With the certificate (M1):** in step 2, upload `cr_certificate_duplicate.pdf` instead of typing `1010222222`. The same notice appears.
 
 ### S16 — Asks something else mid-flow
 Block A to A5, then:
@@ -351,6 +359,10 @@ Same as CC2, with these changes:
 - The CR is `1010123456`, so there's no contact check.
 - Basic info is `The brand is Bean Street. The caller is Sara Ali, sara@beanstreet.example, mobile 0501234567.`
 - On the application page, edit the last name to `Al-Ali` before the code. That's the chart's "Basic Info Change? Yes".
+
+**CR certificate in the call-centre flows (M1, optional; CC2 and CC3).** On the application page, the CR certificate is an optional document next to the profiles. The executive's CR stays the inquiry's CR:
+- `cr_certificate_new.pdf` (the same number as CC3's `1010123456`): nothing is flagged.
+- `cr_certificate_mismatch.pdf` (another number): the chat says in one line, without any number, that the certificate's CR differs and the leasing team will check it. **Submit inquiry** still works, and the case brief lists it under *The documents differ from what was typed*.
 
 ---
 

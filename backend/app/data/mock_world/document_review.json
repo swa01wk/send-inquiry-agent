@@ -1,5 +1,5 @@
 {
-  "_about": "Fields the mock document review service reads from a profile (demo feedback §3.3, §3.7, day R3). Keyed by file name; any other file gives no fields, so existing stories and goldens are unchanged. sales_category is a master-data id.",
+  "_about": "Fields the mock document review service reads from a profile (demo feedback §3.3, §3.7, day R3). Keyed by file name; any other file gives no fields, so existing stories and goldens are unchanged. sales_category is a master-data id. M1 (16 Nov): a CR certificate gives cr_number only (cr_certificate_*.pdf).",
   "files": {
     "company_profile_match.pdf": {
       "company_name": "Bean Street Trading Co.",
@@ -32,6 +32,18 @@
     "new_brand_profile.pdf": {
       "brand_name_en": "Oasis Bakehouse",
       "sales_category": "fnb_cafe"
+    },
+    "cr_certificate_new.pdf": {
+      "cr_number": "1010123456"
+    },
+    "cr_certificate_duplicate.pdf": {
+      "cr_number": "1010222222"
+    },
+    "cr_certificate_registered.pdf": {
+      "cr_number": "1010000000"
+    },
+    "cr_certificate_mismatch.pdf": {
+      "cr_number": "1010333333"
     }
   }
 }

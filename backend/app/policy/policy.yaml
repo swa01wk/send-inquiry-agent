@@ -45,6 +45,11 @@ documents:
 # Same CR and mall as an open inquiry (L3 §3.12; read from step 21b): warn | block.
 duplicate_policy: warn
 
+# A registered CR whose person has no Tenant Central login (flow v2 S4; M2, decided 16 Nov,
+# docs/assumptions.md): sign_in_only (the chart) | continue (the sign-in card also offers
+# "I don't have a login"; the inquiry goes on as new and is flagged to the Leasing Admin).
+registered_cr_without_login: continue
+
 # A follow-on inquiry reuses verified details for this many hours (L3 §3.11; step 21b).
 follow_on_reuse_hours: 24
 

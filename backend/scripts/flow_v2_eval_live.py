@@ -1072,6 +1072,20 @@ def _sign_in_way_in(
     ]
 
 
+def _offers_no_login_button(
+    _s: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
+) -> list[tuple[str, bool]]:
+    """M2 (decided 16 Nov): with `registered_cr_without_login: continue`, someone who says
+    they have no login is told about the card's "I don't have a login"."""
+    text = _reply_text(turns).lower().replace("’", "'")
+    return [
+        (
+            "points to I don't have a login",
+            "don't have a login" in text or "do not have a login" in text,
+        )
+    ]
+
+
 def _no_access_promise(
     _s: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
 ) -> list[tuple[str, bool]]:
@@ -1501,6 +1515,7 @@ _CHECKS: dict[str, Callable[..., list[tuple[str, bool]]]] = {
     "asks_nothing_else": _asks_nothing_else,
     "sign_in_is_the_way_in": _sign_in_way_in,
     "no_access_promise": _no_access_promise,
+    "offers_no_login_button": _offers_no_login_button,
     "asks_again_plainly_or_offers_skip": _asks_again_bad_cr,
     "never_moves_on_with_bad_cr": _never_moves_bad_cr,
     "never_repeats_code": _never_repeats_code,

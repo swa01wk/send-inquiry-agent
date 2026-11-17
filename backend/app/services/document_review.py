@@ -14,6 +14,10 @@ demos can choose an outcome without real documents:
 
 Other document types are returned as `done` with no expiry.
 
+M1 (16 Nov): the CR certificate is read too, for its CR number only. It isn't filled into
+the draft: the Company Registration card checks that number like a typed one, and a
+certificate that disagrees with the CR on the inquiry is flagged to the Leasing Admin.
+
 Day R3 (demo feedback §3.7) adds the fields the service reads from a profile. They come from
 `mock_world/document_review.json`, keyed by file name (`company_profile_match.pdf`,
 `company_profile_mismatch.pdf`, `brand_profile_match.pdf`, …). Any other file gives no
@@ -31,8 +35,10 @@ from app import clock
 from app.domain.models import DocType, DocumentRef, DocumentReview, ExtractedValue
 from app.services.errors import ServiceTimeout, ServiceUnavailable
 
-# Documents the review service is asked about (the profiles carry an expiry date).
+# The profiles: reviewed for an expiry date, and their fields fill the draft (§3.7).
 REVIEWED_DOC_TYPES = frozenset({DocType.COMPANY_PROFILE, DocType.BRAND_PROFILE})
+# Every document the review service is asked about: the profiles and the CR certificate.
+READ_DOC_TYPES = REVIEWED_DOC_TYPES | {DocType.CR_CERTIFICATE}
 
 EXPIRED_DAYS_AGO = 30
 EXPIRING_SOON_DAYS = 7
@@ -44,6 +50,7 @@ FIELDS_PATH = Path(__file__).resolve().parents[1] / "data" / "mock_world" / "doc
 EXTRACTABLE_FIELDS: dict[DocType, tuple[str, ...]] = {
     DocType.COMPANY_PROFILE: ("company_name", "company_address"),
     DocType.BRAND_PROFILE: ("brand_name_en", "sales_category"),
+    DocType.CR_CERTIFICATE: ("cr_number",),
 }
 
 
@@ -81,7 +88,8 @@ class MockDocumentReviewService:
             raise ServiceUnavailable("Document review is unavailable")
         now = clock.now()
         if ref.doc_type not in REVIEWED_DOC_TYPES:
-            return DocumentReview(status="done", checked_at=now)
+            # The CR certificate gives its CR number; other documents give nothing.
+            return DocumentReview(status="done", fields=self._fields_for(ref), checked_at=now)
         today = now.date()
         if "expired" in name:
             expiry = today - timedelta(days=EXPIRED_DAYS_AGO)
