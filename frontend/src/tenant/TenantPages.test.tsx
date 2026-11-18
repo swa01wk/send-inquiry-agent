@@ -91,6 +91,9 @@ describe('Tenant Central (simulated)', () => {
     await user.selectOptions(screen.getByLabelText('City'), 'jeddah')
     expect(screen.queryByTestId('opportunity-OPP-101')).not.toBeInTheDocument()
     expect(screen.getByTestId('opportunity-OPP-103')).toBeInTheDocument()
+    // 18 Nov: the card shows the mall, city and product line only, no unit code or area.
+    expect(screen.getByTestId('opportunity-OPP-103')).not.toHaveTextContent('JMB-1-122')
+    expect(screen.getByTestId('opportunity-OPP-103')).not.toHaveTextContent(/sqm/)
     // Chart S3: Leasing Opportunities is where sign-in lands; no inquiry is raised here.
     expect(screen.queryByRole('button', { name: 'Raise inquiry' })).not.toBeInTheDocument()
   })

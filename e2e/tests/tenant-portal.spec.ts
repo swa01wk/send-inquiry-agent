@@ -19,6 +19,8 @@ test.describe('Tenant Central (sign-in landing) @scripted', () => {
     await expect(page.getByTestId('opportunity-OPP-101')).toHaveCount(0)
     const unit = page.getByTestId('opportunity-OPP-103')
     await expect(unit).toContainText('Jeddah Mall B')
+    await expect(unit).not.toContainText('JMB-1-122')
+    await expect(unit).not.toContainText('sqm')
     await expect(page.getByRole('button', { name: 'Raise inquiry' })).toHaveCount(0)
   })
 })
