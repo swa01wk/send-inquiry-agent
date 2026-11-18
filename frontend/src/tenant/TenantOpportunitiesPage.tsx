@@ -89,11 +89,9 @@ function OpportunityList() {
         {shown.map((o) => (
           <li key={o.id} className={styles.card} data-testid={`opportunity-${o.id}`}>
             <span className={styles.cardTitle}>{o.mall}</span>
+            {/* 18 Nov (Swaroop): the unit code and area aren't shown to the tenant. */}
             <span className={styles.muted}>
-              {o.city} · {o.unit_type_label} · unit {o.unit_ref}
-            </span>
-            <span className={styles.muted}>
-              {o.area_min === o.area_max ? `${o.area_min}` : `${o.area_min}–${o.area_max}`} sqm
+              {o.city} · {o.unit_type_label}
             </span>
           </li>
         ))}
