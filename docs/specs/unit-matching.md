@@ -117,12 +117,12 @@ MS18 splits into the same two halves as the 18 Nov days.
 
 ## 8. Assumptions and questions
 
-These are our defaults; Muzammil can change any of them in policy or data, without code.
+U-A1–U-A4 were decided by us on 23 Nov (issue #118, closed); Muzammil can change any of them in policy or data, without code. U-A5 waits on Yardi access (issue #119).
 
-| Id | Assumption | To confirm |
+| Id | Assumption | State |
 | --- | --- | --- |
-| U-A1 | Tolerances: area ±15%, budget +10%, start up to 60 days later | Yes: the values |
-| U-A2 | The applicant never sees prices, even in a counter-offer | Yes |
-| U-A3 | "Show all malls" is always offered beside the fitting malls | Yes |
-| U-A4 | A "keep on file" inquiry goes through the Leasing Admin as usual, flagged | Yes |
-| U-A5 | Inventory fields as in §3.1; the real Yardi feed may differ (G8) | With Yardi access |
+| U-A1 | Tolerances: area ±15%, budget +10%, start up to 60 days later | Decided (policy `matching.*`) |
+| U-A2 | The applicant never sees prices, even in a counter-offer | Decided |
+| U-A3 | "Show all malls" is always offered beside the fitting malls | Decided |
+| U-A4 | A "keep on file" inquiry goes through the Leasing Admin as usual, flagged | Decided |
+| U-A5 | Inventory fields as in §3.1; the real Yardi feed may differ (G8) | Open: with Yardi access (#119) |
