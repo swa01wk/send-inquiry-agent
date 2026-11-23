@@ -107,7 +107,7 @@ The scripted model scripts are `backend/tests/e2e_scripts/flow-v2-nv01.json` …
 | NV04 | Inquiry `pending` before the email; Submit enabled; console Approve refused, blocker text shown; outbox link → blocker gone → Approve works | B2 |
 | NV05 | Landline only: Submit disabled until the link is opened | B2 |
 | NV06 | Each agent turn asks one property item; draft has `area` and `lease_period` from the first message; `flexible` has `budget`; review card shows "January 2027" | B3 |
-| NV07 | "mall of arbia" → `mall_of_arabia` written, no picker; "riyadh mall" → `choice-card-malls` with the Riyadh malls; nothing written before the tap | B3 |
+| NV07 | "mall of arbia" → `mall-of-arabia` written, no picker; "riyadh mall" → `choice-card-malls` with the Riyadh malls; nothing written before the tap | B3 |
 | NV08 | Wrong email → same message, no `track_code` email; right email → code → case page with `status-strip` | B4 |
 | NV09 | Seeded re-upload case: `status-owner` "With you"; no composer; replace and comment; resubmit; owner "With the Leasing Admin"; comment in the console timeline | B4 |
 | NV10 | Nothing waiting → follow-up sent, shown in the console; on `lead_approved`: signatory "Yes, it's me", billing "Same as primary contact"; contacts on the case | B4 |
