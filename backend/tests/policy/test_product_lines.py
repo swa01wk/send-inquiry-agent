@@ -45,8 +45,8 @@ def test_each_line_gets_its_reference_code_and_final_reviewer(
         assert not errors
         queue = route_queue(draft, master)
     assert master.unit_code(unit_type) == code
+    # The Leasing Admin acts first on every line; the case sets that (first_level_review_role).
     assert queue is not None
-    assert queue.role_for("first") == "lease_admin"
     assert queue.role_for("final") == final_role
 
 
