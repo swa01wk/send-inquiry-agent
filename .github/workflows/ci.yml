@@ -110,3 +110,35 @@ jobs:
           npx prettier --check .
       - name: Tests (Vitest)
         run: make test-fe
+
+  # The hosted POC's production images (deploy/hosted, MS5) must keep building.
+  images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          push: false
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+      - name: Frontend image (build + Caddy)
+        uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          push: false
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+      - name: Caddyfile is valid
+        run: |
+          hash=$(docker run --rm caddy:2.8-alpine caddy hash-password --plaintext ci)
+          docker run --rm -v "$PWD/deploy/hosted/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            -e DOMAIN=example.test -e BASIC_AUTH_USER=ci -e BASIC_AUTH_HASH="$hash" \
+            caddy:2.8-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+      - name: Compose file resolves
+        run: |
+          cp deploy/hosted/.env.example deploy/hosted/.env
+          sed -i "s/^DOMAIN=.*/DOMAIN=example.test/; s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=ci/; s/^BASIC_AUTH_HASH=.*/BASIC_AUTH_HASH='x'/" deploy/hosted/.env
+          docker compose -f deploy/hosted/docker-compose.yml config --quiet

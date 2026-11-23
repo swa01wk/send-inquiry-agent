@@ -2,7 +2,7 @@
 # Every PR: `make ci` locally (CI runs `make ci-remote`: everything except Playwright).
 # Gates and demos: `make gate`.
 
-.PHONY: dev demo dev-backend dev-frontend \
+.PHONY: dev demo dev-backend dev-frontend hosted-up hosted-update hosted-logs hosted-down hosted-config \
 	check check-be check-fe lint \
 	test test-be test-fe test-agent golden \
 	e2e e2e-fe e2e-int e2e-nov18 e2e-qa e2e-qa-live e2e-demo e2e-demo-headed e2e-demo-step e2e-demo-stack e2e-live e2e-report eval-live \
@@ -19,6 +19,26 @@ dev:
 # Every persona and dev tool on; open http://localhost:5173/dev.
 demo:
 	docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
+
+# ---- Hosted POC for developers and QA (MS5): deploy/hosted/README.md --------
+# Run on the VM, from the repo root, with deploy/hosted/.env filled in.
+HOSTED = docker compose -f deploy/hosted/docker-compose.yml
+
+hosted-up:
+	$(HOSTED) up -d --build
+
+hosted-update:
+	git pull --ff-only && $(HOSTED) up -d --build
+
+hosted-logs:
+	$(HOSTED) logs -f --tail=200 $(ARGS)
+
+hosted-down:
+	$(HOSTED) down
+
+# Prints the resolved compose file: checks deploy/hosted/.env without starting anything.
+hosted-config:
+	$(HOSTED) config --quiet && echo "deploy/hosted: config OK"
 
 dev-backend:
 	cd backend && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000

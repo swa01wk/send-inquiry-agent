@@ -1,0 +1,30 @@
+# One HTTPS address for the hosted POC: the built app, with /api proxied to the backend.
+# Everything sits behind one shared password, because /dev shows every OTP and email link.
+# DOMAIN, BASIC_AUTH_USER and BASIC_AUTH_HASH come from deploy/hosted/.env.
+{$DOMAIN} {
+	encode zstd gzip
+
+	basic_auth {
+		{$BASIC_AUTH_USER} {$BASIC_AUTH_HASH}
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		X-Robots-Tag "noindex, nofollow"
+	}
+
+	handle /api/* {
+		# Chat replies stream (SSE over POST): pass each chunk through at once.
+		reverse_proxy backend:8000 {
+			flush_interval -1
+		}
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

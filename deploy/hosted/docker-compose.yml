@@ -1,0 +1,75 @@
+# Hosted POC for the developers and QA (MS5): one VM, three containers.
+#   web       Caddy: HTTPS (Let's Encrypt), the shared password, the built app, /api → backend
+#   backend   FastAPI, mock integrations, the same flags as `make demo`
+#   postgres  sessions, cases and audit (survive restarts and redeploys)
+# Run from the repo root: `make hosted-up` (see deploy/hosted/README.md).
+name: send-inquiry-hosted
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: inquiry
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/hosted/.env}
+      POSTGRES_DB: inquiry
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U inquiry -d inquiry']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ../../backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      STATE_BACKEND: postgres
+      DATABASE_URL: postgresql+psycopg://inquiry:${POSTGRES_PASSWORD}@postgres:5432/inquiry
+      AGENT_MODE: openai
+      INTEGRATIONS: mock
+      # The same screens as `make demo` (docker-compose.demo.yml), behind the password.
+      DEV_TOOLS: 'true'
+      DEMO_SEED: 'true'
+      REVIEWER_CONSOLE: 'true'
+      CALLCENTRE_CONSOLE: 'true'
+      TENANT_PORTAL: 'true'
+      PROACTIVE_ENABLED: 'true'
+      DATA_DIR: /data/state
+      UPLOAD_DIR: /data/uploads
+      PUBLIC_BASE_URL: https://${DOMAIN}
+      PUBLIC_API_URL: https://${DOMAIN}
+      CORS_ORIGINS: https://${DOMAIN}
+    volumes:
+      - backend_data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - '8000'
+
+  web:
+    build: ../../frontend
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in deploy/hosted/.env}
+      BASIC_AUTH_USER: ${BASIC_AUTH_USER:?set BASIC_AUTH_USER in deploy/hosted/.env}
+      BASIC_AUTH_HASH: ${BASIC_AUTH_HASH:?set BASIC_AUTH_HASH in deploy/hosted/.env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  backend_data:
+  caddy_data:
+  caddy_config:
