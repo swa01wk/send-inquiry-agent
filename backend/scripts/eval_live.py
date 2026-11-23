@@ -9,6 +9,9 @@ scenarios and prints pass/fail checks plus transcripts.
 
 Optional: GROUP=conversation|case|signatory|flow_v2|channels filters scenarios
 (see docs/specs/testing-strategy.md and docs/testing/flow-v2-test-plan.md).
+The 18 Nov demo groups (docs/specs/demo-18nov-feedback.md §6) are category_options,
+leasing_team_tone, email_pending, property_sequence, mall_fuzzy, case_actions and
+track_privacy; GROUP=nov18 runs all seven.
 """
 
 from __future__ import annotations
@@ -1904,6 +1907,29 @@ def conversation_scenarios() -> list[LiveScenario]:
     ]
 
 
+# 18 Nov demo groups (docs/specs/demo-18nov-feedback.md §6); `nov18` runs them all.
+NOV18_GROUPS: frozenset[str] = frozenset(
+    {
+        "category_options",
+        "leasing_team_tone",
+        "email_pending",
+        "property_sequence",
+        "mall_fuzzy",
+        "case_actions",
+        "track_privacy",
+    }
+)
+# Groups the e2e.yml dispatch offers before their scenarios exist: an empty run passes.
+PLANNED_GROUPS: frozenset[str] = NOV18_GROUPS | {"nov18"}
+
+
+def select_group(scenarios: list[LiveScenario], group: str) -> list[LiveScenario]:
+    """Scenarios in `group`; `nov18` selects every 18 Nov demo group."""
+    if group == "nov18":
+        return [s for s in scenarios if s.group in NOV18_GROUPS]
+    return [s for s in scenarios if s.group == group]
+
+
 def all_scenarios() -> list[LiveScenario]:
     scripts_dir = Path(__file__).resolve().parent
     if str(scripts_dir) not in sys.path:
@@ -2179,8 +2205,12 @@ async def main() -> int:
     group_filter = os.environ.get("GROUP", "").strip().lower()
     scenarios = all_scenarios()
     if group_filter:
-        scenarios = [s for s in scenarios if s.group == group_filter]
+        scenarios = select_group(scenarios, group_filter)
         if not scenarios:
+            if group_filter in PLANNED_GROUPS:
+                # Wired into e2e.yml before its scenarios land (demo-18nov MS7–MS13).
+                print(f"No scenarios yet for GROUP={group_filter!r}; nothing to run.")
+                return 0
             print(f"No scenarios for GROUP={group_filter!r}", file=sys.stderr)
             return 1
     filtered = _scenario_filter(scenarios)
