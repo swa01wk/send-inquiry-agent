@@ -23,15 +23,11 @@ class AgentRuntime:
     # The inquiry repository, for actions that look across inquiries (flow v2
     # `resume_pending`); None where no store is wired (unit tests, evals).
     repo: Any = None
-
-    def email_demo_token(self, session_id: str) -> str | None:
-        """The live email-link token, exposed only in demo mode (EMAIL_LINK_DEMO)."""
-        if not self.settings.email_link_demo:
-            return None
-        return self.services.email_verification.demo_token(session_id)
+    # The chat's language ("en" | "ar", `Session.lang`): labels on `choice` cards.
+    lang: str = "en"
 
     def verification_card(self, draft: InquiryDraft, session_id: str) -> UiCard:
-        """The verification card with the demo token and resend availability."""
+        """The verification card with resend availability (no link: 18 Nov B1, N7)."""
         resend = self.services.resend
 
         def iso(channel: str) -> str | None:
@@ -40,7 +36,6 @@ class AgentRuntime:
 
         return build_verification_card(
             draft,
-            demo_token=self.email_demo_token(session_id),
             email_resend_at=iso("email"),
             mobile_resend_at=iso("sms"),
         )

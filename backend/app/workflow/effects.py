@@ -23,6 +23,7 @@ from app.workflow.flow import FlowNode, record_flow_step
 from app.workflow.labels import rejection_label
 from app.workflow.machine import SYSTEM
 from app.workflow.models import (
+    ROLE_LABELS,
     Case,
     ReviewLevel,
     WorkflowEvent,
@@ -234,7 +235,21 @@ async def _lead_approved_email(runtime: AgentRuntime, case: Case, event: Workflo
 
 
 async def _first_level_email(runtime: AgentRuntime, case: Case, event: WorkflowEvent) -> Case:
-    await _to_applicant(runtime, case, "first_level_approved", case_url=case_url(runtime, case))
+    # 18 Nov B1 (N13): no "qualified"; name who reviews next (RSM, or the RPLM for Media
+    # and Specialty), from the case's queue.
+    queue = case.review_queue
+    final_reviewer = (
+        ROLE_LABELS.get(queue.role_for("final"), "Regional Sales Manager")
+        if queue is not None
+        else "Regional Sales Manager"
+    )
+    await _to_applicant(
+        runtime,
+        case,
+        "first_level_approved",
+        case_url=case_url(runtime, case),
+        final_reviewer=final_reviewer,
+    )
     return case
 
 

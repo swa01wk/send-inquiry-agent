@@ -1,0 +1,187 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "suggest_replies",
+        "args": {
+          "options": [
+            "Store",
+            "Office",
+            "Media",
+            "Specialty"
+          ]
+        },
+        "id": "nv-unit-offer",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Thanks. Is this for a store, an office, a media space or a specialty unit?"
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "unit_type",
+              "value": "media",
+              "source": "user"
+            }
+          ]
+        },
+        "id": "nv-ut",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "A media space, got it. What will customers come to you for?"
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "show_category_options",
+        "args": {
+          "candidates": [
+            "fnb"
+          ],
+          "evidence": "we do coffee and breakfast"
+        },
+        "id": "nv-cat",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Which of these fits best? Tap one."
+  },
+  {
+    "content": "Thanks. Now tell me about you and your company: your name, company name and address, brand name, email and mobile."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "first_name",
+              "value": "Sara",
+              "source": "user"
+            },
+            {
+              "key": "last_name",
+              "value": "Ali",
+              "source": "user"
+            },
+            {
+              "key": "email",
+              "value": "sara@beanstreet.example",
+              "source": "user"
+            },
+            {
+              "key": "contact_number",
+              "value": "0501234567",
+              "source": "user"
+            },
+            {
+              "key": "company_name",
+              "value": "Bean Street Trading Co.",
+              "source": "user"
+            },
+            {
+              "key": "company_address",
+              "value": "King Fahd Road Al Olaya Riyadh",
+              "source": "user"
+            },
+            {
+              "key": "brand_name_en",
+              "value": "Bean Street",
+              "source": "user"
+            },
+            {
+              "key": "brand_name_ar",
+              "value": "بين ستريت",
+              "source": "derived",
+              "evidence": "brand Bean Street"
+            }
+          ]
+        },
+        "id": "nv-contact",
+        "type": "tool_call"
+      },
+      {
+        "name": "send_verification",
+        "args": {},
+        "id": "nv-v",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Thanks. We've sent a link to your email and a code to your mobile. Please check the Arabic brand name on the card."
+  },
+  {
+    "content": "Thanks. Enter the code from the SMS when it arrives."
+  },
+  {
+    "content": "You're verified. Which mall are you interested in, and what size, budget and lease period?"
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "malls",
+              "value": [
+                "riyadh-mall-a"
+              ],
+              "source": "user"
+            },
+            {
+              "key": "area_min",
+              "value": 30,
+              "source": "user"
+            },
+            {
+              "key": "area_max",
+              "value": 50,
+              "source": "user"
+            },
+            {
+              "key": "rent_max",
+              "value": 250000,
+              "source": "user"
+            },
+            {
+              "key": "lease_period",
+              "value": "3y",
+              "source": "user"
+            }
+          ]
+        },
+        "id": "nv-prop",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "Your property details are on the card. Confirm them when you're ready."
+  },
+  {
+    "content": "Thanks. Upload the Company Profile and Brand Profile on the card below."
+  },
+  {
+    "content": "Thanks, both documents are in. Check the review card and submit when you're ready."
+  }
+]

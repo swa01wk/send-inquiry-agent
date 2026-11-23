@@ -57,6 +57,36 @@ export function completeVerifyLink(messages: OutboxRow[]): string {
   return link
 }
 
+/**
+ * Token of the newest email-verification link sent for a chat (template
+ * `email_verification_link`). The verification card never carries the link (18 Nov B1, N7,
+ * ADR-N3), so tests open it from the outbox, as the applicant opens it from their email.
+ */
+export function emailLinkToken(messages: OutboxRow[], sessionId: string): string {
+  for (const m of messages) {
+    if (m.template !== 'email_verification_link') continue
+    if (m.inquiry_id && m.inquiry_id !== sessionId) continue
+    for (const link of m.links) {
+      const token = new URL(link, 'http://127.0.0.1:5173').searchParams.get('t')
+      if (token) return token
+    }
+  }
+  throw new Error(`email verification link not in outbox for ${sessionId}`)
+}
+
+/**
+ * Opens the chat's email link from the outbox (18 Nov B1). The open chat gets the same
+ * `verify_email` event as before (one agent turn when it completes verification, quiet while
+ * the mobile code is still pending), sent outside the page: the link is opened elsewhere.
+ */
+export async function openEmailLink(request: APIRequestContext, sessionId: string): Promise<void> {
+  const token = emailLinkToken(await fetchDevOutbox(request), sessionId)
+  const res = await request.post(`${API}/api/sessions/${sessionId}/chat`, {
+    data: { type: 'action', action: 'verify_email', payload: { token } },
+  })
+  if (!res.ok()) throw new Error(`verify_email failed: ${res.status()} ${await res.text()}`)
+}
+
 /** Append or replace `e2eScenario` for scripted verify/resume (Playwright `baseURL` paths). */
 export function withE2eScenario(link: string, scenario: string): string {
   const u = link.startsWith('http') ? new URL(link) : new URL(link, 'http://127.0.0.1:5173')

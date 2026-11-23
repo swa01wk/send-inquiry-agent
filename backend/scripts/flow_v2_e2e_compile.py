@@ -10,7 +10,9 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[2]
 SCENARIOS = ROOT / "docs" / "flow-v2" / "scenarios.json"
 # Turn counts the step heuristics can't predict (profile uploads make their own confirm cards).
-HAND_WRITTEN = frozenset({"S13"})
+# S13, and the 18 Nov stories NV01… (tool calls such as `show_category_options` that the
+# step heuristics below don't produce): written by hand in tests/e2e_scripts/.
+HAND_WRITTEN = frozenset({"S13", "NV01", "NV02"})
 
 
 def _load_catalogue() -> list[dict[str, Any]]:

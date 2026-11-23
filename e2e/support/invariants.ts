@@ -57,11 +57,7 @@ function applicantGaveCompany(draft: DraftSummary, detail: string): boolean {
   return false
 }
 
-function checkI8(
-  reply: string,
-  cardText: string,
-  draftAfter: DraftSummary,
-): string | null {
+function checkI8(reply: string, cardText: string, draftAfter: DraftSummary): string | null {
   for (const [label, text] of [
     ['reply', reply],
     ['card', cardText],
@@ -157,10 +153,10 @@ function uiEvidenceFromAudit(
   return parts.join('\n')
 }
 
-function secretsFromOutbox(
-  messages: { template?: string; body?: string; links?: string[] }[],
-  verificationCards: Record<string, unknown>[],
-): { codes: Set<string>; tokens: Set<string> } {
+function secretsFromOutbox(messages: { template?: string; body?: string; links?: string[] }[]): {
+  codes: Set<string>
+  tokens: Set<string>
+} {
   const codes = new Set<string>()
   const tokens = new Set<string>()
   for (const row of messages) {
@@ -174,11 +170,7 @@ function secretsFromOutbox(
       }
     }
   }
-  for (const card of verificationCards) {
-    const payload = (card.payload ?? {}) as { email?: { demo_token?: string } }
-    const token = payload.email?.demo_token
-    if (token) tokens.add(String(token))
-  }
+  // The verification card never carries the link (18 Nov B1, N7): tokens come from the outbox.
   return { codes, tokens }
 }
 
@@ -275,7 +267,7 @@ export function collectInvariantViolations(input: InvariantCheckInput): string[]
     .filter((e) => e.event === 'ui_card')
     .map((e) => e.data as Record<string, unknown>)
   const uiEv = uiEvidenceFromAudit(input.auditNew)
-  const secrets = secretsFromOutbox(input.outboxMessages, uiCards)
+  const secrets = secretsFromOutbox(input.outboxMessages)
 
   if (claimsSubmission(reply) && !submitEvidence(uiEv, input.turnEvents)) {
     violations.push('I1: submission claim without submit ui evidence')

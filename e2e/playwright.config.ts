@@ -42,8 +42,6 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI || demoStack,
       env: {
         AGENT_MODE: process.env.E2E_LIVE ? 'openai' : 'scripted',
-        // verifyEmail() clicks the card's demo link button, which needs the token in the card
-        EMAIL_LINK_DEMO: 'true',
         DEV_TOOLS: 'true',
         // `npm run test:demo`: seed demo cases A, B and C on start and on reset (day R5).
         DEMO_SEED: process.env.E2E_DEMO_SEED === '1' ? 'true' : 'false',

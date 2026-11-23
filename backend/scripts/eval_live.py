@@ -192,8 +192,13 @@ async def _auto_card_streams(
             payload = card.get("payload") or {}
             email = payload.get("email") or {}
             mobile = payload.get("mobile") or {}
-            token = email.get("demo_token")
-            if token and not email.get("verified"):
+            # The link never shows on the card (18 Nov B1, N7): open it from the outbox.
+            token = (
+                await _email_link_token(client, session_id)
+                if email.get("link_sent") and not email.get("verified")
+                else None
+            )
+            if token:
                 streams.append(
                     await _action(client, session_id, "verify_email", {"token": token}),
                 )
@@ -1171,6 +1176,23 @@ async def _fetch_audit_events(client: AsyncClient, session_id: str) -> list[dict
     return list(body.get("events") or [])
 
 
+async def _email_link_token(client: AsyncClient, session_id: str) -> str | None:
+    """The token of the newest email-verification link sent for this chat (dev outbox)."""
+    response = await client.get("/api/dev/outbox")
+    if response.status_code != 200:
+        return None
+    for msg in response.json().get("messages") or []:
+        if msg.get("template") != "email_verification_link":
+            continue
+        if msg.get("inquiry_id") not in (None, session_id):
+            continue
+        for link in msg.get("links") or []:
+            token = parse_qs(urlparse(str(link)).query).get("t")
+            if token:
+                return str(token[0])
+    return None
+
+
 async def _fetch_outbox_messages(client: AsyncClient) -> list[dict[str, Any]]:
     response = await client.get("/api/dev/outbox")
     response.raise_for_status()
@@ -1802,13 +1824,19 @@ def _v2_contact(name_line: str) -> list[dict[str, Any]]:
     return [{"say": line}, {"confirm_card": "basic_info"}]
 
 
-def _conversation(name: str, steps: list[dict[str, Any]], evaluate: CheckFn) -> LiveScenario:
+def _conversation(
+    name: str,
+    steps: list[dict[str, Any]],
+    evaluate: CheckFn,
+    *,
+    group: str = "conversation",
+) -> LiveScenario:
     return LiveScenario(
         name,
         [],
         evaluate,
         auto_otp=False,
-        group="conversation",
+        group=group,
         intake="v2",
         catalogue={
             "id": name,
@@ -1907,6 +1935,140 @@ def conversation_scenarios() -> list[LiveScenario]:
     ]
 
 
+# ---- 18 Nov demo B1 groups: category_options, leasing_team_tone ------------------------
+# Run after MS7 (the prompt calls `show_category_options`); docs/specs/demo-18nov-feedback.md
+# §6. The checks live in flow_v2_eval_live (shared with the NV catalogue entries).
+
+
+def _fv2_checks() -> Any:
+    scripts_dir = Path(__file__).resolve().parent
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    import flow_v2_eval_live
+
+    return flow_v2_eval_live
+
+
+def _check_category_buttons(
+    session: Session, turns: list[TurnResult], app: AppState
+) -> list[tuple[str, bool]]:
+    fv2 = _fv2_checks()
+    return [
+        *fv2.check_choice_options_known(session, turns, app),
+        *fv2.check_category_by_choice_only(session, turns, app),
+        *fv2.check_choice_labels_in_chat_language(session, turns, app),
+        *fv2.check_no_third_person_team(session, turns, app),
+    ]
+
+
+def _check_broad_answer_group(
+    session: Session, turns: list[TurnResult], app: AppState
+) -> list[tuple[str, bool]]:
+    fv2 = _fv2_checks()
+    offered = [
+        str(o.get("value"))
+        for p in fv2._payloads(turns, "choice")
+        for o in p.get("options") or []
+        if isinstance(o, dict)
+    ]
+    return [
+        *fv2.check_choice_options_known(session, turns, app),
+        ("clothes offers Fashion", "fashion" in offered),
+    ]
+
+
+def _check_brand_alone_no_options(
+    session: Session, turns: list[TurnResult], app: AppState
+) -> list[tuple[str, bool]]:
+    fv2 = _fv2_checks()
+    last = turns[-1].assistant.lower() if turns else ""
+    return [
+        ("no options from the brand name alone", not fv2._payloads(turns, "choice")),
+        ("no category saved", session.draft.fields[FieldKey.SALES_CATEGORY].value is None),
+        ("asks what they sell", any(w in last for w in ("sell", "offer", "come to you"))),
+    ]
+
+
+def _check_team_tone(
+    session: Session, turns: list[TurnResult], app: AppState
+) -> list[tuple[str, bool]]:
+    return list(_fv2_checks().check_no_third_person_team(session, turns, app))
+
+
+def _check_team_tone_arabic(
+    session: Session, turns: list[TurnResult], app: AppState
+) -> list[tuple[str, bool]]:
+    replies = [t.assistant for t in turns if _has_arabic_letters(t.user) and t.assistant.strip()]
+    return [
+        *_check_team_tone(session, turns, app),
+        ("replies in Arabic", bool(replies) and all(_has_arabic_letters(r) for r in replies)),
+    ]
+
+
+_NOV18_STORE: list[dict[str, Any]] = [
+    {"cr_skip": True},
+    {"cr_skip_confirm": True},
+    {"say": "a store"},
+]
+_NOV18_STORE_AR: list[dict[str, Any]] = [
+    {"cr_skip": True},
+    {"cr_skip_confirm": True},
+    {"say": "متجر"},
+]
+_CAFE: dict[str, Any] = {"choose_option": {"key": "sales_category", "value": "fnb_cafe"}}
+
+
+def nov18_b1_scenarios() -> list[LiveScenario]:
+    return [
+        _conversation(
+            "Category buttons (EN)",
+            [*_NOV18_STORE, {"say": "we do coffee and breakfast"}, _CAFE],
+            _check_category_buttons,
+            group="category_options",
+        ),
+        _conversation(
+            "Category buttons (AR)",
+            [*_NOV18_STORE_AR, {"say": "نقدم القهوة والفطور"}, _CAFE],
+            _check_category_buttons,
+            group="category_options",
+        ),
+        _conversation(
+            "Broad answer offers a group",
+            [*_NOV18_STORE, {"say": "we sell clothes"}],
+            _check_broad_answer_group,
+            group="category_options",
+        ),
+        _conversation(
+            "Brand name alone",
+            [*_NOV18_STORE, {"say": "We're Bean Street."}],
+            _check_brand_alone_no_options,
+            group="category_options",
+        ),
+        _conversation(
+            "Speaks as the leasing team (EN)",
+            [
+                *_NOV18_STORE,
+                {"say": "we do coffee and breakfast"},
+                _CAFE,
+                {"say": "Who will look at my inquiry, and when will I hear back?"},
+            ],
+            _check_team_tone,
+            group="leasing_team_tone",
+        ),
+        _conversation(
+            "Speaks as the leasing team (AR)",
+            [
+                *_NOV18_STORE_AR,
+                {"say": "نقدم القهوة والفطور"},
+                _CAFE,
+                {"say": "من سيراجع طلبي، ومتى سيتواصلون معي؟"},
+            ],
+            _check_team_tone_arabic,
+            group="leasing_team_tone",
+        ),
+    ]
+
+
 # 18 Nov demo groups (docs/specs/demo-18nov-feedback.md §6); `nov18` runs them all.
 NOV18_GROUPS: frozenset[str] = frozenset(
     {
@@ -1936,7 +2098,12 @@ def all_scenarios() -> list[LiveScenario]:
         sys.path.insert(0, str(scripts_dir))
     from flow_v2_eval_live import flow_v2_intake_scenarios
 
-    return [*SCENARIOS, *conversation_scenarios(), *flow_v2_intake_scenarios()]
+    return [
+        *SCENARIOS,
+        *conversation_scenarios(),
+        *nov18_b1_scenarios(),
+        *flow_v2_intake_scenarios(),
+    ]
 
 
 async def run_scenario(

@@ -109,7 +109,8 @@ _QUESTION_START_RE = re.compile(
     r"^\s*(what|which|how|where|when|why|who|can|could|do|does|is|are|should|will)\b",
     re.IGNORECASE,
 )
-_CAPTURE_TOOLS = {"update_draft", "verify_cr"}
+# `show_category_options` captures what they sell as option buttons (18 Nov B1 §3.2).
+_CAPTURE_TOOLS = {"update_draft", "verify_cr", "show_category_options"}
 _ASK_WHAT_BRAND_RE = re.compile(
     r"\bwhat(?:'s|\s+is)\s+(?:your|the)\s+brand\b",
     re.IGNORECASE,
@@ -167,22 +168,31 @@ def _tools_called(messages: list[BaseMessage]) -> set[str]:
     return names
 
 
-# A bare answer to "Store or Office?" (the chips, or typed, in English or Arabic). Live eval
-# 16 Nov (Arabic user): "متجر" was answered but not saved, or was already saved, and the
-# missed-capture rule took the reply back.
+# A bare answer to the unit type question (the chips, or typed, in English or Arabic). Live
+# eval 16 Nov (Arabic user): "متجر" was answered but not saved, or was already saved, and
+# the missed-capture rule took the reply back. 18 Nov B1 (N1): Media and Specialty too; a
+# unit type the intake doesn't offer is refused by `write_fields`.
 _UNIT_CHOICES = {
     "store": "store",
     "a store": "store",
     "office": "office",
     "an office": "office",
+    "media": "media",
+    "media space": "media",
+    "a media space": "media",
+    "specialty": "specialty",
+    "specialty unit": "specialty",
+    "a specialty unit": "specialty",
     "متجر": "store",
     "محل": "store",
     "مكتب": "office",
+    "مساحة إعلانية": "media",
+    "وحدة متخصصة": "specialty",
 }
 
 
 def bare_unit_choice(text: str) -> str | None:
-    """`store` / `office` when the whole message is that choice, else None."""
+    """The unit type id when the whole message is that choice, else None."""
     key = " ".join(text.strip().strip(".!،,").lower().split())
     if key.startswith("ال") and key[2:] in _UNIT_CHOICES:
         key = key[2:]
@@ -881,6 +891,25 @@ def _wrong_language_note(state: AgentState, ai_text: str) -> str | None:
     )
 
 
+# Rule 9 (18 Nov B1, N2, NG4): the agent is the leasing team, so it never talks about it in
+# the third person. "leasing" alone, or "the leasing team" without "will", is fine.
+_THIRD_PERSON_TEAM_RE = re.compile(
+    r"\bour\s+leasing\s+team\b|\bthe\s+leasing\s+team\s+will\b|فريق\s+التأجير\s+لدينا",
+    re.IGNORECASE,
+)
+
+
+def third_person_team_note(ai_text: str) -> str | None:
+    """Guard rule 9 `_third_person_team` (self-service and case replies)."""
+    if not ai_text or not _THIRD_PERSON_TEAM_RE.search(ai_text):
+        return None
+    return (
+        f'{GUARD_PREFIX} third_person_team: you are the leasing team. Say "we" ("we\'ll '
+        'contact you"), never "our leasing team" or "the leasing team will". Reply '
+        "again with the same content."
+    )
+
+
 def _assisted_reply_note(state: AgentState, draft: Any, ai_text: str) -> str | None:
     """Both assisted wording rules in one note: the guard retries once, so a reply that
     thanks the caller by name and claims a verification send must fix both at once."""
@@ -983,6 +1012,7 @@ def guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, Any]:
                     )
                 )
                 or _missed_capture_note({**state, "draft": draft}, phase)
+                or (None if state.get("assisted") else third_person_team_note(ai_text))
                 or _wrong_language_note(state, ai_text)
             )
 

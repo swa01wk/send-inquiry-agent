@@ -7,7 +7,7 @@ from typing import Any
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 
-from app.agent.guard import GUARD_PREFIX, after_guard
+from app.agent.guard import GUARD_PREFIX, after_guard, third_person_team_note
 from app.agent.runtime import AgentRuntime
 from app.agent.state import AgentState
 from app.domain.rules import compute_phase
@@ -142,6 +142,8 @@ def case_guard_node(state: AgentState, *, runtime: AgentRuntime) -> dict[str, An
     note = _false_outcome_note(ai_text, turn, case) if ai_text else None
     if note is None:
         note = _contacts_not_saved_note(user_text, turn, case)
+    if note is None:
+        note = third_person_team_note(ai_text)  # rule 9 (18 Nov B1)
     if note is not None and not user_text.startswith("[ui_event] guard:"):
         from langgraph.config import get_stream_writer
 

@@ -7,6 +7,8 @@ from collections.abc import Callable
 from typing import Literal
 
 from app.api.schemas import (
+    ChoiceOption,
+    ChoicePayload,
     ConfirmFieldRow,
     ConfirmFieldsPayload,
     DocumentNumberRow,
@@ -284,14 +286,16 @@ def build_confirm_fields_card(
         if definition is None:
             continue
         field = draft.fields[key]
+        display = definition.display(draft, master)
         rows.append(
             ConfirmFieldRow(
                 key=key_str,
                 label=definition.label,
-                display=definition.display(draft, master),
+                display=display,
                 source=field.source.value if field.source else None,
                 confirmed=field.confirmed,
                 evidence=field.evidence if field.source == Source.DERIVED else None,
+                value_label=_value_label(display),
             )
         )
     all_confirmed = all(row.confirmed for row in rows) if rows else True
@@ -299,6 +303,60 @@ def build_confirm_fields_card(
     return UiCard(
         card_id=card_id,
         card_type="confirm_fields",
+        message_id=message_id,
+        payload=payload.model_dump(),
+    )
+
+
+_VALUE_LABEL_MAX = 48
+
+
+def _value_label(display: str | None) -> str | None:
+    """The value as its confirm button shows it (18 Nov B1, M27): whole, or cut with "…"."""
+    if not display:
+        return None
+    text = " ".join(display.split())
+    if len(text) <= _VALUE_LABEL_MAX:
+        return text
+    return text[: _VALUE_LABEL_MAX - 1].rstrip() + "…"
+
+
+# ---- Choice card (18 Nov B1 §3.2) ------------------------------------------------
+
+CHOICE_PROMPTS: dict[str, dict[str, str]] = {
+    "sales_category": {"en": "Which fits best?", "ar": "أيّها الأنسب؟"},
+}
+_DEFAULT_CHOICE_PROMPT = {"en": "Please choose one.", "ar": "يرجى اختيار واحد."}
+
+
+def choice_card_id(key: str) -> str:
+    return f"choice-{key}"
+
+
+def category_options(master: MasterData, category_ids: list[str]) -> list[ChoiceOption]:
+    options: list[ChoiceOption] = []
+    for category_id in category_ids:
+        item = master.sales_category(category_id)
+        if item is not None:
+            options.append(ChoiceOption(value=item.id, label=item.label, label_ar=item.label_ar))
+    return options
+
+
+def build_choice_card(
+    key: str,
+    options: list[ChoiceOption],
+    *,
+    lang: str = "en",
+    chosen: str | None = None,
+    message_id: str | None = None,
+) -> UiCard:
+    """Option buttons whose labels come from data, in the chat's language (ADR-N1, N2)."""
+    language: Literal["en", "ar"] = "ar" if lang == "ar" else "en"
+    prompt = CHOICE_PROMPTS.get(key, _DEFAULT_CHOICE_PROMPT)[language]
+    payload = ChoicePayload(key=key, prompt=prompt, options=options, lang=language, chosen=chosen)
+    return UiCard(
+        card_id=choice_card_id(key),
+        card_type="choice",
         message_id=message_id,
         payload=payload.model_dump(),
     )
@@ -363,12 +421,14 @@ VERIFICATION_CARD_ID = "verification"
 def build_verification_card(
     draft: InquiryDraft,
     *,
-    demo_token: str | None = None,
     message_id: str | None = None,
     email_resend_at: str | None = None,
     mobile_resend_at: str | None = None,
 ) -> UiCard:
-    """Email link status plus, when a mobile was given, the mobile OTP box."""
+    """Email link status plus, when a mobile was given, the mobile OTP box.
+
+    The link itself never appears on the card, in any mode (18 Nov B1, N7, ADR-N3): the
+    applicant opens it from their email; tests and demos from the dev outbox."""
     email = draft.fields[FieldKey.EMAIL].value
     mobile = draft.fields[FieldKey.MOBILE].value
     email_text = str(email) if email else None
@@ -377,7 +437,6 @@ def build_verification_card(
         masked=_mask_email(email_text),
         link_sent=draft.email_link_sent_to is not None and draft.email_link_sent_to == email_text,
         verified=draft.email_verified,
-        demo_token=None if draft.email_verified else demo_token,
         resend_available_at=None if draft.email_verified else email_resend_at,
     )
     mobile_section = (

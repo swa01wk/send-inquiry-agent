@@ -7,6 +7,7 @@ import {
   readDoneEventCount,
   type CapturedSseEvent,
 } from '../support/events'
+import { openEmailLink } from '../support/outbox'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const fixtures = path.join(__dirname, '../fixtures/files')
@@ -176,12 +177,14 @@ export class InquiryPage {
     return body.messages
   }
 
-  /** Stands in for clicking the emailed link (the card's demo button, EMAIL_LINK_DEMO). */
+  /**
+   * Opens this chat's emailed link from the dev outbox (18 Nov B1, N7: the card has no link
+   * button). The chat gets the `verify_email` event outside the page, as when the applicant
+   * opens the link from their email.
+   */
   async verifyEmail() {
-    const card = this.cards('verification')
-    const doneBefore = await readDoneEventCount(this.page)
-    await card.getByRole('button', { name: /open verification link/i }).click()
-    await this.waitForTurnDone(doneBefore)
+    if (!this.sessionId) throw new Error('verifyEmail: no chat session yet')
+    await openEmailLink(this.page.request, this.sessionId)
   }
 
   async enterCode(code: string) {

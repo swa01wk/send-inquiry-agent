@@ -40,3 +40,12 @@ def test_planned_groups_match_the_dispatch_options() -> None:
     text = workflow.read_text(encoding="utf-8")
     for group in eval_live.PLANNED_GROUPS:
         assert group in text, f"e2e.yml doesn't offer GROUP={group}"
+
+
+def test_b1_groups_have_their_scenarios() -> None:
+    # 18 Nov B1 (MS6): the first two groups now have live scenarios.
+    scenarios = eval_live.all_scenarios()
+    for group in ("category_options", "leasing_team_tone"):
+        picked = eval_live.select_group(scenarios, group)
+        assert picked, group
+        assert all(s.intake == "v2" and s.catalogue for s in picked)

@@ -79,6 +79,50 @@
       "label_ar": "خدمات"
     }
   ],
+  "sales_category_groups": [
+    {
+      "id": "fnb",
+      "label": "Food & Beverage",
+      "label_ar": "أغذية ومشروبات",
+      "categories": [
+        "fnb_cafe",
+        "fnb_restaurant"
+      ]
+    },
+    {
+      "id": "retail",
+      "label": "Retail",
+      "label_ar": "تجزئة",
+      "categories": [
+        "fashion",
+        "electronics"
+      ]
+    },
+    {
+      "id": "beauty",
+      "label": "Health & Beauty",
+      "label_ar": "صحة وجمال",
+      "categories": [
+        "beauty"
+      ]
+    },
+    {
+      "id": "entertainment",
+      "label": "Entertainment",
+      "label_ar": "ترفيه",
+      "categories": [
+        "entertainment"
+      ]
+    },
+    {
+      "id": "services",
+      "label": "Services",
+      "label_ar": "خدمات",
+      "categories": [
+        "services"
+      ]
+    }
+  ],
   "cities": [
     {
       "id": "riyadh",

@@ -18,7 +18,7 @@ def test_v2_view_changes_only_the_intake_values() -> None:
     with intake_scope("v2"):
         assert intake_flow() == "v2"
         v2 = get_policy()
-    assert v2.product_lines == ["store", "office"]
+    assert v2.product_lines == ["store", "office", "media", "specialty"]
     assert v2.max_malls_per_inquiry == 5
     assert v2.public_cr_check == "verify_or_skip"
     assert v2.review_routing == v1.review_routing

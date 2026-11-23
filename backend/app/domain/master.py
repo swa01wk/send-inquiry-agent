@@ -37,6 +37,12 @@ class City(MasterItem):
     region: str | None = None
 
 
+class SalesCategoryGroup(MasterItem):
+    """A broad answer's categories ("food" → café, restaurant), 18 Nov B1 §3.2."""
+
+    categories: list[str] = Field(default_factory=list)
+
+
 class Mall(BaseModel):
     id: str
     name: str
@@ -55,6 +61,7 @@ class MasterData(BaseModel):
     regions: list[Region] = Field(default_factory=list)
     unit_types: list[UnitType] = Field(default_factory=list)
     sales_categories: list[MasterItem] = Field(default_factory=list)
+    sales_category_groups: list[SalesCategoryGroup] = Field(default_factory=list)
     cities: list[City] = Field(default_factory=list)
     malls: list[Mall] = Field(default_factory=list)
     lease_periods: list[MasterItem] = Field(default_factory=list)
@@ -80,6 +87,26 @@ class MasterData(BaseModel):
                 if isinstance(item, MasterItem):
                     return item.label
         return None
+
+    def sales_category(self, category_id: str) -> MasterItem | None:
+        return next((c for c in self.sales_categories if c.id == category_id), None)
+
+    def expand_category_candidates(self, candidates: list[str], *, limit: int) -> list[str]:
+        """Category ids for option buttons, from the model's candidates (18 Nov B1 §3.2).
+
+        A category id is kept; a group id expands to its categories; unknown ids are
+        dropped; duplicates go; the model's order is kept; at most `limit`.
+        """
+        known = {c.id for c in self.sales_categories}
+        groups = {g.id: g.categories for g in self.sales_category_groups}
+        out: list[str] = []
+        for raw in candidates:
+            candidate = str(raw).strip()
+            expanded = [candidate] if candidate in known else groups.get(candidate, [])
+            for category_id in expanded:
+                if category_id in known and category_id not in out:
+                    out.append(category_id)
+        return out[:limit]
 
     def malls_in_city(self, city_id: str) -> list[Mall]:
         return [mall for mall in self.malls if mall.city == city_id]

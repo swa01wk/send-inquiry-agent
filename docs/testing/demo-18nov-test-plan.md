@@ -31,7 +31,7 @@ New abstract steps (in `tests/flow_v2/steps.py` and `e2e/support/steps.ts`):
 | --- | --- | --- |
 | `choose_option: {key, value}` | Taps the `choice` card's option (`choose_option` action) | B1 |
 | `confirm_field: key` | Taps the value button of one `confirm_fields` row (`confirm_field`) | B1 |
-| `verify_email: true` (changed) | Opens the verify link from the outbox (`completeVerifyLink`) through `POST /api/verifications/email`; no card button | B1 |
+| `verify_email: true` (changed) | Reads the link token from the outbox (`emailLinkToken`, `openEmailLink`) and gives the open chat its `verify_email` event, outside the page, as when the link is opened from the email; no card button. Keeps the turn the old button had, so the scripts line up. B2 can move it to `POST /api/verifications/email` once the email stops blocking | B1 |
 | `dev_clock_advance_seconds: n` | `POST /api/dev/clock/advance {hours: n / 3600}` (existing endpoint; `hours` is a float) | B2 |
 | `resend_code: true` | Taps Resend on the verification card | B2 |
 | `skip_email: true` | Marker: the story doesn't open the email link | B2 |

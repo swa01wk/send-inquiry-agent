@@ -27,6 +27,7 @@ from app.api.cards import (
     HANDOFF_CARD_ID,
     _mask_email,
     allocate_confirm_card_id,
+    build_choice_card,
     build_confirm_fields_card,
     build_document_upload_card,
     build_duplicate_notice_card,
@@ -54,12 +55,19 @@ from app.api.channel_cards import (
     build_send_link_card,
     confirm_basic_info,
 )
-from app.api.schemas import UiCard
+from app.api.errors import ApiError
+from app.api.schemas import ChoiceOption, UiCard
 from app.domain import draft_ops
 from app.domain import validation as v
 from app.domain.document_checks import document_mismatches
 from app.domain.fields import document_definitions
-from app.domain.models import NEEDS_CONFIRMATION, DocType, FieldKey, InquiryDraft, Source
+from app.domain.models import (
+    NEEDS_CONFIRMATION,
+    DocType,
+    FieldKey,
+    InquiryDraft,
+    Source,
+)
 from app.domain.rules import can_submit, contact_verified, open_fields, remaining_steps
 from app.domain.summary import build_draft_summary
 from app.domain.validation import validate_malls
@@ -133,7 +141,10 @@ async def handle_ui_action(
         "submit_otp": _submit_otp,
         "resend_otp": _resend_otp,
         "edit_field": _edit_field,
-        "confirm_card": _confirm_card,
+        "confirm_card": _confirm_card,  # old sessions; no card sends it (18 Nov B1)
+        # 18 Nov B1 (§3.2): value buttons and option buttons
+        "confirm_field": _confirm_field,
+        "choose_option": _choose_option,
         "accept_and_submit": _accept_and_submit,
         "documents_updated": _documents_updated,
         "set_document_number": _set_document_number,
@@ -510,6 +521,187 @@ async def _edit_field(
         note=HumanMessage(content=f"[ui_event] field_edited {key}"),
         events=[_draft_event(draft, runtime, written), *_review_refresh(session, draft, runtime)],
         changed_keys=written,
+    )
+
+
+def _unconfirmed_keys(draft: InquiryDraft, keys: list[str]) -> list[str]:
+    """The keys among `keys` whose value still waits for the user's confirmation."""
+    out: list[str] = []
+    for key_str in keys:
+        try:
+            field = draft.fields[FieldKey(key_str)]
+        except (ValueError, KeyError):
+            continue
+        if field.value is not None and field.source in NEEDS_CONFIRMATION and not field.confirmed:
+            out.append(key_str)
+    return out
+
+
+async def _confirm_field(
+    payload: dict[str, Any],
+    session: Session,
+    runtime: AgentRuntime,
+) -> ActionResult:
+    """One row's value button on a `confirm_fields` card (18 Nov B1, M27, NG3).
+
+    Confirms that key only. While other rows on the card still wait, the tap is quiet (the
+    card shows the tick); the last one runs the agent turn, so a card costs one turn as the
+    old "Looks right" did.
+    """
+    raw_card_id = payload.get("card_id")
+    key = payload.get("key")
+    if not isinstance(raw_card_id, str) or not isinstance(key, str):
+        return ActionResult(note=HumanMessage(content="[ui_event] confirm_failed"))
+    card_id, card_seq = split_card_id(raw_card_id)
+    if card_seq != session.inquiry_seq:
+        return ActionResult(note=HumanMessage(content="[ui_event] confirm_failed stale_card"))
+    listed = session.confirm_card_keys.get(card_id)
+    if not listed or key not in listed:
+        return ActionResult(note=HumanMessage(content="[ui_event] confirm_failed"))
+    if key not in _unconfirmed_keys(session.draft, [key]):
+        card = build_confirm_fields_card(session.draft, runtime.master, listed, card_id=card_id)
+        return ActionResult(
+            note=HumanMessage(content=f"[ui_event] fields_already_confirmed {key}"),
+            events=[_card_event(session, card)],
+            quiet=True,
+        )
+    draft = draft_ops.confirm(session.draft, [key])
+    session.draft = draft
+    events: list[SseEvent] = [_draft_event(draft, runtime, [key])]
+    card = build_confirm_fields_card(draft, runtime.master, listed, card_id=card_id)
+    events.append(_card_event(session, card))
+    events.extend(_review_refresh(session, draft, runtime))
+    still_open = _unconfirmed_keys(draft, listed)
+    if still_open:
+        return ActionResult(
+            note=HumanMessage(content=f"[ui_event] fields_confirmed {key}"),
+            events=events,
+            changed_keys=[key],
+            quiet=True,
+        )
+    # The card's last open row: tell the model everything this card now has confirmed.
+    confirmed = [k for k in listed if _confirmed_by_user(draft, k)]
+    return ActionResult(
+        note=HumanMessage(content=f"[ui_event] fields_confirmed {' '.join(confirmed or [key])}"),
+        events=events,
+        changed_keys=[key],
+    )
+
+
+def _confirmed_by_user(draft: InquiryDraft, key_str: str) -> bool:
+    try:
+        field = draft.fields[FieldKey(key_str)]
+    except (ValueError, KeyError):
+        return False
+    return field.value is not None and field.source in NEEDS_CONFIRMATION and field.confirmed
+
+
+def _choice_options(card: dict[str, Any]) -> list[ChoiceOption]:
+    payload = card.get("payload") or {}
+    options: list[ChoiceOption] = []
+    for raw in payload.get("options") or []:
+        if isinstance(raw, dict):
+            try:
+                options.append(ChoiceOption.model_validate(raw))
+            except ValueError:
+                continue
+    return options
+
+
+def open_choice_cards(session: Session) -> list[tuple[str, dict[str, Any]]]:
+    """(card id as sent, card) for this inquiry's `choice` cards not yet answered."""
+    out: list[tuple[str, dict[str, Any]]] = []
+    for card_id, card in session.cards.items():
+        if card.get("card_type") != "choice":
+            continue
+        _base, seq = split_card_id(card_id)
+        payload = card.get("payload") or {}
+        if seq == session.inquiry_seq and payload.get("chosen") is None:
+            out.append((card_id, card))
+    return out
+
+
+def _option_names(option: ChoiceOption) -> set[str]:
+    names = {option.label, option.label_ar or ""}
+    # "Food & Beverage · Café" is also "Café".
+    for label in (option.label, option.label_ar or ""):
+        if "·" in label:
+            names.add(label.rsplit("·", 1)[1])
+    return {_normalise_option_text(name) for name in names if name.strip()}
+
+
+def _normalise_option_text(text: str) -> str:
+    return " ".join(text.strip().strip(".!?؟،,").casefold().split())
+
+
+def typed_option_choice(session: Session, text: str) -> tuple[str, str, str] | None:
+    """(card_id, key, value) when the typed message names exactly one option of an open
+    `choice` card, in either language (18 Nov B1 §3.2: the same as a tap); else None."""
+    typed = _normalise_option_text(text)
+    if not typed:
+        return None
+    hits: list[tuple[str, str, str]] = []
+    for card_id, card in open_choice_cards(session):
+        key = str((card.get("payload") or {}).get("key", ""))
+        for option in _choice_options(card):
+            if typed in _option_names(option):
+                hits.append((card_id, key, option.value))
+    return hits[0] if len(hits) == 1 else None
+
+
+async def _choose_option(
+    payload: dict[str, Any],
+    session: Session,
+    runtime: AgentRuntime,
+) -> ActionResult:
+    """A tap on a `choice` card's option (18 Nov B1 §3.2, ADR-N2). The value must be on the
+    card; it is written as the user's own answer (`source: user`, confirmed)."""
+    raw_card_id = payload.get("card_id")
+    key = payload.get("key")
+    value = payload.get("value")
+    if not all(isinstance(item, str) for item in (raw_card_id, key, value)):
+        raise ApiError(422, "invalid_choice", "choose_option needs card_id, key and value.")
+    assert isinstance(raw_card_id, str) and isinstance(key, str) and isinstance(value, str)
+    card = dict(open_choice_cards(session)).get(raw_card_id)
+    if card is None:
+        raise ApiError(409, "choice_not_open", "This choice isn't open any more.")
+    card_payload = card.get("payload") or {}
+    options = _choice_options(card)
+    if card_payload.get("key") != key or value not in {o.value for o in options}:
+        raise ApiError(409, "option_not_on_card", "That option isn't on this card.")
+    try:
+        field_key = FieldKey(key)
+    except ValueError as exc:
+        raise ApiError(409, "option_not_on_card", "That option isn't on this card.") from exc
+    draft, _written, errors = draft_ops.write_fields(
+        session.draft, [(key, value, Source.USER)], master=runtime.master
+    )
+    if key in errors:
+        return ActionResult(
+            note=HumanMessage(content=f"[ui_event] option_invalid {key} {errors[key].code}")
+        )
+    field = draft.fields[field_key]
+    if field.value == value and (field.source != Source.USER or not field.confirmed):
+        # The same value was derived earlier: the tap makes it the user's own answer.
+        draft.fields[field_key] = field.model_copy(
+            update={"source": Source.USER, "confirmed": True, "evidence": None}
+        )
+    session.draft = draft
+    # Closed now, and saved with the session before the turn streams.
+    session.cards[raw_card_id] = {**card, "payload": {**card_payload, "chosen": value}}
+    lang = str(card_payload.get("lang") or session.lang)
+    refreshed = build_choice_card(
+        key, options, lang=lang, chosen=value, message_id=card.get("message_id")
+    )
+    events: list[SseEvent] = [
+        _draft_event(draft, runtime, [key]),
+        _card_event(session, refreshed),
+    ]
+    events.extend(_review_refresh(session, draft, runtime))
+    return ActionResult(
+        note=HumanMessage(content=f"[ui_event] option_chosen {key}={value}"),
+        events=events,
+        changed_keys=[key],
     )
 
 

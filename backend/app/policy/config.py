@@ -148,6 +148,18 @@ class CallCentrePolicy(_Strict):
     offer_sign_in_link: bool = True
 
 
+class FlowV2IntakeExamples(_Strict):
+    """Example answers the agent quotes (18 Nov B1 §3.3), so Cenomi can change them
+    without a prompt change. Read into Rules in force."""
+
+    what_you_sell: str = "coffee and pastries, women's fashion, or a pharmacy"
+    office_business: str = "an accounting firm, a travel agency, or a clinic's head office"
+    basic_info_answer: str = (
+        "Sara Ali, Al Noor Trading, King Fahd Road, Riyadh, brand Bean Street, "
+        "sara@alnoor.com, +966 55 123 4567"
+    )
+
+
 class FlowV2IntakePolicy(_Strict):
     """Flow v2 public intake (spec flow-v2-alignment §3.2, §3.3; day F3).
 
@@ -157,12 +169,21 @@ class FlowV2IntakePolicy(_Strict):
     top-level values (`get_policy` inside `intake_scope("v2")`)."""
 
     enabled: bool = False
-    product_lines: list[str] = Field(default_factory=lambda: ["store", "office"], min_length=1)
+    product_lines: list[str] = Field(
+        default_factory=lambda: ["store", "office", "media", "specialty"], min_length=1
+    )
     max_malls: int = Field(default=5, ge=1, le=10)
     # A pending inquiry (verified, not submitted) is abandoned after this long (A2).
     pending_inquiry_ttl_minutes: int = Field(default=120, ge=1, le=60 * 24 * 30)
     # The terms card comes before documents; the review card then shows "Terms accepted".
     terms_before_documents: bool = True
+    examples: FlowV2IntakeExamples = FlowV2IntakeExamples()
+    # Most option buttons a `choice` card shows (18 Nov B1 §3.2).
+    max_choice_options: int = Field(default=4, ge=1, le=8)
+    # 18 Nov B1 (NG2): when on, `update_draft` refuses `sales_category`; it is set only by
+    # a tap on the `choice` card or an exact typed option. Off until the MS7 prompt and
+    # scripts move to `show_category_options`.
+    category_from_options_only: bool = False
 
 
 class SecondLevelContacts(_Strict):

@@ -50,7 +50,12 @@ Contracts are folded into @docs/spec.md (rows marked "18 Nov B1").
    - Test ids from the test plan §4. Vitest; `@fe` specs `cards-choice`, `cards-confirm-fields`, `cards-verification`; new screenshot baselines (`e2e.yml` suite `fe` with `update_snapshots`).
 3. **Guard copy:** rule 9's note ("Speak as the leasing team: say 'we', not 'our leasing team'").
 4. **Scripts and goldens:** re-record the intake goldens whose wording changes (`make golden`), with the reason in the PR.
-5. **Live evals:** `make eval-live GROUP=category_options`, `GROUP=leasing_team_tone` (3/3, English and Arabic), then the full `make eval-live`. Record both in `docs/eval-notes.md`.
+5. **Switch on what MS6 left off** (so MS6 could merge with today's frontend):
+   - Policy `flow_v2_intake.category_from_options_only: true` (then `update_draft` refuses `sales_category` on a v2 inquiry, and Rules in force says so).
+   - Remove `test.fixme` from `e2e/tests/demo-18nov/nv01-*.spec.ts` and `nv02-*.spec.ts`.
+   - Prompt text: `system_prompt_v2.md` lines 32, 123 and 129 still say "our leasing team"; guard rule 9 sends those replies back once until you rewrite them.
+   - `e2e/support/steps.ts` `confirmSection` already taps the value buttons when the card has them (and falls back to "Looks right"); drop the fallback once the button is gone.
+6. **Live evals:** `make eval-live GROUP=category_options`, `GROUP=leasing_team_tone` (3/3, English and Arabic), then the full `make eval-live`. Record both in `docs/eval-notes.md`.
 
 ## Tests
 - Vitest and `make e2e-fe` for the three cards.

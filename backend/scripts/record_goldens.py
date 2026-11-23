@@ -20,7 +20,6 @@ def main() -> None:
         session_ttl_minutes=120,
         dev_tools=True,
         token_secret="golden-record-secret",
-        email_link_demo=True,
         agent_mode="scripted",
     )
     asyncio.run(record_all(settings))

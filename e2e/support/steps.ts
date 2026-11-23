@@ -3,13 +3,14 @@ import {
   type APIRequestContext,
   type Browser,
   type BrowserContext,
+  type Locator,
   type Page,
 } from '@playwright/test'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { InquiryPage } from '../pages/inquiry'
 import { readDoneEventCount } from './events'
-import { fetchDevOutbox, latestByTemplate, withE2eScenario } from './outbox'
+import { fetchDevOutbox, latestByTemplate, openEmailLink, withE2eScenario } from './outbox'
 import { persona, scriptFor, type CatalogueEntry, type CatalogueStep } from './scenarios'
 import { openCallCentreChat } from './stories'
 import { approveDocumentsViaApi, reviewerFor } from './submit'
@@ -104,9 +105,26 @@ async function confirmSection(ctx: StepCtx, section: string): Promise<void> {
   const plan = (await res.json()) as { card_ids: string[]; say_yes: boolean }
   for (const cardId of plan.card_ids) {
     const card = ctx.chat.page.locator(`[data-testid^="confirm-fields-${cardId}"]`).last()
-    await turn(ctx, () => card.getByRole('button', { name: 'Looks right' }).click())
+    await confirmEveryRow(ctx, card)
   }
   if (plan.say_yes) await ctx.chat.say("Yes, that's all correct.")
+}
+
+/**
+ * Confirms each open row of a confirm card (18 Nov B1, M27): its value button
+ * (`confirm-field-<key>`, sends `confirm_field`) where the card has them; the taps before the
+ * last are quiet, the last runs the turn. Cards from before MS7 still have "Looks right".
+ */
+async function confirmEveryRow(ctx: StepCtx, card: Locator): Promise<void> {
+  const valueButtons = card.locator('[data-testid^="confirm-field-"]')
+  if ((await valueButtons.count()) === 0) {
+    await turn(ctx, () => card.getByRole('button', { name: 'Looks right' }).click())
+    return
+  }
+  for (let left = await valueButtons.count(); left > 0; left--) {
+    await turn(ctx, () => valueButtons.first().click())
+    await expect(valueButtons).toHaveCount(left - 1)
+  }
 }
 
 async function draftChecks(ctx: StepCtx): Promise<Record<string, unknown>> {
@@ -203,9 +221,22 @@ export async function runStep(ctx: StepCtx, step: CatalogueStep): Promise<void> 
   if (typeof step.say === 'string') return chat.say(step.say)
   if (typeof step.confirm_card === 'string') return confirmSection(ctx, step.confirm_card)
   if (step.verify_email === true) {
+    // 18 Nov B1 (N7): no link on the card; open the emailed link from the outbox.
     if ((await draftChecks(ctx)).email_verified) return
-    const card = chat.cards('verification').last()
-    await turn(ctx, () => card.getByRole('button', { name: /open verification link/i }).click())
+    await openEmailLink(ctx.request, chat.sessionId!)
+    return
+  }
+  if (step.choose_option && typeof step.choose_option === 'object') {
+    // 18 Nov B1 (§3.2): tap an option on the `choice` card.
+    const { key, value } = step.choose_option as { key: string; value: string }
+    const card = chat.page.getByTestId(`choice-card-${key}`).last()
+    await turn(ctx, () => card.getByTestId(`choice-option-${value}`).click())
+    return
+  }
+  if (typeof step.confirm_field === 'string') {
+    // 18 Nov B1 (M27): tap one row's value button.
+    const button = chat.page.getByTestId(`confirm-field-${step.confirm_field}`).last()
+    await turn(ctx, () => button.click())
     return
   }
   if ('enter_code' in step) {
