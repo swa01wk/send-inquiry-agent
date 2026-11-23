@@ -6,11 +6,9 @@ import styles from './VerificationCard.module.css'
 
 interface VerificationCardProps {
   payload: VerificationPayload
-  onVerifyEmail: (token: string) => void
   onResendEmailLink: () => void
   onVerifyCode: (code: string) => void
   onResendCode: () => void
-  demoLinkWaiting?: boolean
 }
 
 function CheckIcon() {
@@ -101,11 +99,9 @@ function MobileCode({ mobile, onVerifyCode, onResendCode }: MobileCodeProps) {
  */
 export function VerificationCard({
   payload,
-  onVerifyEmail,
   onResendEmailLink,
   onVerifyCode,
   onResendCode,
-  demoLinkWaiting = false,
 }: VerificationCardProps) {
   const { email, mobile } = payload
 
@@ -127,19 +123,9 @@ export function VerificationCard({
           <>
             <p className={shared.caption}>
               {email.masked
-                ? `We sent a verification link to ${email.masked}. Open it to confirm your email.`
-                : 'We sent you a verification link. Open it to confirm your email.'}
+                ? `We sent a verification link to ${email.masked}. Open it from your email to confirm it.`
+                : 'We sent you a verification link. Open it from your email to confirm it.'}
             </p>
-            {email.demo_token ? (
-              <button
-                type="button"
-                className={shared.secondaryBtn}
-                onClick={() => onVerifyEmail(email.demo_token ?? '')}
-                aria-busy={demoLinkWaiting}
-              >
-                {demoLinkWaiting ? 'Waiting…' : 'Open verification link (demo)'}
-              </button>
-            ) : null}
             <ResendButton
               label="Resend link"
               resendAvailableAt={email.resend_available_at}

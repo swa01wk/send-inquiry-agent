@@ -22,7 +22,8 @@ def _when_for_step(step: ScriptStep) -> dict[str, Any]:
     if step.kind == "message":
         return {"type": "message", "textEquals": step.text}
     if step.kind == "confirm_latest":
-        return {"type": "action", "action": "confirm_card"}
+        # 18 Nov B1 (M27): the card has a value button per row; one tap replays the turn.
+        return {"type": "action", "action": "confirm_field"}
     if step.kind == "verify_email":
         return {"type": "action", "action": "verify_email"}
     if step.kind == "submit_otp":
@@ -73,6 +74,13 @@ def export_scenario(scenario: ParityScenario) -> dict[str, Any]:
             continue
         when = _when_for_step(step)
         sse = [{"event": item["event"], "data": item["data"]} for item in turn_events]
+        if step.kind == "verify_email" and fe_turns:
+            # 18 Nov B1 (N7): the card has no link button; the link is opened from the email,
+            # so the FE replay shows its events with the turn before.
+            previous = fe_turns[-1]["events"]
+            previous[:] = [e for e in previous if e["event"] != "done"] + sse
+            accumulated.extend(turn_events)
+            continue
         fe_turns.append({"when": when, "events": sse})
         accumulated.extend(turn_events)
 

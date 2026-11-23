@@ -85,6 +85,10 @@ def _restore_policy(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPa
         overrides["lead_approval"] = {"enabled": False, "require_unit_assigned": False}
         overrides["auto_request_contacts_after_first_approval"] = True
     intake = get_policy().flow_v2_intake.model_dump(mode="json")
+    if request.node.get_closest_marker("category_options") is None:
+        # 18 Nov B1 (MS7): tests written before the option buttons save the sales category
+        # with `update_draft`; tests marked `category_options` run with the shipped switch.
+        intake = {**intake, "category_from_options_only": False}
     if request.node.get_closest_marker("intake_v2") is not None:
         # Flow v2 §3.3 (day F3): new self-service inquiries run the v2 public intake.
         overrides["flow_v2_intake"] = {**intake, "enabled": True}

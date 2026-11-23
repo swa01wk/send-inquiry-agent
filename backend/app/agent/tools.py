@@ -1196,11 +1196,12 @@ def suggest_replies(
 ) -> Command[Any]:
     """Suggest quick-reply chips for this turn."""
     cleaned = [opt.strip() for opt in options if opt.strip()]
-    if not 1 <= len(cleaned) <= 3:
+    # 1–4: the four unit types fit (18 Nov B1, N1).
+    if not 1 <= len(cleaned) <= 4:
         return _tool_result(
             runtime,
             draft=state["draft"],
-            content="Provide 1 to 3 reply options.",
+            content="Provide 1 to 4 reply options.",
         )
     too_long = [opt for opt in cleaned if len(opt) > 60]
     if too_long:

@@ -7,15 +7,11 @@ import { openEntryChat, runStep } from '../../support/steps'
  * NV02 (18 Nov demo, B1): the NV01 journey in Arabic. The option buttons carry the Arabic
  * labels (`label_ar`) and the card is right to left; the value button shows the Arabic brand.
  * Steps and script: docs/flow-v2/scenarios.json NV02, flow-v2-nv02.json.
- *
- * Switched off until MS7 adds ChoiceCard and the value buttons to the frontend.
  */
 const entry = scenario('NV02')
 const LIVE = Boolean(process.env.E2E_LIVE)
 
 test.describe(`NV02 ${entry.title} @demo-18nov @scripted @live`, () => {
-  test.fixme(true, 'MS7: ChoiceCard and confirm_fields value buttons')
-
   test('Arabic option and value buttons', async ({ page, browser, request }) => {
     test.setTimeout(LIVE ? 600_000 : 240_000)
     await clearDevOutbox(request)

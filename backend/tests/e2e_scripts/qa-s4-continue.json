@@ -31,16 +31,12 @@
     "content": "",
     "tool_calls": [
       {
-        "name": "update_draft",
+        "name": "show_category_options",
         "args": {
-          "fields": [
-            {
-              "key": "sales_category",
-              "value": "fnb_cafe",
-              "source": "derived",
-              "evidence": "we sell specialty coffee and pastries"
-            }
-          ]
+          "candidates": [
+            "fnb_cafe"
+          ],
+          "evidence": "we sell specialty coffee and pastries"
         },
         "id": "fv2-cat",
         "type": "tool_call"
@@ -48,7 +44,7 @@
     ]
   },
   {
-    "content": "Check the summary card and let me know if anything's off."
+    "content": "Tap the option that fits best."
   },
   {
     "content": "Looks good — here's what's next in the flow."

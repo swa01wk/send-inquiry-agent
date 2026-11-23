@@ -72,7 +72,10 @@
           "say": "we sell specialty coffee and pastries"
         },
         {
-          "confirm_card": "unit_and_category"
+          "choose_option": {
+            "key": "sales_category",
+            "value": "fnb_cafe"
+          }
         },
         {
           "say": "Sara Ali, Bean Street Trading Co., King Fahd Road Al Olaya Riyadh, brand Bean Street / بين ستريت, sara@beanstreet.example, 0501234567"
@@ -208,7 +211,10 @@
           "say": "we sell specialty coffee and pastries"
         },
         {
-          "confirm_card": "unit_and_category"
+          "choose_option": {
+            "key": "sales_category",
+            "value": "fnb_cafe"
+          }
         },
         {
           "say": "Sara Ali, Bean Street Trading Co., King Fahd Road Al Olaya Riyadh, brand Bean Street / بين ستريت, sara@beanstreet.example, 0501234567"
@@ -510,7 +516,10 @@
           "say": "we sell specialty coffee and pastries"
         },
         {
-          "confirm_card": "unit_and_category"
+          "choose_option": {
+            "key": "sales_category",
+            "value": "fnb_cafe"
+          }
         },
         {
           "say": "Sara Ali, Bean Street Trading Co., King Fahd Road Al Olaya Riyadh, brand Bean Street / بين ستريت, sara@beanstreet.example, 0501234567"
@@ -605,7 +614,10 @@
           "say": "we sell specialty coffee and pastries"
         },
         {
-          "confirm_card": "unit_and_category"
+          "choose_option": {
+            "key": "sales_category",
+            "value": "fnb_cafe"
+          }
         },
         {
           "say": "Layla Hassan, Oasis Coffee Co., Tahlia Street Jeddah, brand Oasis Coffee / واحة القهوة, layla.hassan@oasiscoffee.example, 0505550101"
@@ -700,7 +712,10 @@
           "say": "we sell specialty coffee and pastries"
         },
         {
-          "confirm_card": "unit_and_category"
+          "choose_option": {
+            "key": "sales_category",
+            "value": "fnb_cafe"
+          }
         },
         {
           "say": "Sara Ali, Bean Street Trading Co., King Fahd Road Al Olaya Riyadh, brand Bean Street / بين ستريت, sara@beanstreet.example, 0501234567"
@@ -776,7 +791,10 @@
           "say": "we sell specialty coffee and pastries"
         },
         {
-          "confirm_card": "unit_and_category"
+          "choose_option": {
+            "key": "sales_category",
+            "value": "fnb_cafe"
+          }
         },
         {
           "say": "Sara Ali, Bean Street Trading Co., King Fahd Road Al Olaya Riyadh, brand Bean Street / بين ستريت, sara@beanstreet.example, 0501234567"
@@ -904,7 +922,10 @@
           "say": "we sell clothes for the whole family"
         },
         {
-          "confirm_card": "unit_and_category"
+          "choose_option": {
+            "key": "sales_category",
+            "value": "fashion"
+          }
         },
         {
           "say": "Sara Ali, Bean Street Trading Co., King Fahd Road Al Olaya Riyadh, brand Bean Street / بين ستريت, sara@beanstreet.example, 0501234567"
@@ -1009,7 +1030,10 @@
           "say": "we sell specialty coffee and pastries"
         },
         {
-          "confirm_card": "unit_and_category"
+          "choose_option": {
+            "key": "sales_category",
+            "value": "fnb_cafe"
+          }
         },
         {
           "say": "Sara Ali, Bean Street Trading Co., King Fahd Road Al Olaya Riyadh, brand Bean Street / بين ستريت, sara@beanstreet.example, 0501234567"
@@ -1108,7 +1132,10 @@
           "say": "we sell specialty coffee and pastries"
         },
         {
-          "confirm_card": "unit_and_category"
+          "choose_option": {
+            "key": "sales_category",
+            "value": "fnb_cafe"
+          }
         },
         {
           "say": "Sara Ali, Bean Street Trading Co., King Fahd Road Al Olaya Riyadh, brand Bean Street / بين ستريت, sara@beanstreet.example, 0501234567"
@@ -1204,7 +1231,10 @@
           "say": "we sell specialty coffee and pastries"
         },
         {
-          "confirm_card": "unit_and_category"
+          "choose_option": {
+            "key": "sales_category",
+            "value": "fnb_cafe"
+          }
         },
         {
           "say": "can I just upload our profiles?"
@@ -1302,7 +1332,10 @@
           "say": "we sell specialty coffee and pastries"
         },
         {
-          "confirm_card": "unit_and_category"
+          "choose_option": {
+            "key": "sales_category",
+            "value": "fnb_cafe"
+          }
         },
         {
           "say": "Sara Ali, Bean Street Trading Co., King Fahd Road Al Olaya Riyadh, brand Bean Street / بين ستريت, sara@beanstreet.example, 0501234567"
@@ -1414,7 +1447,10 @@
           "say": "we sell specialty coffee and pastries"
         },
         {
-          "confirm_card": "unit_and_category"
+          "choose_option": {
+            "key": "sales_category",
+            "value": "fnb_cafe"
+          }
         },
         {
           "say": "Sara Ali, Bean Street Trading Co., King Fahd Road Al Olaya Riyadh, brand Bean Street / بين ستريت, sara@beanstreet.example, 0501234567"
@@ -1496,7 +1532,10 @@
           "say": "we sell specialty coffee and pastries"
         },
         {
-          "confirm_card": "unit_and_category"
+          "choose_option": {
+            "key": "sales_category",
+            "value": "fnb_cafe"
+          }
         },
         {
           "say": "how long does the review take?"
@@ -1575,7 +1614,10 @@
           "say": "we sell specialty coffee and pastries"
         },
         {
-          "confirm_card": "unit_and_category"
+          "choose_option": {
+            "key": "sales_category",
+            "value": "fnb_cafe"
+          }
         },
         {
           "say": "Sara Ali, Bean Street Trading Co., King Fahd Road Al Olaya Riyadh, brand Bean Street / بين ستريت, sara@beanstreet.example, 0501234567"
@@ -2818,7 +2860,10 @@
           "say": "we sell specialty coffee and pastries"
         },
         {
-          "confirm_card": "unit_and_category"
+          "choose_option": {
+            "key": "sales_category",
+            "value": "fnb_cafe"
+          }
         },
         {
           "say": "Sara Ali, Bean Street Trading Co., King Fahd Road Al Olaya Riyadh, brand Bean Street / بين ستريت, sara@beanstreet.example, 0501234567"

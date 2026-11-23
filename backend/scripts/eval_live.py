@@ -1805,7 +1805,7 @@ _V2_STORE_INTRO: list[dict[str, Any]] = [
     {"cr_skip_confirm": True},
     {"say": "a store"},
     {"say": "we sell specialty coffee and pastries"},
-    {"confirm_card": "unit_and_category"},
+    {"choose_option": {"key": "sales_category", "value": "fnb_cafe"}},
 ]
 _V2_SARA = (
     "Sara Ali, Bean Street Trading Co., King Fahd Road Al Olaya Riyadh, "
@@ -1921,7 +1921,7 @@ def conversation_scenarios() -> list[LiveScenario]:
                 {"cr_skip_confirm": True},
                 {"say": "متجر"},
                 {"say": "نبيع القهوة المختصة والمعجنات"},
-                {"confirm_card": "unit_and_category"},
+                {"choose_option": {"key": "sales_category", "value": "fnb_cafe"}},
                 {
                     "say": (
                         "سارة علي، شركة بين ستريت للتجارة، طريق الملك فهد، العليا، الرياض، "

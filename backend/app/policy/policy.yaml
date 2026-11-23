@@ -163,8 +163,9 @@ flow_v2_intake:
     basic_info_answer: "Sara Ali, Al Noor Trading, King Fahd Road, Riyadh, brand Bean Street, sara@alnoor.com, +966 55 123 4567"
   # Most option buttons on a choice card (sales category, ambiguous mall).
   max_choice_options: 4
-  # Sales category only from the option buttons (NG2). Turned on in MS7 with the prompt.
-  category_from_options_only: false
+  # Sales category only from the option buttons (NG2): `update_draft` refuses it on a v2
+  # inquiry. On since MS7 (the prompt calls `show_category_options`).
+  category_from_options_only: true
 
 # Flow v2 (§3.11, E2): when the reviewer assistant suggests asking for Forecasted Sales Data.
 # Either condition is enough, and the RSM always decides. Default from P3 until Cenomi says.
