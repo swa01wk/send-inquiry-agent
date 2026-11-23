@@ -15,7 +15,7 @@ def test_office_unit_type_is_in_master_data_for_flow_v2() -> None:
     assert (office.label, office.code) == ("Office", "OFF")
     assert "office" not in get_policy().product_lines
     with intake_scope("v2"):
-        assert get_policy().product_lines == ["store", "office"]
+        assert get_policy().product_lines == ["store", "office", "media", "specialty"]
     assert get_policy().review_routing["office"] == "rlm_store"
 
 

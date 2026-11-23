@@ -36,7 +36,6 @@ def settings(tmp_path: Path, request: pytest.FixtureRequest) -> Settings:
         "session_ttl_minutes": 120,
         "dev_tools": True,
         "token_secret": "parity-test-secret",
-        "email_link_demo": True,
         "state_backend": backend,
     }
     if backend == "postgres":

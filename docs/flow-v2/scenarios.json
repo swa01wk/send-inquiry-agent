@@ -2510,6 +2510,276 @@
         "basic_info": "The brand is Bean Street. The caller is Sara Ali, sara@beanstreet.example, mobile 0501234567.",
         "property_details": "Riyadh Mall A, 40 to 80 square metres, budget 150,000 to 250,000 riyals a year."
       }
+    },
+    {
+      "id": "NV01",
+      "title": "Media unit, category buttons, value buttons (18 Nov B1)",
+      "group": "before_submit",
+      "day": "B1",
+      "chart_paths": [
+        [
+          "start",
+          "raise_tp",
+          "chk_tp",
+          "exist",
+          "emv",
+          "succ1",
+          "complete1",
+          "ref1"
+        ]
+      ],
+      "not_path": [],
+      "decisions": [
+        "M27",
+        "M34"
+      ],
+      "changes": [
+        "N1",
+        "N2",
+        "N4",
+        "N5",
+        "N7"
+      ],
+      "contexts": [
+        "applicant"
+      ],
+      "seed": null,
+      "steps": [
+        {
+          "cr_skip": true
+        },
+        {
+          "cr_skip_confirm": true
+        },
+        {
+          "say": "a media space"
+        },
+        {
+          "say": "we do coffee and breakfast"
+        },
+        {
+          "choose_option": {
+            "key": "sales_category",
+            "value": "fnb_cafe"
+          }
+        },
+        {
+          "say": "Sara Ali, Bean Street Trading Co., King Fahd Road Al Olaya Riyadh, brand Bean Street, sara@beanstreet.example, 0501234567"
+        },
+        {
+          "confirm_field": "brand_name_ar"
+        },
+        {
+          "verify_email": true
+        },
+        {
+          "enter_code": "1234"
+        },
+        {
+          "say": "Riyadh Mall A, 30 to 50 sqm, up to 250k a year, 3 years"
+        },
+        {
+          "confirm_card": "property_details"
+        },
+        {
+          "accept_terms": true
+        },
+        {
+          "upload": {
+            "company_profile": "company_profile.pdf",
+            "brand_profile": "brand_profile.pdf"
+          }
+        },
+        {
+          "submit": true
+        }
+      ],
+      "expect": {
+        "inquiry_status": "first_review",
+        "draft": {
+          "cr_status": "skipped",
+          "unit_type": "media",
+          "sales_category": "fnb_cafe",
+          "malls": [
+            "riyadh-mall-a"
+          ]
+        },
+        "reference_pattern": "^GEO-MED-\\d{6}$",
+        "choice_options": {
+          "sales_category": [
+            "fnb_cafe",
+            "fnb_restaurant"
+          ]
+        },
+        "choice_lang": "en",
+        "sales_category_by_user": true,
+        "final_role": "rplm_media",
+        "outbox": [
+          "email_verification_link",
+          "sms_otp",
+          "submission_email",
+          "submission_sms",
+          "review_assigned"
+        ],
+        "cards": [
+          "company_registration",
+          "choice",
+          "verification",
+          "terms",
+          "document_upload",
+          "review",
+          "success"
+        ]
+      },
+      "layers": {
+        "agent_det": true,
+        "int": true,
+        "e2e_live": true,
+        "eval": true
+      },
+      "eval": {
+        "checks": [
+          "category_set_by_choice_only",
+          "choice_options_are_known_ids",
+          "no_card_level_confirm",
+          "no_third_person_team",
+          "never_claims_submitted_before_reference"
+        ]
+      }
+    },
+    {
+      "id": "NV02",
+      "title": "The NV01 journey in Arabic (18 Nov B1)",
+      "group": "before_submit",
+      "day": "B1",
+      "chart_paths": [
+        [
+          "start",
+          "raise_tp",
+          "chk_tp",
+          "exist",
+          "emv",
+          "succ1",
+          "complete1",
+          "ref1"
+        ]
+      ],
+      "not_path": [],
+      "decisions": [
+        "M27",
+        "M34"
+      ],
+      "changes": [
+        "N2",
+        "N4",
+        "N5"
+      ],
+      "contexts": [
+        "applicant"
+      ],
+      "seed": null,
+      "steps": [
+        {
+          "cr_skip": true
+        },
+        {
+          "cr_skip_confirm": true
+        },
+        {
+          "say": "مساحة إعلانية"
+        },
+        {
+          "say": "نقدم القهوة والفطور"
+        },
+        {
+          "choose_option": {
+            "key": "sales_category",
+            "value": "fnb_cafe"
+          }
+        },
+        {
+          "say": "سارة علي، شركة النور للتجارة، طريق الملك فهد، العليا، الرياض، العلامة Bean Street، sara@beanstreet.example، 0501234567"
+        },
+        {
+          "confirm_field": "brand_name_ar"
+        },
+        {
+          "verify_email": true
+        },
+        {
+          "enter_code": "1234"
+        },
+        {
+          "say": "الرياض مول أ، من 30 إلى 50 متر مربع، حتى 250 ألف سنويًا، 3 سنوات"
+        },
+        {
+          "confirm_card": "property_details"
+        },
+        {
+          "accept_terms": true
+        },
+        {
+          "upload": {
+            "company_profile": "company_profile.pdf",
+            "brand_profile": "brand_profile.pdf"
+          }
+        },
+        {
+          "submit": true
+        }
+      ],
+      "expect": {
+        "inquiry_status": "first_review",
+        "draft": {
+          "cr_status": "skipped",
+          "unit_type": "media",
+          "sales_category": "fnb_cafe",
+          "malls": [
+            "riyadh-mall-a"
+          ]
+        },
+        "reference_pattern": "^GEO-MED-\\d{6}$",
+        "choice_options": {
+          "sales_category": [
+            "fnb_cafe",
+            "fnb_restaurant"
+          ]
+        },
+        "choice_lang": "ar",
+        "sales_category_by_user": true,
+        "final_role": "rplm_media",
+        "outbox": [
+          "email_verification_link",
+          "sms_otp",
+          "submission_email",
+          "submission_sms",
+          "review_assigned"
+        ],
+        "cards": [
+          "company_registration",
+          "choice",
+          "verification",
+          "terms",
+          "document_upload",
+          "review",
+          "success"
+        ]
+      },
+      "layers": {
+        "agent_det": true,
+        "int": true,
+        "e2e_live": true,
+        "eval": true
+      },
+      "eval": {
+        "checks": [
+          "category_set_by_choice_only",
+          "choice_labels_in_chat_language",
+          "no_card_level_confirm",
+          "no_third_person_team",
+          "arabic_in_arabic"
+        ]
+      }
     }
   ],
   "demo": [

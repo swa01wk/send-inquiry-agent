@@ -22,5 +22,6 @@ class HandleState(BaseModel):
     contact_email: str | None = None
     origin_id: str | None = None
     signatory_answer: str | None = None
+    lang: str = "en"
     test_scenario: str | None = None
     script_step: int = 0

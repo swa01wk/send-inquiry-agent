@@ -247,9 +247,11 @@ test.describe('Scenario queries: before submit', () => {
       await t.row('3 1234', [{ enter_code: '1234' }], async () => {
         await expect(card()).toContainText(/Mobile verified|Email and mobile verified/)
       })
-      await t.row('4 Open verification link (demo)', [{ verify_email: true }], () =>
-        expectVerified(t.chat),
-      )
+      // 18 Nov B1 (N7): the link opens from the email (the outbox), never from the card.
+      await t.row('4 Open the email link', [{ verify_email: true }], async () => {
+        const checks = ((await t.chat.draft()).checks ?? {}) as Record<string, unknown>
+        expect(checks.email_verified).toBe(true)
+      })
       // Row 5 past the limit: five more sends in the hour (the test skips the 60 s waits).
       await t.row('5 Resend past 5 an hour', [{ resend_otp_times: 6 }])
     } finally {

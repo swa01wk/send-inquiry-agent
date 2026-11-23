@@ -105,6 +105,20 @@ def rules_in_force(policy: PolicyConfig, master: MasterData, *, assisted: bool =
             "CR, company or person is known to Cenomi except the one registered-customer line "
             "in the prompt."
         )
+        # 18 Nov B1 (§3.3): the example answers come from the policy, not the prompt.
+        examples = policy.flow_v2_intake.examples
+        lines.append(
+            "- Examples to quote, in the chat's language: what customers come for "
+            f"({examples.what_you_sell}); for an office, what the company does "
+            f"({examples.office_business}); a Basic Info answer, shown once "
+            f"({examples.basic_info_answer})."
+        )
+        if policy.flow_v2_intake.category_from_options_only:
+            lines.append(
+                "- Sales category: set only by the user's tap on the options from "
+                "`show_category_options` (or typing one option's name); never write it "
+                "with `update_draft`."
+            )
     elif assisted:
         lines.append(
             "- Existing tenants (the CR already has a Tenant Central account): the contact "

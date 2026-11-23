@@ -49,7 +49,8 @@ _CATALOGUE = json.loads(
         encoding="utf-8"
     )
 )
-_IDS = [f"S{n}" for n in range(1, 18)] + ["CC1", "CC2", "CC3"]
+# NV01… are the 18 Nov demo stories (docs/specs/demo-18nov-feedback.md §5), one day each.
+_IDS = [f"S{n}" for n in range(1, 18)] + ["CC1", "CC2", "CC3", "NV01", "NV02"]
 _ENTRIES = {e["id"]: e for e in _CATALOGUE["scenarios"] if e["id"] in _IDS}
 # The demo script's intake (docs/demo-script.md beat 1; `demo` in the catalogue file).
 _DEMO = {e["id"]: e for e in _CATALOGUE.get("demo", [])}

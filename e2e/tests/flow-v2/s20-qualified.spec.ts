@@ -44,8 +44,9 @@ test.describe('S20 Qualified @flow-v2 @scripted @live', () => {
     // reference (the submission email carries the session id).
     const caseMail = mail.filter((m) => m.inquiry_id === reference)
     expect(latestByTemplate(caseMail, 'azure_ad_invitation')).toBeTruthy()
+    // 18 Nov B1 (N13): the email no longer calls the applicant "qualified".
     expect(latestByTemplate(caseMail, 'first_level_approved')?.subject).toContain(
-      'Tenant Qualified',
+      'first review done',
     )
 
     const approvedMail = latestByTemplate(caseMail, 'first_level_approved')

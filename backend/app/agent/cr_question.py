@@ -36,6 +36,9 @@ FLOW_V2_INTAKE_SCRIPT_PREFIX = "flow-v2-s"
 # The demo script's intake (docs/demo-script.md beat 1, `demo` in docs/flow-v2/scenarios.json).
 FLOW_V2_DEMO_SCRIPT = "flow-v2-demo"
 _FLOW_V2_AFTER_SUBMIT = frozenset(f"flow-v2-s{n}" for n in range(18, 25))
+# The 18 Nov demo stories `flow-v2-nv01` … (docs/specs/demo-18nov-feedback.md §5) run the
+# flow v2 intake too.
+FLOW_V2_NOV18_SCRIPT_PREFIX = "flow-v2-nv"
 # Scenario-query variants with their own intake script (e2e/tests/scenario-queries).
 QA_FLOW_V2_INTAKE_SCRIPTS = frozenset({"qa-s4-continue"})
 
@@ -48,6 +51,8 @@ def flow_v2_intake_for(session: Any) -> bool:
     scenario = session.test_scenario
     if scenario:
         if scenario == FLOW_V2_DEMO_SCRIPT or scenario in QA_FLOW_V2_INTAKE_SCRIPTS:
+            return True
+        if scenario.startswith(FLOW_V2_NOV18_SCRIPT_PREFIX):
             return True
         return scenario.startswith(FLOW_V2_INTAKE_SCRIPT_PREFIX) and (
             scenario not in _FLOW_V2_AFTER_SUBMIT

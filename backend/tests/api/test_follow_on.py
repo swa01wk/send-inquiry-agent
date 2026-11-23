@@ -19,7 +19,7 @@ from tests.scenarios.helpers import (
 )
 
 FOLLOW_ON_STEPS = [
-    {"content": "Thank you, it's on its way to our leasing team."},
+    {"content": "Thank you, it's on its way to us for review."},
     {
         "content": "",
         "tool_calls": [

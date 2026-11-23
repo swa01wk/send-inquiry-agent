@@ -31,11 +31,13 @@ from app.agent.verification import send_contact_verification
 from app.api.cards import (
     VERIFICATION_CARD_ID,
     allocate_confirm_card_id,
+    build_choice_card,
     build_confirm_fields_card,
     build_document_upload_card,
     build_mall_picker_card,
     build_quick_replies_card,
     build_review_card,
+    category_options,
     confirm_card_id_for_keys,
 )
 from app.api.channel_cards import (
@@ -675,6 +677,17 @@ def update_draft(
         if (
             item.key == FieldKey.SALES_CATEGORY.value
             and draft.intake_flow == "v2"
+            and get_policy().flow_v2_intake.category_from_options_only
+        ):
+            # 18 Nov B1 (NG2): the category is the user's tap on the option buttons.
+            rejected.append(
+                f"{item.key}: use_show_category_options; call `show_category_options` with "
+                "candidates from what they said they sell and let them tap one"
+            )
+            continue
+        if (
+            item.key == FieldKey.SALES_CATEGORY.value
+            and draft.intake_flow == "v2"
             and item.source == "derived"
             and _category_from_brand_only(item, fields, draft, user_text)
         ):
@@ -958,6 +971,65 @@ def get_missing_fields(
     del runtime
     blockers = can_submit(state["draft"])
     return format_blockers(blockers)
+
+
+@tool
+def show_category_options(
+    candidates: Annotated[
+        list[str],
+        "Sales category ids or group ids (get_master_data), best first, from what the user "
+        "said they sell. A group id (e.g. fnb, retail) offers its categories.",
+    ],
+    evidence: Annotated[str, "The user's own words about what they sell, quoted."],
+    state: Annotated[AgentState, InjectedState],
+    runtime: ToolRuntime,
+) -> Command[Any]:
+    """Show the sales category as option buttons (18 Nov B1 §3.2). The user taps one; you
+    never write `sales_category` yourself. Pass ids from what they said they sell, never
+    from the brand name alone."""
+    rt = runtime_from_config(runtime.config)
+    draft = state["draft"]
+    probe = DraftFieldUpdate.model_construct(
+        key=FieldKey.SALES_CATEGORY.value, value="", source="derived", evidence=evidence
+    )
+    if _category_from_brand_only(probe, [], draft, _last_user_text(state)):
+        return _tool_result(
+            runtime,
+            draft=draft,
+            content=(
+                "category_needs_what_you_sell: the brand name alone doesn't say what they "
+                "sell. Ask what customers will come to them for (Rules in force examples)."
+            ),
+        )
+    limit = get_policy().flow_v2_intake.max_choice_options
+    ids = rt.master.expand_category_candidates(candidates, limit=limit)
+    if not ids:
+        return _tool_result(
+            runtime,
+            draft=draft,
+            content=(
+                "no_category_match: none of those is a sales category or group. Ask what "
+                "they sell, or offer the nearest group."
+            ),
+        )
+    card = build_choice_card(
+        FieldKey.SALES_CATEGORY.value, category_options(rt.master, ids), lang=rt.lang
+    )
+    cards_shown = list(state["cards_shown"])
+    if card.card_id not in cards_shown:
+        cards_shown.append(card.card_id)
+    _emit_card(card, runtime)
+    labels = ", ".join(rt.master.label_for("sales_categories", i) or i for i in ids)
+    return _tool_result(
+        runtime,
+        draft=draft,
+        content=(
+            f"Options shown: {labels}. Ask them to tap the one that fits, in one short line; "
+            "don't list the options again or save the category. `[ui_event] option_chosen` "
+            "tells you which they chose."
+        ),
+        cards_shown=cards_shown,
+    )
 
 
 @tool
@@ -1342,6 +1414,7 @@ TOOLS = [
     confirm_fields,
     get_missing_fields,
     show_mall_picker,
+    show_category_options,
     send_verification,
     request_documents,
     show_review,
@@ -1354,6 +1427,13 @@ TOOLS = [
 # Assisted mode (intake channels §3.2): no verification, documents or review for the
 # executive; the applicant does those from the application link.
 ASSISTED_EXCLUDED = frozenset(
-    {"send_verification", "request_documents", "show_review", "start_follow_on"}
+    {
+        "send_verification",
+        "request_documents",
+        "show_review",
+        "start_follow_on",
+        # 18 Nov B1: option buttons are for the applicant's own chat.
+        "show_category_options",
+    }
 )
 ASSISTED_TOOLS = [t for t in TOOLS if t.name not in ASSISTED_EXCLUDED] + [show_application_link]

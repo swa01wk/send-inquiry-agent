@@ -16,7 +16,12 @@ from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs, urlparse
 
 from app.agent.cr_question import contains_cr_number
-from app.agent.eval_checks import off_topic_offers_continue
+from app.agent.eval_checks import (
+    choice_option_problems,
+    confirm_rows_without_value_button,
+    off_topic_offers_continue,
+    speaks_of_leasing_team_in_third_person,
+)
 from app.agent.guard import claims_submission
 from app.agent.pending import RESUME_PENDING_REPLY
 from app.domain.draft_ops import new_inquiry_draft
@@ -58,7 +63,7 @@ _UNIT_RE = re.compile(
     r"\b(?:unit|shop|kiosk)\s*(?:no\.?|number|#)?\s*[A-Z]{0,3}-?\d{1,4}\b|\bOPP-\d+\b",
     re.IGNORECASE,
 )
-_GEO_REF_RE = re.compile(r"GEO-(?:STR|OFF)-\d{6}")
+_GEO_REF_RE = re.compile(r"GEO-(?:STR|OFF|MED|SPC)-\d{6}")
 
 
 def _load_intake_catalogue() -> list[dict[str, Any]]:
@@ -214,6 +219,14 @@ async def _run_stream(
     )
 
 
+def _awaits_confirmation(draft: Any, key: str) -> bool:
+    try:
+        field = draft.fields[FieldKey(key)]
+    except (ValueError, KeyError):
+        return False
+    return field.value not in (None, "", []) and not field.confirmed
+
+
 async def _confirm_section(ctx: _StepCtx, section: str) -> list[list[tuple[str, dict[str, Any]]]]:
     """Confirm what is still unconfirmed in a section, the way a person would.
 
@@ -232,9 +245,23 @@ async def _confirm_section(ctx: _StepCtx, section: str) -> list[list[tuple[str, 
     plan = confirm_plan(session, section)
     batches: list[list[tuple[str, dict[str, Any]]]] = []
     for cid in plan.card_ids:
-        batches.append(
-            await el._action(ctx.client, ctx.session_id, "confirm_card", {"card_id": cid})
-        )
+        # 18 Nov B1 (M27): one tap per row's value button (`confirm_field`); the taps before
+        # the card's last open row are quiet, the last runs the turn, as "Looks right" did.
+        open_keys = [
+            key
+            for key in session.confirm_card_keys.get(cid, [])
+            if _awaits_confirmation(session.draft, key)
+        ]
+        if not open_keys:
+            batches.append(
+                await el._action(ctx.client, ctx.session_id, "confirm_card", {"card_id": cid})
+            )
+        for key in open_keys:
+            batches.append(
+                await el._action(
+                    ctx.client, ctx.session_id, "confirm_field", {"card_id": cid, "key": key}
+                )
+            )
     if plan.say_yes:
         batches.append(await el._message(ctx.client, ctx.session_id, "Yes, that's all correct."))
     return batches
@@ -329,6 +356,60 @@ async def _execute_step(
             violations_out=violations,
         )
         return "confirm_card"
+    if isinstance(step.get("choose_option"), dict):
+        # 18 Nov B1 (§3.2): tap an option on the open `choice` card for that key.
+        choice = dict(step["choose_option"])
+        key, value = str(choice["key"]), str(choice["value"])
+        session = await ctx.app.state.session_store.get(ctx.session_id)
+        card_id = next(
+            (
+                cid
+                for cid, card in (session.cards.items() if session else [])
+                if card.get("card_type") == "choice"
+                and (card.get("payload") or {}).get("key") == key
+                and (card.get("payload") or {}).get("chosen") is None
+            ),
+            None,
+        )
+        if card_id is None:
+            raise RuntimeError(f"choose_option: no open choice card for {key}")
+        events = await el._action(
+            ctx.client,
+            ctx.session_id,
+            "choose_option",
+            {"card_id": card_id, "key": key, "value": value},
+        )
+        await _run_stream(
+            ctx,
+            label=f"[choose {key}={value}]",
+            stream_batches=[events],
+            scenario=scenario,
+            outbox_messages=outbox,
+            turn_index=turn_index,
+            violations_out=violations,
+        )
+        return "choose_option"
+    if isinstance(step.get("confirm_field"), str):
+        # 18 Nov B1 (M27): tap one row's value button on the newest card that shows it.
+        key = str(step["confirm_field"])
+        session = await ctx.app.state.session_store.get(ctx.session_id)
+        shown = list(session.confirm_card_keys.items()) if session else []
+        card_id = next((cid for cid, keys in reversed(shown) if key in keys), None)
+        if card_id is None:
+            raise RuntimeError(f"confirm_field: no confirm card shows {key}")
+        events = await el._action(
+            ctx.client, ctx.session_id, "confirm_field", {"card_id": card_id, "key": key}
+        )
+        await _run_stream(
+            ctx,
+            label=f"[confirm {key}]",
+            stream_batches=[events],
+            scenario=scenario,
+            outbox_messages=outbox,
+            turn_index=turn_index,
+            violations_out=violations,
+        )
+        return "confirm_field"
     if step.get("verify_email") is True:
         session = await ctx.app.state.session_store.get(ctx.session_id)
         if session is None:
@@ -336,17 +417,11 @@ async def _execute_step(
         if session.draft.email_verified:
             return None
         token: str | None = None
-        # This session's newest verification card first, then its email in the outbox.
-        for _evt, data in reversed(_all_events(ctx.turns)):
-            if data.get("card_type") != "verification":
-                continue
-            email = (data.get("payload") or {}).get("email") or {}
-            token = email.get("demo_token")
-            if token:
-                break
+        # The link is never on the card (18 Nov B1, N7): open it from the outbox.
         address = str(session.draft.fields[FieldKey.EMAIL].value or "")
         if token is None and address:
-            for msg in reversed(ctx.app.state.services.notifications.messages(to=address)):
+            # Newest first: a resend makes the earlier link unusable.
+            for msg in ctx.app.state.services.notifications.messages(to=address):
                 if msg.get("template") != "email_verification_link":
                     continue
                 for verify_link in msg.get("links") or []:
@@ -935,6 +1010,26 @@ def _expect_checks(
             e["type"] == "tenant_prefill" for i in ids for e in app.state.services.audit.events(i)
         )
         checks.append(("nothing prefilled from the tenant record", not prefilled))
+    # 18 Nov B1 (NG1, NG2): option buttons, the user's own category, the final reviewer.
+    for key, values in (expect.get("choice_options") or {}).items():
+        cards = [c for c in _cards(turns, "choice") if (c.get("payload") or {}).get("key") == key]
+        shown = [o.get("value") for o in ((cards[0].get("payload") or {}).get("options") or [])]
+        checks.append(
+            (f"choice {key} offered {values} (got {shown})", bool(cards) and shown == values)
+        )
+    if lang := expect.get("choice_lang"):
+        langs = {(c.get("payload") or {}).get("lang") for c in _cards(turns, "choice")}
+        checks.append((f"choice cards in {lang} (got {sorted(map(str, langs))})", langs == {lang}))
+    if expect.get("sales_category_by_user"):
+        field = draft.fields[FieldKey.SALES_CATEGORY]
+        checks.append(
+            ("sales_category tapped (source user)", field.source == Source.USER and field.confirmed)
+        )
+    if (role := expect.get("final_role")) and draft.reference:
+        case = app.state.services.cases.get(draft.reference)
+        queue = case.review_queue if case else None
+        got = queue.role_for("final") if queue else None
+        checks.append((f"final level {role} (got {got})", got == role))
     for key in expect.get("basic_info_changed") or []:
         value = draft.fields[FieldKey(key)]
         checks.append((f"applicant changed {key}", value.source == Source.USER))
@@ -1499,7 +1594,75 @@ def _mall_in_master(
     return [("malls in master data", all(m in known for m in malls))]
 
 
+# ---- 18 Nov demo B1 checks (docs/specs/demo-18nov-feedback.md §6) ----------------------
+
+
+def _payloads(turns: list[TurnResult], card_type: str) -> list[dict[str, Any]]:
+    return [dict(c.get("payload") or {}) for c in _cards(turns, card_type)]
+
+
+def check_no_third_person_team(
+    _s: Any, turns: list[TurnResult], _a: Any, _e: dict[str, Any] | None = None
+) -> list[tuple[str, bool]]:
+    said = [t.assistant for t in turns if speaks_of_leasing_team_in_third_person(t.assistant)]
+    return [(f"speaks as the leasing team ({len(said)} third-person replies)", not said)]
+
+
+def check_choice_options_known(
+    _s: Any, turns: list[TurnResult], _a: Any, _e: dict[str, Any] | None = None
+) -> list[tuple[str, bool]]:
+    from app.policy.config import get_policy
+
+    known = {c.id for c in load_master_data().sales_categories}
+    payloads = _payloads(turns, "choice")
+    limit = get_policy().flow_v2_intake.max_choice_options
+    problems = choice_option_problems(payloads, known, limit=limit)
+    return [
+        ("category options shown", bool(payloads)),
+        (f"options are known ids ({problems or 'ok'})", not problems),
+    ]
+
+
+def check_category_by_choice_only(
+    session: Any, turns: list[TurnResult], _a: Any, _e: dict[str, Any] | None = None
+) -> list[tuple[str, bool]]:
+    field = session.draft.fields[FieldKey.SALES_CATEGORY] if session else None
+    rows = [
+        r
+        for p in _payloads(turns, "confirm_fields")
+        for r in p.get("fields") or []
+        if isinstance(r, dict) and r.get("key") == FieldKey.SALES_CATEGORY.value
+    ]
+    return [
+        (
+            "sales category tapped (source user)",
+            bool(field and field.value and field.source == Source.USER and field.confirmed),
+        ),
+        ("no sales category confirm row", not rows),
+    ]
+
+
+def check_no_card_level_confirm(
+    _s: Any, turns: list[TurnResult], _a: Any, _e: dict[str, Any] | None = None
+) -> list[tuple[str, bool]]:
+    missing = confirm_rows_without_value_button(_payloads(turns, "confirm_fields"))
+    return [(f"every open row has a value button ({missing or 'ok'})", not missing)]
+
+
+def check_choice_labels_in_chat_language(
+    session: Any, turns: list[TurnResult], _a: Any, _e: dict[str, Any] | None = None
+) -> list[tuple[str, bool]]:
+    lang = session.lang if session else "en"
+    langs = sorted({str(p.get("lang")) for p in _payloads(turns, "choice")})
+    return [(f"choice labels in {lang} (got {langs})", bool(langs) and langs == [lang])]
+
+
 _CHECKS: dict[str, Callable[..., list[tuple[str, bool]]]] = {
+    "no_third_person_team": check_no_third_person_team,
+    "choice_options_are_known_ids": check_choice_options_known,
+    "category_set_by_choice_only": check_category_by_choice_only,
+    "no_card_level_confirm": check_no_card_level_confirm,
+    "choice_labels_in_chat_language": check_choice_labels_in_chat_language,
     "asks_sections_in_order": _section_order_ok,
     "one_section_per_turn": lambda s, t, a, e: [("one_section_per_turn", True)],
     "no_field_asked_twice": _unnecessary_zero,

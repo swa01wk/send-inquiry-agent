@@ -94,6 +94,9 @@ class Session:
     # Case mode, contacts request (demo feedback §3.5): "yes" | "no" to "Are you the
     # authorised signatory?", or None until answered.
     signatory_answer: str | None = None
+    # The chat's language, "en" or "ar", set by code from what the user types (18 Nov B1
+    # §3.2): `choice` cards show their labels in it.
+    lang: str = "en"
 
     @property
     def assisted(self) -> bool:
@@ -145,6 +148,7 @@ class Session:
             "contact_email": self.contact_email,
             "origin_id": self.origin_id,
             "signatory_answer": self.signatory_answer,
+            "lang": self.lang,
         }
 
     @classmethod
@@ -182,6 +186,7 @@ class Session:
             contact_email=raw.get("contact_email"),
             origin_id=raw.get("origin_id"),
             signatory_answer=raw.get("signatory_answer"),
+            lang=str(raw.get("lang", "en")),
         )
 
 

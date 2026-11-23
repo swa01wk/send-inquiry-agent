@@ -107,3 +107,17 @@ def test_no_retired_wording(path: Path) -> None:
     text = path.read_text(encoding="utf-8")
     found = [phrase for phrase in RETIRED if phrase.lower() in text.lower()]
     assert not found, f"{path.relative_to(REPO)} still says {found}"
+
+
+def test_first_approval_email_never_says_qualified() -> None:
+    # 18 Nov B1 (N13, NG17): the first review is done; the final reviewer is named next.
+    path = (
+        Path(__file__).resolve().parents[2]
+        / "app"
+        / "notifications"
+        / "templates"
+        / "first_level_approved.txt"
+    )
+    text = path.read_text(encoding="utf-8")
+    assert "qualified" not in text.lower()
+    assert "$final_reviewer" in text

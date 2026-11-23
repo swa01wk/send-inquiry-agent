@@ -1,13 +1,13 @@
 kind: information
 channel: email
-subject: Your inquiry $reference: Tenant Qualified
+subject: Your inquiry $reference: first review done
 ---
 Hello $first_name,
 
-Good news: your inquiry for $brand at $mall passed the Leasing Admin's review. You are now
-a qualified tenant (Tenant Qualified), and the Regional Sales Manager is reviewing your lead.
+Good news: your inquiry for $brand at $mall passed the Leasing Admin's review. The
+$final_reviewer is reviewing it next.
 
-You'll receive an invitation to Tenant Central. The team may also ask for more company
+You'll receive an invitation to Tenant Central. We may also ask for more company
 contacts or Forecasted Sales Data; you'll get a link for each.
 
 Follow your inquiry: $case_url

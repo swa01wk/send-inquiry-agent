@@ -1,0 +1,187 @@
+[
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "suggest_replies",
+        "args": {
+          "options": [
+            "متجر",
+            "مكتب",
+            "مساحة إعلانية",
+            "وحدة متخصصة"
+          ]
+        },
+        "id": "nv-unit-offer",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "شكرًا. هل الطلب لمتجر أم مكتب أم مساحة إعلانية أم وحدة متخصصة؟"
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "unit_type",
+              "value": "media",
+              "source": "user"
+            }
+          ]
+        },
+        "id": "nv-ut",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "مساحة إعلانية، تمام. ماذا سيأتي العملاء إليكم من أجله؟"
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "show_category_options",
+        "args": {
+          "candidates": [
+            "fnb"
+          ],
+          "evidence": "نقدم القهوة والفطور"
+        },
+        "id": "nv-cat",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "أيّها الأنسب؟ اختر واحدًا."
+  },
+  {
+    "content": "شكرًا. أخبرني عنك وعن شركتك: الاسم، اسم الشركة وعنوانها، اسم العلامة، البريد الإلكتروني والجوال."
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "first_name",
+              "value": "سارة",
+              "source": "user"
+            },
+            {
+              "key": "last_name",
+              "value": "علي",
+              "source": "user"
+            },
+            {
+              "key": "email",
+              "value": "sara@beanstreet.example",
+              "source": "user"
+            },
+            {
+              "key": "contact_number",
+              "value": "0501234567",
+              "source": "user"
+            },
+            {
+              "key": "company_name",
+              "value": "شركة النور للتجارة",
+              "source": "user"
+            },
+            {
+              "key": "company_address",
+              "value": "طريق الملك فهد، العليا، الرياض",
+              "source": "user"
+            },
+            {
+              "key": "brand_name_en",
+              "value": "Bean Street",
+              "source": "user"
+            },
+            {
+              "key": "brand_name_ar",
+              "value": "بين ستريت",
+              "source": "derived",
+              "evidence": "العلامة Bean Street"
+            }
+          ]
+        },
+        "id": "nv-contact",
+        "type": "tool_call"
+      },
+      {
+        "name": "send_verification",
+        "args": {},
+        "id": "nv-v",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "شكرًا. أرسلنا رابطًا إلى بريدك ورمزًا إلى جوالك. يرجى التأكد من اسم العلامة بالعربية على البطاقة."
+  },
+  {
+    "content": "شكرًا. أدخل الرمز من الرسالة النصية عندما يصلك."
+  },
+  {
+    "content": "تم التحقق. أي مول يناسبكم، وما المساحة والميزانية ومدة الإيجار؟"
+  },
+  {
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "update_draft",
+        "args": {
+          "fields": [
+            {
+              "key": "malls",
+              "value": [
+                "riyadh-mall-a"
+              ],
+              "source": "user"
+            },
+            {
+              "key": "area_min",
+              "value": 30,
+              "source": "user"
+            },
+            {
+              "key": "area_max",
+              "value": 50,
+              "source": "user"
+            },
+            {
+              "key": "rent_max",
+              "value": 250000,
+              "source": "user"
+            },
+            {
+              "key": "lease_period",
+              "value": "3y",
+              "source": "user"
+            }
+          ]
+        },
+        "id": "nv-prop",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "content": "تفاصيل العقار على البطاقة. أكّدها عندما تكون جاهزًا."
+  },
+  {
+    "content": "شكرًا. ارفع ملف الشركة وملف العلامة على البطاقة أدناه."
+  },
+  {
+    "content": "شكرًا، وصلت المستندات. راجع بطاقة المراجعة وأرسل الطلب عندما تكون جاهزًا."
+  }
+]

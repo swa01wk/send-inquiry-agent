@@ -21,6 +21,7 @@ CONTEXT = {
     "reviewer_name": "Faisal Al Qahtani",
     "console_url": "http://localhost:5173/review/cases/GEO-STR-123456",
     "case_url": "http://localhost:5173/inquiry/case?t=c",
+    "final_reviewer": "Regional Sales Manager",
     "documents": "- Brand Profile",
     "remarks": "The brand profile is from 2019.",
     "after_rejection": "You can raise a new inquiry at any time.",

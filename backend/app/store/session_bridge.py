@@ -50,6 +50,7 @@ def session_from_parts(
         contact_email=handle.contact_email,
         origin_id=handle.origin_id,
         signatory_answer=handle.signatory_answer,
+        lang=handle.lang,
         _version=inquiry.version,
     )
 
@@ -102,6 +103,7 @@ def handle_from_session(session: Session) -> HandleState:
         contact_email=session.contact_email,
         origin_id=session.origin_id,
         signatory_answer=session.signatory_answer,
+        lang=session.lang,
         test_scenario=session.test_scenario,
         script_step=session.script_step,
     )

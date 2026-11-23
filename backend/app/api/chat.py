@@ -12,11 +12,12 @@ from fastapi import APIRouter, Body, Depends, Request
 from langchain_core.messages import HumanMessage
 from sse_starlette.sse import EventSourceResponse
 
-from app.agent.actions import customer_check_result, handle_ui_action
+from app.agent.actions import customer_check_result, handle_ui_action, typed_option_choice
 from app.agent.cr_check import check_existing_customer
 from app.agent.cr_question import first_cr_number, scrub_cr_numbers
 from app.agent.events import SseEvent, run_turn
 from app.agent.form_mode import form_mode_cards
+from app.agent.lang import message_lang
 from app.agent.redirect import stream_redirect_reply
 from app.agent.router import Intent, record_routing_audit, route_message
 from app.agent.runtime import AgentRuntime
@@ -83,11 +84,15 @@ async def chat_stream(
     else:
         graph = request.app.state.graph
 
+    if isinstance(body, ChatRequestMessage):
+        # 18 Nov B1 (§3.2): the chat's language comes from what the user types.
+        session.lang = message_lang(body.text, session.lang)
     runtime = AgentRuntime(
         services=services,
         master=load_master_data(),
         settings=settings,
         repo=store.inquiry_repo,
+        lang=session.lang,
     )
 
     audit = services.audit
@@ -113,14 +118,41 @@ async def chat_stream(
                 check = check_existing_customer(session, runtime, number)
                 action_events = customer_check_result(session, runtime, check).events
                 turn_user_message = HumanMessage(content=f"{user_text}\n\n{check.note}")
+        option_typed = False
+        if session.mode != "case" and not session.assisted:
+            # 18 Nov B1 (§3.2): typing exactly one option's name is the same as tapping it.
+            typed_option = typed_option_choice(session, user_text)
+            if typed_option is not None:
+                card_id, key, value = typed_option
+                try:
+                    chosen = await handle_ui_action(
+                        "choose_option",
+                        {"card_id": card_id, "key": key, "value": value},
+                        session,
+                        runtime,
+                    )
+                except Exception:
+                    await store.end_turn(session_id, lease_id)
+                    raise
+                action_events = [*action_events, *chosen.events]
+                turn_user_message = HumanMessage(
+                    content=f"{turn_user_message.content}\n\n{chosen.note.content}"
+                )
+                option_typed = True
         audit.record(
             session.id,
             "user_message",
             actor="user",
             payload={"chars": len(user_text), "message_id": user_message_id},
         )
-        # Staff (assisted) and case chats skip the intent router: they're on task.
-        if not session.form_mode and session.mode != "case" and not session.assisted:
+        # Staff (assisted) and case chats skip the intent router: they're on task. A typed
+        # option is an answer to the card, not a new intent.
+        if (
+            not session.form_mode
+            and session.mode != "case"
+            and not session.assisted
+            and not option_typed
+        ):
             route_decision = await route_message(user_text, session, runtime)
             record_routing_audit(
                 runtime,

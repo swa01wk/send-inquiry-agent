@@ -100,6 +100,16 @@ SALES_CATEGORIES: list[tuple[str, str, str]] = [
     ("services", "Services", "خدمات"),
 ]
 
+# 18 Nov B1 (§3.2): a broad answer ("clothes", "food") offers a group's categories as
+# buttons. Seed groups until Cenomi shares the app's list (G6): a data change only.
+SALES_CATEGORY_GROUPS: list[tuple[str, str, str, list[str]]] = [
+    ("fnb", "Food & Beverage", "أغذية ومشروبات", ["fnb_cafe", "fnb_restaurant"]),
+    ("retail", "Retail", "تجزئة", ["fashion", "electronics"]),
+    ("beauty", "Health & Beauty", "صحة وجمال", ["beauty"]),
+    ("entertainment", "Entertainment", "ترفيه", ["entertainment"]),
+    ("services", "Services", "خدمات", ["services"]),
+]
+
 LEASE_PERIODS: list[tuple[str, str, str]] = [
     ("1y", "1 year", "سنة واحدة"),
     ("2y", "2 years", "سنتان"),
@@ -159,6 +169,10 @@ def build() -> dict[str, Any]:
         ],
         "sales_categories": [
             {"id": i, "label": en, "label_ar": ar} for i, en, ar in SALES_CATEGORIES
+        ],
+        "sales_category_groups": [
+            {"id": i, "label": en, "label_ar": ar, "categories": list(categories)}
+            for i, en, ar, categories in SALES_CATEGORY_GROUPS
         ],
         "cities": [
             {"id": i, "label": en, "label_ar": ar, "region": region} for i, en, ar, region in CITIES

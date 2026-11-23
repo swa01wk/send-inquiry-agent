@@ -37,6 +37,8 @@ CardType = Literal[
     "inform_tenant",
     # Chart S15: same CR and mall as an open inquiry (duplicate_policy)
     "duplicate_notice",
+    # 18 Nov B1 (§3.2): a value picked from a list (sales category; later malls)
+    "choice",
 ]
 
 StepState = Literal["done", "current", "upcoming"]
@@ -74,12 +76,33 @@ class ConfirmFieldRow(BaseModel):
     confirmed: bool
     # Derived values: the user's words the value came from ("from: '…'", L3 §3.9).
     evidence: str | None = None
+    # 18 Nov B1 (M27): the value as its button shows it ("Use Sara Ali"); a tap sends
+    # `confirm_field` for this key only. None when there's no value to confirm.
+    value_label: str | None = None
 
 
 class ConfirmFieldsPayload(BaseModel):
     title: str
     fields: list[ConfirmFieldRow]
+    # State only: every row is confirmed. There is no card-level confirm (18 Nov B1, NG3).
     all_confirmed: bool
+
+
+class ChoiceOption(BaseModel):
+    value: str
+    label: str
+    label_ar: str | None = None
+
+
+class ChoicePayload(BaseModel):
+    """18 Nov B1 (§3.2): one card for a value picked from a list. A tap sends
+    `choose_option {card_id, key, value}`; `chosen` is set once picked."""
+
+    key: str
+    prompt: str
+    options: list[ChoiceOption]
+    lang: Literal["en", "ar"] = "en"
+    chosen: str | None = None
 
 
 class BasicInfoRow(BaseModel):
@@ -228,8 +251,6 @@ class VerificationEmail(BaseModel):
     masked: str | None
     link_sent: bool
     verified: bool
-    # Demo only (EMAIL_LINK_DEMO): stands in for clicking the emailed link.
-    demo_token: str | None = None
     # ISO time when Resend is allowed again (cooldown / hourly cap); None = now.
     resend_available_at: str | None = None
 
