@@ -29,7 +29,8 @@ services:
     environment:
       STATE_BACKEND: postgres
       DATABASE_URL: postgresql+psycopg://inquiry:${POSTGRES_PASSWORD}@postgres:5432/inquiry
-      AGENT_MODE: openai
+      # openai on the VM; CI sets AGENT_MODE=scripted in its .env to run without a model key.
+      AGENT_MODE: ${AGENT_MODE:-openai}
       INTEGRATIONS: mock
       # The same screens as `make demo` (docker-compose.demo.yml), behind the password.
       DEV_TOOLS: 'true'
@@ -50,6 +51,12 @@ services:
         condition: service_healthy
     expose:
       - '8000'
+    healthcheck:
+      test: ['CMD', 'python', '-c', "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
 
   web:
     build: ../../frontend
@@ -66,7 +73,8 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 volumes:
   postgres_data:

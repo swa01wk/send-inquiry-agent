@@ -111,34 +111,40 @@ jobs:
       - name: Tests (Vitest)
         run: make test-fe
 
-  # The hosted POC's production images (deploy/hosted, MS5) must keep building.
-  images:
+  # The hosted POC (deploy/hosted, MS5), built and run as on the VM, then smoke-tested:
+  # the password covers everything, the app and /api are served, a chat turn streams
+  # through Caddy, and a session survives a backend restart. Scripted model: no key needed.
+  hosted:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      COMPOSE: docker compose -f deploy/hosted/docker-compose.yml
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - name: Backend image
-        uses: docker/build-push-action@v6
-        with:
-          context: backend
-          push: false
-          cache-from: type=gha,scope=backend
-          cache-to: type=gha,mode=max,scope=backend
-      - name: Frontend image (build + Caddy)
-        uses: docker/build-push-action@v6
-        with:
-          context: frontend
-          push: false
-          cache-from: type=gha,scope=frontend
-          cache-to: type=gha,mode=max,scope=frontend
-      - name: Caddyfile is valid
+      - name: Write the CI .env
         run: |
-          hash=$(docker run --rm caddy:2.8-alpine caddy hash-password --plaintext ci)
-          docker run --rm -v "$PWD/deploy/hosted/Caddyfile:/etc/caddy/Caddyfile:ro" \
-            -e DOMAIN=example.test -e BASIC_AUTH_USER=ci -e BASIC_AUTH_HASH="$hash" \
-            caddy:2.8-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
-      - name: Compose file resolves
-        run: |
-          cp deploy/hosted/.env.example deploy/hosted/.env
-          sed -i "s/^DOMAIN=.*/DOMAIN=example.test/; s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=ci/; s/^BASIC_AUTH_HASH=.*/BASIC_AUTH_HASH='x'/" deploy/hosted/.env
-          docker compose -f deploy/hosted/docker-compose.yml config --quiet
+          hash=$(docker run --rm caddy:2.8-alpine caddy hash-password --plaintext ci-smoke)
+          {
+            echo "DOMAIN=localhost"
+            echo "BASIC_AUTH_USER=ci"
+            echo "BASIC_AUTH_HASH='${hash}'"
+            echo "POSTGRES_PASSWORD=ci-postgres"
+            echo "RESUME_TOKEN_SECRET=ci-token-secret"
+            echo "AGENT_MODE=scripted"
+            echo "OTP_MOCK_CODE=1234"
+          } > deploy/hosted/.env
+          $COMPOSE config --quiet
+      - name: Build and start the stack
+        run: $COMPOSE up -d --build --wait --wait-timeout 300
+      - name: Smoke test
+        run: python3 deploy/hosted/smoke.py https://localhost ci ci-smoke --save-session /tmp/session-id
+      - name: Restart the backend
+        run: $COMPOSE restart backend && $COMPOSE up -d --wait --wait-timeout 120
+      - name: The session survives the restart
+        run: python3 deploy/hosted/smoke.py https://localhost ci ci-smoke --check-session /tmp/session-id
+      - name: Logs
+        if: failure()
+        run: $COMPOSE logs --no-color --tail=200
+      - name: Stop
+        if: always()
+        run: $COMPOSE down -v

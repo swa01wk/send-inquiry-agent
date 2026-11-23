@@ -1,7 +1,9 @@
 name: e2e
 
-# Playwright in CI, on demand only (docs/specs/testing-strategy.md §6). Every PR runs these
-# suites locally instead (installing browsers in CI took most of each run).
+# Playwright in CI (docs/specs/testing-strategy.md §6).
+# Every pull request to main runs the INT layer (@scripted, which includes @demo-18nov) and the
+# FE layer (@fe) here, so nobody has to run them locally first. Browsers are cached between runs.
+# The suites below can also be started by hand; the live ones (model cost) only run that way.
 #   Run workflow → suite "scripted": the INT layer (@scripted), desktop Chrome + mobile WebKit.
 #   Run workflow → suite "demo_18nov": the 18 Nov demo stories NV01–NV11 alone (`make e2e-nov18`,
 #     @demo-18nov), desktop Chrome + mobile WebKit; passes with no tests until they land.
@@ -21,6 +23,15 @@ name: e2e
 # Nightly live runs are opt-in: set the repository variable NIGHTLY_LIVE=true (model cost).
 
 on:
+  pull_request:
+    branches: [main]
+    # Docs-only changes don't need a browser run (the catalogue, docs/flow-v2, still does).
+    paths-ignore:
+      - 'prompts/**'
+      - 'docs/specs/**'
+      - 'docs/testing/**'
+      - 'docs/*.md'
+      - '**/README.md'
   workflow_dispatch:
     inputs:
       suite:
@@ -69,10 +80,16 @@ on:
   schedule:
     - cron: '30 21 * * *' # 03:00 IST / 00:30 Asia/Riyadh
 
+# A newer push to the same PR cancels the run still going.
+concurrency:
+  group: e2e-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   playwright-fe:
-    if: github.event_name == 'workflow_dispatch' && inputs.suite == 'fe'
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.suite == 'fe')
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: write # only used to commit screenshot baselines (update_snapshots)
     steps:
@@ -84,6 +101,11 @@ jobs:
           cache-dependency-path: |
             frontend/package-lock.json
             e2e/package-lock.json
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
       - name: Install deps
         run: |
           (cd frontend && npm ci)
@@ -216,8 +238,9 @@ jobs:
             e2e/test-results/
 
   playwright-scripted:
-    if: github.event_name == 'workflow_dispatch' && inputs.suite == 'scripted'
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.suite == 'scripted')
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -228,6 +251,11 @@ jobs:
           cache-dependency-path: |
             frontend/package-lock.json
             e2e/package-lock.json
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
       - name: Install deps
         run: |
           (cd backend && uv sync)
