@@ -5,7 +5,7 @@
 .PHONY: dev demo dev-backend dev-frontend \
 	check check-be check-fe lint \
 	test test-be test-fe test-agent golden \
-	e2e e2e-fe e2e-int e2e-qa e2e-qa-live e2e-demo e2e-demo-headed e2e-demo-step e2e-demo-stack e2e-live e2e-report eval-live \
+	e2e e2e-fe e2e-int e2e-nov18 e2e-qa e2e-qa-live e2e-demo e2e-demo-headed e2e-demo-step e2e-demo-stack e2e-live e2e-report eval-live \
 	ci ci-remote gate
 
 SLOW_MO ?= 800
@@ -76,6 +76,12 @@ e2e-fe:
 # INT: Playwright, real frontend + backend, scripted agent (@scripted suites).
 e2e-int:
 	$(E2E_DEPS) && CI=1 npm run test:scripted -- $(ARGS)
+
+# 18 Nov demo stories NV01–NV11 (@demo-18nov; docs/specs/demo-18nov-feedback.md §5). They
+# are also @scripted, so e2e-int runs them too; this runs them alone. Passes with no tests
+# until the first stories land (MS6).
+e2e-nov18:
+	$(E2E_DEPS) && CI=1 npm run test:demo-18nov -- $(ARGS)
 
 # Full demo-script rehearsal (@demo; desktop only; not part of e2e-int).
 e2e-demo:
