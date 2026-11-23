@@ -142,3 +142,17 @@ def test_no_match_and_brand_only_show_no_card(base_state, agent_runtime, stream_
     )
     assert brand_only.startswith("category_needs_what_you_sell")
     assert cards == []
+
+
+def test_the_unit_type_alone_shows_no_card(base_state, agent_runtime, stream_events) -> None:
+    # Live eval, 24 Nov (MS7): "a store" was passed as what they sell.
+    content, cards = _call(
+        base_state,
+        agent_runtime,
+        stream_events,
+        "a store",
+        candidates=["fnb"],
+        evidence="a store",
+    )
+    assert content.startswith("category_needs_what_you_sell")
+    assert cards == []

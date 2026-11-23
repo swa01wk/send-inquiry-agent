@@ -155,7 +155,7 @@ class FlowV2IntakeExamples(_Strict):
     what_you_sell: str = "coffee and pastries, women's fashion, or a pharmacy"
     office_business: str = "an accounting firm, a travel agency, or a clinic's head office"
     basic_info_answer: str = (
-        "Sara Ali, Al Noor Trading, King Fahd Road, Riyadh, brand Bean Street, "
+        "Sara Ali, Al Noor Trading, Tahlia Street, Riyadh, brand Bean Street, "
         "sara@alnoor.com, +966 55 123 4567"
     )
 

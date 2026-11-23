@@ -160,7 +160,7 @@ flow_v2_intake:
   examples:
     what_you_sell: "coffee and pastries, women's fashion, or a pharmacy"
     office_business: "an accounting firm, a travel agency, or a clinic's head office"
-    basic_info_answer: "Sara Ali, Al Noor Trading, King Fahd Road, Riyadh, brand Bean Street, sara@alnoor.com, +966 55 123 4567"
+    basic_info_answer: "Sara Ali, Al Noor Trading, Tahlia Street, Riyadh, brand Bean Street, sara@alnoor.com, +966 55 123 4567"
   # Most option buttons on a choice card (sales category, ambiguous mall).
   max_choice_options: 4
   # Sales category only from the option buttons (NG2): `update_draft` refuses it on a v2
