@@ -262,15 +262,15 @@ All in `e2e/tests/demo-18nov/`, tagged `@demo-18nov` and `@scripted`; those mark
 
 ## 8. Decisions, assumptions and gaps
 
-All nine questions from the demo were answered from the transcript (M27–M35, 23 Nov). M29, M30 and M31 go to Muzammil to confirm; the rest stand unless he objects. They're in `docs/assumptions.md` ("18 Nov demo decisions").
+All nine questions from the demo were answered from the transcript (M27–M35, 23 Nov). On 23 Nov Swaroop decided to go with all nine, M29–M31 included, without waiting for Muzammil's confirmation (issue #118, closed); he can still change M29–M31 through policy. They're in `docs/assumptions.md` ("18 Nov demo decisions").
 
 | Code | Decision |
 | --- | --- |
 | M27 | No "Looks right" on any card; buttons carry the value (§3.2) |
 | M28 | Our wording for "what do you sell", with examples in config (§3.3) |
-| M29 | The email doesn't block intake or Submit; it must be verified before the Lease Admin's first-level approval. Landline only: before Submit (§3.4). *To confirm* |
-| M30 | The SMS code is valid 60 s, with a countdown and Resend after expiry (§3.4). *To confirm* |
-| M31 | Size, budget, lease length and start date are each asked once, in order; "flexible" is an answer; none blocks Submit; the budget basis is asked when unclear (§3.5). *To confirm* |
+| M29 | The email doesn't block intake or Submit; it must be verified before the Lease Admin's first-level approval. Landline only: before Submit (§3.4). |
+| M30 | The SMS code is valid 60 s, with a countdown and Resend after expiry (§3.4). |
+| M31 | Size, budget, lease length and start date are each asked once, in order; "flexible" is an answer; none blocks Submit; the budget basis is asked when unclear (§3.5). |
 | M32 | Inventory from Yardi behind `InventoryService`; the tenant sees filtered malls only ([`unit-matching.md`](unit-matching.md)) |
 | M33 | "Track your inquiry": reference + email, a code to the email on file; no phone lookup (§3.6) |
 | M34 | Media and Specialty offered now; RPLM at the final level (§3.1) |

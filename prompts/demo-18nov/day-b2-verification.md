@@ -7,7 +7,7 @@ Read first: @docs/specs/demo-18nov-feedback.md (§2 rows NG6, NG7; §3.4 "Code e
 2. **The email link doesn't hold up the applicant.** Once the mobile is verified, the inquiry is saved and they carry on to Property Details and Submit. The email must be confirmed before the Leasing Admin approves; until then the case says so (N9, M29).
 3. **Landline only** works as today: the email link is the only check, so it's needed before Submit.
 
-M29 and M30 are *to confirm* with Muzammil. If he changes them, it's a policy value (`verification.email_required_before`, `verification.otp_ttl_seconds`), not a code change.
+M29 and M30 are decided (23 Nov). If Muzammil changes them later, it's a policy value (`verification.email_required_before`, `verification.otp_ttl_seconds`), not a code change.
 
 ## Backend PR (Claude, MS8): merged first; use it, don't rebuild it
 Contracts are folded into @docs/spec.md (rows marked "18 Nov B2").

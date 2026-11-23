@@ -9,7 +9,7 @@ Read first: @docs/specs/demo-18nov-feedback.md (§2 rows NG8–NG10; §3.5; §4 
 4. **The budget basis** (total or per square metre) is asked once when the figure doesn't say.
 5. **Mall names are matched in code**, including misspellings. An ambiguous name gives buttons; an unknown one gives the mall picker (N12).
 
-M31 is *to confirm* with Muzammil.
+M31 is decided (23 Nov). If Muzammil changes it later, it's a prompt and hint change, not a data change.
 
 ## Backend PR (Claude, MS10): merged first; use it, don't rebuild it
 Contracts are folded into @docs/spec.md (rows marked "18 Nov B3").
