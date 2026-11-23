@@ -1985,7 +1985,8 @@ def _check_brand_alone_no_options(
     return [
         ("no options from the brand name alone", not fv2._payloads(turns, "choice")),
         ("no category saved", session.draft.fields[FieldKey.SALES_CATEGORY].value is None),
-        ("asks what they sell", any(w in last for w in ("sell", "offer", "come to you"))),
+        # "What will customers come to Bean Street for?" counts (eval 24 Nov).
+        ("asks what they sell", re.search(_ASKS_WHAT_THEY_OFFER, last) is not None),
     ]
 
 
@@ -2005,6 +2006,7 @@ def _check_team_tone_arabic(
     ]
 
 
+_ASKS_WHAT_THEY_OFFER = r"\b(sell|offer|come to [\w' ]{1,40}? for|company do)\b"
 _NOV18_STORE: list[dict[str, Any]] = [
     {"cr_skip": True},
     {"cr_skip_confirm": True},
