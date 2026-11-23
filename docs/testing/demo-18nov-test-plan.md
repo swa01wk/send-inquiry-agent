@@ -14,12 +14,12 @@ Every change is tested on every layer that can see it, as in flow v2. Two rules 
 | Security | pytest `tests/security` | none | Track can't reveal an inquiry or be brute-forced; codes and links never reach the model, logs or audit payloads (I10) | `make test-be` | CI, every PR |
 | AGENT-DET | catalogue runner over NV01–NV11 with scripted models; invariants I1–I10 every turn | scripted | Each story's path, cards, draft and case state, turn by turn | `make test-agent` | CI, every PR |
 | FE | Vitest and `@fe` Playwright | none | `ChoiceCard`, value buttons on `ConfirmFieldsCard`, countdown on `VerificationCard`, `TrackPage`, `StatusStrip`, action-only `CasePage`, console buttons | `make test-fe`, `make e2e-fe` | CI (Vitest); Swaroop's Mac (`@fe`) |
-| INT | Playwright `@scripted @demo-18nov`, real FE + BE | scripted | NV01–NV11 in a browser, desktop Chrome and mobile WebKit; every older `@scripted` story still passes | `make e2e-nov18`, then `make e2e-int` | Swaroop's Mac before merging; CI on demand (suite `demo_18nov`) |
+| INT | Playwright `@scripted @demo-18nov`, real FE + BE | scripted | NV01–NV11 in a browser, desktop Chrome and mobile WebKit; every older `@scripted` story still passes | `make e2e-nov18`, then `make e2e-int` | CI on every PR (`e2e.yml`, `playwright-scripted`); alone on demand (suite `demo_18nov`) |
 | AGENT-LIVE | `eval_live.py`, seven new groups ×3, English and Arabic, plus every existing group | Azure `gpt-5.4-mini` | The real model offers options, speaks as the team, moves on without the email, asks property items in order, matches malls, stays quiet about codes, and keeps case mode to buttons | `make eval-live GROUP=nov18`, then `make eval-live` | Swaroop's Mac or `e2e.yml` (suite `eval`) |
 | E2E-LIVE | Playwright `@live` personas | Azure | A real user gets through with the new cards | `make e2e-live` | B5 |
 | QA, demo | `@qa-scripted`, `@demo` | scripted | `docs/scenario-queries.md` and the 4 Dec demo script | `make e2e-qa`, `make e2e-demo` | B5 |
 
-Claude's workspace can't run browsers or the live model. Claude's PRs list INT, AGENT-LIVE and E2E-LIVE as not run. Swaroop runs INT before merging each backend PR, and the live layers in his Cursor PR.
+FE and INT run in CI on every PR (since 23 Nov), so they're green or red on the PR itself; nothing runs locally first. Claude's workspace can't run the live model, so AGENT-LIVE and E2E-LIVE run in Swaroop's Cursor PR, on demand from `e2e.yml` or on his Mac.
 
 ## 2. Catalogue entries NV01–NV11
 
@@ -141,7 +141,7 @@ The scripted model scripts are `backend/tests/e2e_scripts/flow-v2-nv01.json` …
 
 ## 8. What each day must show (PR Testing table)
 
-| Day | BE / Security / AGENT-DET (CI) | FE | INT (Swaroop's Mac) | AGENT-LIVE | E2E-LIVE |
+| Day | BE / Security / AGENT-DET (CI) | FE (CI) | INT (CI) | AGENT-LIVE | E2E-LIVE |
 | --- | --- | --- | --- | --- | --- |
 | B1 | B1 files + NV01, NV02 in the catalogue + whole suite | `ChoiceCard`, `ConfirmFieldsCard`, `VerificationCard` | NV01, NV02 + `make e2e-int` | `category_options`, `leasing_team_tone` + full regression | — |
 | B2 | B2 files + NV03–NV05 | `VerificationCard` countdown | NV03–NV05 + regression | `email_pending` + full regression | — |

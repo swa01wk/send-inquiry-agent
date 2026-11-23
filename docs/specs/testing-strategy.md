@@ -14,14 +14,14 @@ Today there are three layers: backend `pytest` with `make lint`, frontend Vitest
 | --- | --- | --- | --- | --- | --- | --- |
 | **BE** | Backend checks and tests | `ruff check`, `ruff format --check`, `mypy --strict` over `app` and `scripts`; `pytest` (domain, services, API, workflow, audit, contract tests against mocks; Postgres-marked from step 13) | None | Rules, contracts and state transitions are correct in code | `make check-be`, `make test-be` | Every PR |
 | **FE** | Frontend checks, unit tests and frontend Playwright | ESLint, `tsc`, Prettier; Vitest; **Playwright against the frontend alone** (`VITE_MOCK=1`, no backend) | None | Every card and page renders, acts, is accessible and responsive, and handles stream errors | `make check-fe`, `make test-fe`, `make e2e-fe` | Every PR (checks and Vitest in CI; `e2e-fe` locally) |
-| **INT** | Frontend + backend integration (Playwright) | Real browser, real frontend, real backend with `AGENT_MODE=scripted`, `INTEGRATIONS=mock`, `DEV_TOOLS=true` | Scripted | The frontend and backend agree on every contract (SSE, cards, actions, REST); mocks, faults, outbox and multi-user flows work | `make e2e-int` (alias `make e2e`) | Every PR, run locally by the author (result in the PR); in CI on demand |
+| **INT** | Frontend + backend integration (Playwright) | Real browser, real frontend, real backend with `AGENT_MODE=scripted`, `INTEGRATIONS=mock`, `DEV_TOOLS=true` | Scripted | The frontend and backend agree on every contract (SSE, cards, actions, REST); mocks, faults, outbox and multi-user flows work | `make e2e-int` (alias `make e2e`) | Every PR, in CI (`e2e.yml`, since 23 Nov 2026); also on demand |
 | **AGENT-DET** | Agent, deterministic | `pytest` over tools, guard, actions, bundles, prompt assembly, routing rules, agent allowlists, scenario scripts and parity goldens | Scripted | Given the same model output, the agent's state, cards and guard decisions never change | `make test-agent` | Every PR (it's a subset of `make test-be`, runnable on its own) |
 | **AGENT-LIVE** | Agent, live evaluation | `scripts/eval_live.py` scenarios through the HTTP app, repeated | Real (`OPENAI_MODEL`) | The real model, with our prompt and tools, completes each scenario's goal and never breaks a safety invariant | `make eval-live` | When §4 requires it; every gate |
 | **E2E-LIVE** | Frontend + backend + live agent (Playwright) | Real browser, frontend, backend and model; personas and live variants of the acceptance stories | Real | A real user in a real browser gets the outcome, on desktop and mobile | `make e2e-live` | When §4 requires it; every gate; before demos |
 
 `make check` runs `check-be` and `check-fe` (`make lint` stays as an alias). `make test` runs `test-be` and `test-fe`. `make ci` runs everything a PR needs: `check`, `test`, `e2e-fe`, `e2e-int`. `make ci-remote` is the part CI runs on every PR: `check` and `test`. `make gate` adds `eval-live` and `e2e-live`.
 
-**Where Playwright runs (27 Oct 2026).** Installing browsers took most of each CI run, so the Playwright layers (`e2e-fe`, `e2e-int`, `e2e-live`) run on the author's machine before every PR, and their results go in the PR's Testing table. `e2e.yml` runs the scripted or live suite in CI on demand. For Claude's PRs, which can't run browsers in Claude's workspace, Swaroop runs `make e2e-int` before merging.
+**Where Playwright runs (23 Nov 2026).** Every pull request to `main` runs the FE (`@fe`) and INT (`@scripted`) layers in CI (`e2e.yml`), with the browsers cached between runs, so nobody runs them locally first; docs-only PRs skip them. The live layers (`e2e-live`, `eval-live`) cost model calls, so they still run on demand from `e2e.yml` or on the author's machine. (Until 23 Nov, all Playwright layers ran on the author's machine because installing browsers took most of each CI run.)
 
 ### 2.1 BE — backend checks and tests
 
@@ -126,10 +126,10 @@ Every PR runs `make ci` (BE, FE, INT, AGENT-DET): CI runs the BE, FE (checks and
 
 | Workflow | Trigger | Jobs |
 | --- | --- | --- |
-| `ci.yml` (step 11d) | Every PR and push to `main` | `backend` (`check-be`, `test-be`; from step 16 a matrix over `STATE_BACKEND=memory\|postgres`), `frontend` (`check-fe`, `test-fe`). Coverage report uploaded as an artifact |
-| `e2e.yml` | `workflow_dispatch` with `suite: scripted \| live`; nightly live when `NIGHTLY_LIVE=true` | `playwright-scripted` (INT), `playwright-live` (E2E-LIVE), and from 11d an `eval-live` job; all upload results |
+| `ci.yml` (step 11d) | Every PR and push to `main` | `backend` (`check-be`, `test-be`; from step 16 a matrix over `STATE_BACKEND=memory\|postgres`), `frontend` (`check-fe`, `test-fe`), `hosted` (the hosted POC's stack built and smoke-tested, `deploy/hosted/smoke.py`). Coverage report uploaded as an artifact |
+| `e2e.yml` | Every PR to `main` (`playwright-fe`, `playwright-scripted`; docs-only PRs skipped); `workflow_dispatch` for every suite; nightly live when `NIGHTLY_LIVE=true` | `playwright-scripted` (INT), `playwright-live` (E2E-LIVE), and from 11d an `eval-live` job; all upload results |
 
-`backend` and `frontend` are the required checks on `main`. Playwright doesn't run in CI on PRs (see §2): the author runs it locally and reports it in the PR.
+`backend` and `frontend` are the required checks on `main`; `hosted`, `playwright-fe` and `playwright-scripted` can be made required too (repository settings → branch protection). The live layers stay on demand (model cost).
 
 ## 7. Shared scenario catalogue
 

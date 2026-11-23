@@ -7,7 +7,7 @@ browser ──HTTPS──▶ web (Caddy: password, the built app, /api → backe
                          └──▶ backend (FastAPI, mocks, Azure OpenAI) ──▶ postgres
 ```
 
-Files: [`docker-compose.yml`](docker-compose.yml), [`Caddyfile`](Caddyfile), [`.env.example`](.env.example), `backend/Dockerfile`, `frontend/Dockerfile`. CI builds both images on every PR (`ci.yml`, job `images`).
+Files: [`docker-compose.yml`](docker-compose.yml), [`Caddyfile`](Caddyfile), [`.env.example`](.env.example), `backend/Dockerfile`, `frontend/Dockerfile`. On every PR, CI builds this exact stack and smoke-tests it (`ci.yml`, job `hosted`, with [`smoke.py`](smoke.py)): the password covers everything, the app and `/api` are served, a chat turn streams through Caddy, and a session survives a backend restart.
 
 ## 1. Create the VM (once, about 15 minutes)
 

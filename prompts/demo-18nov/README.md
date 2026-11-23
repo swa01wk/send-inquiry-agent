@@ -29,7 +29,7 @@ Weekends are off. Gate and demo to Muzammil: Fri 4 Dec (MS16).
    - the e2e helpers the day needs, and fixes to older stories the backend change breaks;
    - `docs/spec.md` for the day's contract rows (spec §7).
 
-   CI runs `ci.yml`. Claude's workspace can't run browsers or the live model, so Swaroop runs `make e2e-nov18` and `make e2e-int` before merging.
+   CI runs everything that doesn't need the model on the PR: `ci.yml` (backend, frontend, the hosted stack) and `e2e.yml` (FE and INT Playwright, NV stories included). Nothing has to run locally; merge when the checks are green.
 2. **Agent and chat (Swaroop, in Cursor).** Once the backend PR merges, rebase on `main` and run the day's prompt. It covers:
    - the system and case prompts;
    - guard copy;
