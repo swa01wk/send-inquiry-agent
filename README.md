@@ -38,6 +38,7 @@ Set `VITE_API_BASE=http://localhost:8000` if the API is not on the default port.
 | Command | Purpose |
 | --- | --- |
 | `make demo` | Docker Compose with `OTP_MOCK_CODE=1234` and `VITE_DEMO=1` |
+| `make hosted-up` | The hosted POC for developers and QA on one VM: HTTPS, one shared login, the same screens as `make demo` ([deploy/hosted/README.md](deploy/hosted/README.md)) |
 | `make dev` | Same stack without demo env defaults |
 | `make dev-backend` / `make dev-frontend` | Run one app locally |
 | `make ci` | Everything a PR needs, run locally: `check`, `test`, `e2e-int`. CI runs `make ci-remote` (`check`, `test`); Playwright runs on your machine |
