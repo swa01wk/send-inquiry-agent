@@ -231,7 +231,7 @@ test.describe('Scenario queries: before submit', () => {
       await t.blockA({ until: 'A6' })
       const card = () => t.chat.cards('verification').last()
       await t.row(
-        '1 Looks right, then 0000 in the code box',
+        '1 Confirm on the card, then 0000 in the code box',
         [...A.confirmBasic, { enter_code: '0000' }],
         async () => {
           await expect(card()).not.toContainText('Mobile verified')
@@ -303,7 +303,7 @@ test.describe('Scenario queries: before submit', () => {
     const t = await Tester.open(page, browser, request, 'S8')
     try {
       await t.blockA({ until: 'A6' })
-      await t.row('1 Looks right', A.confirmBasic, async () => {
+      await t.row('1 Confirm on the card', A.confirmBasic, async () => {
         await expect(t.chat.cards('verification').last()).toBeVisible()
       })
       await t.row("2 I'll come back later", [{ say: "I'll come back later" }], async () => {
@@ -394,7 +394,7 @@ test.describe('Scenario queries: before submit', () => {
     try {
       await t.row('1 Skip → Yes, continue without it', A.skip, () => expectUnitChoices(t.page))
       await t.row('2 an office', [{ say: 'an office' }], () =>
-        saysLive(t.chat, /sell/i, 'asks what the business sells'),
+        saysLive(t.chat, /sell|come to you for|company do/i, 'asks what the business offers'),
       )
       await t.row('3 Max', [{ say: 'Max' }], async () => {
         await saysLive(t.chat, /sell|what/i, "asks again: it doesn't guess a category from a brand")
@@ -408,14 +408,17 @@ test.describe('Scenario queries: before submit', () => {
         '4 we sell clothes for the whole family',
         [{ say: 'we sell clothes for the whole family' }],
         async () => {
-          await expect(t.chat.cards('confirm_fields').last()).toContainText(/Fashion/)
+          await expect(t.page.getByTestId('choice-card-sales_category').last()).toContainText(
+            /Fashion/,
+          )
           await expect(draftPanel(t.page)).toContainText('Office')
         },
       )
-      await t.row('5 Looks right, then basic info', [...A.confirmUnit, ...A.basic()], async () => {
+      const fashion = [{ choose_option: { key: 'sales_category', value: 'fashion' } }]
+      await t.row('5 Tap Fashion, then basic info', [...fashion, ...A.basic()], async () => {
         await expect(t.chat.cards('verification').last()).toBeVisible({ timeout: 60_000 })
       })
-      await t.row('5 Looks right → verify', [...A.confirmBasic, ...A.verify], () =>
+      await t.row('5 Confirm on the card → verify', [...A.confirmBasic, ...A.verify], () =>
         expectVerified(t.chat),
       )
       const reference = await t.blockB()
@@ -520,7 +523,7 @@ test.describe('Scenario queries: before submit', () => {
           )
         },
       )
-      await t.row('2 Looks right', B.confirmProperty, async () => {
+      await t.row('2 Confirm on the card', B.confirmProperty, async () => {
         await expect(t.chat.cards('terms').last()).toBeVisible()
       })
       const reference = await t.blockB({ from: 'B3' })
@@ -571,7 +574,7 @@ test.describe('Scenario queries: before submit', () => {
           await expect(t.chat.cards('confirm_fields').last()).toBeVisible({ timeout: 60_000 })
         },
       )
-      await t.row('4 Looks right', A.confirmBasic)
+      await t.row('4 Confirm on the card', A.confirmBasic)
       await t.row(
         '5 Sara Ali, sara@beanstreet.example, 0501234567',
         [{ say: 'Sara Ali, sara@beanstreet.example, 0501234567' }, ...A.confirmBasic],

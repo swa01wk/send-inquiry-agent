@@ -61,6 +61,7 @@ markers = [
     "approvals: runs with per-document and per-contact approval on (demo feedback §3.4-3.5)",
     "lead_approval: runs with the shipped second level, Approve Lead? then contacts (flow v2 §3.7)",
     "intake_v2: runs with the flow v2 public intake switched on (flow v2 §3.3, day F3)",
+    "category_options: runs with flow_v2_intake.category_from_options_only as shipped (18 Nov B1)",
 ]
 
 [tool.coverage.run]

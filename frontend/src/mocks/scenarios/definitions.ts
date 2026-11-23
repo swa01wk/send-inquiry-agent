@@ -1,5 +1,6 @@
 import {
   basicInfoReviewCardExample,
+  choiceCardExample,
   confirmFieldsCardExample,
   defaultMockSessionCards,
   documentUploadCardExample,
@@ -83,19 +84,64 @@ export const feScenarioDefinitions: FeScenario[] = [
     session: cardSession({ ...confirmFieldsCardExample, message_id: 'm-static' }, confirmDraft),
     turns: [
       {
-        when: { type: 'action', action: 'confirm_card' },
+        // 18 Nov B1 (M27): one row's value button; the card comes back with that row ticked.
+        when: { type: 'action', action: 'confirm_field' },
         events: [
+          {
+            event: 'ui_card',
+            data: (() => {
+              if (confirmFieldsCardExample.card_type !== 'confirm_fields') {
+                return confirmFieldsCardExample
+              }
+              const payload = confirmFieldsCardExample.payload
+              return {
+                ...confirmFieldsCardExample,
+                message_id: 'm-static',
+                payload: {
+                  ...payload,
+                  fields: payload.fields.map((f) =>
+                    f.key === 'company_name' ? { ...f, confirmed: true } : f,
+                  ),
+                },
+              }
+            })(),
+          },
           {
             event: 'draft',
             data: {
               ...confirmDraft,
               fields: confirmDraft.fields.map((f) =>
-                f.key === 'company_name' || f.key === 'company_address'
-                  ? { ...f, confirmed: true }
-                  : f,
+                f.key === 'company_name' ? { ...f, confirmed: true } : f,
               ),
-              changed_keys: ['company_name', 'company_address'],
+              changed_keys: ['company_name'],
             },
+          },
+          { event: 'done', data: { phase: 'collecting' } },
+        ],
+      },
+    ],
+  },
+  {
+    name: 'choice',
+    session: cardSession({ ...choiceCardExample, message_id: 'm-static' }, draftMidway),
+    turns: [
+      {
+        when: { type: 'action', action: 'choose_option' },
+        events: [
+          {
+            event: 'ui_card',
+            data: (() => {
+              if (choiceCardExample.card_type !== 'choice') return choiceCardExample
+              return {
+                ...choiceCardExample,
+                message_id: 'm-static',
+                payload: { ...choiceCardExample.payload, chosen: 'fnb_cafe' },
+              }
+            })(),
+          },
+          {
+            event: 'token',
+            data: { message_id: 'm-reply', text: 'Thanks. Now a bit about you and your company.' },
           },
           { event: 'done', data: { phase: 'collecting' } },
         ],
@@ -163,7 +209,7 @@ export const feScenarioDefinitions: FeScenario[] = [
                 message_id: 'm-static',
                 payload: {
                   ...payload,
-                  email: { ...payload.email, verified: true, demo_token: null },
+                  email: { ...payload.email, verified: true },
                 },
               }
             })(),

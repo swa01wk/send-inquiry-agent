@@ -1302,7 +1302,7 @@
     {
       "when": {
         "type": "action",
-        "action": "confirm_card"
+        "action": "confirm_field"
       },
       "events": [
         {
@@ -2060,7 +2060,6 @@
                 "masked": "s***@beanstreet.example",
                 "link_sent": true,
                 "verified": false,
-                "demo_token": "EMAIL_TOKEN",
                 "resend_available_at": "TIMESTAMP"
               },
               "mobile": {
@@ -2076,20 +2075,6 @@
           }
         },
         {
-          "event": "done",
-          "data": {
-            "phase": "verifying"
-          }
-        }
-      ]
-    },
-    {
-      "when": {
-        "type": "action",
-        "action": "verify_email"
-      },
-      "events": [
-        {
           "event": "ui_card",
           "data": {
             "card_id": "verification",
@@ -2100,7 +2085,6 @@
                 "masked": "s***@beanstreet.example",
                 "link_sent": true,
                 "verified": true,
-                "demo_token": null,
                 "resend_available_at": null
               },
               "mobile": {
@@ -2373,7 +2357,6 @@
                 "masked": "s***@beanstreet.example",
                 "link_sent": true,
                 "verified": true,
-                "demo_token": null,
                 "resend_available_at": null
               },
               "mobile": {

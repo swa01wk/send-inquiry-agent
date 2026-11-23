@@ -7,7 +7,9 @@
         "args": {
           "options": [
             "Store",
-            "Office"
+            "Office",
+            "Media",
+            "Specialty"
           ]
         },
         "id": "fv2-unit-offer",
@@ -16,7 +18,7 @@
     ]
   },
   {
-    "content": "Got it \u2014 a store. What do you sell? That helps us pick the right category."
+    "content": "Got it, a store. Tell me a little about the business. What will customers come to you for?"
   },
   {
     "content": "",
@@ -38,22 +40,18 @@
     ]
   },
   {
-    "content": "What do you sell? I'll map it to the right sales category."
+    "content": "Tell me a little about the business. What will customers come to you for?"
   },
   {
     "content": "",
     "tool_calls": [
       {
-        "name": "update_draft",
+        "name": "show_category_options",
         "args": {
-          "fields": [
-            {
-              "key": "sales_category",
-              "value": "fnb_cafe",
-              "source": "derived",
-              "evidence": "we sell specialty coffee and pastries"
-            }
-          ]
+          "candidates": [
+            "fnb_cafe"
+          ],
+          "evidence": "we sell specialty coffee and pastries"
         },
         "id": "fv2-cat",
         "type": "tool_call"
@@ -61,10 +59,10 @@
     ]
   },
   {
-    "content": "Check the summary card and let me know if anything's off."
+    "content": "Tap the option that fits best."
   },
   {
-    "content": "Looks good \u2014 here's what's next in the flow."
+    "content": "Thanks. Tell me a bit more about you and your company: your name, the company name and address, your brand, an email and a phone number."
   },
   {
     "content": "",
@@ -143,7 +141,9 @@
         "args": {
           "options": [
             "Store",
-            "Office"
+            "Office",
+            "Media",
+            "Specialty"
           ]
         },
         "id": "fv2-unit-offer",
@@ -152,7 +152,7 @@
     ]
   },
   {
-    "content": "Got it \u2014 a store. What do you sell? That helps us pick the right category."
+    "content": "Got it, a store. Tell me a little about the business. What will customers come to you for?"
   },
   {
     "content": "",
@@ -162,7 +162,9 @@
         "args": {
           "options": [
             "Store",
-            "Office"
+            "Office",
+            "Media",
+            "Specialty"
           ]
         },
         "id": "fv2-unit-offer",
@@ -171,6 +173,6 @@
     ]
   },
   {
-    "content": "Got it \u2014 a store. What do you sell? That helps us pick the right category."
+    "content": "Got it, a store. Tell me a little about the business. What will customers come to you for?"
   }
 ]

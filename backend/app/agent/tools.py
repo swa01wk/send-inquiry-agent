@@ -27,6 +27,7 @@ from app.agent.mall_match import (
 )
 from app.agent.runtime import runtime_from_config
 from app.agent.state import AgentState
+from app.agent.unit_choice import bare_unit_choice
 from app.agent.verification import send_contact_verification
 from app.api.cards import (
     VERIFICATION_CARD_ID,
@@ -680,10 +681,14 @@ def update_draft(
             and get_policy().flow_v2_intake.category_from_options_only
         ):
             # 18 Nov B1 (NG2): the category is the user's tap on the option buttons.
-            rejected.append(
-                f"{item.key}: use_show_category_options; call `show_category_options` with "
-                "candidates from what they said they sell and let them tap one"
-            )
+            current = draft.fields[FieldKey.SALES_CATEGORY]
+            if current.value and current.source == Source.USER:
+                rejected.append(f"{item.key}: already_set_by_the_users_tap; nothing to save")
+            else:
+                rejected.append(
+                    f"{item.key}: use_show_category_options; call `show_category_options` "
+                    "with candidates from what they said they sell and let them tap one"
+                )
             continue
         if (
             item.key == FieldKey.SALES_CATEGORY.value
@@ -992,7 +997,10 @@ def show_category_options(
     probe = DraftFieldUpdate.model_construct(
         key=FieldKey.SALES_CATEGORY.value, value="", source="derived", evidence=evidence
     )
-    if _category_from_brand_only(probe, [], draft, _last_user_text(state)):
+    if _category_from_brand_only(probe, [], draft, _last_user_text(state)) or bare_unit_choice(
+        evidence
+    ):
+        # A brand name, or only the unit type ("a store"), doesn't say what they offer.
         return _tool_result(
             runtime,
             draft=draft,
@@ -1196,11 +1204,12 @@ def suggest_replies(
 ) -> Command[Any]:
     """Suggest quick-reply chips for this turn."""
     cleaned = [opt.strip() for opt in options if opt.strip()]
-    if not 1 <= len(cleaned) <= 3:
+    # 1–4: the four unit types fit (18 Nov B1, N1).
+    if not 1 <= len(cleaned) <= 4:
         return _tool_result(
             runtime,
             draft=state["draft"],
-            content="Provide 1 to 3 reply options.",
+            content="Provide 1 to 4 reply options.",
         )
     too_long = [opt for opt in cleaned if len(opt) > 60]
     if too_long:

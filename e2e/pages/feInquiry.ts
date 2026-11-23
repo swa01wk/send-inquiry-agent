@@ -80,6 +80,7 @@ export class FeInquiryPage {
     if (cardType === 'inform_tenant') return this.page.getByTestId('inform-tenant-card')
     if (cardType === 'sign_in_prompt') return this.page.getByTestId('sign-in-prompt-card')
     if (cardType === 'signatory_question') return this.page.getByTestId('signatory-question-card')
+    if (cardType === 'choice') return this.page.locator('[data-testid^="choice-card-"]')
     return this.page.locator(`[data-testid="card-slot-"]`)
   }
 
@@ -97,16 +98,15 @@ export class FeInquiryPage {
     return readFeMockRequests(this.page)
   }
 
-  async confirmCard() {
+  /** Taps the first open row's value button on the newest confirm card (18 Nov B1, M27). */
+  async confirmField() {
     const doneBefore = await readDoneEventCount(this.page)
-    await this.page.getByRole('button', { name: 'Looks right' }).last().click()
-    await this.waitForTurnDone(doneBefore)
-  }
-
-  async verifyEmail() {
-    const card = this.cards('verification')
-    const doneBefore = await readDoneEventCount(this.page)
-    await card.getByRole('button', { name: /open verification link/i }).click()
+    await this.page
+      .locator('[data-testid^="confirm-fields-"]')
+      .last()
+      .locator('[data-testid^="confirm-field-"]')
+      .first()
+      .click()
     await this.waitForTurnDone(doneBefore)
   }
 

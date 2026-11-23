@@ -8,9 +8,7 @@ import { finishA11yOnPage } from '../../support/turnChecks'
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..')
 const scenarioDir = path.join(repoRoot, 'frontend/src/mocks/scenarios/parity')
 
-type FeWhen =
-  | { type: 'message'; textEquals?: string }
-  | { type: 'action'; action: string }
+type FeWhen = { type: 'message'; textEquals?: string } | { type: 'action'; action: string }
 
 type FeTurn = { when: FeWhen; events: unknown[] }
 
@@ -39,12 +37,10 @@ async function replayWhen(inquiry: FeInquiryPage, when: FeWhen, otpCodes: string
     await inquiry.say(when.textEquals ?? '')
     return
   }
-  if (when.action === 'confirm_card') {
-    await inquiry.confirmCard()
-    return
-  }
-  if (when.action === 'verify_email') {
-    await inquiry.verifyEmail()
+  // 18 Nov B1: one value button tap replays a confirm turn; the email link has no button
+  // (its events are replayed with the turn before, see backend/scripts/export_fe_fixtures.py).
+  if (when.action === 'confirm_field') {
+    await inquiry.confirmField()
     return
   }
   if (when.action === 'submit_otp') {
@@ -79,6 +75,7 @@ test.describe('Parity golden fixtures @fe', () => {
         }
       }
 
+      let landlineUploaded = false
       for (const turn of scenario.turns ?? []) {
         await replayWhen(inquiry, turn.when, otpCodes)
         if (turn.when.type === 'action' && turn.when.action === 'submit_otp') {
@@ -90,12 +87,11 @@ test.describe('Parity golden fixtures @fe', () => {
             await uploadRequiredDocs()
           }
         }
-        if (
-          turn.when.type === 'action' &&
-          turn.when.action === 'verify_email' &&
-          name === 'landline-only'
-        ) {
-          await uploadRequiredDocs()
+        if (name === 'landline-only' && !landlineUploaded) {
+          if (await inquiry.cards('document_upload').isVisible()) {
+            await uploadRequiredDocs()
+            landlineUploaded = true
+          }
         }
       }
 

@@ -278,9 +278,47 @@
     {
       "when": {
         "type": "action",
-        "action": "confirm_card"
+        "action": "confirm_field"
       },
       "events": [
+        {
+          "event": "ui_card",
+          "data": {
+            "card_id": "confirm-1",
+            "card_type": "confirm_fields",
+            "message_id": "m-static",
+            "payload": {
+              "title": "Here's what your CR record shows. Is it still correct?",
+              "fields": [
+                {
+                  "key": "cr_number",
+                  "label": "CR number",
+                  "display": "1010123456",
+                  "source": "user",
+                  "confirmed": true,
+                  "evidence": null
+                },
+                {
+                  "key": "company_name",
+                  "label": "Company name",
+                  "display": "Bean Street Trading Co.",
+                  "source": "verified",
+                  "confirmed": true,
+                  "evidence": null
+                },
+                {
+                  "key": "company_address",
+                  "label": "Company address",
+                  "display": "King Fahd Road, Al Olaya, Riyadh",
+                  "source": "verified",
+                  "confirmed": false,
+                  "evidence": null
+                }
+              ],
+              "all_confirmed": false
+            }
+          }
+        },
         {
           "event": "draft",
           "data": {
@@ -310,7 +348,7 @@
                 "group": "company",
                 "display": "King Fahd Road, Al Olaya, Riyadh",
                 "source": "verified",
-                "confirmed": true,
+                "confirmed": false,
                 "required": true
               },
               {
@@ -502,7 +540,7 @@
               "sections": []
             },
             "can_submit": false,
-            "changed_keys": ["company_name", "company_address"],
+            "changed_keys": ["company_name"],
             "follow_on_of": null
           }
         },

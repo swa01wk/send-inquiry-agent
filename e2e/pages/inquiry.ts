@@ -135,10 +135,21 @@ export class InquiryPage {
     await this.page.getByRole('button', { name: label }).click()
   }
 
+  /**
+   * Confirms every open row of the newest confirm card with its value button (18 Nov B1,
+   * M27): the taps before the last are quiet, the last runs the turn.
+   */
   async confirmCard() {
-    const doneBefore = await readDoneEventCount(this.page)
-    await this.page.getByRole('button', { name: 'Looks right' }).last().click()
-    await this.waitForTurnDone(doneBefore)
+    const buttons = this.page
+      .locator('[data-testid^="confirm-fields-"]')
+      .last()
+      .locator('[data-testid^="confirm-field-"]')
+    for (let left = await buttons.count(); left > 0; left--) {
+      const doneBefore = await readDoneEventCount(this.page)
+      await buttons.first().click()
+      await this.waitForTurnDone(doneBefore)
+      await expect(buttons).toHaveCount(left - 1)
+    }
   }
 
   async pickMalls(names: string[]) {

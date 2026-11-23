@@ -26,6 +26,7 @@ export type CardType =
   | 'terms'
   | 'signatory_question'
   | 'duplicate_notice'
+  | 'choice'
 
 export type StepState = 'done' | 'current' | 'upcoming'
 
@@ -36,6 +37,23 @@ export interface ConfirmFieldRow {
   source: Source | null
   confirmed: boolean
   evidence: string | null
+  /** 18 Nov B1 (M27): the value as its button shows it; a tap sends `confirm_field`. */
+  value_label?: string | null
+}
+
+/** 18 Nov B1 (§3.2): a value picked from a list; a tap sends `choose_option`. */
+export interface ChoiceOption {
+  value: string
+  label: string
+  label_ar: string | null
+}
+
+export interface ChoicePayload {
+  key: string
+  prompt: string
+  options: ChoiceOption[]
+  lang: 'en' | 'ar'
+  chosen: string | null
 }
 
 export interface HandoffPayload {
@@ -172,8 +190,6 @@ export interface VerificationEmail {
   masked: string | null
   link_sent: boolean
   verified: boolean
-  /** Demo only: stands in for clicking the emailed link. */
-  demo_token: string | null
   /** ISO time while resend cooldown or hourly cap applies; else null. */
   resend_available_at: string | null
 }
@@ -527,6 +543,12 @@ export type UiCard =
       card_type: 'duplicate_notice'
       message_id: string | null
       payload: DuplicateNoticePayload
+    }
+  | {
+      card_id: string
+      card_type: 'choice'
+      message_id: string | null
+      payload: ChoicePayload
     }
 
 export type FormModeStep =

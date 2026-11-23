@@ -3,15 +3,16 @@ import { FeInquiryPage } from '../../pages/feInquiry'
 import { finishA11yOnPage } from '../../support/turnChecks'
 
 test.describe('Verification card @fe', () => {
-  test('demo email link sends verify_email', async ({ page }, testInfo) => {
+  test('has no link button; the link is opened from the email (18 Nov B1, N7)', async ({
+    page,
+  }, testInfo) => {
     const inquiry = new FeInquiryPage(page)
     await inquiry.openMock('verification')
     const card = inquiry.cards('verification')
     await expect(card).toBeVisible()
-    await card.getByRole('button', { name: /open verification link/i }).click()
-    await inquiry.waitForTurnDone(0)
-    const requests = await inquiry.mockRequests()
-    expect(requests.some((r) => (r as { action?: string }).action === 'verify_email')).toBeTruthy()
+    await expect(card.getByRole('button', { name: /open verification link/i })).toHaveCount(0)
+    await expect(card).toContainText('Open it from your email')
+    await expect(card.getByRole('button', { name: /resend link/i })).toBeVisible()
     await finishA11yOnPage(page, testInfo.project.name)
   })
 })

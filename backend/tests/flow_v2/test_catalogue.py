@@ -42,6 +42,7 @@ pytestmark = [
     pytest.mark.approvals,
     pytest.mark.lead_approval,
     pytest.mark.intake_v2,
+    pytest.mark.category_options,
 ]
 
 _CATALOGUE = json.loads(

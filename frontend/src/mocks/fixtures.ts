@@ -1,4 +1,5 @@
 import type {
+  ChoicePayload,
   ConfirmFieldsPayload,
   DocumentUploadPayload,
   DraftDocumentRow,
@@ -402,6 +403,27 @@ export const confirmFieldsCardExample: UiCard = {
   } satisfies ConfirmFieldsPayload,
 }
 
+/** 18 Nov B1 (§3.2): the sales category as option buttons. */
+export const choiceCardExample: UiCard = {
+  card_id: 'choice-sales_category',
+  card_type: 'choice',
+  message_id: 'm_14',
+  payload: {
+    key: 'sales_category',
+    prompt: 'Which fits best?',
+    options: [
+      { value: 'fnb_cafe', label: 'Food & Beverage · Café', label_ar: 'أغذية ومشروبات · مقهى' },
+      {
+        value: 'fnb_restaurant',
+        label: 'Food & Beverage · Restaurant',
+        label_ar: 'أغذية ومشروبات · مطعم',
+      },
+    ],
+    lang: 'en',
+    chosen: null,
+  } satisfies ChoicePayload,
+}
+
 export const mallPickerCardExample: UiCard = {
   card_id: 'malls',
   card_type: 'mall_picker',
@@ -429,7 +451,6 @@ export const verificationCardExample: UiCard = {
       masked: 'a***@beanstreet.sa',
       link_sent: true,
       verified: false,
-      demo_token: 'demo-token',
       resend_available_at: null,
     },
     mobile: {

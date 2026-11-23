@@ -1255,7 +1255,11 @@ def _asks_what_you_sell(
     _s: Any, turns: list[TurnResult], _a: AppState, _e: dict[str, Any]
 ) -> list[tuple[str, bool]]:
     text = _reply_text(turns).lower()
-    asked = re.search(r"\bwhat\b[^.?!]{0,40}\b(sell|offer)", text) is not None
+    # 18 Nov B1 (M28): "What will customers come to you for?" / "What does the company do?"
+    asked = (
+        re.search(r"\bwhat\b[^.?!]{0,60}\b(sell|offer|come to \w+ for|company do)", text)
+        is not None
+    )
     return [("asks what you sell", asked)]
 
 

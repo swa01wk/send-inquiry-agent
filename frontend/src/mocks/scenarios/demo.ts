@@ -101,12 +101,7 @@ export async function replayDemoChat(
       ),
       changed_keys: ['malls'],
     }
-    await streamBotReply(
-      mid,
-      ['Nice picks. Who should our leasing team contact about this?'],
-      onEvent,
-      signal,
-    )
+    await streamBotReply(mid, ['Nice picks. Who should we contact about this?'], onEvent, signal)
     onEvent(withDraft(draft))
     onEvent({ event: 'done', data: { phase: draft.phase } })
     return
@@ -120,7 +115,7 @@ export async function replayDemoChat(
         event: 'ui_card',
         data: {
           ...verificationCardExample,
-          payload: { ...payload, email: { ...payload.email, verified: true, demo_token: null } },
+          payload: { ...payload, email: { ...payload.email, verified: true } },
         },
       })
     }

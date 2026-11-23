@@ -19,7 +19,6 @@ describe('VerificationCard', () => {
     render(
       <VerificationCard
         payload={examplePayload()}
-        onVerifyEmail={noop}
         onResendEmailLink={noop}
         onVerifyCode={onVerifyCode}
         onResendCode={noop}
@@ -33,20 +32,18 @@ describe('VerificationCard', () => {
     expect(onVerifyCode).toHaveBeenCalledWith('1234')
   })
 
-  it('opens the demo email link with its token', async () => {
-    const user = userEvent.setup()
-    const onVerifyEmail = vi.fn()
+  it('never offers to open the email link here (18 Nov B1, N7)', () => {
     render(
       <VerificationCard
         payload={examplePayload()}
-        onVerifyEmail={onVerifyEmail}
         onResendEmailLink={noop}
         onVerifyCode={noop}
         onResendCode={noop}
       />,
     )
-    await user.click(screen.getByRole('button', { name: /open verification link/i }))
-    expect(onVerifyEmail).toHaveBeenCalledWith('demo-token')
+    expect(screen.queryByRole('button', { name: /open verification link/i })).toBeNull()
+    expect(screen.getByText(/open it from your email/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /resend link/i })).toBeInTheDocument()
   })
 
   it('shows error caption with attempts left', () => {
@@ -54,7 +51,6 @@ describe('VerificationCard', () => {
     render(
       <VerificationCard
         payload={{ ...payload, mobile: payload.mobile && { ...payload.mobile, attempts_left: 2 } }}
-        onVerifyEmail={noop}
         onResendEmailLink={noop}
         onVerifyCode={noop}
         onResendCode={noop}
@@ -67,7 +63,6 @@ describe('VerificationCard', () => {
     render(
       <VerificationCard
         payload={{ ...examplePayload(), mobile: null }}
-        onVerifyEmail={noop}
         onResendEmailLink={noop}
         onVerifyCode={noop}
         onResendCode={noop}
@@ -87,7 +82,6 @@ describe('VerificationCard', () => {
           ...payload,
           email: { ...payload.email, resend_available_at: '2026-10-28T12:01:30.000Z' },
         }}
-        onVerifyEmail={noop}
         onResendEmailLink={noop}
         onVerifyCode={noop}
         onResendCode={noop}

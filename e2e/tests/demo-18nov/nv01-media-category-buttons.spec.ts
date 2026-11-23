@@ -10,15 +10,11 @@ import { openEntryChat, runStep } from '../../support/steps'
  * to Submit with a GEO-MED reference. Steps and script: docs/flow-v2/scenarios.json NV01,
  * backend/tests/e2e_scripts/flow-v2-nv01.json (AGENT-DET runs the same entry, and checks
  * the case's final level is the RPLM Media).
- *
- * Switched off until MS7 adds ChoiceCard and the value buttons to the frontend.
  */
 const entry = scenario('NV01')
 const LIVE = Boolean(process.env.E2E_LIVE)
 
 test.describe(`NV01 ${entry.title} @demo-18nov @scripted @live`, () => {
-  test.fixme(true, 'MS7: ChoiceCard and confirm_fields value buttons')
-
   test('media inquiry with category and value buttons', async ({ page, browser, request }) => {
     test.setTimeout(LIVE ? 600_000 : 240_000)
     await clearDevOutbox(request)

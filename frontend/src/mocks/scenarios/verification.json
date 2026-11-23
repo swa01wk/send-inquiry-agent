@@ -24,7 +24,6 @@
             "masked": "a***@beanstreet.sa",
             "link_sent": true,
             "verified": false,
-            "demo_token": "demo-token",
             "resend_available_at": null
           },
           "mobile": {
@@ -287,7 +286,6 @@
                 "masked": "a***@beanstreet.sa",
                 "link_sent": true,
                 "verified": true,
-                "demo_token": null,
                 "resend_available_at": null
               },
               "mobile": {

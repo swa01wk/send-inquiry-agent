@@ -70,7 +70,8 @@ export const A = {
   skip: [{ cr_skip: true }, { cr_skip_confirm: true }] as CatalogueStep[],
   store: [{ say: 'a store' }] as CatalogueStep[],
   sells: [{ say: 'we sell specialty coffee and pastries' }] as CatalogueStep[],
-  confirmUnit: [{ confirm_card: 'unit_and_category' }] as CatalogueStep[],
+  // 18 Nov B1: the category is a tap on the option buttons, not a confirm card.
+  confirmUnit: [{ choose_option: { key: 'sales_category', value: 'fnb_cafe' } }] as CatalogueStep[],
   basic: (text = SARA.basic): CatalogueStep[] => [{ say: text }],
   confirmBasic: [{ confirm_card: 'basic_info' }] as CatalogueStep[],
   verify: [{ verify_email: true }, { enter_code: '1234' }] as CatalogueStep[],
@@ -232,10 +233,10 @@ export class Tester {
     }
     await this.row('A3 a store', A.store)
     await this.row('A4 we sell specialty coffee and pastries', A.sells, async () => {
-      await expect(this.chat.cards('confirm_fields').last()).toBeVisible()
+      await expect(this.chat.page.getByTestId('choice-card-sales_category').last()).toBeVisible()
       await after.A4?.()
     })
-    await this.row('A5 Looks right', A.confirmUnit, async () => {
+    await this.row('A5 Tap Café', A.confirmUnit, async () => {
       await after.A5?.()
     })
     await this.row('A6 basic info in one message', A.basic(options.basic), async () => {
@@ -244,7 +245,7 @@ export class Tester {
     })
     if (options.until === 'A6') return
     await this.row(
-      'A7 Looks right → verification link → 1234',
+      'A7 Confirm the Arabic brand → verification link → 1234',
       [...A.confirmBasic, ...A.verify],
       async () => {
         await expectVerified(this.chat)
@@ -262,7 +263,7 @@ export class Tester {
       await this.row('B1 mall, area, budget, lease', B.property(options.property), async () => {
         await expect(draftPanel(this.page)).toContainText(/Mall/)
       })
-      await this.row('B2 Looks right', B.confirmProperty, async () => {
+      await this.row('B2 Confirm on the card', B.confirmProperty, async () => {
         await expect(this.chat.cards('terms').last()).toBeVisible()
       })
     }

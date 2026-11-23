@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import type { ChatCardActions } from '../cards/cardActions'
 import { CaseStatusCard } from '../cards/CaseStatusCard'
+import { ChoiceCard } from '../cards/ChoiceCard'
 import { ConfirmFieldsCard } from '../cards/ConfirmFieldsCard'
 import { ContactsCard } from '../cards/ContactsCard'
 import { DocumentChecklistCard } from '../cards/DocumentChecklistCard'
@@ -56,7 +57,10 @@ export function CardSlot({
         <ConfirmFieldsCard
           cardId={card.card_id}
           payload={card.payload}
-          onConfirm={() => actions.sendAction('confirm_card', { card_id: card.card_id })}
+          onConfirmField={(key) =>
+            actions.sendAction('confirm_field', { card_id: card.card_id, key })
+          }
+          onEditField={(key, value) => actions.sendAction('edit_field', { key, value })}
         />
       ) : null}
       {card.card_type === 'mall_picker' ? (
@@ -69,15 +73,9 @@ export function CardSlot({
       {card.card_type === 'verification' ? (
         <VerificationCard
           payload={card.payload}
-          onVerifyEmail={(token) => actions.sendAction('verify_email', { token })}
           onResendEmailLink={() => actions.sendAction('resend_email_link', {})}
           onVerifyCode={(code) => actions.sendAction('submit_otp', { code })}
           onResendCode={() => actions.sendAction('resend_otp', {})}
-          demoLinkWaiting={
-            actions.isActionQueued?.('verify_email', {
-              token: card.payload.email.demo_token ?? '',
-            }) ?? false
-          }
         />
       ) : null}
       {card.card_type === 'document_upload' ? (
@@ -182,6 +180,18 @@ export function CardSlot({
         <SignInPromptCard
           payload={card.payload}
           onNoLogin={() => actions.sendAction('continue_without_login', {})}
+        />
+      ) : null}
+      {card.card_type === 'choice' ? (
+        <ChoiceCard
+          payload={card.payload}
+          onChoose={(value) =>
+            actions.sendAction('choose_option', {
+              card_id: card.card_id,
+              key: card.payload.key,
+              value,
+            })
+          }
         />
       ) : null}
       {card.card_type === 'quick_replies' ? null : null}

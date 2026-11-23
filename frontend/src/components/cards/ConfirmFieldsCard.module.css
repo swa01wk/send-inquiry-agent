@@ -35,7 +35,39 @@
   opacity: 0.85;
 }
 
-.footer {
-  padding: 8px 0 12px;
-  border-top: 1px solid var(--color-divider);
+/* 18 Nov B1: each open row's value is its confirm button, with Change beside it. */
+.actions {
+  flex: 1;
+  min-width: 160px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.buttonValue {
+  font-weight: 600;
+}
+
+.tick {
+  color: var(--color-success-fg);
+}
+
+.editRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  flex: 1;
+  min-width: 200px;
+}
+
+.editInput {
+  flex: 1;
+  min-width: 140px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-control);
+  font: inherit;
 }

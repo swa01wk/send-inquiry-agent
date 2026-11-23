@@ -111,16 +111,12 @@ async function confirmSection(ctx: StepCtx, section: string): Promise<void> {
 }
 
 /**
- * Confirms each open row of a confirm card (18 Nov B1, M27): its value button
- * (`confirm-field-<key>`, sends `confirm_field`) where the card has them; the taps before the
- * last are quiet, the last runs the turn. Cards from before MS7 still have "Looks right".
+ * Confirms each open row of a confirm card (18 Nov B1, M27) with its value button
+ * (`confirm-field-<key>`, sends `confirm_field`): the taps before the last are quiet, the last
+ * runs the turn, as the old card-level confirm did.
  */
 async function confirmEveryRow(ctx: StepCtx, card: Locator): Promise<void> {
   const valueButtons = card.locator('[data-testid^="confirm-field-"]')
-  if ((await valueButtons.count()) === 0) {
-    await turn(ctx, () => card.getByRole('button', { name: 'Looks right' }).click())
-    return
-  }
   for (let left = await valueButtons.count(); left > 0; left--) {
     await turn(ctx, () => valueButtons.first().click())
     await expect(valueButtons).toHaveCount(left - 1)

@@ -69,13 +69,18 @@ def _agent_turns_after_cr_skipped() -> list[dict[str, Any]]:
             "tool_calls": [
                 {
                     "name": "suggest_replies",
-                    "args": {"options": ["Store", "Office"]},
+                    "args": {"options": ["Store", "Office", "Media", "Specialty"]},
                     "id": "fv2-unit-offer",
                     "type": "tool_call",
                 }
             ],
         },
-        {"content": "Got it — a store. What do you sell? That helps us pick the right category."},
+        {
+            "content": (
+                "Got it, a store. Tell me a little about the business. What will customers "
+                "come to you for?"
+            )
+        },
     ]
 
 
@@ -125,32 +130,48 @@ def _step_to_turns(step: dict[str, Any], *, after_cr: str | None) -> list[dict[s
                         }
                     ],
                 },
-                {"content": "What do you sell? I'll map it to the right sales category."},
-            ]
-        if re.search(r"sell|coffee|office", text, re.I):
-            fields: list[dict[str, Any]] = [
                 {
-                    "key": "sales_category",
-                    "value": "fnb_cafe" if "coffee" in text.lower() else "fashion",
-                    "source": "derived",
-                    "evidence": text[:80],
-                }
+                    "content": (
+                        "Tell me a little about the business. What will customers come to you for?"
+                    )
+                },
             ]
-            if re.search(r"\boffice\b", text, re.I):
-                fields = [{"key": "unit_type", "value": "office", "source": "user"}]
+        if re.search(r"\boffice\b", text, re.I):
             return [
                 {
                     "content": "",
                     "tool_calls": [
                         {
                             "name": "update_draft",
-                            "args": {"fields": fields},
+                            "args": {
+                                "fields": [
+                                    {"key": "unit_type", "value": "office", "source": "user"}
+                                ]
+                            },
                             "id": "fv2-cat",
                             "type": "tool_call",
                         }
                     ],
                 },
-                {"content": "Check the summary card and let me know if anything's off."},
+                {"content": "An office, got it. What does the company do?"},
+            ]
+        if re.search(r"sell|coffee", text, re.I):
+            # 18 Nov B1 (§3.2): the category is offered as option buttons; the user taps one
+            # (`choose_option`), the agent never writes it.
+            category = "fnb_cafe" if "coffee" in text.lower() else "fashion"
+            return [
+                {
+                    "content": "",
+                    "tool_calls": [
+                        {
+                            "name": "show_category_options",
+                            "args": {"candidates": [category], "evidence": text[:80]},
+                            "id": "fv2-cat",
+                            "type": "tool_call",
+                        }
+                    ],
+                },
+                {"content": "Tap the option that fits best."},
             ]
         if re.search(r"mall|sqm|year", text, re.I):
             return [
@@ -172,6 +193,15 @@ def _step_to_turns(step: dict[str, Any], *, after_cr: str | None) -> list[dict[s
                 },
             ]
         return [{"content": "Thanks — let's keep going with the next step."}]
+    if "choose_option" in step:
+        return [
+            {
+                "content": (
+                    "Thanks. Tell me a bit more about you and your company: your name, the "
+                    "company name and address, your brand, an email and a phone number."
+                )
+            }
+        ]
     if "confirm_card" in step:
         return [{"content": "Looks good — here's what's next in the flow."}]
     if step.get("accept_terms"):

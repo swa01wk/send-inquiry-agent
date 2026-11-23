@@ -96,3 +96,40 @@ def test_category_from_options_only_refuses_update_draft(
 
     assert "use_show_category_options" in str(result.update["messages"][0].content)
     assert result.update["draft"].fields[FieldKey.SALES_CATEGORY].value is None
+
+
+def test_the_basic_info_example_names_no_registry_company() -> None:
+    # Invariant I8: the public chat never shows company details from a CR lookup, so the
+    # example answer can't use one (live eval 24 Nov: "King Fahd Road, Riyadh").
+    from app.agent.invariants import _registry_details
+
+    example = get_policy().flow_v2_intake.examples.basic_info_answer.lower()
+    assert not [detail for detail in _registry_details() if detail in example]
+
+
+def test_update_draft_after_a_tap_says_it_is_already_set(
+    base_state, agent_runtime, stream_events, monkeypatch
+) -> None:
+    policy = get_policy()
+    strict = policy.model_copy(
+        update={
+            "flow_v2_intake": policy.flow_v2_intake.model_copy(
+                update={"category_from_options_only": True}
+            )
+        }
+    )
+    master = load_master_data()
+    draft, _, _ = write_fields(
+        new_inquiry_draft(), [("sales_category", "fnb_cafe", Source.USER)], master=master
+    )
+    draft.intake_flow = "v2"
+    state = {**base_state, "draft": draft, "messages": [HumanMessage(content="ok")]}
+    _events, writer = stream_events
+    runtime = make_tool_runtime(state=state, agent_runtime=agent_runtime, writer=writer)
+    import app.agent.tools as tools
+
+    monkeypatch.setattr(tools, "get_policy", lambda: strict)
+    fields = [{"key": "sales_category", "value": "fnb_cafe", "source": "user"}]
+    result = update_draft.invoke({"state": state, "runtime": runtime, "fields": fields})
+
+    assert "already_set_by_the_users_tap" in str(result.update["messages"][0].content)
