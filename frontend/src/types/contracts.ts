@@ -1,13 +1,7 @@
 export type Source = 'user' | 'derived' | 'verified' | 'staff' | 'default'
 
 export type Phase =
-  | 'existing_account'
-  | 'submitted'
-  | 'gate'
-  | 'collecting'
-  | 'verifying'
-  | 'documents'
-  | 'review'
+  'existing_account' | 'submitted' | 'gate' | 'collecting' | 'verifying' | 'documents' | 'review'
 
 export type CardType =
   | 'confirm_fields'
@@ -150,12 +144,7 @@ export interface SkipConfirmPayload {
 }
 
 export type CompanyRegistrationState =
-  | 'open'
-  | 'confirm_skip'
-  | 'registered'
-  | 'not_registered'
-  | 'skipped'
-  | 'continued_no_login'
+  'open' | 'confirm_skip' | 'registered' | 'not_registered' | 'skipped' | 'continued_no_login'
 
 export interface CompanyRegistrationPayload {
   prompt: string
@@ -563,13 +552,7 @@ export type UiCard =
     }
 
 export type FormModeStep =
-  | 'existing_account'
-  | 'cr'
-  | 'details'
-  | 'verification'
-  | 'documents'
-  | 'review'
-  | 'submitted'
+  'existing_account' | 'cr' | 'details' | 'verification' | 'documents' | 'review' | 'submitted'
 
 /** A value still missing in form mode; saved with the `edit_field` action. */
 export interface FormModeField {
